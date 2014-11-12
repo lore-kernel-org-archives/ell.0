@@ -1,34 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============2193450814888434188=="
+Content-Type: multipart/mixed; boundary="===============6627939926460958382=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dbus: Declaration of l_dbus_message_builder was missing
-Date: Mon, 03 Nov 2014 13:19:33 -0600
-Message-ID: <5457D545.9070202@gmail.com>
-In-Reply-To: <1415015887-14158-1-git-send-email-jukka.rissanen@linux.intel.com>
+From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
+Subject: [PATCH] idle: Include stdbool.h by default in the header
+Date: Wed, 12 Nov 2014 15:53:34 +0200
+Message-ID: <1415800414-1391-1-git-send-email-tomasz.bursztyka@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2193450814888434188==
+--===============6627939926460958382==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Jukka,
+---
+idlers use bool, but it's not included by their header.
+Figured that one when playing with a unit test.
 
-On 11/03/2014 05:58 AM, Jukka Rissanen wrote:
-> Project using ell dbus fail because of compilation error.
-> ---
->   ell/dbus.h | 1 +
->   1 file changed, 1 insertion(+)
->
+ ell/idle.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Funny, make distcheck was not complaining on my side.
+diff --git a/ell/idle.h b/ell/idle.h
+index a75bc9b..19ae4d3 100644
+--- a/ell/idle.h
++++ b/ell/idle.h
+@@ -23,6 +23,8 @@
+ #ifndef __ELL_IDLE_H
+ #define __ELL_IDLE_H
+ =
 
-Applied, thanks.
++#include <stdbool.h>
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+-- =
 
-Regards,
--Denis
+2.0.4
 
 
---===============2193450814888434188==--
+--===============6627939926460958382==--
 
