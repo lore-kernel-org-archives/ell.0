@@ -1,34 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============8800310144689751151=="
+Content-Type: multipart/mixed; boundary="===============6094440736163335681=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] idle: Include stdbool.h by default in the header
-Date: Wed, 12 Nov 2014 08:08:32 -0600
-Message-ID: <546369E0.707@gmail.com>
-In-Reply-To: <1415800414-1391-1-git-send-email-tomasz.bursztyka@linux.intel.com>
+From: Patrik Flykt <patrik.flykt@linux.intel.com>
+Subject: [PATCH] genl: Do not call the callback for NLMSG_DONE messages
+Date: Wed, 12 Nov 2014 16:47:07 +0200
+Message-ID: <1415803627-4390-1-git-send-email-patrik.flykt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8800310144689751151==
+--===============6094440736163335681==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Tomasz,
+The message indicates end of a multipart netlink message and does not
+carry any data.
+---
+ ell/genl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 11/12/2014 07:53 AM, Tomasz Bursztyka wrote:
-> ---
-> idlers use bool, but it's not included by their header.
-> Figured that one when playing with a unit test.
->
->   ell/idle.h | 2 ++
->   1 file changed, 2 insertions(+)
->
+diff --git a/ell/genl.c b/ell/genl.c
+index 67bde5b..b180712 100644
+--- a/ell/genl.c
++++ b/ell/genl.c
+@@ -373,7 +373,7 @@ static void process_request(struct l_genl *genl, const =
+struct nlmsghdr *nlmsg)
+ 		return;
+ 	}
+ =
 
-Applied, thanks.
+-	if (request->callback)
++	if (request->callback && nlmsg->nlmsg_type !=3D NLMSG_DONE)
+ 		request->callback(msg, request->user_data);
+ =
 
-Regards,
--Denis
+ 	if (nlmsg->nlmsg_flags & NLM_F_MULTI) {
+-- =
+
+2.1.1
 
 
---===============8800310144689751151==--
+--===============6094440736163335681==--
 
