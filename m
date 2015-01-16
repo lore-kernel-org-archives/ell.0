@@ -1,37 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============1325346756742396446=="
+Content-Type: multipart/mixed; boundary="===============1977589978047102625=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] hashmap: Entry pointers were not freed when map was
- destroyed
-Date: Thu, 15 Jan 2015 23:43:21 -0600
-Message-ID: <54B8A4F9.7090500@gmail.com>
-In-Reply-To: <1421153775-30398-1-git-send-email-jukka.rissanen@linux.intel.com>
+From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
+Subject: [PATCH 0/2] Introduce l_memdup function
+Date: Fri, 16 Jan 2015 11:13:50 +0200
+Message-ID: <1421399632-19544-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1325346756742396446==
+--===============1977589978047102625==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Jukka,
+Hi,
 
-On 01/13/2015 06:56 AM, Jukka Rissanen wrote:
-> The l_hashmap_destroy() did not free the left over entry pointers
-> that were allocated in l_hashmap_insert(). If user did not remove
-> them by calling the l_hashmap_remove(), then the entries were left
-> in the hash which caused a memory leak.
-> ---
->   ell/hashmap.c | 11 ++++++++---
->   1 file changed, 8 insertions(+), 3 deletions(-)
->
+this patch introduces new l_memdup() function in patch 1.
 
-Patch has been applied, thanks.
+The new function is then used in patch 2. The genl.c was the only
+place in the code base where such a change could be done (at least I
+could not spot any other place having malloc+memcpy in the code after
+quick review).
 
-Regards,
--Denis
+Cheers,
+Jukka
+
+Jukka Rissanen (2):
+  util: Add l_memdup function for allocation and copying a memory buffer
+  genl: Convert l_malloc + memcpy to use l_memdup
+
+ ell/genl.c |  4 +---
+ ell/util.c | 23 +++++++++++++++++++++++
+ ell/util.h |  2 ++
+ 3 files changed, 26 insertions(+), 3 deletions(-)
+
+-- =
+
+1.8.3.1
 
 
-
---===============1325346756742396446==--
+--===============1977589978047102625==--
 
