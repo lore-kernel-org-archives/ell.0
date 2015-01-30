@@ -1,60 +1,60 @@
-Content-Type: multipart/mixed; boundary="===============8647547370280969339=="
+Content-Type: multipart/mixed; boundary="===============5081457511858178675=="
 MIME-Version: 1.0
-From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: [PATCH] genl: Initialize used memory to avoid valgrind report
-Date: Fri, 30 Jan 2015 12:11:14 +0200
-Message-ID: <1422612674-6844-1-git-send-email-jukka.rissanen@linux.intel.com>
+From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
+Subject: [RFC 0/2] Cipher infrastructure
+Date: Fri, 30 Jan 2015 12:57:42 +0200
+Message-ID: <1422615464-21435-1-git-send-email-tomasz.bursztyka@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8647547370280969339==
+--===============5081457511858178675==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Valgrind reports following error for uninitialized memory usage:
+Hi,
 
- =3D=3D4725=3D=3D Syscall param socketcall.sendto(msg) points to uninitiali=
-sed byte(s)
- =3D=3D4725=3D=3D    at 0x33F5EF6B5D: send (in /usr/lib64/libc-2.17.so)
- =3D=3D4725=3D=3D    by 0x40BF0E: can_write_data (genl.c:314)
- =3D=3D4725=3D=3D    by 0x417806: io_callback (io.c:138)
- =3D=3D4725=3D=3D    by 0x40A282: l_main_run (main.c:346)
- =3D=3D4725=3D=3D    by 0x401F69: main (main.c:160)
- =3D=3D4725=3D=3D  Address 0x4c3d092 is 18 bytes inside a block of size 40 =
-alloc'd
- =3D=3D4725=3D=3D    at 0x4A06409: malloc (in /usr/lib64/valgrind/vgpreload=
-_memcheck-amd64-linux.so)
- =3D=3D4725=3D=3D    by 0x40817D: l_malloc (util.c:62)
- =3D=3D4725=3D=3D    by 0x40C46A: msg_alloc.constprop.13 (genl.c:243)
- =3D=3D4725=3D=3D    by 0x40D454: l_genl_family_new (genl.c:641)
- =3D=3D4725=3D=3D    by 0x405A44: wiphy_init (wiphy.c:1492)
- =3D=3D4725=3D=3D    by 0x401EDD: main (main.c:154)
- =3D=3D4725=3D=3D
----
- ell/genl.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Went quickly through the cipher proposal, to get a somehow working implemen=
+tation.
+Seems to work with aes, but not with arc4.
 
-diff --git a/ell/genl.c b/ell/genl.c
-index d2c1784..2ef6a34 100644
---- a/ell/genl.c
-+++ b/ell/genl.c
-@@ -239,7 +239,7 @@ static struct l_genl_msg *msg_alloc(uint8_t cmd, uint8_=
-t version, uint32_t size)
- 	msg->len =3D NLMSG_HDRLEN + GENL_HDRLEN;
- 	msg->size =3D msg->len + NLMSG_ALIGN(size);
- =
+And now I wonder if we should not provide an initialization vector for some=
+ ciphers? (like arc4).
 
--	msg->data =3D l_malloc(msg->size);
-+	msg->data =3D l_new(unsigned char, msg->size);
- =
+I thought I could set one IV per socket once, but it does not seems so. (th=
+us there is
+nothing related to IV in this RFC).
 
- 	return l_genl_msg_ref(msg);
- }
+So, should I set iv elements in struct l_cipher, so I could set one one enc=
+rypting/decrypting?
+It's just a bit annoying with cmsg handling, but I got nice example with li=
+bkapi (though this
+one mandate the user to provide the iv. I tought we could handle randomly g=
+enerated ones?)
+
+libkapi is kind of nice as it uses vmsplice and so on. It's just a lot of c=
+ode, I don't
+think we want something that complex.
+
+Tomasz Bursztyka (2):
+  cipher: Add a basic infrastructure for kernel based cipher operations
+  unit: Add unit test for the cipher infrastructure
+
+ Makefile.am        |  11 ++-
+ ell/cipher.c       | 215 +++++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ ell/cipher.h       |  51 +++++++++++++
+ ell/ell.h          |   1 +
+ unit/test-cipher.c | 109 +++++++++++++++++++++++++++
+ 5 files changed, 384 insertions(+), 3 deletions(-)
+ create mode 100644 ell/cipher.c
+ create mode 100644 ell/cipher.h
+ create mode 100644 unit/test-cipher.c
+
 -- =
 
-1.8.3.1
+2.0.5
 
 
---===============8647547370280969339==--
+--===============5081457511858178675==--
 
