@@ -1,59 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============8341560979701194992=="
+Content-Type: multipart/mixed; boundary="===============1490635538390374639=="
 MIME-Version: 1.0
 From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
-Subject: Re: [RFC 0/2] Cipher infrastructure
-Date: Tue, 03 Feb 2015 10:07:51 +0200
-Message-ID: <54D081D7.2050503@linux.intel.com>
-In-Reply-To: <54CFC579.9050805@gmail.com>
+Subject: [PATCH 0/2] cipher infrastructure
+Date: Tue, 03 Feb 2015 10:50:11 +0200
+Message-ID: <1422953413-27902-1-git-send-email-tomasz.bursztyka@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8341560979701194992==
+--===============1490635538390374639==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi,
 
-> Hi Tomasz,
->
-> On 01/30/2015 04:57 AM, Tomasz Bursztyka wrote:
->> Hi,
->>
->> Went quickly through the cipher proposal, to get a somehow working =
+I applied the comments on the RFC. Now ARV4 works.
+I introduced as well the iv/iv_length parameters to l_cipher_new(), however
+it's not implemented yet. There will be time to support it as well as other
+ciphers (twofish, blowfish... )
 
->> implementation.
->> Seems to work with aes, but not with arc4.
->>
->
-> ARC4 is a bit weird.  The same function is used for encryption and =
+Tomasz Bursztyka (2):
+  cipher: Add a basic infrastructure for kernel based cipher operations
+  unit: Add unit test for the cipher infrastructure
 
-> decryption, so the stream is not reset.  You will likely need to set =
+ Makefile.am        |  11 ++-
+ ell/cipher.c       | 238 +++++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ ell/cipher.h       |  53 ++++++++++++
+ ell/ell.h          |   1 +
+ unit/test-cipher.c | 109 ++++++++++++++++++++++++
+ 5 files changed, 409 insertions(+), 3 deletions(-)
+ create mode 100644 ell/cipher.c
+ create mode 100644 ell/cipher.h
+ create mode 100644 unit/test-cipher.c
 
-> the key prior to each encrypt/decrypt operation.
+-- =
 
-OK.
+2.0.5
 
->
->> And now I wonder if we should not provide an initialization vector =
 
->> for some ciphers? (like arc4).
->>
->
-> I'm still not fully sure we need the IV.  EAPoL Key-IV is only used in =
-
-> certain situations.  Lets try to find an AP / trace that actually sets =
-
-> the IV field.
->
-
-Ok, then I think it's worth putting an iv/iv-len params to the =
-
-l_cipher_new(). I might implement its support later though, let's see =
-
-(but at least the API would be fixed).
-
-Tomasz
-
---===============8341560979701194992==--
+--===============1490635538390374639==--
 
