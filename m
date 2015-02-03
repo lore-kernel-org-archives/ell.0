@@ -1,46 +1,59 @@
-Content-Type: multipart/mixed; boundary="===============8341794700105632363=="
+Content-Type: multipart/mixed; boundary="===============8341560979701194992=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
 Subject: Re: [RFC 0/2] Cipher infrastructure
-Date: Mon, 02 Feb 2015 12:44:09 -0600
-Message-ID: <54CFC579.9050805@gmail.com>
-In-Reply-To: <1422615464-21435-1-git-send-email-tomasz.bursztyka@linux.intel.com>
+Date: Tue, 03 Feb 2015 10:07:51 +0200
+Message-ID: <54D081D7.2050503@linux.intel.com>
+In-Reply-To: <54CFC579.9050805@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8341794700105632363==
+--===============8341560979701194992==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Tomasz,
+Hi Denis,
 
-On 01/30/2015 04:57 AM, Tomasz Bursztyka wrote:
-> Hi,
+> Hi Tomasz,
 >
-> Went quickly through the cipher proposal, to get a somehow working implem=
-entation.
-> Seems to work with aes, but not with arc4.
+> On 01/30/2015 04:57 AM, Tomasz Bursztyka wrote:
+>> Hi,
+>>
+>> Went quickly through the cipher proposal, to get a somehow working =
+
+>> implementation.
+>> Seems to work with aes, but not with arc4.
+>>
+>
+> ARC4 is a bit weird.  The same function is used for encryption and =
+
+> decryption, so the stream is not reset.  You will likely need to set =
+
+> the key prior to each encrypt/decrypt operation.
+
+OK.
+
+>
+>> And now I wonder if we should not provide an initialization vector =
+
+>> for some ciphers? (like arc4).
+>>
+>
+> I'm still not fully sure we need the IV.  EAPoL Key-IV is only used in =
+
+> certain situations.  Lets try to find an AP / trace that actually sets =
+
+> the IV field.
 >
 
-ARC4 is a bit weird.  The same function is used for encryption and =
+Ok, then I think it's worth putting an iv/iv-len params to the =
 
-decryption, so the stream is not reset.  You will likely need to set the =
+l_cipher_new(). I might implement its support later though, let's see =
 
-key prior to each encrypt/decrypt operation.
+(but at least the API would be fixed).
 
-> And now I wonder if we should not provide an initialization vector for so=
-me ciphers? (like arc4).
->
+Tomasz
 
-I'm still not fully sure we need the IV.  EAPoL Key-IV is only used in =
-
-certain situations.  Lets try to find an AP / trace that actually sets =
-
-the IV field.
-
-Regards,
--Denis
-
---===============8341794700105632363==--
+--===============8341560979701194992==--
 
