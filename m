@@ -1,76 +1,59 @@
-Content-Type: multipart/mixed; boundary="===============7374544556637699289=="
+Content-Type: multipart/mixed; boundary="===============1654004342281619303=="
 MIME-Version: 1.0
 From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
-Subject: [RFC 1/2] random: Add a basic infrastructure for kernel based rng
-Date: Fri, 06 Feb 2015 13:37:14 +0200
-Message-ID: <1423222635-6053-2-git-send-email-tomasz.bursztyka@linux.intel.com>
+Subject: [RFC 2/2] unit: Add a unit test for the random infrastructure
+Date: Fri, 06 Feb 2015 13:37:15 +0200
+Message-ID: <1423222635-6053-3-git-send-email-tomasz.bursztyka@linux.intel.com>
 In-Reply-To: <1423222635-6053-1-git-send-email-tomasz.bursztyka@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7374544556637699289==
+--===============1654004342281619303==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This lets the possibility to generate randomly the content of a buffer
-by the kernel.
+It will run a test against supported rng types. The content "randomly"
+generated will be checked to validate the test.
 ---
- Makefile.am  |   6 +-
- ell/ell.h    |   1 +
- ell/random.c | 222 +++++++++++++++++++++++++++++++++++++++++++++++++++++++=
+ Makefile.am        |  5 ++-
+ unit/test-random.c | 91 ++++++++++++++++++++++++++++++++++++++++++++++++++=
 ++++
- ell/random.h |  50 ++++++++++++++
- 4 files changed, 277 insertions(+), 2 deletions(-)
- create mode 100644 ell/random.c
- create mode 100644 ell/random.h
+ 2 files changed, 95 insertions(+), 1 deletion(-)
+ create mode 100644 unit/test-random.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 50f81eb..206fc10 100644
+index 206fc10..9aa89f0 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -33,7 +33,8 @@ pkginclude_HEADERS =3D ell/ell.h \
- 			ell/genl.h \
- 			ell/dbus.h \
- 			ell/dbus-service.h \
--			ell/hwdb.h
-+			ell/hwdb.h \
-+			ell/random.h
+@@ -107,7 +107,8 @@ unit_tests =3D unit/test-unit \
+ 			unit/test-gvariant-util \
+ 			unit/test-gvariant-message \
+ 			unit/test-siphash \
+-			unit/test-hwdb
++			unit/test-hwdb \
++			unit/test-random
  =
 
- lib_LTLIBRARIES =3D ell/libell.la
+ if MAINTAINER_MODE
+ noinst_PROGRAMS +=3D $(unit_tests)
+@@ -157,6 +158,8 @@ unit_test_siphash_LDADD =3D ell/libell-private.la
  =
 
-@@ -67,7 +68,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/gvariant-util.c \
- 			ell/siphash-private.h \
- 			ell/siphash.c \
--			ell/hwdb.c
-+			ell/hwdb.c \
-+			ell/random.c
+ unit_test_hwdb_LDADD =3D ell/libell-private.la
  =
 
- ell_libell_la_LDFLAGS =3D -no-undefined \
- 			-version-info $(ELL_CURRENT):$(ELL_REVISION):$(ELL_AGE)
-diff --git a/ell/ell.h b/ell/ell.h
-index c4dc1f2..43c6547 100644
---- a/ell/ell.h
-+++ b/ell/ell.h
-@@ -35,6 +35,7 @@
- #include <ell/checksum.h>
- #include <ell/settings.h>
- #include <ell/hwdb.h>
-+#include <ell/random.h>
- =
-
- #include <ell/netlink.h>
- #include <ell/genl.h>
-diff --git a/ell/random.c b/ell/random.c
++unit_test_random_LDADD =3D ell/libell-private.la
++
+ if MAINTAINER_MODE
+ noinst_LTLIBRARIES +=3D unit/example-plugin.la
+ endif
+diff --git a/unit/test-random.c b/unit/test-random.c
 new file mode 100644
-index 0000000..446f071
+index 0000000..7975de6
 --- /dev/null
-+++ b/ell/random.c
-@@ -0,0 +1,222 @@
++++ b/unit/test-random.c
+@@ -0,0 +1,91 @@
 +/*
 + *
 + *  Embedded Linux library
@@ -98,263 +81,75 @@ index 0000000..446f071
 +#include <config.h>
 +#endif
 +
-+#define _GNU_SOURCE
-+#include <unistd.h>
-+#include <sys/socket.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+#include <fcntl.h>
++#include <assert.h>
 +
-+#include "util.h"
-+#include "random.h"
-+#include "private.h"
++#include <ell/ell.h>
 +
-+#ifndef SOL_ALG
-+#define SOL_ALG 279
-+#endif
++#define SEED "\x0\x1\x2\x3\x4\x5\x6\x7"
++#define SEED_SIZE 1
 +
-+#ifndef AF_ALG
-+#define AF_ALG	38
-+#define PF_ALG	AF_ALG
-+
-+#include <linux/types.h>
-+
-+struct sockaddr_alg {
-+	__u16	salg_family;
-+	__u8	salg_type[14];
-+	__u32	salg_feat;
-+	__u32	salg_mask;
-+	__u8	salg_name[64];
-+};
-+
-+struct af_alg_iv {
-+	__u32   ivlen;
-+	__u8    iv[0];
-+};
-+
-+/* Socket options */
-+#define ALG_SET_KEY	1
-+#define ALG_SET_IV	2
-+#define ALG_SET_OP	3
-+
-+/* Operations */
-+#define ALG_OP_DECRYPT	0
-+#define ALG_OP_ENCRYPT	1
-+
-+#else
-+#include <linux/if_alg.h>
-+#endif
-+
-+#define is_valid_type(type)  ((type) <=3D L_RANDOM_URANDOM)
-+
-+struct l_random {
-+	enum l_random_type type;
-+	int fd;
-+	int sk;
-+};
-+
-+static inline bool create_stdrng(struct l_random *random)
-+{
-+	struct sockaddr_alg salg =3D {};
-+
-+	random->fd =3D socket(PF_ALG, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
-+	if (random->fd < 0)
-+		return false;
-+
-+	salg.salg_family =3D AF_ALG;
-+	strcpy((char *) salg.salg_type, "rng");
-+	strcpy((char *) salg.salg_name, "stdrng");
-+
-+	if (bind(random->fd, (struct sockaddr *) &salg, sizeof(salg)) < 0)
-+		goto error;
-+
-+	random->sk =3D accept4(random->fd, NULL, 0, SOCK_CLOEXEC);
-+	if (random->sk < 0)
-+		goto error;
-+
-+	return true;
-+error:
-+	close(random->fd);
-+	return false;
-+}
-+
-+LIB_EXPORT struct l_random *l_random_new(enum l_random_type type)
++static void test_unsupported(const void *data)
 +{
 +	struct l_random *random;
 +
-+	if (!is_valid_type(type))
-+		return NULL;
-+
-+	random =3D l_new(struct l_random, 1);
-+
-+	random->type =3D type;
-+
-+	switch (type) {
-+	case L_RANDOM_STDRNG:
-+		if (!create_stdrng(random))
-+			goto error;
-+		break;
-+	case L_RANDOM_URANDOM:
-+		random->fd =3D open("/dev/random", O_RDONLY);
-+		if (random->fd < 0)
-+			goto error;
-+	}
-+
-+	return random;
-+error:
-+	l_free(random);
-+
-+	return NULL;
++	random =3D l_random_new(42);
++	assert(!random);
 +}
 +
-+LIB_EXPORT void l_random_free(struct l_random *random)
++static void test_stdrng(const void *data)
 +{
-+	if (unlikely(!random))
-+		return;
++	unsigned char rand[64] =3D {};
++	unsigned char test[64] =3D {};
++	struct l_random *random;
++	int r;
 +
-+	if (random->sk > 0)
-+		close(random->sk);
++	random =3D l_random_new(L_RANDOM_STDRNG);
++	assert(random);
 +
-+	close(random->fd);
++	l_random_seed(random, SEED, SEED_SIZE);
 +
-+	l_free(random);
++	l_random_generate(random, rand, 64);
++
++	r =3D memcmp(rand, test, 64);
++	assert(r);
++
++	l_random_free(random);
 +}
 +
-+LIB_EXPORT void l_random_seed(struct l_random *random,
-+					const void *seed, size_t seed_length)
++static void test_urandom(const void *data)
 +{
-+	if (unlikely(!random))
-+		return;
++	unsigned char rand[64] =3D {};
++	unsigned char test[64] =3D {};
++	struct l_random *random;
++	int r;
 +
-+	switch (random->type) {
-+	case L_RANDOM_STDRNG:
-+		setsockopt(random->fd, SOL_ALG,
-+					ALG_SET_KEY, seed, seed_length);
-+		break;
-+	case L_RANDOM_URANDOM:
-+		break;
-+	}
++	random =3D l_random_new(L_RANDOM_URANDOM);
++	assert(random);
++
++	l_random_generate(random, rand, 64);
++
++	r =3D memcmp(rand, test, 64);
++	assert(r);
++
++	l_random_free(random);
 +}
 +
-+static inline void generate_from_stdrng(int sk,
-+					void *rand_buffer, size_t length)
++int main(int argc, char *argv[])
 +{
-+	struct msghdr msg =3D {};
-+	struct iovec iov;
++	l_test_init(&argc, &argv);
 +
-+	msg.msg_iov =3D &iov;
-+	msg.msg_iovlen =3D 0;
++	l_test_add("unsupported", test_unsupported, NULL);
 +
-+	while (length) {
-+		ssize_t r =3D 0;
++	l_test_add("stdrng", test_stdrng, NULL);
 +
-+		iov.iov_base =3D rand_buffer;
-+		iov.iov_len =3D length;
++	l_test_add("urandom", test_urandom, NULL);
 +
-+		r =3D recvmsg(sk, &msg, 0);
-+		if (r <=3D 0)
-+			return;
-+
-+		length -=3D r;
-+		rand_buffer +=3D r;
-+	}
++	return l_test_run();
 +}
-+
-+static inline void generate_from_urandom(int fd,
-+						void *rand_buffer,
-+						size_t length)
-+{
-+	while (length) {
-+		ssize_t r =3D 0;
-+
-+		r =3D read(fd, rand_buffer, length);
-+		if (r <=3D 0)
-+			return;
-+
-+		length -=3D r;
-+		rand_buffer +=3D r;
-+	}
-+}
-+
-+LIB_EXPORT void l_random_generate(struct l_random *random,
-+					void *rand_buffer, size_t length)
-+{
-+	if (unlikely(!random))
-+		return;
-+
-+	if (unlikely(!rand_buffer))
-+		return;
-+
-+	switch (random->type) {
-+	case L_RANDOM_STDRNG:
-+		generate_from_stdrng(random->sk, rand_buffer, length);
-+		break;
-+	case L_RANDOM_URANDOM:
-+		generate_from_urandom(random->fd, rand_buffer, length);
-+		break;
-+	}
-+}
-diff --git a/ell/random.h b/ell/random.h
-new file mode 100644
-index 0000000..20a6132
---- /dev/null
-+++ b/ell/random.h
-@@ -0,0 +1,50 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2015  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifndef __ELL_RANDOM_H
-+#define __ELL_RANDOM_H
-+
-+#ifdef __cplusplus
-+extern "C" {
-+#endif
-+
-+struct l_random;
-+
-+enum l_random_type {
-+	L_RANDOM_STDRNG,
-+	L_RANDOM_URANDOM,
-+};
-+
-+struct l_random *l_random_new(enum l_random_type type);
-+void l_random_free(struct l_random *random);
-+
-+void l_random_seed(struct l_random *random,
-+					const void *seed, size_t seed_length);
-+
-+void l_random_generate(struct l_random *random,
-+					void *rand_buffer, size_t length);
-+
-+#ifdef __cplusplus
-+}
-+#endif
-+
-+#endif /* __ELL_RANDOM_H */
 -- =
 
 2.0.5
 
 
---===============7374544556637699289==--
+--===============1654004342281619303==--
 
