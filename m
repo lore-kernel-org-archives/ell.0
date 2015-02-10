@@ -1,14 +1,15 @@
-Content-Type: multipart/mixed; boundary="===============6933740179865892282=="
+Content-Type: multipart/mixed; boundary="===============8057609829135712492=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 6/9] hashmap: Add re-entrancy support to foreach function
-Date: Tue, 10 Feb 2015 13:47:58 -0600
-Message-ID: <54DA606E.4010209@gmail.com>
-In-Reply-To: <1423579344-10933-7-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: Re: [PATCH 3/9] hashmap: Call user supplied value free function in
+ insert
+Date: Tue, 10 Feb 2015 13:18:36 -0600
+Message-ID: <54DA598C.6030402@gmail.com>
+In-Reply-To: <1423579344-10933-4-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6933740179865892282==
+--===============8057609829135712492==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,45 +17,98 @@ Content-Transfer-Encoding: quoted-printable
 Hi Jukka,
 
 On 02/10/2015 08:42 AM, Jukka Rissanen wrote:
-> Allow user to remove and add values while inside a callback
-> from foreach function. This is very much needed as it is
-> easy to get things wrong here and it helps to avoid complicated
-> call flows in calling applications.
+> If user has supplied a value free function, then that will be
+> called for each replaced entry.
+> ---
+>   ell/hashmap.c | 27 ++++++++++++++++++++++++++-
+>   1 file changed, 26 insertions(+), 1 deletion(-)
+>
+> diff --git a/ell/hashmap.c b/ell/hashmap.c
+> index c51abfd..a204726 100644
+> --- a/ell/hashmap.c
+> +++ b/ell/hashmap.c
+> @@ -393,7 +393,11 @@ LIB_EXPORT void l_hashmap_destroy(struct l_hashmap *=
+hashmap,
+>    * @key: key pointer
+>    * @value: value pointer
+>    *
+> - * Insert new @value entry with @key.
+> + * Insert new @value entry with @key. If there is already an same key
+> + * in the hash, the new value will replace the old one. If user has set
+> + * the value free function by l_hashmap_set_value_free_function() then
+> + * the user specified free function will be called in order to free the
+> + * value.
+>    *
+>    * Returns: #true when value has been added and #false in case of failu=
+re
+>    **/
+> @@ -419,6 +423,27 @@ LIB_EXPORT bool l_hashmap_insert(struct l_hashmap *h=
+ashmap,
+>   		goto done;
+>   	}
 >
 
-Can you tell me why this is needed?  This sounds like abuse of =
+So the current implementation allows duplicates to be added.  However, =
 
-hashmap_foreach and an alternate data structure might be in order.
+it is implementation dependent what happens if you lookup a duplicate =
 
-> So foreach logic is changed so that if user tries to remove
-> an entry from the hash while inside foreach callback, the
-> entry is not yet removed from hash but marked as removable.
-> After foreach has finished calling the callback function,
-> it checks what elements it needs to remove from the hash.
+key.  With the current implementation, the item inserted first is =
+
+returned.  I don't think enforcement of unique keys is required at the =
+
+hashmap_insert level.  The user should not be always made to pay the =
+
+cost of duplicate detection (e.g. if he knows no duplicates will ever be =
+
+present).
+
+If duplicates are an issue, the way to handle this in the client code =
+
+would be to
+	- Call l_hashmap_remove first
+	- Insert the new element
+
+Alternatively, you could add an l_hashmap_replace() method call, e.g.:
+
+bool l_hashmap_replace(struct l_hashmap *hashmap,
+                         const void *key, void *value,
+			l_hashmap_destroy_func_t destroy);
+
+> +	/* If the key is already in the hash, we just replace the value */
+> +	for (entry =3D head;; entry =3D entry->next) {
+> +		if (entry->hash =3D=3D hash &&
+> +				!hashmap->compare_func(key, entry->key)) {
+> +			if (entry->key !=3D key_new) {
+> +				free_key(hashmap, entry->key);
+> +				entry->key =3D key_new;
+> +			}
+
+So this part doesn't really match the comment above.  You're also =
+
+freeing the key, which is an unnecessary step.  If the keys are the =
+
+same, just reuse them.
+
+> +
+> +			if (entry->value !=3D value) {
+> +				free_value(hashmap, entry->value);
+> +				entry->value =3D value;
+> +			}
+> +
+> +			return true;
+> +		}
+> +
+> +		if (entry->next =3D=3D head)
+> +			break;
+> +	}
+> +
+>   	entry =3D l_new(struct entry, 1);
+>   	entry->key =3D key_new;
+>   	entry->value =3D value;
 >
-
-So let me politely say: "No way are we doing this" ;)
-
-> This valgrind report was seen and it relates to this issue.
-> Here a DBus message was received and its callback function
-> eventually called l_dbus_unregister() because of application
-> logic. This then caused the signal_list hash to get corrupted
-> because the unregister removed an entry from hash while
-> traversing it.
->
-
-So I think I understand why you're doing this...
-
-l_dbus_register and l_dbus_unregister need to actually go away.  They =
-
-are not workable long term.  We need a way smarter data structure to =
-
-handle signal filtering.
-
-Look at libsystemd/sd-bus/bus-match.c for some inspiration.
 
 Regards,
 -Denis
 
---===============6933740179865892282==--
+--===============8057609829135712492==--
 
