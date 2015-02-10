@@ -1,55 +1,76 @@
-Content-Type: multipart/mixed; boundary="===============5306055458921091171=="
+Content-Type: multipart/mixed; boundary="===============4189905451473360004=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: [PATCH 2/9] hashmap: Call user supplied value free function in destroy
-Date: Tue, 10 Feb 2015 16:42:17 +0200
-Message-ID: <1423579344-10933-3-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: [PATCH 3/9] hashmap: Call user supplied value free function in insert
+Date: Tue, 10 Feb 2015 16:42:18 +0200
+Message-ID: <1423579344-10933-4-git-send-email-jukka.rissanen@linux.intel.com>
 In-Reply-To: <1423579344-10933-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5306055458921091171==
+--===============4189905451473360004==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 If user has supplied a value free function, then that will be
-called for each deleted entry.
+called for each replaced entry.
 ---
- ell/hashmap.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ ell/hashmap.c | 27 ++++++++++++++++++++++++++-
+ 1 file changed, 26 insertions(+), 1 deletion(-)
 
 diff --git a/ell/hashmap.c b/ell/hashmap.c
-index f707d64..c51abfd 100644
+index c51abfd..a204726 100644
 --- a/ell/hashmap.c
 +++ b/ell/hashmap.c
-@@ -349,6 +349,9 @@ LIB_EXPORT bool l_hashmap_set_value_free_function(struc=
-t l_hashmap *hashmap,
-  * @destroy: destroy function
+@@ -393,7 +393,11 @@ LIB_EXPORT void l_hashmap_destroy(struct l_hashmap *ha=
+shmap,
+  * @key: key pointer
+  * @value: value pointer
   *
-  * Free hash table and call @destory on all remaining entries.
-+ * If user has set the value free function by
-+ * l_hashmap_set_value_free_function() then the user specified free
-+ * function will be called in order to free the value.
+- * Insert new @value entry with @key.
++ * Insert new @value entry with @key. If there is already an same key
++ * in the hash, the new value will replace the old one. If user has set
++ * the value free function by l_hashmap_set_value_free_function() then
++ * the user specified free function will be called in order to free the
++ * value.
+  *
+  * Returns: #true when value has been added and #false in case of failure
   **/
- LIB_EXPORT void l_hashmap_destroy(struct l_hashmap *hashmap,
- 				l_hashmap_destroy_func_t destroy)
-@@ -369,6 +372,7 @@ LIB_EXPORT void l_hashmap_destroy(struct l_hashmap *has=
+@@ -419,6 +423,27 @@ LIB_EXPORT bool l_hashmap_insert(struct l_hashmap *has=
 hmap,
- 				destroy(entry->value);
+ 		goto done;
+ 	}
  =
 
- 			free_key(hashmap, entry->key);
-+			free_value(hashmap, entry->value);
- =
-
- 			next =3D entry->next;
- =
-
++	/* If the key is already in the hash, we just replace the value */
++	for (entry =3D head;; entry =3D entry->next) {
++		if (entry->hash =3D=3D hash &&
++				!hashmap->compare_func(key, entry->key)) {
++			if (entry->key !=3D key_new) {
++				free_key(hashmap, entry->key);
++				entry->key =3D key_new;
++			}
++
++			if (entry->value !=3D value) {
++				free_value(hashmap, entry->value);
++				entry->value =3D value;
++			}
++
++			return true;
++		}
++
++		if (entry->next =3D=3D head)
++			break;
++	}
++
+ 	entry =3D l_new(struct entry, 1);
+ 	entry->key =3D key_new;
+ 	entry->value =3D value;
 -- =
 
 1.8.3.1
 
 
---===============5306055458921091171==--
+--===============4189905451473360004==--
 
