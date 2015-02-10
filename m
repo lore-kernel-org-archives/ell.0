@@ -1,50 +1,61 @@
-Content-Type: multipart/mixed; boundary="===============7462322139626251222=="
+Content-Type: multipart/mixed; boundary="===============6738549163028256842=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: [PATCH 2/3] dbus: Add disconnect watch support
-Date: Tue, 10 Feb 2015 17:46:46 +0200
-Message-ID: <1423583207-22917-3-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: [PATCH 3/3] unit: dbus: Add test for disconnect watch API
+Date: Tue, 10 Feb 2015 17:46:47 +0200
+Message-ID: <1423583207-22917-4-git-send-email-jukka.rissanen@linux.intel.com>
 In-Reply-To: <1423583207-22917-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7462322139626251222==
+--===============6738549163028256842==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Allow caller to monitor the disconnect status of a service.
+Test the dbus disconnect watch support.
 ---
- Makefile.am      |   1 +
- ell/dbus-watch.c | 267 +++++++++++++++++++++++++++++++++++++++++++++++++++=
+ Makefile.am            |   3 +
+ unit/test-dbus-watch.c | 388 +++++++++++++++++++++++++++++++++++++++++++++=
 ++++
- ell/dbus.h       |  17 ++++
- 3 files changed, 285 insertions(+)
- create mode 100644 ell/dbus-watch.c
+ 2 files changed, 391 insertions(+)
+ create mode 100644 unit/test-dbus-watch.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 50f81eb..3dcc7ee 100644
+index 3dcc7ee..3b6017c 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -63,6 +63,7 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/dbus-message.c \
- 			ell/dbus-util.c \
- 			ell/dbus-service.c \
-+			ell/dbus-watch.c \
- 			ell/gvariant-private.h \
- 			ell/gvariant-util.c \
- 			ell/siphash-private.h \
-diff --git a/ell/dbus-watch.c b/ell/dbus-watch.c
+@@ -103,6 +103,7 @@ unit_tests =3D unit/test-unit \
+ 			unit/test-dbus-util \
+ 			unit/test-dbus-message \
+ 			unit/test-dbus-service \
++			unit/test-dbus-watch \
+ 			unit/test-gvariant-util \
+ 			unit/test-gvariant-message \
+ 			unit/test-siphash \
+@@ -148,6 +149,8 @@ unit_test_dbus_util_LDADD =3D ell/libell-private.la
+ =
+
+ unit_test_dbus_service_LDADD =3D ell/libell-private.la
+ =
+
++unit_test_dbus_watch_LDADD =3D ell/libell-private.la
++
+ unit_test_gvariant_util_LDADD =3D ell/libell-private.la
+ =
+
+ unit_test_gvariant_message_LDADD =3D ell/libell-private.la
+diff --git a/unit/test-dbus-watch.c b/unit/test-dbus-watch.c
 new file mode 100644
-index 0000000..005bc83
+index 0000000..6c93a87
 --- /dev/null
-+++ b/ell/dbus-watch.c
-@@ -0,0 +1,267 @@
++++ b/unit/test-dbus-watch.c
+@@ -0,0 +1,388 @@
 +/*
 + *
 + *  Embedded Linux library
 + *
-+ *  Copyright (C) 2015  Intel Corporation. All rights reserved.
++ *  Copyright (C) 2011-2015  Intel Corporation. All rights reserved.
 + *
 + *  This library is free software; you can redistribute it and/or
 + *  modify it under the terms of the GNU Lesser General Public
@@ -67,299 +78,373 @@ index 0000000..005bc83
 +#include <config.h>
 +#endif
 +
-+#define _GNU_SOURCE
-+#include <stdarg.h>
-+#include <string.h>
-+#include <stdio.h>
-+#include <errno.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <sys/wait.h>
++#include <assert.h>
++#include <time.h>
 +
-+#include "log.h"
-+#include "util.h"
-+#include "queue.h"
-+#include "string.h"
-+#include "dbus.h"
-+#include "dbus-private.h"
-+#include "private.h"
++#include <ell/ell.h>
 +
-+struct filter_data {
-+	struct l_dbus *dbus;
-+	l_dbus_message_func_t handle_func;
-+	l_dbus_watch_func_t connect_func;
-+	l_dbus_watch_func_t disconnect_func;
-+	char *name;
-+	char *owner;
-+	char *path;
-+	char *interface;
-+	char *member;
-+	char *argument;
-+	void *user_data;
-+	l_dbus_destroy_func_t destroy_func;
-+};
++#define TEST_BUS_ADDRESS "unix:path=3D/tmp/ell-watch-test-bus"
 +
-+static void format_rule(struct filter_data *data, char *rule, size_t size)
++#define SERVICE_TO_WATCH "org.test.watch.service"
++#define SERVICE_MONITOR "org.test.main.service"
++
++static pid_t dbus_daemon_pid =3D -1;
++static pid_t test_daemon_pid =3D -1;
++
++static struct l_timeout *timeout =3D NULL;
++static bool failure =3D false;
++static struct tm *tm =3D NULL;
++
++static pid_t launch(char *name, char **argv, char **envp)
 +{
-+	const char *sender;
-+	int offset;
++	pid_t pid;
 +
-+	offset =3D snprintf(rule, size, "type=3D'signal'");
-+	sender =3D data->name ? : data->owner;
++	l_info("launching %s", name);
 +
-+	if (sender)
-+		offset +=3D snprintf(rule + offset, size - offset,
-+				",sender=3D'%s'", sender);
-+	if (data->path)
-+		offset +=3D snprintf(rule + offset, size - offset,
-+				",path=3D'%s'", data->path);
-+	if (data->interface)
-+		offset +=3D snprintf(rule + offset, size - offset,
-+				",interface=3D'%s'", data->interface);
-+	if (data->member)
-+		offset +=3D snprintf(rule + offset, size - offset,
-+				",member=3D'%s'", data->member);
-+	if (data->argument)
-+		snprintf(rule + offset, size - offset,
-+				",arg0=3D'%s'", data->argument);
-+}
-+
-+static void add_match(struct filter_data *data, l_dbus_message_func_t filt=
-er)
-+{
-+	char rule[DBUS_MAXIMUM_MATCH_RULE_LENGTH];
-+
-+	format_rule(data, rule, sizeof(rule));
-+
-+	l_dbus_bus_add_match(data->dbus, rule);
-+
-+	data->handle_func =3D filter;
-+}
-+
-+static void remove_match(struct filter_data *data)
-+{
-+	char rule[DBUS_MAXIMUM_MATCH_RULE_LENGTH];
-+
-+	format_rule(data, rule, sizeof(rule));
-+
-+	l_dbus_bus_remove_match(data->dbus, rule);
-+}
-+
-+static struct filter_data *filter_data_get(struct l_dbus *dbus,
-+					l_dbus_message_func_t filter,
-+					const char *sender,
-+					const char *path,
-+					const char *interface,
-+					const char *member,
-+					const char *argument,
-+					l_dbus_watch_func_t connect_func,
-+					l_dbus_watch_func_t disconnect_func,
-+					void *user_data,
-+					l_dbus_destroy_func_t destroy)
-+{
-+	struct filter_data *data;
-+	const char *name =3D NULL, *owner =3D NULL;
-+
-+	if (sender) {
-+		if (sender[0] =3D=3D ':')
-+			owner =3D sender;
-+		else
-+			name =3D sender;
++	pid =3D fork();
++	if (pid < 0) {
++		l_error("failed to fork new process");
++		return -1;
 +	}
 +
-+	data =3D l_new(struct filter_data, 1);
++	if (pid =3D=3D 0) {
++		execve(argv[0], argv, envp);
++		exit(EXIT_SUCCESS);
++	}
 +
-+	data->dbus =3D dbus;
-+	data->handle_func =3D filter;
-+	data->connect_func =3D connect_func;
-+	data->disconnect_func =3D disconnect_func;
-+	data->name =3D l_strdup(name);
-+	data->owner =3D l_strdup(owner);
-+	data->path =3D l_strdup(path);
-+	data->interface =3D l_strdup(interface);
-+	data->member =3D l_strdup(member);
-+	data->argument =3D l_strdup(argument);
-+	data->user_data =3D user_data;
-+	data->destroy_func =3D destroy;
++	l_info("%s process %d created", name, pid);
 +
-+	add_match(data, filter);
-+
-+	return data;
++	return pid;
 +}
 +
-+static void filter_data_destroy(void *user_data)
++static void start_dbus_daemon(void)
 +{
-+	struct filter_data *data =3D user_data;
++	char *prg_argv[6];
++	char *prg_envp[1];
 +
-+	remove_match(data);
++	prg_argv[0] =3D "/usr/bin/dbus-daemon";
++	prg_argv[1] =3D "--session";
++	prg_argv[2] =3D "--address=3D" TEST_BUS_ADDRESS;
++	prg_argv[3] =3D "--nopidfile";
++	prg_argv[4] =3D "--nofork";
++	prg_argv[5] =3D NULL;
 +
-+	l_free(data->name);
-+	l_free(data->owner);
-+	l_free(data->path);
-+	l_free(data->interface);
-+	l_free(data->member);
-+	l_free(data->argument);
++	prg_envp[0] =3D NULL;
 +
-+	if (data->destroy_func)
-+		data->destroy_func(data->user_data);
-+
-+	l_free(data);
++	dbus_daemon_pid =3D launch("dbus-daemon",
++				prg_argv, prg_envp);
 +}
 +
-+static void message_filter(struct l_dbus_message *message, void *user_data)
++static void start_test_daemon(char *argv0, char *argv1)
 +{
-+	struct filter_data *data =3D user_data;
-+	const char *sender, *path, *iface, *member, *arg =3D NULL;
++	char *prg_argv[3];
++	char *prg_envp[1];
 +
-+	if (_dbus_message_get_type(message) !=3D DBUS_MESSAGE_TYPE_SIGNAL)
-+		return;
++	prg_argv[0] =3D argv0;
++	prg_argv[1] =3D argv1;
++	prg_argv[2] =3D NULL;
 +
-+	sender =3D l_dbus_message_get_sender(message);
-+	if (!sender)
-+		return;
++	prg_envp[0] =3D NULL;
 +
-+	path =3D l_dbus_message_get_path(message);
-+	iface =3D l_dbus_message_get_interface(message);
-+	member =3D l_dbus_message_get_member(message);
++	test_daemon_pid =3D launch("test daemon",
++				prg_argv, prg_envp);
++}
 +
-+	l_dbus_message_get_arguments(message, "s", &arg);
++static void signal_handler(struct l_signal *signal, uint32_t signo,
++							void *user_data)
++{
++	switch (signo) {
++	case SIGINT:
++	case SIGTERM:
++		l_info("Terminate");
++		l_main_quit();
++		break;
++	case SIGCHLD:
++		while (1) {
++			pid_t pid;
++			int status;
 +
-+	if (data->owner && strcmp(sender, data->owner))
-+		goto out;
++			pid =3D waitpid(WAIT_ANY, &status, WNOHANG);
++			if (pid < 0 || pid =3D=3D 0)
++				break;
 +
-+	if (data->path && strcmp(path, data->path))
-+		goto out;
++			l_info("process %d terminated with status=3D%d\n",
++								pid, status);
 +
-+	if (data->interface && strcmp(iface, data->interface))
-+		goto out;
++			if (pid =3D=3D dbus_daemon_pid) {
++				dbus_daemon_pid =3D -1;
++				l_main_quit();
++			}
++		}
++		break;
++	}
++}
 +
-+	if (data->member && strcmp(member, data->member))
-+		goto out;
++static void ready_callback(void *user_data)
++{
++	char *argv0 =3D user_data;
 +
-+	if (arg && data->argument && strcmp(arg, data->argument))
-+		goto out;
++	l_info("test app ready");
 +
-+	if (data->handle_func)
-+		data->handle_func(message, data);
++	start_test_daemon(argv0, "test");
++}
 +
-+out:
++static void ready_tester(void *user_data)
++{
++	l_info("tester ready");
++
 +	return;
 +}
 +
-+static void service_filter(struct l_dbus_message *message, void *user_data)
-+{
-+	struct filter_data *data =3D user_data;
-+	char *name, *old, *new;
++struct data {
++	char *name;
++	struct l_dbus *dbus;
++};
 +
-+	if (!l_dbus_message_get_arguments(message, "sss",
-+						&name, &old, &new)) {
-+		l_error("Invalid arguments for NameOwnerChanged signal");
-+		return;
++static void release_name_setup(struct l_dbus_message *message, void *user_=
+data)
++{
++	struct data *data =3D user_data;
++
++	l_dbus_message_set_arguments(message, "s", data->name);
++}
++
++static void release_name_callback(struct l_dbus_message *message,
++							void *user_data)
++{
++	const char *error, *text;
++	uint32_t result;
++
++	if (l_dbus_message_get_error(message, &error, &text)) {
++		l_error("error=3D%s", error);
++		l_error("message=3D%s", text);
++		goto done;
 +	}
 +
-+	if (*new =3D=3D '\0') {
-+		if (data->disconnect_func)
-+			data->disconnect_func(data->dbus, data->user_data);
-+	} else {
-+		if (data->connect_func)
-+			data->connect_func(data->dbus, data->user_data);
++	if (!l_dbus_message_get_arguments(message, "u", &result))
++		goto done;
++
++	l_info("release name result =3D %d", result);
++
++done:
++	l_main_quit();
++}
++
++static void request_name_setup(struct l_dbus_message *message,
++				void *user_data)
++{
++	struct data *data =3D user_data;
++
++	l_dbus_message_set_arguments(message, "su", data->name, 0);
++}
++
++static void request_name_callback(struct l_dbus_message *message,
++							void *user_data)
++{
++	const char *error, *text;
++	uint32_t result;
++
++	if (l_dbus_message_get_error(message, &error, &text)) {
++		l_error("error=3D%s", error);
++		l_error("message=3D%s", text);
++		goto done;
 +	}
++
++	if (!l_dbus_message_get_arguments(message, "u", &result))
++		goto done;
++
++	l_info("request name result =3D %d", result);
++
++done:
++	return;
 +}
 +
-+LIB_EXPORT unsigned int l_dbus_add_service_watch(struct l_dbus *dbus,
-+					const char *name,
-+					l_dbus_watch_func_t connect_func,
-+					l_dbus_watch_func_t disconnect_func,
-+					void *user_data,
-+					l_dbus_destroy_func_t destroy)
++static void request_name_tester_callback(struct l_dbus_message *message,
++							void *user_data)
 +{
-+	struct filter_data *data;
++	const char *error, *text;
++	uint32_t result;
++	struct data *data =3D user_data;
 +
-+	if (!name)
-+		return 0;
-+
-+	if (connect_func) {
-+		l_error("Connect watch not yet supported");
-+		return -EOPNOTSUPP;
++	if (l_dbus_message_get_error(message, &error, &text)) {
++		l_error("error=3D%s", error);
++		l_error("message=3D%s", text);
++		goto done;
 +	}
 +
-+	data =3D filter_data_get(dbus, service_filter,
-+				DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
-+				DBUS_INTERFACE_DBUS, "NameOwnerChanged",
-+				name,
-+				connect_func,
-+				disconnect_func,
-+				user_data,
-+				destroy);
-+	if (!data)
-+		return 0;
++	if (!l_dbus_message_get_arguments(message, "u", &result))
++		goto done;
 +
-+	return l_dbus_register(dbus, message_filter, data,
-+							filter_data_destroy);
++	l_info("request tester name result =3D %d", result);
++
++	l_dbus_method_call(data->dbus, "org.freedesktop.DBus",
++			"/org/freedesktop/DBus",
++			"org.freedesktop.DBus", "ReleaseName",
++			release_name_setup,
++			release_name_callback, data, NULL);
++done:
++	return;
 +}
 +
-+LIB_EXPORT unsigned int l_dbus_add_disconnect_watch(struct l_dbus *dbus,
-+					const char *name,
-+					l_dbus_watch_func_t disconnect_func,
-+					void *user_data,
-+					l_dbus_destroy_func_t destroy)
++static void disconnected(struct l_dbus *dbus, void *user_data)
 +{
-+	return l_dbus_add_service_watch(dbus, name, NULL, disconnect_func,
-+							user_data, destroy);
++	struct tm *test_tm =3D user_data;
++
++	l_main_quit();
++
++	l_info("client disconnected");
++
++	l_timeout_remove(timeout);
++	timeout =3D NULL;
++
++	assert(test_tm->tm_sec =3D=3D 1);
++	assert(test_tm->tm_min =3D=3D 2);
++	assert(test_tm->tm_hour =3D=3D 3);
++	assert(test_tm->tm_year =3D=3D 1970);
++	assert(test_tm->tm_isdst =3D=3D 0);
++
++	assert(test_tm =3D=3D tm);
++
++	failure =3D false;
 +}
 +
-+LIB_EXPORT bool l_dbus_remove_watch(struct l_dbus *dbus, unsigned int id)
++static void destroy(void *user_data)
 +{
-+	return l_dbus_unregister(dbus, id);
++	struct tm *test_tm =3D user_data;
++
++	assert(test_tm =3D=3D tm);
++
++	l_free(test_tm);
 +}
-diff --git a/ell/dbus.h b/ell/dbus.h
-index 9fcce03..8952dcf 100644
---- a/ell/dbus.h
-+++ b/ell/dbus.h
-@@ -36,6 +36,8 @@ extern "C" {
- #define DBUS_PATH_DBUS		"/org/freedesktop/DBus"
- #define DBUS_INTERFACE_DBUS	"org.freedesktop.DBus"
- =
-
-+#define DBUS_MAXIMUM_MATCH_RULE_LENGTH	1024
 +
- enum l_dbus_bus {
- 	L_DBUS_SYSTEM_BUS,
- 	L_DBUS_SESSION_BUS,
-@@ -52,6 +54,8 @@ typedef void (*l_dbus_debug_func_t) (const char *str, voi=
-d *user_data);
- typedef void (*l_dbus_destroy_func_t) (void *user_data);
- typedef void (*l_dbus_interface_setup_func_t) (struct l_dbus_interface *);
- =
-
-+typedef void (*l_dbus_watch_func_t) (struct l_dbus *dbus, void *user_data);
++static void timeout_cb(struct l_timeout *timeout, void *user_data)
++{
++	failure =3D true;
 +
- struct l_dbus *l_dbus_new(const char *address);
- struct l_dbus *l_dbus_new_default(enum l_dbus_bus bus);
- void l_dbus_destroy(struct l_dbus *dbus);
-@@ -204,6 +208,19 @@ bool l_dbus_unregister_interface(struct l_dbus *dbus, =
-const char *path,
- void l_dbus_bus_add_match(struct l_dbus *dbus, const char *rule);
- void l_dbus_bus_remove_match(struct l_dbus *dbus, const char *rule);
- =
-
-+unsigned int l_dbus_add_service_watch(struct l_dbus *dbus,
-+					const char *name,
-+					l_dbus_watch_func_t connect_func,
-+					l_dbus_watch_func_t disconnect_func,
-+					void *user_data,
-+					l_dbus_destroy_func_t destroy);
-+unsigned int l_dbus_add_disconnect_watch(struct l_dbus *dbus,
-+					const char *name,
-+					l_dbus_watch_func_t disconnect_func,
-+					void *user_data,
-+					l_dbus_destroy_func_t destroy);
-+bool l_dbus_remove_watch(struct l_dbus *dbus, unsigned int id);
++	l_main_quit();
++}
 +
- #ifdef __cplusplus
- }
- #endif
++static struct l_dbus *get_bus(void)
++{
++	struct l_dbus *dbus =3D NULL;
++	int i;
++
++	for (i =3D 0; i < 10; i++) {
++		usleep(200 * 1000);
++
++		dbus =3D l_dbus_new(TEST_BUS_ADDRESS);
++		if (dbus)
++			break;
++	}
++
++	return dbus;
++}
++
++static void request_tester()
++{
++	struct l_dbus *dbus =3D get_bus();
++	struct data data;
++
++	l_dbus_set_ready_handler(dbus, ready_tester, NULL, NULL);
++
++	data.name =3D SERVICE_TO_WATCH;
++	data.dbus =3D dbus;
++
++	l_dbus_method_call(dbus, "org.freedesktop.DBus",
++			"/org/freedesktop/DBus",
++			"org.freedesktop.DBus", "RequestName",
++			request_name_setup,
++			request_name_tester_callback, &data, NULL);
++
++	l_main_run();
++
++	l_dbus_destroy(dbus);
++
++	exit(1);
++}
++
++int main(int argc, char *argv[])
++{
++	struct l_dbus *dbus;
++	struct l_signal *signal;
++	sigset_t mask;
++	unsigned int watch_id;
++	struct data data;
++
++	l_log_set_stderr();
++
++	if (argc > 1 && !strcmp(argv[1], "test"))
++		request_tester();
++
++	sigemptyset(&mask);
++	sigaddset(&mask, SIGINT);
++	sigaddset(&mask, SIGTERM);
++	sigaddset(&mask, SIGCHLD);
++
++	signal =3D l_signal_create(&mask, signal_handler, NULL, NULL);
++
++	start_dbus_daemon();
++
++	dbus =3D get_bus();
++
++	l_dbus_set_ready_handler(dbus, ready_callback, argv[0], NULL);
++
++	tm =3D l_new(struct tm, 1);
++
++	tm->tm_sec =3D 1;
++	tm->tm_min =3D 2;
++	tm->tm_hour =3D 3;
++	tm->tm_year =3D 1970;
++	tm->tm_isdst =3D 0;
++
++	failure =3D true;
++
++	watch_id =3D l_dbus_add_disconnect_watch(dbus,
++					SERVICE_TO_WATCH,
++					disconnected,
++					tm,
++					destroy);
++
++	data.name =3D SERVICE_MONITOR;
++	data.dbus =3D dbus;
++
++	l_dbus_method_call(dbus, "org.freedesktop.DBus",
++			"/org/freedesktop/DBus",
++			"org.freedesktop.DBus", "RequestName",
++			request_name_setup,
++			request_name_callback, &data, NULL);
++
++	timeout =3D l_timeout_create(5, timeout_cb, dbus, NULL);
++
++	l_main_run();
++
++	l_dbus_remove_watch(dbus, watch_id);
++
++	if (dbus_daemon_pid > 0)
++		kill(dbus_daemon_pid, SIGKILL);
++
++	if (test_daemon_pid > 0)
++		kill(test_daemon_pid, SIGKILL);
++
++	l_dbus_destroy(dbus);
++
++	l_signal_remove(signal);
++
++	l_timeout_remove(timeout);
++
++	assert(failure =3D=3D false);
++
++	l_info("dbus watch test passed");
++
++	return 0;
++}
 -- =
 
 1.8.3.1
 
 
---===============7462322139626251222==--
+--===============6738549163028256842==--
 
