@@ -1,64 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============5930611970582778324=="
+Content-Type: multipart/mixed; boundary="===============0667504920463695852=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: [PATCH] dbus: Move generic DBus paths to header file
-Date: Tue, 10 Feb 2015 16:52:50 +0200
-Message-ID: <1423579970-14284-1-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: [PATCH 0/3] Add DBus disconnect watch support
+Date: Tue, 10 Feb 2015 17:46:44 +0200
+Message-ID: <1423583207-22917-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5930611970582778324==
+--===============0667504920463695852==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-DBus defines moved to header file so that they can be used
-by other source files.
----
- ell/dbus.c | 5 -----
- ell/dbus.h | 4 ++++
- 2 files changed, 4 insertions(+), 5 deletions(-)
+Hi,
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 4c4ba2d..26456ac 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -45,11 +45,6 @@
- =
+this set allows user to monitor the disconnect status
+of a service.
 
- #define DEFAULT_SYSTEM_BUS_ADDRESS "unix:path=3D/var/run/dbus/system_bus_s=
-ocket"
- =
+Cheers,
+Jukka
 
--#define DBUS_SERVICE_DBUS	"org.freedesktop.DBus"
--
--#define DBUS_PATH_DBUS		"/org/freedesktop/DBus"
--
--#define DBUS_INTERFACE_DBUS		"org.freedesktop.DBus"
- #define DBUS_INTERFACE_INTROSPECTABLE	"org.freedesktop.DBus.Introspectable"
- #define DBUS_INTERFACE_PROPERTIES	"org.freedesktop.DBus.Properties"
- =
+Jukka Rissanen (3):
+  dbus: Add AddMatch and RemoveMatch support
+  dbus: Add disconnect watch support
+  unit: dbus: Add test for disconnect watch API
 
-diff --git a/ell/dbus.h b/ell/dbus.h
-index a6ad109..7622b47 100644
---- a/ell/dbus.h
-+++ b/ell/dbus.h
-@@ -32,6 +32,10 @@
- extern "C" {
- #endif
- =
+ Makefile.am            |   4 +
+ ell/dbus-watch.c       | 267 ++++++++++++++++++++++++++++++++++
+ ell/dbus.c             |  26 ++++
+ ell/dbus.h             |  21 +++
+ unit/test-dbus-watch.c | 388 +++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 5 files changed, 706 insertions(+)
+ create mode 100644 ell/dbus-watch.c
+ create mode 100644 unit/test-dbus-watch.c
 
-+#define DBUS_SERVICE_DBUS	"org.freedesktop.DBus"
-+#define DBUS_PATH_DBUS		"/org/freedesktop/DBus"
-+#define DBUS_INTERFACE_DBUS	"org.freedesktop.DBus"
-+
- enum l_dbus_bus {
- 	L_DBUS_SYSTEM_BUS,
- 	L_DBUS_SESSION_BUS,
 -- =
 
 1.8.3.1
 
 
---===============5930611970582778324==--
+--===============0667504920463695852==--
 
