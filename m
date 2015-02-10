@@ -1,31 +1,46 @@
-Content-Type: multipart/mixed; boundary="===============6147399794580865126=="
+Content-Type: multipart/mixed; boundary="===============6161127633110277325=="
 MIME-Version: 1.0
-From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
-Subject: Re: [PATCH v2 0/2] Cipher infrastructure
-Date: Tue, 10 Feb 2015 09:19:22 +0200
-Message-ID: <54D9B0FA.5050900@linux.intel.com>
-In-Reply-To: <54D8D4E9.3070506@gmail.com>
+From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
+Subject: [PATCH 0/9] hashmap fixes
+Date: Tue, 10 Feb 2015 16:42:15 +0200
+Message-ID: <1423579344-10933-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6147399794580865126==
+--===============6161127633110277325==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi,
 
->
-> I went ahead and applied both patches, but I reworked the =
+noticed some issues in hashmap while implementing
+an applicantion on top of ell.
 
-> implementation afterward.  I tried to explain the reasoning in the =
+Cheers,
+Jukka
 
-> commit message, let me know if I succeeded :) =
+Jukka Rissanen (9):
+  hashmap: Add value free function
+  hashmap: Call user supplied value free function in destroy
+  hashmap: Call user supplied value free function in insert
+  unit: hashmap: Add value free hash entry test
+  unit: hashmap: Add replace entry test
+  hashmap: Add re-entrancy support to foreach function
+  unit: hashmap: Re-entrancy tests added
+  hashmap: Add support to finding an element from hash
+  unit: hashmap: Add unit test for l_hashmap_find
+
+ ell/hashmap.c       | 176 ++++++++++++++++++++++++++++++++++++++++++++++++=
++++-
+ ell/hashmap.h       |  11 ++++
+ unit/test-hashmap.c | 142 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 326 insertions(+), 3 deletions(-)
+
+-- =
+
+1.8.3.1
 
 
-I would have preferred to get comments on the patches.
-
-Tomasz
-
---===============6147399794580865126==--
+--===============6161127633110277325==--
 
