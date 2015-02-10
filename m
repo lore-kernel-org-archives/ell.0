@@ -1,85 +1,64 @@
-Content-Type: multipart/mixed; boundary="===============6816506221944652721=="
+Content-Type: multipart/mixed; boundary="===============5930611970582778324=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: [PATCH 9/9] unit: hashmap: Add unit test for l_hashmap_find
-Date: Tue, 10 Feb 2015 16:42:24 +0200
-Message-ID: <1423579344-10933-10-git-send-email-jukka.rissanen@linux.intel.com>
-In-Reply-To: <1423579344-10933-1-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: [PATCH] dbus: Move generic DBus paths to header file
+Date: Tue, 10 Feb 2015 16:52:50 +0200
+Message-ID: <1423579970-14284-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6816506221944652721==
+--===============5930611970582778324==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+DBus defines moved to header file so that they can be used
+by other source files.
 ---
- unit/test-hashmap.c | 36 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 36 insertions(+)
+ ell/dbus.c | 5 -----
+ ell/dbus.h | 4 ++++
+ 2 files changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/unit/test-hashmap.c b/unit/test-hashmap.c
-index 51d03ba..e9c4541 100644
---- a/unit/test-hashmap.c
-+++ b/unit/test-hashmap.c
-@@ -236,6 +236,39 @@ static void foreach_cb(const void *key, void *value, v=
-oid *user_data)
- 	}
- }
+diff --git a/ell/dbus.c b/ell/dbus.c
+index 4c4ba2d..26456ac 100644
+--- a/ell/dbus.c
++++ b/ell/dbus.c
+@@ -45,11 +45,6 @@
  =
 
-+static unsigned int find_called =3D 0;
-+
-+static bool find_cb(const void *key, void *value, void *user_data)
-+{
-+	struct l_hashmap *hashmap =3D user_data;
-+	static bool removed;
-+	static unsigned int entries;
-+	char *str, *mykey =3D "b";
-+	bool ret;
-+
-+	if (!removed) {
-+		printf("Removing entry in find\n");
-+
-+		str =3D l_hashmap_remove(hashmap, "world");
-+		assert(str);
-+
-+		assert(!l_hashmap_lookup(hashmap, "world"));
-+
-+		entries =3D l_hashmap_size(hashmap);
-+
-+		removed =3D true;
-+	}
-+
-+	find_called++;
-+
-+	if (!(find_called % 2)) {
-+		assert(entries =3D=3D 3);
-+		return true;
-+	}
-+
-+	return false;
-+}
-+
- static void test_reentrant(const void *test_data)
- {
- 	struct l_hashmap *hashmap;
-@@ -261,6 +294,9 @@ static void test_reentrant(const void *test_data)
+ #define DEFAULT_SYSTEM_BUS_ADDRESS "unix:path=3D/var/run/dbus/system_bus_s=
+ocket"
  =
 
- 	l_hashmap_foreach(hashmap, foreach_cb, hashmap);
+-#define DBUS_SERVICE_DBUS	"org.freedesktop.DBus"
+-
+-#define DBUS_PATH_DBUS		"/org/freedesktop/DBus"
+-
+-#define DBUS_INTERFACE_DBUS		"org.freedesktop.DBus"
+ #define DBUS_INTERFACE_INTROSPECTABLE	"org.freedesktop.DBus.Introspectable"
+ #define DBUS_INTERFACE_PROPERTIES	"org.freedesktop.DBus.Properties"
  =
 
-+	l_hashmap_find(hashmap, find_cb, hashmap);
-+	assert(find_called =3D=3D 2);
+diff --git a/ell/dbus.h b/ell/dbus.h
+index a6ad109..7622b47 100644
+--- a/ell/dbus.h
++++ b/ell/dbus.h
+@@ -32,6 +32,10 @@
+ extern "C" {
+ #endif
+ =
+
++#define DBUS_SERVICE_DBUS	"org.freedesktop.DBus"
++#define DBUS_PATH_DBUS		"/org/freedesktop/DBus"
++#define DBUS_INTERFACE_DBUS	"org.freedesktop.DBus"
 +
- 	l_hashmap_destroy(hashmap, NULL);
- }
- =
-
+ enum l_dbus_bus {
+ 	L_DBUS_SYSTEM_BUS,
+ 	L_DBUS_SESSION_BUS,
 -- =
 
 1.8.3.1
 
 
---===============6816506221944652721==--
+--===============5930611970582778324==--
 
