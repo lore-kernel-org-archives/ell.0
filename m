@@ -1,101 +1,79 @@
-Content-Type: multipart/mixed; boundary="===============6001861298320605935=="
+Content-Type: multipart/mixed; boundary="===============6816506221944652721=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: [PATCH 8/9] hashmap: Add support to finding an element from hash
-Date: Tue, 10 Feb 2015 16:42:23 +0200
-Message-ID: <1423579344-10933-9-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: [PATCH 9/9] unit: hashmap: Add unit test for l_hashmap_find
+Date: Tue, 10 Feb 2015 16:42:24 +0200
+Message-ID: <1423579344-10933-10-git-send-email-jukka.rissanen@linux.intel.com>
 In-Reply-To: <1423579344-10933-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6001861298320605935==
+--===============6816506221944652721==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add new function l_hashmap_find() which is similar to foreach.
-The find will start to call a user supplied function for every
-entry in hashmap. If user function returns true, then the find
-will return and not call remaining hash elements.
 ---
- ell/hashmap.c | 39 +++++++++++++++++++++++++++++++++++++++
- ell/hashmap.h |  5 +++++
- 2 files changed, 44 insertions(+)
+ unit/test-hashmap.c | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
 
-diff --git a/ell/hashmap.c b/ell/hashmap.c
-index 6c7c10f..03fcd7c 100644
---- a/ell/hashmap.c
-+++ b/ell/hashmap.c
-@@ -687,3 +687,42 @@ LIB_EXPORT bool l_hashmap_isempty(struct l_hashmap *ha=
-shmap)
- =
-
- 	return hashmap->entries =3D=3D 0;
+diff --git a/unit/test-hashmap.c b/unit/test-hashmap.c
+index 51d03ba..e9c4541 100644
+--- a/unit/test-hashmap.c
++++ b/unit/test-hashmap.c
+@@ -236,6 +236,39 @@ static void foreach_cb(const void *key, void *value, v=
+oid *user_data)
+ 	}
  }
+ =
+
++static unsigned int find_called =3D 0;
 +
-+/**
-+ * l_hashmap_find:
-+ * @hashmap: hash table object
-+ * @function: callback function
-+ * @user_data: user data given to callback function
-+ *
-+ * Call @function for every entry in @hashmap. If @function returns true,
-+ * then quit calling @function.
-+ **/
-+LIB_EXPORT void l_hashmap_find(struct l_hashmap *hashmap,
-+			l_hashmap_find_func_t function, void *user_data)
++static bool find_cb(const void *key, void *value, void *user_data)
 +{
-+	unsigned int i;
++	struct l_hashmap *hashmap =3D user_data;
++	static bool removed;
++	static unsigned int entries;
++	char *str, *mykey =3D "b";
++	bool ret;
 +
-+	if (unlikely(!hashmap || !function))
-+		return;
++	if (!removed) {
++		printf("Removing entry in find\n");
 +
-+	for (i =3D 0; i < NBUCKETS; i++) {
-+		struct entry *entry, *head =3D &hashmap->buckets[i];
++		str =3D l_hashmap_remove(hashmap, "world");
++		assert(str);
 +
-+		if (!head->next)
-+			continue;
++		assert(!l_hashmap_lookup(hashmap, "world"));
 +
-+		for (entry =3D head;; entry =3D entry->next) {
-+			bool found;
++		entries =3D l_hashmap_size(hashmap);
 +
-+			if (!entry->removed) {
-+				found =3D function(entry->key, entry->value,
-+						user_data);
-+				if (found)
-+					return;
-+			}
-+
-+			if (entry->next =3D=3D head)
-+				break;
-+		}
++		removed =3D true;
 +	}
-+}
-diff --git a/ell/hashmap.h b/ell/hashmap.h
-index a904109..3085477 100644
---- a/ell/hashmap.h
-+++ b/ell/hashmap.h
-@@ -31,6 +31,8 @@ extern "C" {
- =
-
- typedef void (*l_hashmap_foreach_func_t) (const void *key, void *value,
- 							void *user_data);
-+typedef bool (*l_hashmap_find_func_t) (const void *key, void *value,
-+							void *user_data);
- typedef void (*l_hashmap_destroy_func_t) (void *value);
- typedef unsigned int (*l_hashmap_hash_func_t) (const void *p);
- typedef int (*l_hashmap_compare_func_t) (const void *a, const void *b);
-@@ -70,6 +72,9 @@ void *l_hashmap_lookup(struct l_hashmap *hashmap, const v=
-oid *key);
- void l_hashmap_foreach(struct l_hashmap *hashmap,
- 			l_hashmap_foreach_func_t function, void *user_data);
- =
-
-+void l_hashmap_find(struct l_hashmap *hashmap,
-+			l_hashmap_find_func_t function, void *user_data);
 +
- unsigned int l_hashmap_size(struct l_hashmap *hashmap);
- bool l_hashmap_isempty(struct l_hashmap *hashmap);
++	find_called++;
++
++	if (!(find_called % 2)) {
++		assert(entries =3D=3D 3);
++		return true;
++	}
++
++	return false;
++}
++
+ static void test_reentrant(const void *test_data)
+ {
+ 	struct l_hashmap *hashmap;
+@@ -261,6 +294,9 @@ static void test_reentrant(const void *test_data)
+ =
+
+ 	l_hashmap_foreach(hashmap, foreach_cb, hashmap);
+ =
+
++	l_hashmap_find(hashmap, find_cb, hashmap);
++	assert(find_called =3D=3D 2);
++
+ 	l_hashmap_destroy(hashmap, NULL);
+ }
  =
 
 -- =
@@ -103,5 +81,5 @@ oid *key);
 1.8.3.1
 
 
---===============6001861298320605935==--
+--===============6816506221944652721==--
 
