@@ -1,76 +1,74 @@
-Content-Type: multipart/mixed; boundary="===============4189905451473360004=="
+Content-Type: multipart/mixed; boundary="===============0805595676984295937=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: [PATCH 3/9] hashmap: Call user supplied value free function in insert
-Date: Tue, 10 Feb 2015 16:42:18 +0200
-Message-ID: <1423579344-10933-4-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: [PATCH 4/9] unit: hashmap: Add value free hash entry test
+Date: Tue, 10 Feb 2015 16:42:19 +0200
+Message-ID: <1423579344-10933-5-git-send-email-jukka.rissanen@linux.intel.com>
 In-Reply-To: <1423579344-10933-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4189905451473360004==
+--===============0805595676984295937==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-If user has supplied a value free function, then that will be
-called for each replaced entry.
+Use the value free function to test that we can replace an
+existing value in the hash.
 ---
- ell/hashmap.c | 27 ++++++++++++++++++++++++++-
- 1 file changed, 26 insertions(+), 1 deletion(-)
+ unit/test-hashmap.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/ell/hashmap.c b/ell/hashmap.c
-index c51abfd..a204726 100644
---- a/ell/hashmap.c
-+++ b/ell/hashmap.c
-@@ -393,7 +393,11 @@ LIB_EXPORT void l_hashmap_destroy(struct l_hashmap *ha=
-shmap,
-  * @key: key pointer
-  * @value: value pointer
-  *
-- * Insert new @value entry with @key.
-+ * Insert new @value entry with @key. If there is already an same key
-+ * in the hash, the new value will replace the old one. If user has set
-+ * the value free function by l_hashmap_set_value_free_function() then
-+ * the user specified free function will be called in order to free the
-+ * value.
-  *
-  * Returns: #true when value has been added and #false in case of failure
-  **/
-@@ -419,6 +423,27 @@ LIB_EXPORT bool l_hashmap_insert(struct l_hashmap *has=
-hmap,
- 		goto done;
+diff --git a/unit/test-hashmap.c b/unit/test-hashmap.c
+index a606099..836ed1c 100644
+--- a/unit/test-hashmap.c
++++ b/unit/test-hashmap.c
+@@ -86,6 +86,14 @@ static void test_ptr(const void *test_data)
+ 	l_hashmap_destroy(hashmap, NULL);
+ }
+ =
+
++static void free_value(const struct l_hashmap *hashmap,
++					void *value, void *user_data)
++{
++	assert(hashmap =3D=3D user_data);
++
++	l_free(value);
++}
++
+ static void test_str(const void *test_data)
+ {
+ 	struct l_hashmap *hashmap;
+@@ -97,6 +105,8 @@ static void test_str(const void *test_data)
+ 		"a long key here, bla bla bla bla bla hey! enough?",
+ 		NULL
+ 	};
++	const char *duplicate =3D "hello";
++	unsigned int entries;
+ =
+
+ 	hashmap =3D l_hashmap_string_new();
+ 	assert(hashmap);
+@@ -154,6 +164,13 @@ static void test_str(const void *test_data)
+ 		assert(ptr =3D=3D itr);
  	}
  =
 
-+	/* If the key is already in the hash, we just replace the value */
-+	for (entry =3D head;; entry =3D entry->next) {
-+		if (entry->hash =3D=3D hash &&
-+				!hashmap->compare_func(key, entry->key)) {
-+			if (entry->key !=3D key_new) {
-+				free_key(hashmap, entry->key);
-+				entry->key =3D key_new;
-+			}
++	/* check that value free function works */
++	hashmap =3D l_hashmap_string_new();
++	assert(l_hashmap_set_value_free_function(hashmap, free_value,
++							hashmap));
++	assert(l_hashmap_insert(hashmap, strings[0], l_strdup(strings[0])));
++	assert(l_hashmap_insert(hashmap, strings[0], l_strdup(strings[0])));
 +
-+			if (entry->value !=3D value) {
-+				free_value(hashmap, entry->value);
-+				entry->value =3D value;
-+			}
-+
-+			return true;
-+		}
-+
-+		if (entry->next =3D=3D head)
-+			break;
-+	}
-+
- 	entry =3D l_new(struct entry, 1);
- 	entry->key =3D key_new;
- 	entry->value =3D value;
+ 	assert(l_hashmap_lookup(hashmap, "not in hash") =3D=3D NULL);
+ =
+
+ 	l_hashmap_destroy(hashmap, NULL);
 -- =
 
 1.8.3.1
 
 
---===============4189905451473360004==--
+--===============0805595676984295937==--
 
