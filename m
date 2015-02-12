@@ -1,48 +1,121 @@
-Content-Type: multipart/mixed; boundary="===============3964018533620516343=="
+Content-Type: multipart/mixed; boundary="===============3781177347401351449=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: Re: [PATCH 6/9] hashmap: Add re-entrancy support to foreach function
-Date: Thu, 12 Feb 2015 09:25:32 +0200
-Message-ID: <1423725932.4196.8.camel@linux.intel.com>
-In-Reply-To: <54DB6203.3070107@gmail.com>
+Subject: Re: [PATCH 8/9] hashmap: Add support to finding an element from hash
+Date: Thu, 12 Feb 2015 10:35:42 +0200
+Message-ID: <1423730142.4196.14.camel@linux.intel.com>
+In-Reply-To: <1423579344-10933-9-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3964018533620516343==
+--===============3781177347401351449==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On ke, 2015-02-11 at 08:06 -0600, Denis Kenzior wrote:
-> Hi Patrik,
+Hi Denis,
+
+On ti, 2015-02-10 at 16:42 +0200, Jukka Rissanen wrote:
+> Add new function l_hashmap_find() which is similar to foreach.
+> The find will start to call a user supplied function for every
+> entry in hashmap. If user function returns true, then the find
+> will return and not call remaining hash elements.
+> ---
+
+Just wanted to ask are you ok with func? At the moment there is no
+function to traverse the hash, other than the foreach variant and it is
+very sub-optimal as it will traverse the whole hash even if such a thing
+is not needed by the caller. Even better option would be to change the
+return parameter of foreach callback to return bool so we could do with
+only one traversing function.
+
+
+>  ell/hashmap.c | 39 +++++++++++++++++++++++++++++++++++++++
+>  ell/hashmap.h |  5 +++++
+>  2 files changed, 44 insertions(+)
 > =
 
+> diff --git a/ell/hashmap.c b/ell/hashmap.c
+> index 6c7c10f..03fcd7c 100644
+> --- a/ell/hashmap.c
+> +++ b/ell/hashmap.c
+> @@ -687,3 +687,42 @@ LIB_EXPORT bool l_hashmap_isempty(struct l_hashmap *=
+hashmap)
+>  =
 
-> >
-> > glib also crashed with this pattern. Or usually worked ok, as the
-> > removed/added item wasn't always the item used in foreach or the next
-> > item. Fixing this to allow any API call successfully work at any time
-> > requires quite some more work to be done, the above patch by Jukka was
-> > approximately the minimum needed for a remove to work at any one time.
-> >
-> =
+>  	return hashmap->entries =3D=3D 0;
+>  }
+> +
+> +/**
+> + * l_hashmap_find:
+> + * @hashmap: hash table object
+> + * @function: callback function
+> + * @user_data: user data given to callback function
+> + *
+> + * Call @function for every entry in @hashmap. If @function returns true,
+> + * then quit calling @function.
+> + **/
+> +LIB_EXPORT void l_hashmap_find(struct l_hashmap *hashmap,
+> +			l_hashmap_find_func_t function, void *user_data)
+> +{
+> +	unsigned int i;
+> +
+> +	if (unlikely(!hashmap || !function))
+> +		return;
+> +
+> +	for (i =3D 0; i < NBUCKETS; i++) {
+> +		struct entry *entry, *head =3D &hashmap->buckets[i];
+> +
+> +		if (!head->next)
+> +			continue;
+> +
+> +		for (entry =3D head;; entry =3D entry->next) {
+> +			bool found;
+> +
+> +			if (!entry->removed) {
+> +				found =3D function(entry->key, entry->value,
+> +						user_data);
+> +				if (found)
+> +					return;
+> +			}
+> +
+> +			if (entry->next =3D=3D head)
+> +				break;
+> +		}
+> +	}
+> +}
+> diff --git a/ell/hashmap.h b/ell/hashmap.h
+> index a904109..3085477 100644
+> --- a/ell/hashmap.h
+> +++ b/ell/hashmap.h
+> @@ -31,6 +31,8 @@ extern "C" {
+>  =
 
-> If you find a good way to fix this in the data structure, great.  But =
+>  typedef void (*l_hashmap_foreach_func_t) (const void *key, void *value,
+>  							void *user_data);
+> +typedef bool (*l_hashmap_find_func_t) (const void *key, void *value,
+> +							void *user_data);
+>  typedef void (*l_hashmap_destroy_func_t) (void *value);
+>  typedef unsigned int (*l_hashmap_hash_func_t) (const void *p);
+>  typedef int (*l_hashmap_compare_func_t) (const void *a, const void *b);
+> @@ -70,6 +72,9 @@ void *l_hashmap_lookup(struct l_hashmap *hashmap, const=
+ void *key);
+>  void l_hashmap_foreach(struct l_hashmap *hashmap,
+>  			l_hashmap_foreach_func_t function, void *user_data);
+>  =
 
-> the current fix is not acceptable.  We will not be iterating over the =
+> +void l_hashmap_find(struct l_hashmap *hashmap,
+> +			l_hashmap_find_func_t function, void *user_data);
+> +
+>  unsigned int l_hashmap_size(struct l_hashmap *hashmap);
+>  bool l_hashmap_isempty(struct l_hashmap *hashmap);
+>  =
 
-> _entire_ data structure twice.  The foreach operation is already =
-
-> expensive and too tempting to abuse.
-
-The patch would iterate the data structure twice only if user did modify
-the hash in the callback func. That is probably not very common case
-anyway.
 
 
 Jukka
 
 
 
---===============3964018533620516343==--
+--===============3781177347401351449==--
 
