@@ -1,121 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============3781177347401351449=="
+Content-Type: multipart/mixed; boundary="===============6031290161572616674=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: Re: [PATCH 8/9] hashmap: Add support to finding an element from hash
-Date: Thu, 12 Feb 2015 10:35:42 +0200
-Message-ID: <1423730142.4196.14.camel@linux.intel.com>
-In-Reply-To: <1423579344-10933-9-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: [PATCH v2 0/3] Add DBus disconnect watch support
+Date: Thu, 12 Feb 2015 13:48:50 +0200
+Message-ID: <1423741733-26743-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3781177347401351449==
+--===============6031290161572616674==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi,
 
-On ti, 2015-02-10 at 16:42 +0200, Jukka Rissanen wrote:
-> Add new function l_hashmap_find() which is similar to foreach.
-> The find will start to call a user supplied function for every
-> entry in hashmap. If user function returns true, then the find
-> will return and not call remaining hash elements.
-> ---
+v2:
+- moved the code to dbus.c
+- reworked the logic in the caller of the watcher so no need to
+  remove l_dbus_register() and l_dbus_unregister()
 
-Just wanted to ask are you ok with func? At the moment there is no
-function to traverse the hash, other than the foreach variant and it is
-very sub-optimal as it will traverse the whole hash even if such a thing
-is not needed by the caller. Even better option would be to change the
-return parameter of foreach callback to return bool so we could do with
-only one traversing function.
+this set allows user to monitor the disconnect status
+of a service.
 
-
->  ell/hashmap.c | 39 +++++++++++++++++++++++++++++++++++++++
->  ell/hashmap.h |  5 +++++
->  2 files changed, 44 insertions(+)
-> =
-
-> diff --git a/ell/hashmap.c b/ell/hashmap.c
-> index 6c7c10f..03fcd7c 100644
-> --- a/ell/hashmap.c
-> +++ b/ell/hashmap.c
-> @@ -687,3 +687,42 @@ LIB_EXPORT bool l_hashmap_isempty(struct l_hashmap *=
-hashmap)
->  =
-
->  	return hashmap->entries =3D=3D 0;
->  }
-> +
-> +/**
-> + * l_hashmap_find:
-> + * @hashmap: hash table object
-> + * @function: callback function
-> + * @user_data: user data given to callback function
-> + *
-> + * Call @function for every entry in @hashmap. If @function returns true,
-> + * then quit calling @function.
-> + **/
-> +LIB_EXPORT void l_hashmap_find(struct l_hashmap *hashmap,
-> +			l_hashmap_find_func_t function, void *user_data)
-> +{
-> +	unsigned int i;
-> +
-> +	if (unlikely(!hashmap || !function))
-> +		return;
-> +
-> +	for (i =3D 0; i < NBUCKETS; i++) {
-> +		struct entry *entry, *head =3D &hashmap->buckets[i];
-> +
-> +		if (!head->next)
-> +			continue;
-> +
-> +		for (entry =3D head;; entry =3D entry->next) {
-> +			bool found;
-> +
-> +			if (!entry->removed) {
-> +				found =3D function(entry->key, entry->value,
-> +						user_data);
-> +				if (found)
-> +					return;
-> +			}
-> +
-> +			if (entry->next =3D=3D head)
-> +				break;
-> +		}
-> +	}
-> +}
-> diff --git a/ell/hashmap.h b/ell/hashmap.h
-> index a904109..3085477 100644
-> --- a/ell/hashmap.h
-> +++ b/ell/hashmap.h
-> @@ -31,6 +31,8 @@ extern "C" {
->  =
-
->  typedef void (*l_hashmap_foreach_func_t) (const void *key, void *value,
->  							void *user_data);
-> +typedef bool (*l_hashmap_find_func_t) (const void *key, void *value,
-> +							void *user_data);
->  typedef void (*l_hashmap_destroy_func_t) (void *value);
->  typedef unsigned int (*l_hashmap_hash_func_t) (const void *p);
->  typedef int (*l_hashmap_compare_func_t) (const void *a, const void *b);
-> @@ -70,6 +72,9 @@ void *l_hashmap_lookup(struct l_hashmap *hashmap, const=
- void *key);
->  void l_hashmap_foreach(struct l_hashmap *hashmap,
->  			l_hashmap_foreach_func_t function, void *user_data);
->  =
-
-> +void l_hashmap_find(struct l_hashmap *hashmap,
-> +			l_hashmap_find_func_t function, void *user_data);
-> +
->  unsigned int l_hashmap_size(struct l_hashmap *hashmap);
->  bool l_hashmap_isempty(struct l_hashmap *hashmap);
->  =
-
-
-
+Cheers,
 Jukka
 
 
+Jukka Rissanen (3):
+  dbus: Add AddMatch and RemoveMatch support
+  dbus: Add disconnect watch support
+  unit: dbus: Add test for disconnect watch API
 
---===============3781177347401351449==--
+ Makefile.am            |   3 +
+ ell/dbus.c             | 253 ++++++++++++++++++++++++++++++++
+ ell/dbus.h             |  19 +++
+ unit/test-dbus-watch.c | 388 +++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 4 files changed, 663 insertions(+)
+ create mode 100644 unit/test-dbus-watch.c
+
+-- =
+
+2.1.0
+
+
+--===============6031290161572616674==--
 
