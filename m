@@ -1,70 +1,101 @@
-Content-Type: multipart/mixed; boundary="===============4150568902027237068=="
+Content-Type: multipart/mixed; boundary="===============4606095226299711291=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 8/9] hashmap: Add support to finding an element from hash
-Date: Thu, 12 Feb 2015 18:19:03 -0600
-Message-ID: <54DD42F7.5030102@gmail.com>
-In-Reply-To: <1423730142.4196.14.camel@linux.intel.com>
+Subject: Re: [PATCH v2 1/3] dbus: Add AddMatch and RemoveMatch support
+Date: Thu, 12 Feb 2015 21:00:30 -0600
+Message-ID: <54DD68CE.7060101@gmail.com>
+In-Reply-To: <1423741733-26743-2-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4150568902027237068==
+--===============4606095226299711291==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Jukka,
 
-On 02/12/2015 02:35 AM, Jukka Rissanen wrote:
-> Hi Denis,
+On 02/12/2015 05:48 AM, Jukka Rissanen wrote:
+> We do not check for errors as they are typically unrecoverable
+> in this case and in most cases ignored anyway.
 >
-> On ti, 2015-02-10 at 16:42 +0200, Jukka Rissanen wrote:
->> Add new function l_hashmap_find() which is similar to foreach.
->> The find will start to call a user supplied function for every
->> entry in hashmap. If user function returns true, then the find
->> will return and not call remaining hash elements.
->> ---
+> This is the comment from libdbus API documentation for
+> dbus_bus_add_match() about error checking:
 >
-> Just wanted to ask are you ok with func? At the moment there is no
-> function to traverse the hash, other than the foreach variant and it is
-> very sub-optimal as it will traverse the whole hash even if such a thing
-> is not needed by the caller. Even better option would be to change the
-> return parameter of foreach callback to return bool so we could do with
-> only one traversing function.
+> "If you pass NULL for the error, this function will not block;
+> the match thus won't be added until you flush the connection,
+> and if there's an error adding the match you won't find out
+> about it. This is generally acceptable, since the possible
+> errors (including a lack of resources in the bus, the connection
+> having exceeded its quota of active match rules, or the match
+> rule being unparseable) are generally unrecoverable."
+> ---
+>   ell/dbus.c | 26 ++++++++++++++++++++++++++
+>   ell/dbus.h |  4 ++++
+>   2 files changed, 30 insertions(+)
 >
+> diff --git a/ell/dbus.c b/ell/dbus.c
+> index 4c4ba2d..96a1230 100644
+> --- a/ell/dbus.c
+> +++ b/ell/dbus.c
+> @@ -1227,3 +1227,29 @@ LIB_EXPORT bool l_dbus_unregister_interface(struct=
+ l_dbus *dbus,
+>
+>   	return _dbus_object_tree_unregister(dbus->tree, path, interface);
+>   }
+> +
+> +static void send_match(struct l_dbus *dbus, const char *rule,
+> +						const char *method)
+> +{
+> +	struct l_dbus_message *message;
+> +
+> +	message =3D l_dbus_message_new_method_call(dbus,
+> +						DBUS_SERVICE_DBUS,
+> +						DBUS_PATH_DBUS,
+> +						DBUS_INTERFACE_DBUS,
+> +						method);
+> +
+> +	l_dbus_message_set_arguments(message, "s", rule);
+> +
+> +	send_message(dbus, false, message, NULL, NULL, NULL);
+> +}
+> +
+> +LIB_EXPORT void l_dbus_bus_add_match(struct l_dbus *dbus, const char *ru=
+le)
 
-I'm not totally against it, so I might be convinced this is useful. =
+These functions should not be exported / become private.
 
-However, I really have to wonder why a hashmap is being used as a
-glorified linked list?  Whats the target use case?
+> +{
+> +	send_match(dbus, rule, "AddMatch");
+> +}
+> +
+> +LIB_EXPORT void l_dbus_bus_remove_match(struct l_dbus *dbus, const char =
+*rule)
+> +{
 
-<snip>
+As above
 
->>   							void *user_data);
->> +typedef bool (*l_hashmap_find_func_t) (const void *key, void *value,
->> +							void *user_data);
->>   typedef void (*l_hashmap_destroy_func_t) (void *value);
->>   typedef unsigned int (*l_hashmap_hash_func_t) (const void *p);
->>   typedef int (*l_hashmap_compare_func_t) (const void *a, const void *b);
->> @@ -70,6 +72,9 @@ void *l_hashmap_lookup(struct l_hashmap *hashmap, cons=
-t void *key);
->>   void l_hashmap_foreach(struct l_hashmap *hashmap,
->>   			l_hashmap_foreach_func_t function, void *user_data);
->>
->> +void l_hashmap_find(struct l_hashmap *hashmap,
->> +			l_hashmap_find_func_t function, void *user_data);
->> +
-
-If we're going to do this, then the signature should mimic =
-
-l_hashmap_lookup.  e.g.
-
-void *l_hashmap_find(struct l_hashmap *hashmap,
-			l_hashmap_find_func_t function,
-			void *user_data);
+> +	send_match(dbus, rule, "RemoveMatch");
+> +}
+> diff --git a/ell/dbus.h b/ell/dbus.h
+> index a6ad109..d5890a5 100644
+> --- a/ell/dbus.h
+> +++ b/ell/dbus.h
+> @@ -196,6 +196,10 @@ bool l_dbus_register_interface(struct l_dbus *dbus,
+>   				l_dbus_destroy_func_t destroy);
+>   bool l_dbus_unregister_interface(struct l_dbus *dbus, const char *path,
+>   					const char *interface);
+> +
+> +void l_dbus_bus_add_match(struct l_dbus *dbus, const char *rule);
+> +void l_dbus_bus_remove_match(struct l_dbus *dbus, const char *rule);
+> +
+>   #ifdef __cplusplus
+>   }
+>   #endif
+>
 
 Regards,
 -Denis
 
---===============4150568902027237068==--
+--===============4606095226299711291==--
 
