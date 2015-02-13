@@ -1,95 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============8406931242655896603=="
+Content-Type: multipart/mixed; boundary="===============6043492123556965357=="
 MIME-Version: 1.0
-From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH v2 3/3] unit: dbus: Add test for disconnect watch API
-Date: Fri, 13 Feb 2015 16:29:24 +0200
-Message-ID: <1423837764.4196.37.camel@linux.intel.com>
-In-Reply-To: <54DE05F3.9000704@gmail.com>
+Date: Fri, 13 Feb 2015 09:09:29 -0600
+Message-ID: <54DE13A9.80003@gmail.com>
+In-Reply-To: <1423837764.4196.37.camel@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8406931242655896603==
+--===============6043492123556965357==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On pe, 2015-02-13 at 08:10 -0600, Denis Kenzior wrote:
-> Hi Jukka,
-> =
+Hi Jukka,
 
-> On 02/13/2015 02:40 AM, Jukka Rissanen wrote:
-> > On to, 2015-02-12 at 21:36 -0600, Denis Kenzior wrote:
-> >> On 02/12/2015 05:48 AM, Jukka Rissanen wrote:
-> >>> Test the dbus disconnect watch support.
-> >>> ---
-> >>>    Makefile.am            |   3 +
-> >>>    unit/test-dbus-watch.c | 388 +++++++++++++++++++++++++++++++++++++=
-++++++++++++
-> >>>    2 files changed, 391 insertions(+)
-> >>>    create mode 100644 unit/test-dbus-watch.c
-> >>>
-> >>
-> >> That seems like an awful lot of copy-paste. Can we isolate the actual
-> >> signal dispatcher and unit test it properly?  For example, you can
-> >> always make the message_filter function private (e.g. without
-> >> LIB_EXPORT) instead of static and feed it signals created using e.g.
-> >> l_dbus_message_new_signal or dbus_message_from_blob
-> >
-> > I did not quite understand your comment about signal dispatcher and
-> > message_filter here, please elaborate a bit more?
-> >
-> =
+ >>
+>> Then test this functionality in the unit test.  If you're relying on
+>> semi-manual tests for this stuff, your test coverage will be pretty smal=
+l.
+>>
+>
+> But don't we want to test this against dbus-daemon? Testing this watch
+> API without dbus-daemon interaction seems pointless to me.
 
-> Look at how unit/test-dbus-service.c is done.  Almost every part of the =
+Why?  In this case, what's the difference between getting a signal from =
 
-> dbus-service code can be tested standalone.  You need to think about how =
+DBus Daemon vs simply making one up yourself?  Isolating the code and =
 
-> to do the same.
-> =
+unit testing the hell out of it is much simpler without dbus-daemon =
 
-> For example:
-> 	static void message_filter(...) -> void _dbus_message_filter(...)
-> 	static void format_rule(...) -> void _dbus1_format_rule()
-> =
+involved.  Much faster and more compact too.
 
-> Or maybe even allow the entire handle_signal() path to be tested.
-> =
+Regards,
+-Denis
 
-> Then test this functionality in the unit test.  If you're relying on =
-
-> semi-manual tests for this stuff, your test coverage will be pretty small.
-> =
-
-
-But don't we want to test this against dbus-daemon? Testing this watch
-API without dbus-daemon interaction seems pointless to me.
-
-> Regards,
-> -Denis
-> =
-
-> >>
-> >> Alternatively, fold this into test-dbus.c if possible.
-> >
-> > I thought about that but test-dbus.c was already quite big. But if you
-> > are ok with that I can certainly do that too.
-> >
-> =
-
-> This is the least preferred option.  Only do this for stuff that can't =
-
-> be tested via the unit test.
-> =
-
-> Regards,
-> -Denis
-> =
-
-
-
-Jukka
-
-
-
---===============8406931242655896603==--
+--===============6043492123556965357==--
 
