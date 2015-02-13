@@ -1,51 +1,92 @@
-Content-Type: multipart/mixed; boundary="===============6618759288970006782=="
+Content-Type: multipart/mixed; boundary="===============3510853472036617982=="
 MIME-Version: 1.0
-From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
-Subject: [PATCH 2/2] unit: Slightly change hash duplicity test to verify key
- unitiy behavior
-Date: Fri, 13 Feb 2015 12:58:01 +0200
-Message-ID: <1423825081-4137-3-git-send-email-tomasz.bursztyka@linux.intel.com>
-In-Reply-To: <1423825081-4137-1-git-send-email-tomasz.bursztyka@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v2 2/3] dbus: Add disconnect watch support
+Date: Fri, 13 Feb 2015 08:01:26 -0600
+Message-ID: <54DE03B6.9070309@gmail.com>
+In-Reply-To: <1423816017.4196.26.camel@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6618759288970006782==
+--===============3510853472036617982==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-hashmap.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Hi Jukka,
 
-diff --git a/unit/test-hashmap.c b/unit/test-hashmap.c
-index e6bd1f9..5717cba 100644
---- a/unit/test-hashmap.c
-+++ b/unit/test-hashmap.c
-@@ -171,13 +171,13 @@ static void test_duplicate(const void *test_data)
- =
+<snip>
 
- 	assert(l_hashmap_insert(hashmap, "one", &one));
- 	assert(l_hashmap_insert(hashmap, "two", &two));
--	assert(l_hashmap_insert(hashmap, "one", &three));
-+	assert(!l_hashmap_insert(hashmap, "one", &three));
- =
+ >>> +struct filter_data {
+>>> +	struct l_dbus *dbus;
+>>> +	l_dbus_message_func_t handle_func;
+>>> +	l_dbus_watch_func_t connect_func;
+>>> +	l_dbus_watch_func_t disconnect_func;
+>>> +	char *name;
+>>> +	char *owner;
+>>
+>> What is the exact difference between name and owner?  I don't see a
+>> distinction...
+>
+> name is something like "org.foobar" and owner is ":1.101"
+>
+> User registers watch using a name and dbus-daemon sends its
+> notifications about NameOwnerChanged signals using the owner format so
+> we need to track both formats.
 
- 	assert(l_hashmap_lookup(hashmap, "two") =3D=3D &two);
- 	assert(l_hashmap_lookup(hashmap, "one") =3D=3D &one);
- =
+Yes, but you don't actually handle that anywhere.  So I don't see a =
 
- 	assert(l_hashmap_remove(hashmap, "one") =3D=3D &one);
--	assert(l_hashmap_lookup(hashmap, "one") =3D=3D &three);
-+	assert(!l_hashmap_lookup(hashmap, "one"));
- =
+distinction in the current code.  If this is TBD, then simply don't =
 
- 	l_hashmap_destroy(hashmap, NULL);
- };
--- =
+include this and mention somewhere that only unique bus names are supported.
 
-2.0.5
+<snip>
 
+>>> +	if (arg && data->argument && strcmp(arg, data->argument))
+>>> +		goto out;
+>>
+>> This looks wrong
+>
+> Please elaborate more?
+>
 
---===============6618759288970006782==--
+If arg is NULL, the matching continues.  I do not think that is what you =
+
+want, but I've not read the DBus spec lately.  This needs a unit test case.
+
+<snip>
+
+>>> +LIB_EXPORT unsigned int l_dbus_add_service_watch(struct l_dbus *dbus,
+>>> +					const char *name,
+>>> +					l_dbus_watch_func_t connect_func,
+>>> +					l_dbus_watch_func_t disconnect_func,
+>>> +					void *user_data,
+>>> +					l_dbus_destroy_func_t destroy)
+>>> +{
+>>> +	struct filter_data *data;
+>>> +
+>>> +	if (!name)
+>>> +		return 0;
+>>> +
+>>> +	if (connect_func)
+>>> +		return -EOPNOTSUPP;
+>>
+>> Why? You seem to be handling that just fine?
+>
+> No, connect watch needs more work as more code needs to be done. I only
+> needed the disconnect watch for my app so in order to speed things up,
+> left the connect to be done later when such need arises. The connect
+> pointer is in the API so that we do not need to change the API later.
+>
+
+Okay.  But this is still wrong.  The return value is an unsigned int. =
+
+You're returning a negative errno.
+
+Might want to make this into an internal private function for now.
+
+Regards,
+-Denis
+
+--===============3510853472036617982==--
 
