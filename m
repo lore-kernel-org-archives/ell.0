@@ -1,75 +1,121 @@
-Content-Type: multipart/mixed; boundary="===============2047488101815688010=="
+Content-Type: multipart/mixed; boundary="===============1765128898127788381=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2 3/3] unit: dbus: Add test for disconnect watch API
-Date: Fri, 13 Feb 2015 08:10:59 -0600
-Message-ID: <54DE05F3.9000704@gmail.com>
-In-Reply-To: <1423816834.4196.31.camel@linux.intel.com>
+From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
+Subject: Re: [PATCH v2 2/3] dbus: Add disconnect watch support
+Date: Fri, 13 Feb 2015 16:23:10 +0200
+Message-ID: <1423837390.4196.34.camel@linux.intel.com>
+In-Reply-To: <54DE03B6.9070309@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2047488101815688010==
+--===============1765128898127788381==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Jukka,
+On pe, 2015-02-13 at 08:01 -0600, Denis Kenzior wrote:
+> Hi Jukka,
+> =
 
-On 02/13/2015 02:40 AM, Jukka Rissanen wrote:
-> On to, 2015-02-12 at 21:36 -0600, Denis Kenzior wrote:
->> On 02/12/2015 05:48 AM, Jukka Rissanen wrote:
->>> Test the dbus disconnect watch support.
->>> ---
->>>    Makefile.am            |   3 +
->>>    unit/test-dbus-watch.c | 388 +++++++++++++++++++++++++++++++++++++++=
-++++++++++
->>>    2 files changed, 391 insertions(+)
->>>    create mode 100644 unit/test-dbus-watch.c
->>>
->>
->> That seems like an awful lot of copy-paste. Can we isolate the actual
->> signal dispatcher and unit test it properly?  For example, you can
->> always make the message_filter function private (e.g. without
->> LIB_EXPORT) instead of static and feed it signals created using e.g.
->> l_dbus_message_new_signal or dbus_message_from_blob
->
-> I did not quite understand your comment about signal dispatcher and
-> message_filter here, please elaborate a bit more?
->
+> <snip>
+> =
 
-Look at how unit/test-dbus-service.c is done.  Almost every part of the =
+>  >>> +struct filter_data {
+> >>> +	struct l_dbus *dbus;
+> >>> +	l_dbus_message_func_t handle_func;
+> >>> +	l_dbus_watch_func_t connect_func;
+> >>> +	l_dbus_watch_func_t disconnect_func;
+> >>> +	char *name;
+> >>> +	char *owner;
+> >>
+> >> What is the exact difference between name and owner?  I don't see a
+> >> distinction...
+> >
+> > name is something like "org.foobar" and owner is ":1.101"
+> >
+> > User registers watch using a name and dbus-daemon sends its
+> > notifications about NameOwnerChanged signals using the owner format so
+> > we need to track both formats.
+> =
 
-dbus-service code can be tested standalone.  You need to think about how =
+> Yes, but you don't actually handle that anywhere.  So I don't see a =
 
-to do the same.
+> distinction in the current code.  If this is TBD, then simply don't =
 
-For example:
-	static void message_filter(...) -> void _dbus_message_filter(...)
-	static void format_rule(...) -> void _dbus1_format_rule()
+> include this and mention somewhere that only unique bus names are support=
+ed.
 
-Or maybe even allow the entire handle_signal() path to be tested.
+Hmm, owner and name are handled differently in the code. For example see
+the format_rule() function.
 
-Then test this functionality in the unit test.  If you're relying on =
+> =
 
-semi-manual tests for this stuff, your test coverage will be pretty small.
+> <snip>
+> =
 
-Regards,
--Denis
+> >>> +	if (arg && data->argument && strcmp(arg, data->argument))
+> >>> +		goto out;
+> >>
+> >> This looks wrong
+> >
+> > Please elaborate more?
+> >
+> =
 
->>
->> Alternatively, fold this into test-dbus.c if possible.
->
-> I thought about that but test-dbus.c was already quite big. But if you
-> are ok with that I can certainly do that too.
->
+> If arg is NULL, the matching continues.  I do not think that is what you =
 
-This is the least preferred option.  Only do this for stuff that can't =
+> want, but I've not read the DBus spec lately.  This needs a unit test cas=
+e.
+> =
 
-be tested via the unit test.
+> <snip>
+> =
 
-Regards,
--Denis
+> >>> +LIB_EXPORT unsigned int l_dbus_add_service_watch(struct l_dbus *dbus,
+> >>> +					const char *name,
+> >>> +					l_dbus_watch_func_t connect_func,
+> >>> +					l_dbus_watch_func_t disconnect_func,
+> >>> +					void *user_data,
+> >>> +					l_dbus_destroy_func_t destroy)
+> >>> +{
+> >>> +	struct filter_data *data;
+> >>> +
+> >>> +	if (!name)
+> >>> +		return 0;
+> >>> +
+> >>> +	if (connect_func)
+> >>> +		return -EOPNOTSUPP;
+> >>
+> >> Why? You seem to be handling that just fine?
+> >
+> > No, connect watch needs more work as more code needs to be done. I only
+> > needed the disconnect watch for my app so in order to speed things up,
+> > left the connect to be done later when such need arises. The connect
+> > pointer is in the API so that we do not need to change the API later.
+> >
+> =
+
+> Okay.  But this is still wrong.  The return value is an unsigned int. =
+
+> You're returning a negative errno.
+
+Yep, clearly a bug.
+
+> =
+
+> Might want to make this into an internal private function for now.
+
+Ok.
+
+> =
+
+> Regards,
+> -Denis
 
 
---===============2047488101815688010==--
+Jukka
+
+
+
+--===============1765128898127788381==--
 
