@@ -1,97 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============3569267161442469770=="
+Content-Type: multipart/mixed; boundary="===============5388913490727231614=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: Re: [PATCH v2 2/3] dbus: Add disconnect watch support
-Date: Mon, 16 Feb 2015 12:22:03 +0200
-Message-ID: <1424082123.4196.40.camel@linux.intel.com>
-In-Reply-To: <54DE12BD.7000403@gmail.com>
+Subject: Re: [PATCH v2 3/3] unit: dbus: Add test for disconnect watch API
+Date: Mon, 16 Feb 2015 12:53:22 +0200
+Message-ID: <1424084002.4196.45.camel@linux.intel.com>
+In-Reply-To: <54DE13A9.80003@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3569267161442469770==
+--===============5388913490727231614==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On pe, 2015-02-13 at 09:05 -0600, Denis Kenzior wrote:
+On pe, 2015-02-13 at 09:09 -0600, Denis Kenzior wrote:
 > Hi Jukka,
 > =
 
-> On 02/13/2015 08:23 AM, Jukka Rissanen wrote:
-> > On pe, 2015-02-13 at 08:01 -0600, Denis Kenzior wrote:
-> >> Hi Jukka,
+>  >>
+> >> Then test this functionality in the unit test.  If you're relying on
+> >> semi-manual tests for this stuff, your test coverage will be pretty sm=
+all.
 > >>
-> >> <snip>
-> >>
-> >>   >>> +struct filter_data {
-> >>>>> +	struct l_dbus *dbus;
-> >>>>> +	l_dbus_message_func_t handle_func;
-> >>>>> +	l_dbus_watch_func_t connect_func;
-> >>>>> +	l_dbus_watch_func_t disconnect_func;
-> >>>>> +	char *name;
-> >>>>> +	char *owner;
-> >>>>
-> >>>> What is the exact difference between name and owner?  I don't see a
-> >>>> distinction...
-> >>>
-> >>> name is something like "org.foobar" and owner is ":1.101"
-> >>>
-> >>> User registers watch using a name and dbus-daemon sends its
-> >>> notifications about NameOwnerChanged signals using the owner format so
-> >>> we need to track both formats.
-> >>
-> >> Yes, but you don't actually handle that anywhere.  So I don't see a
-> >> distinction in the current code.  If this is TBD, then simply don't
-> >> include this and mention somewhere that only unique bus names are supp=
-orted.
 > >
-> > Hmm, owner and name are handled differently in the code. For example see
-> > the format_rule() function.
-> >
+> > But don't we want to test this against dbus-daemon? Testing this watch
+> > API without dbus-daemon interaction seems pointless to me.
 > =
 
-> Then help me understand.  You have:
-> =
+> Why?  In this case, what's the difference between getting a signal from =
 
-> in format_rule you have:
-> +       offset =3D snprintf(rule, size, "type=3D'signal'");
-> +       sender =3D data->name ? : data->owner;
-> +
-> +       if (sender)
-> +               offset +=3D snprintf(rule + offset, size - offset,
-> +                               ",sender=3D'%s'", sender);
-> =
+> DBus Daemon vs simply making one up yourself?  Isolating the code and =
 
-> in filter_data_get you have:
-> +       if (sender) {
-> +               if (sender[0] =3D=3D ':')
-> +                       owner =3D sender;
-> +               else
-> +                       name =3D sender;
-> +       }
-> =
+> unit testing the hell out of it is much simpler without dbus-daemon =
 
-> So why not replace everything by simply sender?  Right now none of this =
+> involved.  Much faster and more compact too.
 
-> makes sense to me since you're not traking the well-known-name -> unique =
-
-> name mapping.
-> =
-
-> If you only support unique names, just say so and make the code reflect =
-
-> that.  Don't try to sneak code in that is part of some future =
-
-> functionality.  I'm not a mind reader.
-
-The owner/name distinction is indeed needed only for watching dbus
-connects, and as we do not implement the connect support yet I will
-remove this code.
+We have already tests for receiving signals so it seems pointless to
+test them again. To me it looks more useful to test that we really get
+NameOwnerChanged signal from dbus-daemon when we quit the test app.
+Testing real interaction is more complex (as the code shows) but at
+least we know that the watch support works in real life.
 
 
 Jukka
 
 
 
---===============3569267161442469770==--
+--===============5388913490727231614==--
 
