@@ -1,108 +1,54 @@
-Content-Type: multipart/mixed; boundary="===============2863425439911619684=="
+Content-Type: multipart/mixed; boundary="===============4174851583862224407=="
 MIME-Version: 1.0
-From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
-Subject: [RFC] genl: Add utility function no append nested attribute into a
- message
-Date: Wed, 18 Feb 2015 15:06:25 +0200
-Message-ID: <1424264785-20998-1-git-send-email-tomasz.bursztyka@linux.intel.com>
+From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
+Subject: [PATCH v3 0/4] Add DBus disconnect watch support
+Date: Wed, 18 Feb 2015 18:08:32 +0200
+Message-ID: <1424275716-7198-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2863425439911619684==
+--===============4174851583862224407==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-It will fill-in a l_genl_attr structure with the necessary information
-where the nested attribute starts. Thus at the end, it will update the
-nested attribute with the final length.
----
- ell/genl.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
- ell/genl.h |  3 +++
- 2 files changed, 51 insertions(+)
+Hi,
 
-diff --git a/ell/genl.c b/ell/genl.c
-index 2ef6a34..5484d33 100644
---- a/ell/genl.c
-+++ b/ell/genl.c
-@@ -707,6 +707,54 @@ bool l_genl_msg_append_attr(struct l_genl_msg *msg, ui=
-nt16_t type,
- 	return true;
- }
- =
+v3:
+- reworked the unit test
 
-+bool l_genl_msg_append_init_recurse(struct l_genl_msg *msg, uint16_t type,
-+						struct l_genl_attr *nested)
-+{
-+	struct nlattr *nla;
-+
-+	if (!msg || !nested)
-+		return false;
-+
-+	nla =3D msg->data + msg->len;
-+	nla->nla_len =3D NLA_HDRLEN;
-+	nla->nla_type =3D type;
-+
-+	if (!l_genl_msg_append_attr(msg, type, 0, NULL))
-+		return false;
-+
-+	nested->msg =3D msg;
-+	nested->data =3D nla;
-+	nested->len =3D 0;
-+	nested->next_data =3D NULL;
-+	nested->next_len =3D 0;
-+
-+	return true;
-+}
-+
-+bool l_genl_msg_append_end_recurse(struct l_genl_attr *nested)
-+{
-+	struct l_genl_msg *msg;
-+	struct nlattr *nla;
-+	uint32_t len;
-+
-+	if (!nested || !nested->msg)
-+		return false;
-+
-+	msg =3D nested->msg;
-+	len =3D nested->data - msg->data;
-+	nla =3D msg->data + len;
-+
-+	len =3D msg->len - len;
-+	if (len <=3D NLA_HDRLEN)
-+		return false;
-+
-+	nla->nla_len =3D len;
-+
-+	// Should we check msg alignement again?
-+
-+	return true;
-+}
-+
- #define NLA_OK(nla,len)         ((len) >=3D (int) sizeof(struct nlattr) &&=
- \
- 				(nla)->nla_len >=3D sizeof(struct nlattr) && \
- 				(nla)->nla_len <=3D (len))
-diff --git a/ell/genl.h b/ell/genl.h
-index c628b8c..13fe149 100644
---- a/ell/genl.h
-+++ b/ell/genl.h
-@@ -71,6 +71,9 @@ int l_genl_msg_get_error(struct l_genl_msg *msg);
- =
+v2:
+- moved the code to dbus.c
+- reworked the logic in the caller of the watcher so no need to
+  remove l_dbus_register() and l_dbus_unregister()
 
- bool l_genl_msg_append_attr(struct l_genl_msg *msg, uint16_t type,
- 					uint16_t len, const void *data);
-+bool l_genl_msg_append_init_recurse(struct l_genl_msg *msg, uint16_t type,
-+						struct l_genl_attr *nested);
-+bool l_genl_msg_append_end_recurse(struct l_genl_attr *nested);
- =
+this set allows user to monitor the disconnect status
+of a service.
 
- bool l_genl_attr_init(struct l_genl_attr *attr, struct l_genl_msg *msg);
- bool l_genl_attr_next(struct l_genl_attr *attr, uint16_t *type,
+Cheers,
+Jukka
+
+
+Jukka Rissanen (4):
+  dbus: Add AddMatch and RemoveMatch support
+  gvariant: dbus.h need to be included before private header
+  dbus: Add disconnect watch support
+  unit: dbus: Add test for disconnect watch API
+
+ Makefile.am            |   3 +
+ ell/dbus-private.h     |  35 ++++++++
+ ell/dbus.c             | 221 +++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ ell/dbus.h             |   9 ++
+ ell/gvariant-util.c    |   2 +-
+ unit/test-dbus-watch.c | 153 ++++++++++++++++++++++++++++++++++
+ 6 files changed, 422 insertions(+), 1 deletion(-)
+ create mode 100644 unit/test-dbus-watch.c
+
 -- =
 
-2.0.5
+2.1.0
 
 
---===============2863425439911619684==--
+--===============4174851583862224407==--
 
