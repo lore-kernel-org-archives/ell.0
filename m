@@ -1,75 +1,45 @@
-Content-Type: multipart/mixed; boundary="===============0506596268521805228=="
+Content-Type: multipart/mixed; boundary="===============4936859955432598139=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: [PATCH v3 1/4] dbus: Add AddMatch and RemoveMatch support
-Date: Wed, 18 Feb 2015 18:08:33 +0200
-Message-ID: <1424275716-7198-2-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: [PATCH v3 2/4] gvariant: dbus.h need to be included before private
+ header
+Date: Wed, 18 Feb 2015 18:08:34 +0200
+Message-ID: <1424275716-7198-3-git-send-email-jukka.rissanen@linux.intel.com>
 In-Reply-To: <1424275716-7198-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0506596268521805228==
+--===============4936859955432598139==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-We do not check for errors as they are typically unrecoverable
-in this case and in most cases ignored anyway.
-
-This is the comment from libdbus API documentation for
-dbus_bus_add_match() about error checking:
-
-"If you pass NULL for the error, this function will not block;
-the match thus won't be added until you flush the connection,
-and if there's an error adding the match you won't find out
-about it. This is generally acceptable, since the possible
-errors (including a lack of resources in the bus, the connection
-having exceeded its quota of active match rules, or the match
-rule being unparseable) are generally unrecoverable."
+Needed by dbus watcher unit tests which add stuff to private
+header file.
 ---
- ell/dbus.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+ ell/gvariant-util.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 4c4ba2d..c10e0ed 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -1227,3 +1227,29 @@ LIB_EXPORT bool l_dbus_unregister_interface(struct l=
-_dbus *dbus,
+diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
+index 8fb32c7..7534509 100644
+--- a/ell/gvariant-util.c
++++ b/ell/gvariant-util.c
+@@ -37,9 +37,9 @@
+ #include "queue.h"
+ #include "string.h"
+ #include "log.h"
++#include "dbus.h"
+ #include "dbus-private.h"
+ #include "gvariant-private.h"
+-#include "dbus.h"
  =
 
- 	return _dbus_object_tree_unregister(dbus->tree, path, interface);
- }
-+
-+static void send_match(struct l_dbus *dbus, const char *rule,
-+						const char *method)
-+{
-+	struct l_dbus_message *message;
-+
-+	message =3D l_dbus_message_new_method_call(dbus,
-+						DBUS_SERVICE_DBUS,
-+						DBUS_PATH_DBUS,
-+						DBUS_INTERFACE_DBUS,
-+						method);
-+
-+	l_dbus_message_set_arguments(message, "s", rule);
-+
-+	send_message(dbus, false, message, NULL, NULL, NULL);
-+}
-+
-+static void _dbus_bus_add_match(struct l_dbus *dbus, const char *rule)
-+{
-+	send_match(dbus, rule, "AddMatch");
-+}
-+
-+static void _dbus_bus_remove_match(struct l_dbus *dbus, const char *rule)
-+{
-+	send_match(dbus, rule, "RemoveMatch");
-+}
+ static const char *simple_types =3D "sogybnqiuxtdh";
+ static const char *variable_types =3D "sogav";
 -- =
 
 2.1.0
 
 
---===============0506596268521805228==--
+--===============4936859955432598139==--
 
