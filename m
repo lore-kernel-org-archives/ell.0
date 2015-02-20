@@ -1,49 +1,98 @@
-Content-Type: multipart/mixed; boundary="===============7588813277490862700=="
+Content-Type: multipart/mixed; boundary="===============7372990052096938239=="
 MIME-Version: 1.0
 From: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-Subject: [PATCH v4 3/6] dbus: Add filter rule creator
-Date: Fri, 20 Feb 2015 14:16:38 +0200
-Message-ID: <1424434601-2211-4-git-send-email-jukka.rissanen@linux.intel.com>
+Subject: [PATCH v4 4/6] unit: dbus: Add test for filter rule
+Date: Fri, 20 Feb 2015 14:16:39 +0200
+Message-ID: <1424434601-2211-5-git-send-email-jukka.rissanen@linux.intel.com>
 In-Reply-To: <1424434601-2211-1-git-send-email-jukka.rissanen@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7588813277490862700==
+--===============7372990052096938239==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Create a dbus filter rule here so that the following unit
-test is able to test it.
+Testing the _dbus1_format_rule() function.
 ---
- ell/dbus-private.h |  5 +++++
- ell/dbus.c         | 37 +++++++++++++++++++++++++++++++++++++
- ell/dbus.h         |  2 ++
- 3 files changed, 44 insertions(+)
+ Makefile.am            |   3 ++
+ unit/test-dbus-watch.c | 109 +++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 2 files changed, 112 insertions(+)
+ create mode 100644 unit/test-dbus-watch.c
 
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index 9987294..0123ddb 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -212,3 +212,8 @@ int _dbus_kernel_remove_match(int fd, uint64_t cookie);
+diff --git a/Makefile.am b/Makefile.am
+index 36a680b..cea1b7a 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -107,6 +107,7 @@ unit_tests =3D unit/test-unit \
+ 			unit/test-dbus-util \
+ 			unit/test-dbus-message \
+ 			unit/test-dbus-service \
++			unit/test-dbus-watch \
+ 			unit/test-gvariant-util \
+ 			unit/test-gvariant-message \
+ 			unit/test-siphash \
+@@ -154,6 +155,8 @@ unit_test_dbus_util_LDADD =3D ell/libell-private.la
  =
 
- uint8_t _dbus_get_version(struct l_dbus *dbus);
- int _dbus_get_fd(struct l_dbus *dbus);
-+
-+struct dbus_filter_data;
-+
-+void _dbus1_format_rule(struct dbus_filter_data *data, char *rule,
-+								size_t size);
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 1d1b166..a3d8070 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -122,6 +122,19 @@ struct signal_callback {
- 	void *user_data;
- };
+ unit_test_dbus_service_LDADD =3D ell/libell-private.la
  =
 
++unit_test_dbus_watch_LDADD =3D ell/libell-private.la
++
+ unit_test_gvariant_util_LDADD =3D ell/libell-private.la
+ =
+
+ unit_test_gvariant_message_LDADD =3D ell/libell-private.la
+diff --git a/unit/test-dbus-watch.c b/unit/test-dbus-watch.c
+new file mode 100644
+index 0000000..e1d3f9d
+--- /dev/null
++++ b/unit/test-dbus-watch.c
+@@ -0,0 +1,109 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2011-2015  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <unistd.h>
++#include <stdlib.h>
++#include <sys/wait.h>
++#include <assert.h>
++#include <time.h>
++#include <stdio.h>
++
++#include <ell/ell.h>
++#include "ell/dbus-private.h"
++
++#define DBUS_SERVICE_DBUS	"org.freedesktop.DBus"
++#define DBUS_PATH_DBUS		"/org/freedesktop/DBus"
++#define DBUS_INTERFACE_DBUS	"org.freedesktop.DBus"
++#define DBUS_MAXIMUM_MATCH_RULE_LENGTH	1024
++
 +struct dbus_filter_data {
 +	struct l_dbus *dbus;
 +	l_dbus_message_func_t handle_func;
@@ -57,57 +106,65 @@ index 1d1b166..a3d8070 100644
 +	l_dbus_destroy_func_t destroy_func;
 +};
 +
- static void message_queue_destroy(void *data)
- {
- 	struct message_callback *callback =3D data;
-@@ -1253,3 +1266,27 @@ static void dbus1_bus_remove_match(struct l_dbus *db=
-us, const char *rule)
- {
- 	dbus1_send_match(dbus, rule, "RemoveMatch");
- }
++struct watch_test {
++	const char *name;
++	const char *expected;
++};
 +
-+void _dbus1_format_rule(struct dbus_filter_data *data, char *rule,
-+			size_t size)
++static const struct watch_test match_test =3D {
++	.name =3D ":1.101",
++	.expected =3D "type=3D'signal',"
++		"sender=3D'org.freedesktop.DBus',"
++		"path=3D'/org/freedesktop/DBus',"
++		"interface=3D'org.freedesktop.DBus',"
++		"member=3D'NameOwnerChanged',"
++		"arg0=3D':1.101'",
++};
++
++static void setup_data(struct dbus_filter_data *data, const char *name)
 +{
-+	int offset;
-+
-+	offset =3D snprintf(rule, size, "type=3D'signal'");
-+
-+	if (data->sender)
-+		offset +=3D snprintf(rule + offset, size - offset,
-+				",sender=3D'%s'", data->sender);
-+	if (data->path)
-+		offset +=3D snprintf(rule + offset, size - offset,
-+				",path=3D'%s'", data->path);
-+	if (data->interface)
-+		offset +=3D snprintf(rule + offset, size - offset,
-+				",interface=3D'%s'", data->interface);
-+	if (data->member)
-+		offset +=3D snprintf(rule + offset, size - offset,
-+				",member=3D'%s'", data->member);
-+	if (data->argument)
-+		snprintf(rule + offset, size - offset,
-+				",arg0=3D'%s'", data->argument);
++	data->sender =3D l_strdup(DBUS_SERVICE_DBUS);
++	data->path =3D l_strdup(DBUS_PATH_DBUS);
++	data->interface =3D l_strdup(DBUS_INTERFACE_DBUS);
++	data->member =3D l_strdup("NameOwnerChanged");
++	data->argument =3D l_strdup(name);
 +}
-diff --git a/ell/dbus.h b/ell/dbus.h
-index a6ad109..b2469f3 100644
---- a/ell/dbus.h
-+++ b/ell/dbus.h
-@@ -48,6 +48,8 @@ typedef void (*l_dbus_debug_func_t) (const char *str, voi=
-d *user_data);
- typedef void (*l_dbus_destroy_func_t) (void *user_data);
- typedef void (*l_dbus_interface_setup_func_t) (struct l_dbus_interface *);
- =
-
-+typedef void (*l_dbus_watch_func_t) (struct l_dbus *dbus, void *user_data);
 +
- struct l_dbus *l_dbus_new(const char *address);
- struct l_dbus *l_dbus_new_default(enum l_dbus_bus bus);
- void l_dbus_destroy(struct l_dbus *dbus);
++static void clean_data(struct dbus_filter_data *data)
++{
++	l_free(data->sender);
++	l_free(data->path);
++	l_free(data->interface);
++	l_free(data->member);
++	l_free(data->argument);
++}
++static void test_match(const void *test_data)
++{
++	const struct watch_test *test =3D test_data;
++	struct dbus_filter_data data;
++	char rule[DBUS_MAXIMUM_MATCH_RULE_LENGTH];
++
++	setup_data(&data, test->name);
++
++	_dbus1_format_rule(&data, rule, sizeof(rule));
++
++	assert(strcmp(rule, test->expected) =3D=3D 0);
++
++	clean_data(&data);
++}
++
++int main(int argc, char *argv[])
++{
++	l_test_init(&argc, &argv);
++
++	l_test_add("DBus filter", test_match, &match_test);
++
++	return l_test_run();
++}
 -- =
 
 2.1.0
 
 
---===============7588813277490862700==--
+--===============7372990052096938239==--
 
