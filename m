@@ -1,51 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============6422637407763340223=="
+Content-Type: multipart/mixed; boundary="===============7095965494649599870=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel@holtmann.org>
-Subject: Re: [PATCH 0/2] Improve genl with a message builder 
-Date: Wed, 04 Mar 2015 06:17:10 -0800
-Message-ID: <6DDA26A3-DC7B-406C-9881-BBB8CCCAD1C9@holtmann.org>
-In-Reply-To: <1425474355-30536-1-git-send-email-tomasz.bursztyka@linux.intel.com>
+From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
+Subject: Re: [PATCH 0/2] Improve genl with a message builder
+Date: Thu, 05 Mar 2015 09:22:11 +0200
+Message-ID: <54F80423.1090108@linux.intel.com>
+In-Reply-To: <6DDA26A3-DC7B-406C-9881-BBB8CCCAD1C9@holtmann.org>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6422637407763340223==
+--===============7095965494649599870==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Tomasz,
+Hi Marcel,
 
-> I could not test yet the whole patch set so it's sent here for a quick re=
-view.
-> =
+My sentence was not clear, sorry. I was not criticizing the unit test =
 
-> First patch is there since I realized genl lacked of those LIB_EXPORT and=
- unlikely().
-> Minor stuff so.
-> =
+process, I really do want it also,
+instead of blindly using the api.
 
-> Second patch is the interesting one.
-> =
+It's just finding out proper raw messages to test against. I found one =
 
-> I am currently building a unit test for it. Getting some reliable nested =
-based messages
-> to compare with is the annoyingly time consuming part here.
+command that has
+one nested attribute, but I also would like to get some more complicated =
 
-I do not know what will be so "annoyingly time consuming" in getting nested=
- generic netlink messages for your unit tests. We have iwmon and it can cre=
-ate PCAP files. So start iwmon -w <file> and run wpa_supplicant to connect =
-to your access point. Open Wireshark and you have your raw data that you ca=
-n copy and put into a unit test. It is really as simple as that.
+ones as this api will
+be used in every places in our code. It's more time consuming and less =
 
-Unit tests for low level protocols are essential. The more the better. I wo=
-uld not accept patches that do not have unit tests attached with it. Spendi=
-ng extra time on unit tests is time well spent. It will save you a lot head=
-aches later on.
+fun than writing the
+api itself ;)  (and yes I am using iwmon hopefully)
 
-Regards
+Tomasz
 
-Marcel
-
-
---===============6422637407763340223==--
+--===============7095965494649599870==--
 
