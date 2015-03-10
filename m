@@ -1,37 +1,45 @@
-Content-Type: multipart/mixed; boundary="===============7095965494649599870=="
+Content-Type: multipart/mixed; boundary="===============3848988805448288975=="
 MIME-Version: 1.0
 From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
-Subject: Re: [PATCH 0/2] Improve genl with a message builder
-Date: Thu, 05 Mar 2015 09:22:11 +0200
-Message-ID: <54F80423.1090108@linux.intel.com>
-In-Reply-To: <6DDA26A3-DC7B-406C-9881-BBB8CCCAD1C9@holtmann.org>
+Subject: [PATCH v2 0/4] Improve genl with a message builder
+Date: Tue, 10 Mar 2015 13:14:26 +0200
+Message-ID: <1425986070-8808-1-git-send-email-tomasz.bursztyka@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7095965494649599870==
+--===============3848988805448288975==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Marcel,
+Hi,
 
-My sentence was not clear, sorry. I was not criticizing the unit test =
+It took a bit long as I was messing up with the wrong dump of a message
+(a private vs a broadcasted one...) and of course it took a while before
+I realized it.
 
-process, I really do want it also,
-instead of blindly using the api.
+Anyway, seems to work. I only had an issue with the nested message length
+calculation when leaving it.
 
-It's just finding out proper raw messages to test against. I found one =
+Tomasz Bursztyka (4):
+  genl: Normilize functions exports and parameters check as it should
+  genl: Add a message builder API to help creating complex nl messages
+  genl: Add a function to grab the message's raw data for unit purpose
+  unit: Add a message builder unit test for genl
 
-command that has
-one nested attribute, but I also would like to get some more complicated =
+ Makefile.am        |   1 +
+ ell/genl-private.h |  25 +++++
+ ell/genl.c         | 284 ++++++++++++++++++++++++++++++++++++++++---------=
+----
+ ell/genl.h         |  18 ++++
+ unit/test-genl.c   | 136 +++++++++++++++++++++----
+ 5 files changed, 379 insertions(+), 85 deletions(-)
+ create mode 100644 ell/genl-private.h
 
-ones as this api will
-be used in every places in our code. It's more time consuming and less =
+-- =
 
-fun than writing the
-api itself ;)  (and yes I am using iwmon hopefully)
+2.0.5
 
-Tomasz
 
---===============7095965494649599870==--
+--===============3848988805448288975==--
 
