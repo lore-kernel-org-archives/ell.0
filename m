@@ -1,35 +1,30 @@
-Content-Type: multipart/mixed; boundary="===============1071356863567076700=="
+Content-Type: multipart/mixed; boundary="===============1656389549818755333=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/4] genl: Normilize functions exports and parameters
- check as it should
-Date: Wed, 11 Mar 2015 00:03:19 -0500
-Message-ID: <54FFCC97.402@gmail.com>
-In-Reply-To: <1425986070-8808-2-git-send-email-tomasz.bursztyka@linux.intel.com>
+From: Marcel Holtmann <marcel@holtmann.org>
+Subject: Re: [PATCH 4/4] unit: Add a message builder unit test for genl
+Date: Wed, 18 Mar 2015 10:24:14 -0700
+Message-ID: <1C94F0DF-B758-4F7C-9774-8DA50E6F8015@holtmann.org>
+In-Reply-To: <1425986070-8808-5-git-send-email-tomasz.bursztyka@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1071356863567076700==
+--===============1656389549818755333==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Tomasz,
 
-On 03/10/2015 06:14 AM, Tomasz Bursztyka wrote:
-> Ell follows a certain way of exporting library functions and checking
-> parameter's validity, so let's apply these rules to genl.c
-> ---
->   ell/genl.c | 152 ++++++++++++++++++++++++++++++++++--------------------=
--------
->   1 file changed, 85 insertions(+), 67 deletions(-)
->
+> This tests quickly 2 mesasges, one with a nested attribute and one
+> without.
 
-Applied after fixing up the commit header.
+we need also test cases with double and triple nested messages. They are us=
+ed in nl80211.
 
-Regards,
--Denis
+Regards
+
+Marcel
 
 
---===============1071356863567076700==--
+--===============1656389549818755333==--
 
