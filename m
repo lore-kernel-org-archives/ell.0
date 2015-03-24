@@ -1,83 +1,92 @@
-Content-Type: multipart/mixed; boundary="===============7982803406415304493=="
+Content-Type: multipart/mixed; boundary="===============5994677022064887185=="
 MIME-Version: 1.0
 From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
-Subject: Re: [PATCH 4/4] unit: Add a message builder unit test for genl
-Date: Tue, 24 Mar 2015 08:55:48 +0200
-Message-ID: <55110A74.8050500@linux.intel.com>
-In-Reply-To: <71E450CF-79D0-422F-918C-58CD5C2EAA68@holtmann.org>
+Subject: Re: [PATCH 2/4] genl: Add a message builder API to help creating
+ complex nl messages
+Date: Tue, 24 Mar 2015 10:12:28 +0200
+Message-ID: <55111C6C.8080203@linux.intel.com>
+In-Reply-To: <550BDF83.3070303@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7982803406415304493==
+--===============5994677022064887185==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Marcel,
 
->> -#include <sys/socket.h>
->> +#include <assert.h>
->> +#include <linux/if_ether.h>
->> +#include <linux/nl80211.h>
-> I rather not include nl80211.h from ELL.
+>> do we really need a queue here? Can we not just store the latest =
 
-Ok, so redefining the constants should be the way.
-
->> #include <ell/ell.h>
->> +#include <ell/genl-private.h>
->>
->> -static void do_debug(const char *str, void *user_data)
->> -{
->> -	const char *prefix =3D user_data;
->> +struct key_builder {
->> +	uint32_t index;
->> +	uint8_t key_index;
->> +	uint8_t mac[ETH_ALEN];
->> +	const char *tk;
->> +	size_t tk_len;
->> +	const char *rsc;
->> +	size_t rsc_len;
->> +	uint32_t cipher;
->> +	bool multicast;
->> +	const char *verification;
->> +	uint32_t verification_len;
->> +};
-> I would really prefer if we are building generic tests data structures th=
-at can be used here for adding many (read 20+) test cases instead of some c=
-opied over from iwd.
+>> offset. Also how do you do nested of nested attributes?
 >
-> Unit tests should be generic and excerise every possible functionality. T=
-hat way you can ensure that code works and keep ensuring that nobody accide=
-ntally broke it.
+> Nested of nested exists, in nftables for instance.
+> Unless we prefer to have a fixed depth of nested of nested (like 3, =
+
+> 4...?),
+> we need such dynamically allocated list.
 >
-> I mean you have unit/test-dbus-message.c as an example here. It has funct=
-ions to build the message and a data structure to compare it again. That se=
-ems to work pretty well so far. Why not do the same.
+> I haven't tested this case, but we have to handle it.
+> Unless we plan to use that code for nl80211 only.
+>
+>>> +    }
+>>> +
+>>> +    // In case nothing has been appended into the nested attribute
+>>> +    // it could try to be smart and revert the message back and =
 
-Ok
+>>> return true
+>> this is not our comment style. Please respect the coding style.
+>
+> Actually, it's more like a question that needs an answer. I don't want =
 
->> +int main(int argc, char *argv[])
->> +{
->> +	l_test_init(&argc, &argv);
->>
->> -	l_genl_unref(genl);
->> +	l_test_add("nested msg", test_genl_msg_builder, &nl80211_nested_key);
->> +	l_test_add("normal msg", test_genl_msg_builder, &nl80211_key);
->>
->> -	return 0;
->> +	return l_test_run();
->> }
-> I really do not understand why you had to rewrite my test tool here and t=
-ake the existing functionality out. There is no mentioning anywhere that th=
-is can no longer be done. And if you would have followed the D-Bus examples=
- in ELL, then this looks more fitting with a new unit test like unit/test-g=
-enl-msg.c or similar anyway.
+> this comment to go in anyway.
+> Or let's just forget entirely about this.
+>
+>>> +struct l_genl_msg *l_genl_msg_builder_finalize(
+>>> +                    struct l_genl_msg_builder *builder);
+>> So I saw that l_dbus_message_builder does a similar thing. We give in =
 
-Ok, I'll let test-genl.c alone. Looks like Denis did the test-genl-msg.c =
+>> a message to start from and then we get that message back out when =
 
-so I push the builder thing there.
+>> finalizing it. Has anything changed in between or why are we doing this?
+>
+> The rule was to follow what DBus API does. But I think it's useless:
+> - l_genl_msg_builder_new()  it could take a size, and create the msg =
+
+> internally. (or have a fixed size of 512bytes, and if really needed =
+
+> would realloc relevantly?)
+> - then if everything went well: l_genl_msg_builder_finalize() would =
+
+> return a msg pointer (a reference of it actually), which one we could =
+
+> use to send  (and send unref the msg).
+>
+> Less function to call from client code.
+> It's actually awkward that you have to create the msg yourself, then =
+
+> also a builder with it etc...
+> when you have also other functions to append attributes directly in =
+
+> the msg.
+> At least in dbus api you can't append anything BUT through a builder.
+> (So yes I don't want to follow the DBus Api but finally a bit anyway...)
+>
+> The naming is too long as well, l_genl_msg_builder_append_attribute() =
+
+> mostly.
+> Suggestions would be welcome. I can strip the "ibute" at the end at =
+
+> least.
+> And also msg_builder into _msgbld_ or does the lack of vowels makes it =
+
+> even crappier?
+
+
+Any comment on this?
+Would be nice if I can solve all that, api and unit test, at once.
 
 Tomasz
 
---===============7982803406415304493==--
+--===============5994677022064887185==--
 
