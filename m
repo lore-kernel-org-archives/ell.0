@@ -1,59 +1,52 @@
-Content-Type: multipart/mixed; boundary="===============5159938661397489085=="
+Content-Type: multipart/mixed; boundary="===============0556818117202973755=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
 Subject: Re: [RFC] genl: Add a message builder API to help creating complex nl
  messages
-Date: Tue, 24 Mar 2015 07:38:17 -0500
-Message-ID: <55115AB9.9070603@gmail.com>
-In-Reply-To: <1427196109-21373-1-git-send-email-tomasz.bursztyka@linux.intel.com>
+Date: Wed, 25 Mar 2015 13:04:34 +0200
+Message-ID: <55129642.9020105@linux.intel.com>
+In-Reply-To: <55115AB9.9070603@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5159938661397489085==
+--===============0556818117202973755==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Tomasz,
+Hi Denis,
 
-On 03/24/2015 06:21 AM, Tomasz Bursztyka wrote:
-> ---
->
-> Hi Marcel,
->
-> Quickly, as an RFC, does this look better?
-> For building message I think either one uses l_genl_msg or l_genl_msg_bui=
-lder.
-> Thus I changed l_genl_msg_builder_new(): it creates the l_genl_msg by its=
-elf.
->
-> Only when one calls l_genl_msg_builder_finalize(), he will get a referenc=
-e on
-> the message. Such reference l_genl_family_send() will unref, or that he w=
-ill
-> in case of error.
->
-> Does that look saner? At least it avoids the user to call l_genl_msg_new()
-> and again l_genl_msg_builder() afterwards. I think it's better to separate
-> properly both.
->
-> I kept the queue for the nested of nested etc... I still want your opinio=
-n:
-> either a queue or a fixed depth of nested of nested ? or we don't care?
-> (I think we do care).
->
+> I sent my own take on this.  I was playing around with it yesterday.
 
-I sent my own take on this.  I was playing around with it yesterday. =
+Which is the exact same thing as I first proposed in "[PATCH] genl: Add =
 
-The only thing I'm not sure about is whether the nested message length =
+utility function no append nested attribute into a message"
+plus the nested of nested stuff I added in the other one via the fixed =
 
-is aligned or not.  Looking at libnl code it seems to be always aligned, =
+table I advised also (on which I am still waiting feedback). That's fine.
+But such API was requested to be moved into the "builder" type of thing =
 
-but if someone can whip up a quick unit test, that would be really helpful.
+like DBus does.
 
-Regards,
--Denis
+> The only thing I'm not sure about is whether the nested message length =
+
+> is aligned or not.  Looking at libnl code it seems to be always =
+
+> aligned, but if someone can whip up a quick unit test, that would be =
+
+> really helpful. =
 
 
---===============5159938661397489085==--
+Seriously?
+
+
+So guys what's the decision then: which API is the right one here?
+Can we clear this up once and for all? There are dependent code that =
+
+cannot proceed until this is over.
+This is a show-stopper.
+
+Tomasz
+
+--===============0556818117202973755==--
 
