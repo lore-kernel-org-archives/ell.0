@@ -1,86 +1,77 @@
-Content-Type: multipart/mixed; boundary="===============0989699583115890171=="
+Content-Type: multipart/mixed; boundary="===============5529390680954412283=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 02/17] checksum: Add l_checksum_clone API.
-Date: Fri, 24 Jul 2015 05:26:43 +0200
-Message-ID: <1437708410-28075-2-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 03/17] cipher: Add 3DES EDE and AES CBC-mode cipher types.
+Date: Fri, 24 Jul 2015 05:26:44 +0200
+Message-ID: <1437708410-28075-3-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1437708410-28075-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0989699583115890171==
+--===============5529390680954412283==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-In the kernel API we use and also in GLib's API the l_checksum_get_digest()
-equivalents can only be called once on each object meaning that in a
-situation when multiple digest values at different points of a
-running stream are needed the API becomes impractical.  The new _clone()
-call returns a clone of the checksum's state at the current time, on
-which get_digest() can be called.
+This again only adds the definitions needed to use the kernel
+implementations, no real code here.
 ---
- ell/checksum.c | 24 ++++++++++++++++++++++++
- ell/checksum.h |  1 +
- 2 files changed, 25 insertions(+)
+ ell/cipher.c | 8 +++++++-
+ ell/cipher.h | 2 ++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/ell/checksum.c b/ell/checksum.c
-index 882f5f6..7604ee0 100644
---- a/ell/checksum.c
-+++ b/ell/checksum.c
-@@ -242,6 +242,30 @@ struct l_checksum *l_checksum_new_hmac(enum l_checksum=
-_type type,
- }
+diff --git a/ell/cipher.c b/ell/cipher.c
+index 2c4fd90..b7577d5 100644
+--- a/ell/cipher.c
++++ b/ell/cipher.c
+@@ -76,7 +76,7 @@ struct af_alg_iv {
+ #define SOL_ALG 279
+ #endif
  =
 
- /**
-+ * l_checksum_clone:
-+ * @checksum: parent checksum object
-+ *
-+ * Creates a new checksum with an independent copy of parent @checksum's
-+ * state.  l_checksum_get_digest can then be called on the parent or the
-+ * clone without affecting the state of the other object.
-+ **/
-+LIB_EXPORT struct l_checksum *l_checksum_clone(struct l_checksum *checksum)
-+{
-+	struct l_checksum *clone;
-+
-+	clone =3D l_new(struct l_checksum, 1);
-+	clone->sk =3D accept4(checksum->sk, NULL, 0, SOCK_CLOEXEC);
-+
-+	if (clone->sk < 0) {
-+		l_free(clone);
-+		return NULL;
-+	}
-+
-+	strcpy(clone->alg_name, checksum->alg_name);
-+	return clone;
-+}
-+
-+/**
-  * l_checksum_free:
-  * @checksum: checksum object
-  *
-diff --git a/ell/checksum.h b/ell/checksum.h
-index c516580..34401a6 100644
---- a/ell/checksum.h
-+++ b/ell/checksum.h
-@@ -43,6 +43,7 @@ struct l_checksum *l_checksum_new(enum l_checksum_type ty=
-pe);
- struct l_checksum *l_checksum_new_cmac_aes(const void *key, size_t key_len=
-);
- struct l_checksum *l_checksum_new_hmac(enum l_checksum_type type,
- 					const void *key, size_t key_len);
-+struct l_checksum *l_checksum_clone(struct l_checksum *checksum);
+-#define is_valid_type(type)  ((type) <=3D L_CIPHER_ARC4)
++#define is_valid_type(type)  ((type) <=3D L_CIPHER_DES3_EDE_CBC)
  =
 
- void l_checksum_free(struct l_checksum *checksum);
+ struct l_cipher {
+ 	enum l_cipher_type type;
+@@ -103,9 +103,15 @@ static int create_alg(enum l_cipher_type type,
+ 	case L_CIPHER_AES:
+ 		strcpy((char *) salg.salg_name, "ecb(aes)");
+ 		break;
++	case L_CIPHER_AES_CBC:
++		strcpy((char *) salg.salg_name, "cbc(aes)");
++		break;
+ 	case L_CIPHER_ARC4:
+ 		strcpy((char *) salg.salg_name, "ecb(arc4)");
+ 		break;
++	case L_CIPHER_DES3_EDE_CBC:
++		strcpy((char *) salg.salg_name, "cbc(des3_ede)");
++		break;
+ 	}
  =
 
+ 	if (bind(sk, (struct sockaddr *) &salg, sizeof(salg)) < 0) {
+diff --git a/ell/cipher.h b/ell/cipher.h
+index efa1ad2..8e91884 100644
+--- a/ell/cipher.h
++++ b/ell/cipher.h
+@@ -31,7 +31,9 @@ struct l_cipher;
+ =
+
+ enum l_cipher_type {
+ 	L_CIPHER_AES =3D 0,
++	L_CIPHER_AES_CBC,
+ 	L_CIPHER_ARC4,
++	L_CIPHER_DES3_EDE_CBC,
+ };
+ =
+
+ struct l_cipher *l_cipher_new(enum l_cipher_type type,
 -- =
 
 2.1.4
 
 
---===============0989699583115890171==--
+--===============5529390680954412283==--
 
