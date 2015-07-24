@@ -1,52 +1,106 @@
-Content-Type: multipart/mixed; boundary="===============0556818117202973755=="
+Content-Type: multipart/mixed; boundary="===============1866551848257232493=="
 MIME-Version: 1.0
-From: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
-Subject: Re: [RFC] genl: Add a message builder API to help creating complex nl
- messages
-Date: Wed, 25 Mar 2015 13:04:34 +0200
-Message-ID: <55129642.9020105@linux.intel.com>
-In-Reply-To: <55115AB9.9070603@gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 01/17] checksum: Add SHA384 and SHA512 hash & hmac types.
+Date: Fri, 24 Jul 2015 05:26:42 +0200
+Message-ID: <1437708410-28075-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0556818117202973755==
+--===============1866551848257232493==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+---
+ ell/checksum.c | 20 ++++++++++++++++++--
+ ell/checksum.h |  2 ++
+ 2 files changed, 20 insertions(+), 2 deletions(-)
 
-> I sent my own take on this.  I was playing around with it yesterday.
+diff --git a/ell/checksum.c b/ell/checksum.c
+index 243470f..882f5f6 100644
+--- a/ell/checksum.c
++++ b/ell/checksum.c
+@@ -73,7 +73,7 @@ struct sockaddr_alg {
+  * Checksum handling
+  */
+ =
 
-Which is the exact same thing as I first proposed in "[PATCH] genl: Add =
+-#define is_valid_type(type)  ((type) <=3D L_CHECKSUM_SHA256)
++#define is_valid_type(type)  ((type) <=3D L_CHECKSUM_SHA512)
+ =
 
-utility function no append nested attribute into a message"
-plus the nested of nested stuff I added in the other one via the fixed =
+ /**
+  * l_checksum:
+@@ -136,6 +136,12 @@ LIB_EXPORT struct l_checksum *l_checksum_new(enum l_ch=
+ecksum_type type)
+ 	case L_CHECKSUM_SHA256:
+ 		name =3D "sha256";
+ 		break;
++	case L_CHECKSUM_SHA384:
++		name =3D "sha384";
++		break;
++	case L_CHECKSUM_SHA512:
++		name =3D "sha512";
++		break;
+ 	}
+ =
 
-table I advised also (on which I am still waiting feedback). That's fine.
-But such API was requested to be moved into the "builder" type of thing =
+ 	fd =3D create_alg(name);
+@@ -205,6 +211,12 @@ struct l_checksum *l_checksum_new_hmac(enum l_checksum=
+_type type,
+ 	case L_CHECKSUM_SHA256:
+ 		name =3D "hmac(sha256)";
+ 		break;
++	case L_CHECKSUM_SHA384:
++		name =3D "hmac(sha384)";
++		break;
++	case L_CHECKSUM_SHA512:
++		name =3D "hmac(sha512)";
++		break;
+ 	}
+ =
 
-like DBus does.
+ 	fd =3D create_alg(name);
+@@ -338,13 +350,17 @@ LIB_EXPORT char *l_checksum_get_string(struct l_check=
+sum *checksum)
+ 		{ .name =3D "md5", .digest_len =3D 16 },
+ 		{ .name =3D "sha1", .digest_len =3D 20 },
+ 		{ .name =3D "sha256", .digest_len =3D 32 },
++		{ .name =3D "sha384", .digest_len =3D 48 },
++		{ .name =3D "sha512", .digest_len =3D 64 },
+ 		{ .name =3D "cmac(aes)", .digest_len =3D 16 },
+ 		{ .name =3D "hmac(md5)", .digest_len =3D 16 },
+ 		{ .name =3D "hmac(sha1)", .digest_len =3D 20 },
+ 		{ .name =3D "hmac(sha256)", .digest_len =3D 32 },
++		{ .name =3D "hmac(sha384)", .digest_len =3D 48 },
++		{ .name =3D "hmac(sha512)", .digest_len =3D 64 },
+ 		{ .name =3D NULL, .digest_len =3D 0 },
+ 	};
+-	unsigned char digest[32];
++	unsigned char digest[64];
+ 	unsigned int i;
+ =
 
-> The only thing I'm not sure about is whether the nested message length =
+ 	if (unlikely(!checksum))
+diff --git a/ell/checksum.h b/ell/checksum.h
+index 8e163c4..c516580 100644
+--- a/ell/checksum.h
++++ b/ell/checksum.h
+@@ -35,6 +35,8 @@ enum l_checksum_type {
+ 	L_CHECKSUM_MD5,
+ 	L_CHECKSUM_SHA1,
+ 	L_CHECKSUM_SHA256,
++	L_CHECKSUM_SHA384,
++	L_CHECKSUM_SHA512,
+ };
+ =
 
-> is aligned or not.  Looking at libnl code it seems to be always =
+ struct l_checksum *l_checksum_new(enum l_checksum_type type);
+-- =
 
-> aligned, but if someone can whip up a quick unit test, that would be =
-
-> really helpful. =
-
-
-Seriously?
+2.1.4
 
 
-So guys what's the decision then: which API is the right one here?
-Can we clear this up once and for all? There are dependent code that =
-
-cannot proceed until this is over.
-This is a show-stopper.
-
-Tomasz
-
---===============0556818117202973755==--
+--===============1866551848257232493==--
 
