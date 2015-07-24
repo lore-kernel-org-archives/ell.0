@@ -1,683 +1,1152 @@
-Content-Type: multipart/mixed; boundary="===============8503755159416523704=="
+Content-Type: multipart/mixed; boundary="===============0234412146145502381=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 13/17] tls: TLS Record Protocol layer.
-Date: Fri, 24 Jul 2015 05:27:48 +0200
-Message-ID: <1437708472-28124-4-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 14/17] tls: TLS 1.2 Handshake implementation.
+Date: Fri, 24 Jul 2015 05:27:49 +0200
+Message-ID: <1437708472-28124-5-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1437708472-28124-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8503755159416523704==
+--===============0234412146145502381==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The Record Protocol is the lower of the two layers in TLS, described
-in section 6 of RFC5246.  tls_tx_record in tls-record.c is called by
-the higher layer to send Handshake messages during set up, to report
-errors and to transmit application data to the peer.  The Record
-layer in turn calls tls_handle_message (not in this patch) in tls.c
-when an incoming message of any of these types is decoded.
+The Handshake Protocol (RFC5246 section 7) runs on top of the Record
+protocol and carries out the cryptographic negotiation.  Only version
+1.2 is implemented here.  It distinguishes server and client roles.
+I have tested both the client and server roles against OpenSSL as
+server and client and ell against ell.  I've also now tested the server
+against Firefox as https client and the client against a few popular
+https websites.
 ---
- Makefile.am       |   3 +-
- ell/tls-private.h |   9 +
- ell/tls-record.c  | 508 ++++++++++++++++++++++++++++++++++++++++++++++++++=
+ ell/tls.c | 1078 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++=
 ++++
- ell/tls.c         |  47 +++++
- ell/tls.h         |   9 +
- 5 files changed, 575 insertions(+), 1 deletion(-)
- create mode 100644 ell/tls-record.c
+ 1 file changed, 1078 insertions(+)
 
-diff --git a/Makefile.am b/Makefile.am
-index 29bf54e..0896100 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -84,7 +84,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/rsa-private.h \
- 			ell/rsa.c \
- 			ell/tls-private.h \
--			ell/tls.c
-+			ell/tls.c \
-+			ell/tls-record.c
+diff --git a/ell/tls.c b/ell/tls.c
+index 312a42b..8d88ea4 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -76,6 +76,13 @@ void tls12_prf(enum l_checksum_type type, size_t hash_le=
+n,
+ 	l_checksum_free(hmac);
+ }
  =
 
- ell_libell_la_LDFLAGS =3D -no-undefined \
- 			-version-info $(ELL_CURRENT):$(ELL_REVISION):$(ELL_AGE)
-diff --git a/ell/tls-private.h b/ell/tls-private.h
-index 033403a..ff7e51f 100644
---- a/ell/tls-private.h
-+++ b/ell/tls-private.h
-@@ -183,3 +183,12 @@ void tls12_prf(enum l_checksum_type type, size_t hash_=
-len,
- 		const char *label,
- 		const uint8_t *seed, size_t seed_len,
- 		uint8_t *out, size_t out_len);
-+
-+void tls_disconnect(struct l_tls *tls, enum l_tls_alert_desc desc,
-+			enum l_tls_alert_desc local_desc);
-+
-+void tls_tx_record(struct l_tls *tls, enum tls_content_type type,
-+			const uint8_t *data, size_t len);
-+
-+bool tls_handle_message(struct l_tls *tls, const uint8_t *message,
-+			int len, uint8_t type, uint16_t version);
-diff --git a/ell/tls-record.c b/ell/tls-record.c
-new file mode 100644
-index 0000000..3217fec
---- /dev/null
-+++ b/ell/tls-record.c
-@@ -0,0 +1,508 @@
-+/*
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2015  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#define _GNU_SOURCE
-+#include <alloca.h>
-+
-+#include "private.h"
-+#include "tls.h"
-+#include "checksum.h"
-+#include "cipher.h"
-+#include "cert.h"
-+#include "tls-private.h"
-+#include "random.h"
-+
-+/* Implementation-specific max Record Layer fragment size (must be < 16kB)=
- */
-+#define TX_RECORD_MAX_LEN	4096
-+
-+/* TLSPlaintext + TLSCompressed + TLSCiphertext headers + seq_num sizes */
-+#define TX_RECORD_MAX_HEADERS	(5 + 5 + 8 + 5)
-+#define TX_RECORD_MAX_MAC	64
-+
-+/* Head room and tail room for the buffer passed to the cipher */
-+#define TX_RECORD_HEADROOM	TX_RECORD_MAX_HEADERS
-+#define TX_RECORD_TAILROOM	TX_RECORD_MAX_MAC
-+
-+static void tls_write_mac(struct l_tls *tls, uint8_t *compressed,
-+				uint16_t compressed_len, uint8_t *out_buf,
-+				bool txrx)
++static void tls_write_random(uint8_t *buf)
 +{
-+	uint8_t *in_buf;
++	l_put_be32(time(NULL), buf);
 +
-+	/* Prepend the sequence number to the TLSCompressed buffer */
-+	in_buf =3D compressed - 8;
-+	l_put_be64(tls->seq_num[txrx]++, in_buf);
-+
-+	if (tls->mac[txrx]) {
-+		l_checksum_reset(tls->mac[txrx]);
-+		l_checksum_update(tls->mac[txrx], in_buf, compressed_len + 8);
-+		l_checksum_get_digest(tls->mac[txrx], out_buf,
-+					tls->mac_length[txrx]);
-+	}
++	l_getrandom(buf + 4, 28);
 +}
 +
-+static void tls_tx_record_plaintext(struct l_tls *tls,
-+					uint8_t *plaintext,
-+					uint16_t plaintext_len)
+ static void tls_reset_handshake(struct l_tls *tls)
+ {
+ 	memset(tls->pending.master_secret, 0, 48);
+@@ -249,6 +256,283 @@ static struct tls_compression_method *tls_find_compre=
+ssion_method(
+ 	return NULL;
+ }
+ =
+
++static uint8_t tls_cert_type_pref[] =3D {
++};
++
++struct tls_signature_hash_algorithms {
++	uint8_t hash_id;
++	uint8_t signature_id;
++};
++
++static struct tls_signature_hash_algorithms tls_signature_hash_pref[] =3D {
++};
++
++enum tls_handshake_type {
++	TLS_HELLO_REQUEST	=3D 0,
++	TLS_CLIENT_HELLO	=3D 1,
++	TLS_SERVER_HELLO	=3D 2,
++	TLS_CERTIFICATE		=3D 11,
++	TLS_SERVER_KEY_EXCHANGE	=3D 12,
++	TLS_CERTIFICATE_REQUEST	=3D 13,
++	TLS_SERVER_HELLO_DONE	=3D 14,
++	TLS_CERTIFICATE_VERIFY	=3D 15,
++	TLS_CLIENT_KEY_EXCHANGE	=3D 16,
++	TLS_FINISHED		=3D 20,
++};
++
++#define TLS_HANDSHAKE_HEADER_SIZE	4
++
++static void tls_tx_handshake(struct l_tls *tls, int type, uint8_t *buf,
++				size_t length)
 +{
-+	uint8_t *compressed;
-+	uint16_t compressed_len;
-+	uint8_t *cipher_input;
-+	uint16_t cipher_input_len;
-+	uint8_t *ciphertext;
-+	uint16_t ciphertext_len;
-+	uint8_t padding_length;
-+	uint8_t buf[TX_RECORD_HEADROOM + TX_RECORD_MAX_LEN +
-+				TX_RECORD_TAILROOM];
-+	int offset;
++	/* Fill in the handshake header */
++
++	buf[0] =3D type;
++	buf[1] =3D (length - TLS_HANDSHAKE_HEADER_SIZE) >> 16;
++	buf[2] =3D (length - TLS_HANDSHAKE_HEADER_SIZE) >>  8;
++	buf[3] =3D (length - TLS_HANDSHAKE_HEADER_SIZE) >>  0;
++
++	l_checksum_update(tls->handshake_hash, buf, length);
++
++	tls_tx_record(tls, TLS_CT_HANDSHAKE, buf, length);
++}
++
++static void tls_send_client_hello(struct l_tls *tls)
++{
++	uint8_t buf[128 + L_ARRAY_SIZE(tls_compression_pref) +
++			2 * L_ARRAY_SIZE(tls_cipher_suite_pref)];
++	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
++	int i;
++
++	/* Fill in the Client Hello body */
++
++	*ptr++ =3D (uint8_t) (TLS_VERSION >> 8);
++	*ptr++ =3D (uint8_t) (TLS_VERSION >> 0);
++
++	tls_write_random(tls->pending.client_random);
++	memcpy(ptr, tls->pending.client_random, 32);
++	ptr +=3D 32;
++
++	*ptr++ =3D 0; /* No SessionID */
 +
 +	/*
-+	 * TODO: if DEFLATE is selected in current state, use a new buffer
-+	 * on stack to write a TLSCompressed structure there, otherwise use
-+	 * the provided buffer.  Since only null compression is supported
-+	 * today we always use the provided buffer.
++	 * We can list all supported key exchange mechanisms regardless of the
++	 * certificate type we are actually presenting (if any).
++	 *
++	 * TODO: perhaps scan /proc/crypto for supported ciphers so we don't
++	 * include ones that will cause an internal error later in the
++	 * handshake.  We can add camellia whan this is done.
 +	 */
-+	compressed_len =3D plaintext_len - 5;
-+	compressed =3D plaintext;
-+
-+	/* Build a TLSCompressed struct */
-+	compressed[0] =3D plaintext[0]; /* Copy type and version fields */
-+	compressed[1] =3D plaintext[1];
-+	compressed[2] =3D plaintext[2];
-+	compressed[3] =3D compressed_len >> 8;
-+	compressed[4] =3D compressed_len >> 0;
-+
-+	switch (tls->cipher_type[1]) {
-+	case TLS_CIPHER_STREAM:
-+		/* Append the MAC after TLSCompressed.fragment, if needed */
-+		tls_write_mac(tls, compressed, compressed_len + 5,
-+				compressed + compressed_len + 5, true);
-+
-+		cipher_input =3D compressed + 5;
-+		cipher_input_len =3D compressed_len + tls->mac_length[1];
-+
-+		if (!tls->cipher[1]) {
-+			ciphertext =3D cipher_input;
-+			ciphertext_len =3D cipher_input_len;
-+		} else {
-+			ciphertext =3D buf + TX_RECORD_HEADROOM;
-+			ciphertext_len =3D cipher_input_len;
-+			l_cipher_encrypt(tls->cipher[1], cipher_input,
-+						ciphertext, cipher_input_len);
-+		}
-+
-+		break;
-+
-+	case TLS_CIPHER_BLOCK:
-+		/* Append the MAC after TLSCompressed.fragment, if needed */
-+		cipher_input =3D compressed + 5;
-+		tls_write_mac(tls, compressed, compressed_len + 5,
-+				cipher_input + compressed_len, true);
-+		cipher_input_len =3D compressed_len + tls->mac_length[1];
-+
-+		/* Add minimum padding */
-+		padding_length =3D (~cipher_input_len) &
-+			(tls->block_length[1] - 1);
-+		memset(cipher_input + cipher_input_len, padding_length,
-+				padding_length + 1);
-+		cipher_input_len +=3D padding_length + 1;
-+
-+		/* Generate an IV */
-+		ciphertext =3D buf + TX_RECORD_HEADROOM;
-+
-+		offset =3D 0;
-+
-+		if (tls->negotiated_version >=3D TLS_V12) {
-+			l_getrandom(ciphertext, tls->record_iv_length[1]);
-+
-+			l_cipher_set_iv(tls->cipher[1], ciphertext,
-+					tls->record_iv_length[1], 1);
-+
-+			offset =3D tls->record_iv_length[1];
-+		}
-+
-+		l_cipher_encrypt(tls->cipher[1], cipher_input,
-+					ciphertext + offset, cipher_input_len);
-+		ciphertext_len =3D offset + cipher_input_len;
-+
-+		break;
-+
-+	case TLS_CIPHER_AEAD:
-+		/* No AEAD ciphers supported today */
-+	default:
-+		return;
++	l_put_be16(L_ARRAY_SIZE(tls_cipher_suite_pref) * 2, ptr);
++	ptr +=3D 2;
++	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_cipher_suite_pref); i++) {
++		*ptr++ =3D tls_cipher_suite_pref[i].id[0];
++		*ptr++ =3D tls_cipher_suite_pref[i].id[1];
 +	}
 +
-+	/* Build a TLSCiphertext struct */
-+	ciphertext -=3D 5;
-+	ciphertext[0] =3D plaintext[0]; /* Copy type and version fields */
-+	ciphertext[1] =3D plaintext[1];
-+	ciphertext[2] =3D plaintext[2];
-+	ciphertext[3] =3D ciphertext_len >> 8;
-+	ciphertext[4] =3D ciphertext_len >> 0;
++	*ptr++ =3D L_ARRAY_SIZE(tls_compression_pref);
++	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_compression_pref); i++)
++		*ptr++ =3D tls_compression_pref[i].id;
 +
-+	tls->tx(tls->user_data, ciphertext, ciphertext_len + 5);
++	tls_tx_handshake(tls, TLS_CLIENT_HELLO, buf, ptr - buf);
 +}
 +
-+void tls_tx_record(struct l_tls *tls, enum tls_content_type type,
-+			const uint8_t *data, size_t len)
++static void tls_send_server_hello(struct l_tls *tls)
 +{
-+	uint8_t buf[TX_RECORD_HEADROOM + TX_RECORD_MAX_LEN +
-+				TX_RECORD_TAILROOM];
-+	uint8_t *fragment, *plaintext;
-+	uint16_t fragment_len;
++	uint8_t buf[128];
++	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
 +
-+	while (len) {
-+		fragment =3D buf + TX_RECORD_HEADROOM;
-+		fragment_len =3D len < TX_RECORD_MAX_LEN ?
-+			len : TX_RECORD_MAX_LEN;
++	/* Fill in the Server Hello body */
 +
-+		/* Build a TLSPlaintext struct */
-+		plaintext =3D fragment - 5;
-+		plaintext[0] =3D type;
-+		plaintext[1] =3D (uint8_t) (TLS_VERSION >> 8);
-+		plaintext[2] =3D (uint8_t) (TLS_VERSION >> 0);
-+		plaintext[3] =3D fragment_len >> 8;
-+		plaintext[4] =3D fragment_len >> 0;
-+		memcpy(plaintext + 5, data, fragment_len);
++	*ptr++ =3D tls->negotiated_version >> 8;
++	*ptr++ =3D tls->negotiated_version >> 0;
 +
-+		tls_tx_record_plaintext(tls, plaintext, fragment_len + 5);
++	tls_write_random(tls->pending.server_random);
++	memcpy(ptr, tls->pending.server_random, 32);
++	ptr +=3D 32;
 +
-+		data +=3D fragment_len;
-+		len -=3D fragment_len;
++	*ptr++ =3D 0; /* Sessions are not cached */
++
++	*ptr++ =3D tls->pending.cipher_suite->id[0];
++	*ptr++ =3D tls->pending.cipher_suite->id[1];
++
++	*ptr++ =3D tls->pending.compression_method->id;
++
++	tls_tx_handshake(tls, TLS_SERVER_HELLO, buf, ptr - buf);
++}
++
++static bool tls_send_certificate(struct l_tls *tls)
++{
++	uint8_t *buf, *ptr;
++	struct l_cert *cert, *i;
++	size_t total;
++
++	if (tls->cert_path) {
++		cert =3D l_cert_load_file(tls->cert_path);
++
++		if (tls->server && !cert) {
++			tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
++					TLS_ALERT_BAD_CERT);
++
++			return false;
++		}
++	} else
++		cert =3D NULL;
++
++	if (cert && !l_cert_find_certchain(cert, tls->ca_cert_path)) {
++		if (tls->server) {
++			tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
++					TLS_ALERT_UNKNOWN_CA);
++
++			return false;
++		} else
++			cert =3D NULL;
 +	}
-+}
 +
-+static bool tls_handle_plaintext(struct l_tls *tls, const uint8_t *plainte=
-xt,
-+					int len, uint8_t type, uint16_t version)
-+{
-+	int header_len, need_len;
-+	int chunk_len;
-+
-+	uint32_t hs_len;
-+
-+	if (len > (1 << 14)) {
-+		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
++	/* TODO: might want check this earlier and exclude the cipher suite */
++	if (cert && !tls->pending.cipher_suite->key_xchg->
++			validate_cert_key_type(cert)) {
++		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
++				TLS_ALERT_CERT_UNKNOWN);
 +
 +		return false;
 +	}
-+
-+	switch (type) {
-+	case TLS_CT_CHANGE_CIPHER_SPEC:
-+	case TLS_CT_APPLICATION_DATA:
-+		return tls_handle_message(tls, plaintext, len, type, version);
 +
 +	/*
-+	 * We need to perform input reassembly twice@different levels:
-+	 * once to make sure we're handling complete TLSCiphertext messages,
-+	 * in l_tls_handle_rx(), and again here so that the Alert and
-+	 * Handshake message type handlers deal with complete messages.
-+	 * This does not affect ChangeCipherSpec messages because they're
-+	 * just a single byte and there are never more than one such message
-+	 * in a row.  Similarly it doesn't affect application data because
-+	 * the application is not guaranteed that message boundaries are
-+	 * preserved in any way and we don't know its message lengths anyway.
-+	 * It does affect Alert because these messages are 2 byte long and
-+	 * could potentially be split over two TLSPlaintext messages but
-+	 * there are never more than one Alert in a TLSPlaintext for the same
-+	 * reason as with ChangeCipherSpec.  Handshake messages are the
-+	 * most affected although the need to do the reassembly twice still
-+	 * seems wasteful considering most of these messages are sent in
-+	 * plaintext and TLSCiphertext maps to TLSPlaintext records.
++	 * TODO: check that the certificate is compatible with hash and
++	 * signature algorithms lists supplied to us in the Client Hello
++	 * extensions (if we're a server) or in the Certificate Request
++	 * (if we act as a 1.2+ client).
++	 *
++	 *  - for the hash and signature_algorithms list, check all
++	 *    certs in the cert chain.
++	 *
++	 *  - also if !cipher_suite->key_xchg->key_exchange_msg, check that the
++	 *    end entity certificate's key type matches and is usable with some
++	 *    hash/signature pair.
++	 *
++	 *  - on client check if any of the supplied DNs (if any) match
++	 *    anything in our cert chain.
 +	 */
-+	case TLS_CT_ALERT:
-+	case TLS_CT_HANDSHAKE:
-+		break;
 +
-+	default:
++	total =3D 0;
++	for (i =3D cert; i; i =3D i->issuer)
++		total +=3D 3 + i->size;
++
++	buf =3D l_malloc(128 + total);
++	ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
++
++	/* Fill in the Certificate body */
++
++	*ptr++ =3D total >> 16;
++	*ptr++ =3D total >>  8;
++	*ptr++ =3D total >>  0;
++
++	for (i =3D cert; i; i =3D i->issuer) {
++		*ptr++ =3D i->size >> 16;
++		*ptr++ =3D i->size >>  8;
++		*ptr++ =3D i->size >>  0;
++
++		memcpy(ptr, i->asn1, i->size);
++		ptr +=3D i->size;
++	}
++
++	tls_tx_handshake(tls, TLS_CERTIFICATE, buf, ptr - buf);
++
++	l_free(buf);
++
++	if (cert)
++		tls->cert_sent =3D true;
++
++	return true;
++}
++
++static bool tls_send_certificate_request(struct l_tls *tls)
++{
++	uint8_t *buf, *ptr, *dn_ptr;
++	int i;
++	struct l_cert *ca_cert;
++	uint8_t *ca_name;
++	int ca_name_len;
++
++	/* TODO: support multiple CAs if directory path given */
++	ca_cert =3D l_cert_load_file(tls->ca_cert_path);
++	if (!ca_cert) {
++		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
++				TLS_ALERT_BAD_CERT);
++
++		return false;
++	}
++
++	ca_name =3D l_cert_find_dn(ca_cert, false, &ca_name_len);
++	if (!ca_name) {
++		l_free(ca_cert);
++		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
++				TLS_ALERT_BAD_CERT);
++
++		return false;
++	}
++
++	buf =3D l_malloc(128 + L_ARRAY_SIZE(tls_cert_type_pref) +
++			2 * L_ARRAY_SIZE(tls_signature_hash_pref) +
++			strlen((char *) ca_name));
++	ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
++
++	/* Fill in the Certificate Request body */
++
++	*ptr++ =3D L_ARRAY_SIZE(tls_cert_type_pref);
++	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_cert_type_pref); i++)
++		*ptr++ =3D tls_cert_type_pref[i];
++
++	/*
++	 * This only makes sense as a variable-length field, assume there's
++	 * a typo in RFC5246 7.4.4 here.
++	 *
++	 * TODO: we support the full list of hash algorithms when used
++	 * in the client certificate chain but we can only verify the
++	 * Certificate Verify signature when the hash algorithm matches
++	 * HANDSHAKE_HASH_TYPE_TLS.  The values we include here will
++	 * affect both of these steps so revisit which set we're passing
++	 * here.
++	 *
++	 * TODO: not present in TLS 1.0
++	 */
++	l_put_be16(L_ARRAY_SIZE(tls_signature_hash_pref) * 2, ptr);
++	ptr +=3D 2;
++	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_signature_hash_pref); i++) {
++		*ptr++ =3D tls_signature_hash_pref[i].hash_id;
++		*ptr++ =3D tls_signature_hash_pref[i].signature_id;
++	}
++
++	dn_ptr =3D ptr;
++	ptr +=3D 4;				/* Leave space for sizes */
++	*ptr++ =3D ASN1_ID_SEQUENCE;		/* DER outer SEQUENCE tag */
++	write_asn1_definite_length(&ptr, ca_name_len); /* length */
++	memcpy(ptr, ca_name, ca_name_len);	/* value */
++	ptr +=3D ca_name_len;
++
++	ca_name_len =3D ptr - dn_ptr - 4;
++	l_put_be16(ca_name_len + 2, dn_ptr);	/* DistinguishedNames size */
++	l_put_be16(ca_name_len, dn_ptr + 2);	/* DistinguishedName[0] size */
++
++	tls_tx_handshake(tls, TLS_CERTIFICATE_REQUEST, buf, ptr - buf);
++
++	l_free(ca_cert);
++	l_free(buf);
++
++	return true;
++}
++
++static void tls_send_server_hello_done(struct l_tls *tls)
++{
++	uint8_t buf[32];
++
++	/* No body */
++
++	tls_tx_handshake(tls, TLS_SERVER_HELLO_DONE, buf,
++				TLS_HANDSHAKE_HEADER_SIZE);
++}
++
+ static void tls_generate_master_secret(struct l_tls *tls,
+ 					const uint8_t *pre_master_secret,
+ 					int pre_master_secret_len)
+@@ -295,6 +579,710 @@ static void tls_get_handshake_hash(struct l_tls *tls,=
+ uint8_t *out)
+ 	l_checksum_free(hash);
+ }
+ =
+
++static bool tls_send_certificate_verify(struct l_tls *tls)
++{
++	uint8_t buf[2048];
++	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
++	uint8_t hash[HANDSHAKE_HASH_SIZE];
++
++	/* Fill in the Certificate Verify body */
++
++	tls_get_handshake_hash(tls, hash);
++
++	if (!tls->pending.cipher_suite->key_xchg->sign(tls, &ptr, hash))
++		return false;
++
++	tls_tx_handshake(tls, TLS_CERTIFICATE_VERIFY, buf, ptr - buf);
++
++	return true;
++}
++
++static void tls_send_change_cipher_spec(struct l_tls *tls)
++{
++	uint8_t buf =3D 1;
++
++	tls_tx_record(tls, TLS_CT_CHANGE_CIPHER_SPEC, &buf, 1);
++}
++
++static void tls_send_finished(struct l_tls *tls)
++{
++	uint8_t buf[512];
++	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
++	uint8_t seed[HANDSHAKE_HASH_SIZE];
++
++	/*
++	 * Same hash type as that used for the PRF, i.e. SHA256 unless an
++	 * exotic cipher suite was negotiated that dictates a different
++	 * hash for the PRF and for the Finished hash.  We don't support
++	 * any such ciphers so it's always SHA256.
++	 */
++	tls_get_handshake_hash(tls, seed);
++
++	tls12_prf(L_CHECKSUM_SHA256, 32, tls->pending.master_secret, 48,
++			tls->server ? "server finished" : "client finished",
++			seed, sizeof(seed),
++			ptr, tls->cipher_suite[1]->verify_data_length);
++	ptr +=3D tls->cipher_suite[1]->verify_data_length;
++
++	tls_tx_handshake(tls, TLS_FINISHED, buf, ptr - buf);
++}
++
++static bool tls_verify_finished(struct l_tls *tls, const uint8_t *received,
++				size_t len)
++{
++	uint8_t expected[tls->cipher_suite[0]->verify_data_length];
++
++	if (len !=3D (size_t) tls->cipher_suite[0]->verify_data_length) {
 +		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
 +
 +		return false;
 +	}
 +
-+	if (tls->message_buf_len && type !=3D tls->message_content_type) {
-+		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
++	tls12_prf(L_CHECKSUM_SHA256, 32, tls->pending.master_secret, 48,
++			tls->server ? "client finished" : "server finished",
++			tls->prev_digest, HANDSHAKE_HASH_SIZE,
++			expected, tls->cipher_suite[0]->verify_data_length);
++
++	if (memcmp(received, expected, len)) {
++		tls_disconnect(tls, TLS_ALERT_DECRYPT_ERROR, 0);
 +
 +		return false;
-+	}
-+	tls->message_content_type =3D type;
-+
-+	while (1) {
-+		/* Do we have a full header in tls->message_buf? */
-+		header_len =3D (type =3D=3D TLS_CT_ALERT) ? 2 : 4;
-+		need_len =3D header_len;
-+
-+		if (tls->message_buf_len >=3D header_len) {
-+			if (type =3D=3D TLS_CT_HANDSHAKE) {
-+				hs_len =3D (tls->message_buf[1] << 16) |
-+					(tls->message_buf[2] << 8) |
-+					(tls->message_buf[3] << 0);
-+				if (hs_len > (1 << 14)) {
-+					tls_disconnect(tls,
-+						TLS_ALERT_DECODE_ERROR, 0);
-+
-+					return false;
-+				}
-+
-+				need_len +=3D hs_len;
-+			}
-+
-+			/* Do we have a full structure? */
-+			if (tls->message_buf_len =3D=3D need_len) {
-+				if (!tls_handle_message(tls, tls->message_buf,
-+							need_len, type,
-+							version))
-+					return false;
-+
-+				tls->message_buf_len =3D 0;
-+
-+				continue;
-+			}
-+
-+			if (!len)
-+				break;
-+		}
-+
-+		/* Try to fill up tls->message_buf up to need_len */
-+		if (tls->message_buf_max_len < need_len) {
-+			tls->message_buf_max_len =3D need_len;
-+			tls->message_buf =3D
-+				l_realloc(tls->message_buf, need_len);
-+		}
-+
-+		need_len -=3D tls->message_buf_len;
-+		chunk_len =3D need_len;
-+		if (len < chunk_len)
-+			chunk_len =3D len;
-+
-+		memcpy(tls->message_buf + tls->message_buf_len, plaintext,
-+				chunk_len);
-+		tls->message_buf_len +=3D chunk_len;
-+		plaintext +=3D chunk_len;
-+		len -=3D chunk_len;
-+
-+		if (chunk_len < need_len)
-+			break;
 +	}
 +
 +	return true;
 +}
 +
-+static bool tls_handle_ciphertext(struct l_tls *tls)
++static void tls_handle_client_hello(struct l_tls *tls,
++					const uint8_t *buf, size_t len)
 +{
-+	uint8_t type;
-+	uint16_t version;
-+	uint16_t fragment_len;
-+	uint8_t mac_buf[TX_RECORD_MAX_MAC], i, padding_len;
-+	int cipher_output_len, error;
-+	uint8_t *compressed;
-+	int compressed_len;
++	uint16_t cipher_suites_size;
++	uint8_t session_id_size, compression_methods_size;
++	const uint8_t *cipher_suites;
++	const uint8_t *compression_methods;
 +
-+	type =3D tls->record_buf[0];
-+	version =3D l_get_be16(tls->record_buf + 1);
-+	fragment_len =3D l_get_be16(tls->record_buf + 3);
++	/* Length checks */
 +
-+	if (fragment_len > (1 << 14) + 2048) {
-+		tls_disconnect(tls, TLS_ALERT_RECORD_OVERFLOW, 0);
++	if (len < 2 + 32 + 1)
++		goto decode_error;
++	memcpy(tls->pending.client_random, buf + 2, 32);
++	session_id_size =3D buf[34];
++	len -=3D 35;
 +
-+		return false;
++	if (len < (size_t) session_id_size + 4)
++		goto decode_error;
++	len -=3D session_id_size + 2;
++
++	cipher_suites_size =3D l_get_be16(buf + 35 + session_id_size);
++	cipher_suites =3D buf + 37 + session_id_size;
++	if (len < (size_t) cipher_suites_size + 2 ||
++			(cipher_suites_size & 1) || cipher_suites_size =3D=3D 0)
++		goto decode_error;
++	len -=3D cipher_suites_size + 1;
++
++	compression_methods_size =3D cipher_suites[cipher_suites_size];
++	compression_methods =3D cipher_suites + cipher_suites_size + 1;
++	if (len < (size_t) compression_methods_size ||
++			compression_methods =3D=3D 0)
++		goto decode_error;
++	len -=3D compression_methods_size;
++
++	if (len) {
++		uint16_t extensions_size;
++
++		if (len < 2 || len > 2 + 65535)
++			goto decode_error;
++
++		extensions_size =3D l_get_be16(compression_methods +
++						compression_methods_size);
++		len -=3D 2;
++
++		if (len !=3D extensions_size)
++			goto decode_error;
++
++		/* TODO: validate each extension in the vector, 7.4.1.4 */
++		/* TODO: check for duplicates? */
 +	}
 +
-+	if (version < TLS_MIN_VERSION || version > TLS_VERSION) {
++	/*
++	 * Note: if the client is supplying a SessionID we know it is false
++	 * because our server implementation never generates any SessionIDs
++	 * yet so either the client is attempting something strange or was
++	 * trying to connect somewhere else.  We might want to throw an error.
++	 */
++
++	/*
++	 * TODO: Obligatory in 1.2: check for signature_algorithms extension,
++	 * store the list of algorithms for later checking in
++	 * tls_send_certificate on both server and client sides.  If not
++	 * present assume only SHA1+RSA (7.4.1.4.1).
++	 */
++
++	/* Save client_version for Premaster Secret verification */
++	tls->client_version =3D l_get_be16(buf);
++
++	if (tls->client_version < TLS_MIN_VERSION) {
 +		tls_disconnect(tls, TLS_ALERT_PROTOCOL_VERSION, 0);
++		return;
++	}
++	tls->negotiated_version =3D TLS_VERSION < tls->client_version ?
++		TLS_VERSION : tls->client_version;
 +
-+		return false;
++	/* Select a cipher suite according to client's preference list */
++
++	while (cipher_suites_size) {
++		/*
++		 * TODO: filter supported cipher suites by the certificate/key
++		 * type that was submitted by tls_set_auth_data() if any.
++		 * Perhaps just call cipher_suite->verify_cert_type() on each
++		 * cipher suite passing a pre-parsed certificate ASN.1 struct.
++		 */
++		tls->pending.cipher_suite =3D
++			tls_find_cipher_suite(cipher_suites);
++		if (tls->pending.cipher_suite)
++			break;
++
++		cipher_suites +=3D 2;
++		cipher_suites_size -=3D 2;
++	}
++	if (!cipher_suites_size) {
++		tls_disconnect(tls, TLS_ALERT_HANDSHAKE_FAIL, 0);
++		return;
 +	}
 +
-+	if (fragment_len < tls->mac_length[0]) {
++	/* Select a compression method */
++
++	/* CompressionMethod.null must be present in the vector */
++	if (!memchr(compression_methods, 0, compression_methods_size))
++		goto decode_error;
++
++	while (compression_methods_size) {
++		tls->pending.compression_method =3D
++			tls_find_compression_method(*compression_methods);
++		if (tls->pending.compression_method)
++			break;
++
++		compression_methods++;
++		compression_methods_size--;
++	}
++
++	tls_send_server_hello(tls);
++
++	if (tls->pending.cipher_suite->key_xchg->certificate_check &&
++			tls->cert_path)
++		if (!tls_send_certificate(tls))
++			return;
++
++	if (tls->pending.cipher_suite->key_xchg->key_exchange_msg)
++		if (!tls->pending.cipher_suite->key_xchg->
++				send_server_key_exchange(tls))
++			return;
++
++	/* TODO: don't bother if configured to not authenticate client */
++	if (tls->pending.cipher_suite->key_xchg->certificate_check &&
++			tls->ca_cert_path)
++		if (!tls_send_certificate_request(tls))
++			return;
++
++	tls_send_server_hello_done(tls);
++
++	if (tls->pending.cipher_suite->key_xchg->certificate_check &&
++			tls->ca_cert_path)
++		tls->state =3D TLS_HANDSHAKE_WAIT_CERTIFICATE;
++	else
++		tls->state =3D TLS_HANDSHAKE_WAIT_KEY_EXCHANGE;
++
++	return;
++
++decode_error:
++	tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
++}
++
++static void tls_handle_server_hello(struct l_tls *tls,
++					const uint8_t *buf, size_t len)
++{
++	uint8_t session_id_size, cipher_suite_id[2], compression_method_id;
++
++	/* Length checks */
++
++	if (len < 2 + 32 + 1)
++		goto decode_error;
++	memcpy(tls->pending.server_random, buf + 2, 32);
++	session_id_size =3D buf[34];
++	len -=3D 35;
++
++	if (len < (size_t) session_id_size + 2 + 1)
++		goto decode_error;
++	cipher_suite_id[0] =3D buf[35 + session_id_size + 0];
++	cipher_suite_id[1] =3D buf[35 + session_id_size + 1];
++	compression_method_id =3D buf[35 + session_id_size + 2];
++	len -=3D session_id_size + 2 + 1;
++
++	if (len !=3D 0) { /* We know we haven't solicited any extensions */
++		tls_disconnect(tls, TLS_ALERT_UNSUPPORTED_EXTENSION, 0);
++		return;
++	}
++
++	tls->negotiated_version =3D l_get_be16(buf);
++
++	if (tls->negotiated_version < TLS_MIN_VERSION ||
++			tls->negotiated_version > TLS_VERSION) {
++		tls_disconnect(tls, tls->negotiated_version < TLS_MIN_VERSION ?
++				TLS_ALERT_PROTOCOL_VERSION :
++				TLS_ALERT_ILLEGAL_PARAM, 0);
++		return;
++	}
++
++	/* Set the new cipher suite and compression method structs */
++
++	tls->pending.cipher_suite =3D tls_find_cipher_suite(cipher_suite_id);
++	if (!tls->pending.cipher_suite) {
++		tls_disconnect(tls, TLS_ALERT_HANDSHAKE_FAIL, 0);
++		return;
++	}
++
++	tls->pending.compression_method =3D
++		tls_find_compression_method(compression_method_id);
++	if (!tls->pending.compression_method) {
++		tls_disconnect(tls, TLS_ALERT_HANDSHAKE_FAIL, 0);
++		return;
++	}
++
++	if (tls->pending.cipher_suite->key_xchg->certificate_check)
++		tls->state =3D TLS_HANDSHAKE_WAIT_CERTIFICATE;
++	else
++		tls->state =3D TLS_HANDSHAKE_WAIT_KEY_EXCHANGE;
++
++	return;
++
++decode_error:
++	tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
++}
++
++static void tls_handle_certificate(struct l_tls *tls,
++					const uint8_t *buf, size_t len)
++{
++	int total, cert_len, pubkey_len;
++	struct l_cert *certchain =3D NULL, **tail =3D &certchain;
++	struct l_cert *ca_cert =3D NULL;
++	uint8_t *pubkey;
++
++	/* Length checks */
++
++	total =3D *buf++ << 16;
++	total |=3D *buf++ << 8;
++	total |=3D *buf++ << 0;
++	if ((size_t) total + 3 !=3D len)
++		goto decode_error;
++
++	while (total) {
++		cert_len =3D *buf++ << 16;
++		cert_len |=3D *buf++ << 8;
++		cert_len |=3D *buf++ << 0;
++
++		if (cert_len + 3 > total)
++			goto decode_error;
++
++		*tail =3D l_cert_decode(buf, cert_len);
++		if (!*tail)
++			goto decode_error;
++
++		tail =3D &(*tail)->issuer;
++
++		buf +=3D cert_len;
++		total -=3D cert_len + 3;
++	}
++
++	/*
++	 * "Note that a client MAY send no certificates if it does not have any
++	 * appropriate certificate to send in response to the server's
++	 * authentication request." -- for now we unconditionally accept
++	 * an empty certificate chain from the client.  Later on we need to
++	 * make this configurable, if we don't want to authenticate the
++	 * client then also don't bother sending a Certificate Request.
++	 */
++	if (!certchain) {
++		if (!tls->server) {
++			tls_disconnect(tls, TLS_ALERT_HANDSHAKE_FAIL, 0);
++
++			goto done;
++		}
++
++		tls->state =3D TLS_HANDSHAKE_WAIT_KEY_EXCHANGE;
++
++		goto done;
++	}
++
++	/*
++	 * Validate the certificate chain's consistency and validate it
++	 * against our CA if we have any.
++	 */
++
++	if (ca_cert) {
++		ca_cert =3D l_cert_load_file(tls->ca_cert_path);
++		if (!ca_cert) {
++			tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
++					TLS_ALERT_BAD_CERT);
++
++			goto done;
++		}
++	}
++
++	if (!l_cert_verify_certchain(certchain, ca_cert)) {
++		tls_disconnect(tls, TLS_ALERT_BAD_CERT, 0);
++
++		goto done;
++	}
++
++	/*
++	 * RFC5246 7.4.2:
++	 * "The end entity certificate's public key (and associated
++	 * restrictions) MUST be compatible with the selected key exchange
++	 * algorithm."
++	 */
++	if (!tls->pending.cipher_suite->key_xchg->
++			validate_cert_key_type(certchain)) {
++		tls_disconnect(tls, TLS_ALERT_UNSUPPORTED_CERT, 0);
++
++		goto done;
++	}
++
++	/*
++	 * Save the public key from the certificate for use in premaster
++	 * secret encryption.
++	 */
++	pubkey =3D l_cert_find_pubkey(certchain, &pubkey_len);
++	if (!pubkey && !tls->pending.cipher_suite->key_xchg->key_exchange_msg) {
++		tls_disconnect(tls, TLS_ALERT_UNSUPPORTED_CERT, 0);
++
++		goto done;
++	}
++
++	if (pubkey) {
++		/* Save the end-entity cert and free the rest of the chain */
++		tls->peer_cert =3D certchain;
++		l_cert_free_certchain(certchain->issuer);
++		certchain->issuer =3D NULL;
++		certchain =3D NULL;
++
++		tls->peer_pubkey =3D pubkey;
++		tls->peer_pubkey_length =3D pubkey_len;
++	}
++
++	if (tls->server)
++		tls->state =3D TLS_HANDSHAKE_WAIT_KEY_EXCHANGE;
++	else {
++		if (tls->pending.cipher_suite->key_xchg->key_exchange_msg)
++			tls->state =3D TLS_HANDSHAKE_WAIT_KEY_EXCHANGE;
++		else
++			tls->state =3D TLS_HANDSHAKE_WAIT_HELLO_DONE;
++	}
++
++	goto done;
++
++decode_error:
++	tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
++
++done:
++	if (ca_cert)
++		l_free(ca_cert);
++
++	l_cert_free_certchain(certchain);
++}
++
++static void tls_handle_certificate_request(struct l_tls *tls,
++						const uint8_t *buf, size_t len)
++{
++	tls->cert_requested =3D 1;
++
++	/*
++	 * TODO: parse and save key type, signature algorithms and DNs list
++	 * for use in tls_send_certificate.
++	 */
++}
++
++static void tls_handle_server_hello_done(struct l_tls *tls,
++						const uint8_t *buf, size_t len)
++{
++	if (len) {
 +		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
 +
-+		return false;
++		return;
 +	}
 +
-+	compressed =3D alloca(8 + 5 + fragment_len);
-+	/* Copy the type and version fields */
-+	compressed[8] =3D type;
-+	l_put_be16(version, compressed + 9);
++	if (tls->cert_requested)
++		if (!tls_send_certificate(tls))
++			return;
++	if (!tls->pending.cipher_suite->key_xchg->send_client_key_exchange(tls))
++		return;
++	if (tls->cert_sent)
++		if (!tls_send_certificate_verify(tls))
++			return;
++	tls_send_change_cipher_spec(tls);
++	if (!tls_change_cipher_spec(tls, 1)) {
++		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
++		return;
++	}
++	tls_send_finished(tls);
 +
-+	switch (tls->cipher_type[0]) {
-+	case TLS_CIPHER_STREAM:
-+		cipher_output_len =3D fragment_len;
-+		compressed_len =3D cipher_output_len - tls->mac_length[0];
-+		l_put_be16(compressed_len, compressed + 11);
++	tls->state =3D TLS_HANDSHAKE_WAIT_CHANGE_CIPHER_SPEC;
++}
 +
-+		if (!tls->cipher[0])
-+			memcpy(compressed + 13, tls->record_buf + 5,
-+					cipher_output_len);
-+		else if (!l_cipher_decrypt(tls->cipher[0], tls->record_buf + 5,
-+						compressed + 13,
-+						cipher_output_len)) {
-+			tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
++static void tls_handle_certificate_verify(struct l_tls *tls,
++						const uint8_t *buf, size_t len)
++{
++	if (!tls->pending.cipher_suite->key_xchg->verify(tls, buf, len,
++							tls->prev_digest))
++		return;
 +
-+			return false;
++	/*
++	 * The client's certificate is now verified based on the following
++	 * logic:
++	 *   - If we received an (expected) Certificate Verify, we must have
++	 *     sent a Certificate Request.
++	 *   - If we sent a Certificate Request that's because
++	 *     tls->ca_cert_path is non-NULL.
++	 *   - If tls->ca_cert_path is non-NULL then tls_handle_certificate
++	 *     will have checked the whole certificate chain to be valid and
++	 *     additionally trusted by our CA if known.
++	 *   - Additionally cipher_suite->key_xchg->verify has just confirmed
++	 *     that the peer owns the end-entity certificate because it was
++	 *     able to sign the contents of the handshake messages and that
++	 *     signature could be verified with the public key from that
++	 *     certificate.
++	 */
++	tls->peer_authenticated =3D true;
++
++	tls->state =3D TLS_HANDSHAKE_WAIT_CHANGE_CIPHER_SPEC;
++}
++
++static void tls_finished(struct l_tls *tls)
++{
++	uint8_t *subject_name =3D NULL;
++	int subject_name_len;
++	uint8_t *printable_name =3D NULL;
++	int printable_name_len;
++	char *peer_identity =3D NULL;
++
++	if (tls->peer_authenticated && tls->peer_cert)
++		subject_name =3D l_cert_find_dn(tls->peer_cert, false,
++						&subject_name_len);
++	if (subject_name)
++		printable_name =3D l_cert_dn_find_printable_name(subject_name,
++							subject_name_len,
++							&printable_name_len);
++	if (printable_name)
++		peer_identity =3D l_strndup((char *) printable_name,
++						printable_name_len);
++
++	/* Free up the resources used in the handshake */
++	tls_reset_handshake(tls);
++
++	tls->state =3D TLS_HANDSHAKE_DONE;
++	tls->ready =3D true;
++
++	tls->ready_handle(tls->user_data, peer_identity);
++
++	if (peer_identity)
++		l_free(peer_identity);
++}
++
++static void tls_handle_handshake(struct l_tls *tls, int type,
++					const uint8_t *buf, size_t len)
++{
++	switch (type) {
++	case TLS_HELLO_REQUEST:
++		if (tls->server) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
 +		}
 +
-+		/* Calculate the MAC if needed */
-+		tls_write_mac(tls, compressed + 8, 5 + compressed_len,
-+				mac_buf, false);
-+
-+		if (tls->mac_length && memcmp(mac_buf, compressed + 13 +
-+					compressed_len, tls->mac_length[0])) {
-+			tls_disconnect(tls, TLS_ALERT_BAD_RECORD_MAC, 0);
-+
-+			return false;
++		if (len !=3D 0) {
++			tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
++			break;
 +		}
 +
-+		compressed +=3D 13;
++		/*
++		 * May be sent by the server at any time but "SHOULD be ignored
++		 * by the client if it arrives in the middle of a handshake"
++		 * and "MAY be ignored by the client if it does not wish to
++		 * renegotiate a session".
++		 */
 +
 +		break;
 +
-+	case TLS_CIPHER_BLOCK:
-+		i =3D 0;
-+		if (tls->negotiated_version >=3D TLS_V12)
-+			i =3D tls->record_iv_length[0];
++	case TLS_CLIENT_HELLO:
++		if (!tls->server) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
 +
-+		if (fragment_len <=3D tls->mac_length[0] + i) {
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_HELLO &&
++				tls->state !=3D TLS_HANDSHAKE_DONE) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		tls_handle_client_hello(tls, buf, len);
++
++		break;
++
++	case TLS_SERVER_HELLO:
++		if (tls->server) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_HELLO) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		tls_handle_server_hello(tls, buf, len);
++
++		break;
++
++	case TLS_CERTIFICATE:
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_CERTIFICATE) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		tls_handle_certificate(tls, buf, len);
++
++		break;
++
++	case TLS_SERVER_KEY_EXCHANGE:
++		if (tls->server) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_KEY_EXCHANGE) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		if (!tls->pending.cipher_suite->key_xchg->
++				handle_server_key_exchange(tls, buf, len))
++			break;
++
++		tls->state =3D TLS_HANDSHAKE_WAIT_HELLO_DONE;
++
++		break;
++
++	case TLS_CERTIFICATE_REQUEST:
++		/*
++		 * Server sends this optionally so in the WAIT_HELLO_DONE
++		 * state we accept either this or a Server Hello Done (below).
++		 */
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_HELLO_DONE ||
++				tls->cert_requested ||
++				!tls->pending.cipher_suite->key_xchg->
++				certificate_check) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		tls_handle_certificate_request(tls, buf, len);
++
++		break;
++
++	case TLS_SERVER_HELLO_DONE:
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_HELLO_DONE) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		tls_handle_server_hello_done(tls, buf, len);
++
++		break;
++
++	case TLS_CERTIFICATE_VERIFY:
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_CERTIFICATE_VERIFY) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		tls_handle_certificate_verify(tls, buf, len);
++
++		break;
++
++	case TLS_CLIENT_KEY_EXCHANGE:
++		if (!tls->server) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_KEY_EXCHANGE) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		tls->pending.cipher_suite->key_xchg->handle_client_key_exchange(
++								tls, buf, len);
++
++		/*
++		 * If we accepted a client Certificate message with a
++		 * certificate that has signing capability (TODO: check
++		 * usage bitmask), Certiifcate Verify is received next.  It
++		 * sounds as if this is mandatory for the client although
++		 * this isn't 100% clear.
++		 */
++		if (tls->peer_pubkey)
++			tls->state =3D TLS_HANDSHAKE_WAIT_CERTIFICATE_VERIFY;
++		else
++			tls->state =3D TLS_HANDSHAKE_WAIT_CHANGE_CIPHER_SPEC;
++
++		break;
++
++	case TLS_FINISHED:
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_FINISHED) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++			break;
++		}
++
++		if (!tls_verify_finished(tls, buf, len))
++			break;
++
++		if (tls->server) {
++			tls_send_change_cipher_spec(tls);
++			if (!tls_change_cipher_spec(tls, 1)) {
++				tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
++						0);
++				break;
++			}
++			tls_send_finished(tls);
++		}
++
++		/*
++		 * On the client, the server's certificate is only now
++		 * verified, based on the following logic:
++		 *  - tls->ca_cert_path is non-NULL so tls_handle_certificate
++		 *    (always called on the client) must have veritifed the
++		 *    server's certificate chain to be valid and additionally
++		 *    trusted by our CA.
++		 *  - the correct receival of this Finished message confirms
++		 *    that the peer owns the end-entity certificate because
++		 *    it was able to decrypt the master secret which we had
++		 *    encrypted with the public key from that certificate, and
++		 *    the posession of the master secret in turn is verified
++		 *    by both the successful decryption and the MAC of this
++		 *    message (either should be enough).
++		 */
++		if (!tls->server && tls->cipher_suite[0]->key_xchg->
++				certificate_check &&
++				tls->ca_cert_path)
++			tls->peer_authenticated =3D true;
++
++		tls_finished(tls);
++
++		break;
++
++	default:
++		tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
++	}
++}
++
+ LIB_EXPORT struct l_tls *l_tls_new(bool server,
+ 				l_tls_write_cb_t app_data_handler,
+ 				l_tls_write_cb_t tx_handler,
+@@ -362,6 +1350,96 @@ LIB_EXPORT void l_tls_write(struct l_tls *tls, const =
+uint8_t *data, size_t len)
+ 	tls_tx_record(tls, TLS_CT_APPLICATION_DATA, data, len);
+ }
+ =
+
++bool tls_handle_message(struct l_tls *tls, const uint8_t *message,
++			int len, uint8_t type, uint16_t version)
++{
++	switch (type) {
++	case TLS_CT_CHANGE_CIPHER_SPEC:
++		if (len !=3D 1 || message[0] !=3D 0x01) {
 +			tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
 +
 +			return false;
 +		}
 +
-+		cipher_output_len =3D fragment_len - i;
-+
-+		if (cipher_output_len % tls->block_length[0] !=3D 0) {
-+			tls_disconnect(tls, TLS_ALERT_BAD_RECORD_MAC, 0);
++		if (tls->state !=3D TLS_HANDSHAKE_WAIT_CHANGE_CIPHER_SPEC) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
 +
 +			return false;
 +		}
 +
-+		if (tls->negotiated_version >=3D TLS_V12)
-+			if (!l_cipher_set_iv(tls->cipher[0],
-+						tls->record_buf + 5,
-+						tls->record_iv_length[0], 0)) {
-+				tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
-+						0);
-+
-+				return false;
-+			}
-+
-+		if (!l_cipher_decrypt(tls->cipher[0], tls->record_buf + 5 + i,
-+					compressed + 13, cipher_output_len)) {
++		if (!tls_change_cipher_spec(tls, 0)) {
 +			tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
 +
 +			return false;
 +		}
 +
-+		padding_len =3D compressed[13 + cipher_output_len - 1];
-+		error =3D 0;
-+		if (padding_len + tls->mac_length[0] + 1 >=3D
-+				(size_t) cipher_output_len) {
-+			padding_len =3D 0;
-+			error =3D 1;
-+		}
++		tls->state =3D TLS_HANDSHAKE_WAIT_FINISHED;
 +
-+		compressed_len =3D cipher_output_len - 1 - padding_len -
-+			tls->mac_length[0];
-+		l_put_be16(compressed_len, compressed + 11);
++		break;
 +
-+		for (i =3D 0; i < padding_len; i++)
-+			if (compressed[13 + cipher_output_len - 1 -
-+					padding_len + i] !=3D padding_len)
-+				error =3D 1;
-+
-+		/* Calculate the MAC if needed */
-+		tls_write_mac(tls, compressed + 8, 5 + compressed_len,
-+				mac_buf, false);
-+
-+		if ((tls->mac_length[0] && memcmp(mac_buf, compressed + 13 +
-+					compressed_len, tls->mac_length[0])) ||
-+				error) {
-+			tls_disconnect(tls, TLS_ALERT_BAD_RECORD_MAC, 0);
++	case TLS_CT_ALERT:
++		/* Verify AlertLevel */
++		if (message[0] !=3D 0x01 && message[0] !=3D 0x02) {
++			tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
 +
 +			return false;
 +		}
 +
-+		compressed +=3D 13;
++		/*
++		 * On a fatal alert we are obligated to respond with a
++		 * fatal alert and disconnect but also not complain if
++		 * the connection has been torn down by the peer before
++		 * we were able to send our alert.  However on a non-fatal
++		 * alert (warning) we're also allowed to panic and send
++		 * a fatal alert, then disconnect, so we do that
++		 * regardless of the alert level.
++		 */
++		tls_disconnect(tls, TLS_ALERT_CLOSE_NOTIFY, message[1]);
++
++		return false;
++
++	case TLS_CT_HANDSHAKE:
++		/*
++		 * Corner case: When handling a Certificate Verify or a
++		 * Finished message we need access to the messages hash from
++		 * before this message was transmitted on the Tx side so we
++		 * can verify it matches the hash the sender included in the
++		 * message.  We save it here for that purpose.  Everywhere
++		 * else we need to update the hash before handling the new
++		 * message because 1. we may need the new hash to build our
++		 * own Certificate Verify or Finished messages, and 2. we
++		 * update the message hash with newly transmitted messages
++		 * inside tls_tx_handshake which may be called as part of
++		 * handling incoming message, and if we didn't call
++		 * l_checksum_update before, the calls would end up being
++		 * out of order.
++		 */
++		if (message[0] =3D=3D TLS_CERTIFICATE_VERIFY ||
++				message[0] =3D=3D TLS_FINISHED)
++			tls_get_handshake_hash(tls, tls->prev_digest);
++		l_checksum_update(tls->handshake_hash, message, len);
++
++		tls_handle_handshake(tls, message[0],
++					message + TLS_HANDSHAKE_HEADER_SIZE,
++					len - TLS_HANDSHAKE_HEADER_SIZE);
 +
 +		break;
 +
-+	case TLS_CIPHER_AEAD:
-+		/* No AEAD ciphers supported today */
-+	default:
-+		return false;
-+	}
++	case TLS_CT_APPLICATION_DATA:
++		if (!tls->ready) {
++			tls_disconnect(tls, TLS_ALERT_UNEXPECTED_MESSAGE, 0);
 +
-+	/* DEFLATE not supported so just pass on compressed / compressed_len */
-+
-+	return tls_handle_plaintext(tls, compressed, compressed_len,
-+					type, version);
-+}
-+
-+LIB_EXPORT void l_tls_handle_rx(struct l_tls *tls, const uint8_t *data,
-+				size_t len)
-+{
-+	int need_len;
-+	int chunk_len;
-+
-+	/* Reassemble TLSCiphertext structures from the received chunks */
-+
-+	while (1) {
-+		/* Do we have a full header in tls->record_buf? */
-+		if (tls->record_buf_len >=3D 5) {
-+			need_len =3D 5 + l_get_be16(tls->record_buf + 3);
-+
-+			/* Do we have a full structure? */
-+			if (tls->record_buf_len =3D=3D need_len) {
-+				if (!tls_handle_ciphertext(tls))
-+					return;
-+
-+				tls->record_buf_len =3D 0;
-+				need_len =3D 5;
-+			}
-+
-+			if (!len)
-+				break;
-+		} else
-+			need_len =3D 5;
-+
-+		/* Try to fill up tls->record_buf up to need_len */
-+		if (tls->record_buf_max_len < need_len) {
-+			tls->record_buf_max_len =3D need_len;
-+			tls->record_buf =3D l_realloc(tls->record_buf, need_len);
++			return false;
 +		}
 +
-+		need_len -=3D tls->record_buf_len;
-+		chunk_len =3D need_len;
-+		if (len < (size_t) chunk_len)
-+			chunk_len =3D len;
++		tls->rx(tls->user_data, message, len);
 +
-+		memcpy(tls->record_buf + tls->record_buf_len, data, chunk_len);
-+		tls->record_buf_len +=3D chunk_len;
-+		data +=3D chunk_len;
-+		len -=3D chunk_len;
-+
-+		if (chunk_len < need_len)
-+			break;
-+	}
-+}
-diff --git a/ell/tls.c b/ell/tls.c
-index 5b4fea9..312a42b 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -182,6 +182,39 @@ static void tls_reset_cipher_spec(struct l_tls *tls, b=
-ool txrx)
- 	tls_change_cipher_spec(tls, txrx);
- }
- =
-
-+static void tls_send_alert(struct l_tls *tls, bool fatal,
-+				enum l_tls_alert_desc alert_desc)
-+{
-+	uint8_t buf[2];
-+
-+	buf[0] =3D fatal ? 2 : 1;
-+	buf[1] =3D alert_desc;
-+
-+	tls_tx_record(tls, TLS_CT_ALERT, buf, 2);
-+}
-+
-+/*
-+ * Callers make sure this is about the last function before returning
-+ * from the stack frames up to the exported library call so that the
-+ * user-supplied disconnected callback here is free to use l_tls_free
-+ * for example.
-+ */
-+void tls_disconnect(struct l_tls *tls, enum l_tls_alert_desc desc,
-+			enum l_tls_alert_desc local_desc)
-+{
-+	tls_send_alert(tls, true, desc);
-+
-+	tls_reset_handshake(tls);
-+
-+	tls_reset_cipher_spec(tls, 0);
-+	tls_reset_cipher_spec(tls, 1);
-+
-+	tls->ready =3D false;
-+
-+	tls->disconnected(tls->user_data, local_desc ?: desc,
-+				local_desc && !desc);
-+}
-+
- static struct tls_cipher_suite tls_cipher_suite_pref[] =3D {
- };
- =
-
-@@ -320,6 +353,20 @@ LIB_EXPORT void l_tls_free(struct l_tls *tls)
- 	l_free(tls);
- }
- =
-
-+LIB_EXPORT void l_tls_write(struct l_tls *tls, const uint8_t *data, size_t=
- len)
-+{
-+	if (unlikely(!tls->ready)) {
-+		return;
++		break;
 +	}
 +
-+	tls_tx_record(tls, TLS_CT_APPLICATION_DATA, data, len);
++	return true;
 +}
 +
-+LIB_EXPORT void l_tls_close(struct l_tls *tls)
-+{
-+	tls_disconnect(tls, TLS_ALERT_CLOSE_NOTIFY, 0);
-+}
-+
- LIB_EXPORT void l_tls_set_cacert(struct l_tls *tls, const char *ca_cert_pa=
-th)
+ LIB_EXPORT void l_tls_close(struct l_tls *tls)
  {
- 	if (tls->ca_cert_path) {
-diff --git a/ell/tls.h b/ell/tls.h
-index 86c8521..af0ebe3 100644
---- a/ell/tls.h
-+++ b/ell/tls.h
-@@ -75,6 +75,15 @@ struct l_tls *l_tls_new(bool server, l_tls_write_cb_t ap=
-p_data_handler,
- =
-
- void l_tls_free(struct l_tls *tls);
- =
-
-+/* Properly disconnect a connected session */
-+void l_tls_close(struct l_tls *tls);
-+
-+/* Submit plaintext data to be encrypted and transmitted */
-+void l_tls_write(struct l_tls *tls, const uint8_t *data, size_t len);
-+
-+/* Submit TLS payload from underlying transport to be decrypted */
-+void l_tls_handle_rx(struct l_tls *tls, const uint8_t *data, size_t len);
-+
- /* If peer is to be authenticated, supply the CA certificate */
- void l_tls_set_cacert(struct l_tls *tls, const char *ca_cert_path);
- =
-
+ 	tls_disconnect(tls, TLS_ALERT_CLOSE_NOTIFY, 0);
 -- =
 
 2.1.4
 
 
---===============8503755159416523704==--
+--===============0234412146145502381==--
 
