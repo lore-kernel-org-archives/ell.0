@@ -1,59 +1,119 @@
-Content-Type: multipart/mixed; boundary="===============8841175917167571220=="
+Content-Type: multipart/mixed; boundary="===============7218289916276478445=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 05/17] Add ASN.1 BER / DER decoding utilities as asn1-private.h
-Date: Fri, 24 Jul 2015 05:26:46 +0200
-Message-ID: <1437708410-28075-5-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 06/17] Add RSA PKCS#1 1.5 assymetric key encryption operations.
+Date: Fri, 24 Jul 2015 05:26:47 +0200
+Message-ID: <1437708410-28075-6-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1437708410-28075-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8841175917167571220==
+--===============7218289916276478445==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This is a minimal set of utilities to allow parsing digital
-certificate and RSA encryption related structures.  They work on
-simple uint8_t arrays.  The same operations could be implemented
-on top of a cleaner iterator-based API once that is added but since
-the required operations are so simple adding that API to ell
-didn't seem justified at this point.
-One property of the structures used in X509 certificates is that
-they use many levels of nested SEQUENCE and SET substructures, hence
-the find_der_elem_by_path utility.
+RSA support is required for different X509 digital certificate and TLS
+operations and is since recently present in the kernel.  Being an
+asymetric key cipher the API is not the same as that used by the
+current symmetric ciphers in cipher.c based on the algif_skcipher driver.
+At this time there's no corresponding algif_akcipher for userspace to
+asymmetric key ciphers in Linux mainline or the crypto tree so this code
+works against a patch that applies on the mainline kernel
+4a10a91756ef381bced7b88cfb9232f660b92d93.  Another algif_akcipher
+implementation has been posted this week to the linux-kernel-cryptapi
+list but comments so far indicate that it will be a while before it is
+finalised so temporarily acceping this implementation against a patched
+kernel may be a better option than waiting for the mainline support.
+
+There's another twist to RSA in that it is normally used with pre/post
+processing step before/after applying actual RSA operations to the data,
+called a padding scheme - usually one two standards.  We implement the
+PKCS#1 v1.5 padding scheme.  This may also end up being implemented in
+the kernel but this is unclear.  I decided not to call the ell files
+ell/akcipher.{c,h} but rather ell/rsa.c and ell/rsa-private.h until
+that is clear because we can then decide the API based on that.
+
+ell/rsa.c only implements the padding scheme, reusing ell/cipher.c for
+access to the kernel socket API.
 ---
- Makefile.am        |   3 +-
- ell/asn1-private.h | 126 +++++++++++++++++++++++++++++++++++++++++++++++++=
+ Makefile.am       |   4 +-
+ ell/cipher.c      |   6 +-
+ ell/cipher.h      |   1 +
+ ell/rsa-private.h |  41 +++++++++
+ ell/rsa.c         | 254 ++++++++++++++++++++++++++++++++++++++++++++++++++=
 ++++
- 2 files changed, 128 insertions(+), 1 deletion(-)
- create mode 100644 ell/asn1-private.h
+ 5 files changed, 304 insertions(+), 2 deletions(-)
+ create mode 100644 ell/rsa-private.h
+ create mode 100644 ell/rsa.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 0861cec..fb2a35c 100644
+index fb2a35c..aab2f9e 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -75,7 +75,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/hwdb.c \
+@@ -76,7 +76,9 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
  			ell/cipher.c \
  			ell/random.c \
--			ell/uintset.c
-+			ell/uintset.c \
-+			ell/asn1-private.h
+ 			ell/uintset.c \
+-			ell/asn1-private.h
++			ell/asn1-private.h \
++			ell/rsa-private.h \
++			ell/rsa.c
  =
 
  ell_libell_la_LDFLAGS =3D -no-undefined \
  			-version-info $(ELL_CURRENT):$(ELL_REVISION):$(ELL_AGE)
-diff --git a/ell/asn1-private.h b/ell/asn1-private.h
+diff --git a/ell/cipher.c b/ell/cipher.c
+index 3619f2c..b85ba6b 100644
+--- a/ell/cipher.c
++++ b/ell/cipher.c
+@@ -76,7 +76,7 @@ struct af_alg_iv {
+ #define SOL_ALG 279
+ #endif
+ =
+
+-#define is_valid_type(type)  ((type) <=3D L_CIPHER_DES3_EDE_CBC)
++#define is_valid_type(type)  ((type) <=3D L_CIPHER_RSA)
+ =
+
+ struct l_cipher {
+ 	enum l_cipher_type type;
+@@ -112,6 +112,10 @@ static int create_alg(enum l_cipher_type type,
+ 	case L_CIPHER_DES3_EDE_CBC:
+ 		strcpy((char *) salg.salg_name, "cbc(des3_ede)");
+ 		break;
++	case L_CIPHER_RSA:
++		strcpy((char *) salg.salg_name, "rsa");
++		strcpy((char *) salg.salg_type, "akcipher");
++		break;
+ 	}
+ =
+
+ 	if (bind(sk, (struct sockaddr *) &salg, sizeof(salg)) < 0) {
+diff --git a/ell/cipher.h b/ell/cipher.h
+index 74b96a3..a4db8c2 100644
+--- a/ell/cipher.h
++++ b/ell/cipher.h
+@@ -34,6 +34,7 @@ enum l_cipher_type {
+ 	L_CIPHER_AES_CBC,
+ 	L_CIPHER_ARC4,
+ 	L_CIPHER_DES3_EDE_CBC,
++	L_CIPHER_RSA,
+ };
+ =
+
+ struct l_cipher *l_cipher_new(enum l_cipher_type type,
+diff --git a/ell/rsa-private.h b/ell/rsa-private.h
 new file mode 100644
-index 0000000..e439fd7
+index 0000000..1835a88
 --- /dev/null
-+++ b/ell/asn1-private.h
-@@ -0,0 +1,126 @@
++++ b/ell/rsa-private.h
+@@ -0,0 +1,41 @@
 +/*
++ *
 + *  Embedded Linux library
 + *
-+ *  Copyright (C) 2011-2014  Intel Corporation. All rights reserved.
++ *  Copyright (C) 2015  Intel Corporation. All rights reserved.
 + *
 + *  This library is free software; you can redistribute it and/or
 + *  modify it under the terms of the GNU Lesser General Public
@@ -69,119 +129,293 @@ index 0000000..e439fd7
 + *  License along with this library; if not, write to the Free Software
 + *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
  USA
++ *
 + */
 +
-+#define ASN1_ID(class, pc, tag)	(((class) << 6) | ((pc) << 5) | (tag))
++struct l_rsa;
 +
-+#define ASN1_CLASS_UNIVERSAL	0
++struct l_rsa *l_rsa_pkcs1_v1_5_new(const void *key, size_t key_length);
 +
-+#define ASN1_ID_SEQUENCE	ASN1_ID(ASN1_CLASS_UNIVERSAL, 1, 0x10)
-+#define ASN1_ID_SET		ASN1_ID(ASN1_CLASS_UNIVERSAL, 1, 0x11)
-+#define ASN1_ID_INTEGER		ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x02)
-+#define ASN1_ID_BIT_STRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x03)
-+#define ASN1_ID_OCTET_STRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x04)
-+#define ASN1_ID_OID		ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x06)
-+#define ASN1_ID_UTF8STRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x0c)
-+#define ASN1_ID_PRINTABLESTRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x13)
++void l_rsa_free(struct l_rsa *rsa);
 +
-+static inline int parse_asn1_definite_length(const uint8_t **buf,
-+						size_t *len)
++int l_rsa_get_key_size(struct l_rsa *rsa);
++
++bool l_rsa_encrypt(struct l_rsa *cipher, const void *in, void *out,
++			size_t len_in, size_t len_out);
++
++bool l_rsa_decrypt(struct l_rsa *cipher, const void *in, void *out,
++			size_t len_in, size_t len_out);
++
++bool l_rsa_sign(struct l_rsa *cipher, const void *in, void *out,
++		size_t len_in, size_t len_out);
++
++bool l_rsa_verify(struct l_rsa *cipher, const void *in, void *out,
++			size_t len_in, size_t len_out);
+diff --git a/ell/rsa.c b/ell/rsa.c
+new file mode 100644
+index 0000000..62de136
+--- /dev/null
++++ b/ell/rsa.c
+@@ -0,0 +1,254 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2015  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#define _GNU_SOURCE
++
++#include "private.h"
++#include "rsa-private.h"
++#include "cipher.h"
++#include "random.h"
++#include "asn1-private.h"
++
++struct l_rsa {
++	struct l_cipher *cipher;
++	int key_size;
++};
++
++static bool parse_rsa_key(struct l_rsa *cipher, const void *key,
++				size_t key_length)
 +{
-+	int n;
-+	size_t result =3D 0;
++	/*
++	 * Parse the DER-encoded public or private RSA key to find
++	 * and cache the size of the modulus n for later use.
++	 * (RFC3279)
++	 */
++	size_t n_length;
++	const uint8_t *der;
 +
-+	(*len)--;
++	if (key_length < 8)
++		return false;
 +
-+	if (!(**buf & 0x80))
-+		return *(*buf)++;
++	/* Unpack the outer&inner SEQUENCE, take first INTEGER as the modulus */
++	der =3D der_find_elem_by_path((uint8_t *) key, key_length,
++					ASN1_ID_INTEGER, &n_length, 0, 0, -1);
++	if (!der || n_length < 4)
++		return false;
 +
-+	n =3D *(*buf)++ & 0x7f;
-+	if ((size_t) n > *len)
-+		return -1;
++	/* Skip leading zeros */
++	while (n_length && der[0] =3D=3D 0x00) {
++		der++;
++		n_length--;
++	}
 +
-+	*len -=3D n;
-+	while (n--)
-+		result =3D (result << 8) | *(*buf)++;
++	cipher->key_size =3D n_length;
 +
-+	return result;
++	return true;
 +}
 +
-+static inline void write_asn1_definite_length(uint8_t **buf, size_t len)
++struct l_rsa *l_rsa_pkcs1_v1_5_new(const void *key, size_t key_length)
 +{
-+	int n;
++	struct l_rsa *rsa;
 +
-+	if (len < 0x80) {
-+		*(*buf)++ =3D len;
++	rsa =3D l_new(struct l_rsa, 1);
++	rsa->cipher =3D l_cipher_new(L_CIPHER_RSA, key, key_length);
 +
++	if (!rsa->cipher)
++		goto error_free_rsa;
++
++	if (!parse_rsa_key(rsa, key, key_length))
++		goto error_free;
++
++	return rsa;
++
++error_free:
++	l_cipher_free(rsa->cipher);
++error_free_rsa:
++	l_free(rsa);
++	return NULL;
++}
++
++void l_rsa_free(struct l_rsa *rsa)
++{
++	if (unlikely(!rsa))
 +		return;
-+	}
 +
-+	for (n =3D 1; len >> (n * 8); n++);
-+	*(*buf)++ =3D 0x80 | n;
-+
-+	while (n--)
-+		*(*buf)++ =3D len >> (n * 8);
++	l_cipher_free(rsa->cipher);
++	l_free(rsa);
 +}
 +
-+/* Return index'th element in a DER SEQUENCE */
-+static inline uint8_t *der_find_elem(uint8_t *buf, size_t len_in, int inde=
-x,
-+					uint8_t *tag, size_t *len_out)
++int l_rsa_get_key_size(struct l_rsa *rsa)
 +{
-+	int tlv_len;
++	return rsa->key_size;
++}
 +
-+	while (1) {
-+		if (len_in < 2)
-+			return NULL;
++static void getrandom_nonzero(uint8_t *buf, int len)
++{
++	while (len--) {
++		l_getrandom(buf, 1);
++		while (buf[0] =3D=3D 0)
++			l_getrandom(buf, 1);
 +
-+		*tag =3D *buf++;
-+		len_in--;
-+
-+		tlv_len =3D parse_asn1_definite_length((void *) &buf, &len_in);
-+		if (tlv_len < 0 || (size_t) tlv_len > len_in)
-+			return NULL;
-+
-+		if (index-- =3D=3D 0) {
-+			*len_out =3D tlv_len;
-+			return buf;
-+		}
-+
-+		buf +=3D tlv_len;
-+		len_in -=3D tlv_len;
++		buf++;
 +	}
 +}
 +
-+/* Return an element in a DER SEQUENCE structure by path */
-+static inline uint8_t *der_find_elem_by_path(uint8_t *buf, size_t len_in,
-+						uint8_t tag, size_t *len_out,
-+						...)
++bool l_rsa_encrypt(struct l_rsa *cipher,
++			const void *in, void *out,
++			size_t len_in, size_t len_out)
 +{
-+	uint8_t elem_tag;
++	/* PKCS#1 v1.5 RSA padding according to RFC3447 */
++	while (len_in) {
++		int chunk_len =3D
++			(size_t) cipher->key_size - 11 < len_in ?
++				cipher->key_size - 11 : (int) len_in;
++		uint8_t buf[cipher->key_size];
++		int ps_len =3D cipher->key_size - chunk_len - 3;
++
++		buf[0] =3D 0x00;
++		buf[1] =3D 0x02;
++		getrandom_nonzero(buf + 2, ps_len);
++		buf[ps_len + 2] =3D 0x00;
++		memcpy(buf + ps_len + 3, in, chunk_len);
++
++		if (!l_cipher_encrypt(cipher->cipher, buf, out,
++					cipher->key_size))
++			return false;
++
++		in +=3D chunk_len;
++		len_in -=3D chunk_len;
++		out +=3D cipher->key_size;
++		len_out -=3D cipher->key_size;
++	}
++
++	return true;
++}
++
++bool l_rsa_decrypt(struct l_rsa *cipher,
++			const void *in, void *out,
++			size_t len_in, size_t len_out)
++{
++	/* PKCS#1 v1.5 RSA padding according to RFC3447 */
++	while (len_in) {
++		uint8_t buf[cipher->key_size];
++		int pos;
++
++		if (len_in < (size_t) cipher->key_size)
++			return false;
++
++		if (!l_cipher_decrypt(cipher->cipher, in, buf,
++					cipher->key_size))
++			return false;
++
++		if (buf[0] !=3D 0x00)
++			return false;
++		if (buf[1] !=3D 0x02)
++			return false;
++
++		for (pos =3D 2; pos < cipher->key_size; pos++)
++			if (buf[pos] =3D=3D 0)
++				break;
++		if (pos < 10 || pos =3D=3D cipher->key_size)
++			return false;
++
++		pos++;
++		if (len_out < (size_t) cipher->key_size - pos)
++			return false;
++
++		memcpy(out, buf + pos, cipher->key_size - pos);
++
++		in +=3D cipher->key_size;
++		len_in -=3D cipher->key_size;
++		out +=3D cipher->key_size - pos;
++		len_out -=3D cipher->key_size - pos;
++	}
++
++	return true;
++}
++
++bool l_rsa_sign(struct l_rsa *cipher,
++		const void *in, void *out,
++		size_t len_in, size_t len_out)
++{
++	/* PKCS#1 v1.5 RSA padding according to RFC3447 */
++	uint8_t buf[cipher->key_size];
++	int ps_len =3D cipher->key_size - len_in - 3;
++
++	if (len_in > (size_t) cipher->key_size - 11)
++		return false;
++
++	buf[0] =3D 0x00;
++	buf[1] =3D 0x01;
++	memset(buf + 2, 0xff, ps_len);
++	buf[ps_len + 2] =3D 0x00;
++	memcpy(buf + ps_len + 3, in, len_in);
++
++	/*
++	 * The RSA signing operation uses the same primitive as
++	 * decryption so just call decrypt.
++	 */
++	if (!l_cipher_decrypt(cipher->cipher, buf, out, cipher->key_size))
++		return false;
++
++	return true;
++}
++
++bool l_rsa_verify(struct l_rsa *cipher,
++			const void *in, void *out,
++			size_t len_in, size_t len_out)
++{
++	/* PKCS#1 v1.5 RSA padding according to RFC3447 */
++	uint8_t buf[cipher->key_size];
 +	int pos;
-+	va_list vl;
 +
-+	va_start(vl, len_out);
++	if (len_in !=3D (size_t) cipher->key_size)
++		return false;
 +
-+	pos =3D va_arg(vl, int);
++	/*
++	 * The RSA verify operation uses the same primitive as
++	 * encryption so just call encrypt.
++	 */
++	if (!l_cipher_encrypt(cipher->cipher, in, buf, cipher->key_size))
++		return false;
 +
-+	while (pos !=3D -1) {
-+		buf =3D der_find_elem(buf, len_in, pos, &elem_tag, &len_in);
++	if (buf[0] !=3D 0x00)
++		return false;
++	if (buf[1] !=3D 0x01)
++		return false;
 +
-+		pos =3D va_arg(vl, int);
++	for (pos =3D 2; pos < cipher->key_size; pos++)
++		if (buf[pos] !=3D 0xff)
++			break;
++	if (pos < 10 || pos =3D=3D cipher->key_size || buf[pos] !=3D 0)
++		return false;
 +
-+		if (!buf || elem_tag !=3D (pos =3D=3D -1 ? tag : ASN1_ID_SEQUENCE))
-+			return NULL;
-+	}
++	pos++;
++	if (len_out !=3D (size_t) cipher->key_size - pos)
++		return false;
 +
-+	va_end(vl);
++	memcpy(out, buf + pos, cipher->key_size - pos);
 +
-+	*len_out =3D len_in;
-+	return buf;
++	return true;
 +}
 -- =
 
 2.1.4
 
 
---===============8841175917167571220==--
+--===============7218289916276478445==--
 
