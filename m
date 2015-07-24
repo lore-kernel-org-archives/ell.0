@@ -1,489 +1,442 @@
-Content-Type: multipart/mixed; boundary="===============0709942245304439020=="
+Content-Type: multipart/mixed; boundary="===============7394445268597806526=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 15/17] tls: Add the cipher suite implementations.
-Date: Fri, 24 Jul 2015 05:27:50 +0200
-Message-ID: <1437708472-28124-6-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 16/17] examples: Add TLS server and client example programs.
+Date: Fri, 24 Jul 2015 05:27:51 +0200
+Message-ID: <1437708472-28124-7-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1437708472-28124-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0709942245304439020==
+--===============7394445268597806526==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-7 cipher suites are supported, tested against OpenSSL.  All 7 are based
-on RSA.  TLS defines two more signature algorithms / key-exchange
-methods beside RSA but they depend on algorithms not supported by the
-kernel.
 ---
- ell/tls.c | 402 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=
+ .gitignore                   |   2 +
+ Makefile.am                  |   4 +-
+ examples/https-client-test.c | 181 +++++++++++++++++++++++++++++++++++++++=
 ++++
- 1 file changed, 402 insertions(+)
+ examples/https-server-test.c | 169 ++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 355 insertions(+), 1 deletion(-)
+ create mode 100644 examples/https-client-test.c
+ create mode 100644 examples/https-server-test.c
 
-diff --git a/ell/tls.c b/ell/tls.c
-index 8d88ea4..25c938a 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -222,7 +222,125 @@ void tls_disconnect(struct l_tls *tls, enum l_tls_ale=
-rt_desc desc,
- 				local_desc && !desc);
- }
+diff --git a/.gitignore b/.gitignore
+index c50d7e7..4f964de 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -51,4 +51,6 @@ unit/test-cert
+ unit/*.log
+ unit/*.trs
+ examples/dbus-service
++examples/https-server-test
++examples/https-client-test
+ test-suite.log
+diff --git a/Makefile.am b/Makefile.am
+index 0896100..1708341 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -206,13 +206,15 @@ unit_example_plugin_la_LDFLAGS =3D -no-undefined -mod=
+ule -avoid-version \
  =
 
-+static bool tls_send_rsa_client_key_xchg(struct l_tls *tls);
-+static void tls_handle_rsa_client_key_xchg(struct l_tls *tls,
-+						const uint8_t *buf, size_t len);
+ unit_test_data_files =3D unit/settings.test unit/cert-ca.pem unit/cert-cli=
+ent.pem unit/cert-server.pem unit/cert-client-key.pem unit/cert-server-key.=
+pem
+ =
+
+-examples =3D examples/dbus-service
++examples =3D examples/dbus-service examples/https-client-test examples/htt=
+ps-server-test
+ =
+
+ if MAINTAINER_MODE
+ noinst_PROGRAMS +=3D $(examples)
+ endif
+ =
+
+ examples_dbus_service_LDADD =3D ell/libell-private.la
++examples_https_client_test_LDADD =3D ell/libell-private.la
++examples_https_server_test_LDADD =3D ell/libell-private.la
+ =
+
+ EXTRA_DIST =3D $(unit_test_data_files)
+ =
+
+diff --git a/examples/https-client-test.c b/examples/https-client-test.c
+new file mode 100644
+index 0000000..9b12039
+--- /dev/null
++++ b/examples/https-client-test.c
+@@ -0,0 +1,181 @@
++/*
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2011-2014  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ */
 +
-+static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out, const uint8_t *=
-hash);
-+static bool tls_rsa_verify(struct l_tls *tls, const uint8_t *in, size_t le=
-n,
-+				const uint8_t *hash);
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
 +
-+static bool tls_rsa_validate_cert_key(struct l_cert *cert)
++#include <sys/socket.h>
++#include <sys/types.h>
++#include <netinet/in.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <errno.h>
++#include <arpa/inet.h>
++
++#include <ell/ell.h>
++
++static struct l_io *io;
++static struct l_tls *tls;
++static const char *hostname;
++
++static void https_io_disconnect(struct l_io *io, void *user_data)
 +{
-+	return l_cert_get_pubkey_type(cert) =3D=3D L_CERT_KEY_RSA;
++	l_main_quit();
 +}
 +
-+static struct tls_key_exchange_algorithm tls_rsa =3D {
-+	.id =3D 1, /* RSA_sign */
-+	.certificate_check =3D true,
-+	.key_exchange_msg =3D false,
-+	.validate_cert_key_type =3D tls_rsa_validate_cert_key,
-+	.send_client_key_exchange =3D tls_send_rsa_client_key_xchg,
-+	.handle_client_key_exchange =3D tls_handle_rsa_client_key_xchg,
-+	.sign =3D tls_rsa_sign,
-+	.verify =3D tls_rsa_verify,
-+};
-+
-+static struct tls_bulk_encryption_algorithm tls_rc4 =3D {
-+	.cipher_type =3D TLS_CIPHER_STREAM,
-+	.l_id =3D L_CIPHER_ARC4,
-+	.key_length =3D 16,
-+}, tls_aes128 =3D {
-+	.cipher_type =3D TLS_CIPHER_BLOCK,
-+	.l_id =3D L_CIPHER_AES_CBC,
-+	.key_length =3D 16,
-+	.iv_length =3D 16,
-+	.block_length =3D 16,
-+}, tls_aes256 =3D {
-+	.cipher_type =3D TLS_CIPHER_BLOCK,
-+	.l_id =3D L_CIPHER_AES_CBC,
-+	.key_length =3D 32,
-+	.iv_length =3D 16,
-+	.block_length =3D 16,
-+}, tls_3des_ede =3D {
-+	.cipher_type =3D TLS_CIPHER_BLOCK,
-+	.l_id =3D L_CIPHER_DES3_EDE_CBC,
-+	.key_length =3D 24,
-+	.iv_length =3D 8,
-+	.block_length =3D 8,
-+};
-+
-+static struct tls_mac_algorithm tls_md5 =3D {
-+	.id =3D 1,
-+	.hmac_type =3D L_CHECKSUM_MD5,
-+	.mac_length =3D 16,
-+}, tls_sha =3D {
-+	.id =3D 2,
-+	.hmac_type =3D L_CHECKSUM_SHA1,
-+	.mac_length =3D 20,
-+}, tls_sha256 =3D {
-+	.id =3D 4,
-+	.hmac_type =3D L_CHECKSUM_SHA256,
-+	.mac_length =3D 32,
-+};
-+
- static struct tls_cipher_suite tls_cipher_suite_pref[] =3D {
-+	{
-+		.id =3D { 0x00, 0x35 },
-+		.name =3D "TLS_RSA_WITH_AES_256_CBC_SHA",
-+		.verify_data_length =3D 12,
-+		.encryption =3D &tls_aes256,
-+		.mac =3D &tls_sha,
-+		.key_xchg =3D &tls_rsa,
-+	},
-+	{
-+		.id =3D { 0x00, 0x2f },
-+		.name =3D "TLS_RSA_WITH_AES_128_CBC_SHA",
-+		.verify_data_length =3D 12,
-+		.encryption =3D &tls_aes128,
-+		.mac =3D &tls_sha,
-+		.key_xchg =3D &tls_rsa,
-+	},
-+	{
-+		.id =3D { 0x00, 0x3d },
-+		.name =3D "TLS_RSA_WITH_AES_256_CBC_SHA256",
-+		.verify_data_length =3D 12,
-+		.encryption =3D &tls_aes256,
-+		.mac =3D &tls_sha256,
-+		.key_xchg =3D &tls_rsa,
-+	},
-+	{
-+		.id =3D { 0x00, 0x3c },
-+		.name =3D "TLS_RSA_WITH_AES_128_CBC_SHA256",
-+		.verify_data_length =3D 12,
-+		.encryption =3D &tls_aes128,
-+		.mac =3D &tls_sha256,
-+		.key_xchg =3D &tls_rsa,
-+	},
-+	{
-+		.id =3D { 0x00, 0x0a },
-+		.name =3D "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
-+		.verify_data_length =3D 12,
-+		.encryption =3D &tls_3des_ede,
-+		.mac =3D &tls_sha,
-+		.key_xchg =3D &tls_rsa,
-+	},
-+	{
-+		.id =3D { 0x00, 0x05 },
-+		.name =3D "TLS_RSA_WITH_RC4_128_SHA",
-+		.verify_data_length =3D 12,
-+		.encryption =3D &tls_rc4,
-+		.mac =3D &tls_sha,
-+		.key_xchg =3D &tls_rsa,
-+	},
-+	{
-+		.id =3D { 0x00, 0x04 },
-+		.name =3D "TLS_RSA_WITH_RC4_128_MD5",
-+		.verify_data_length =3D 12,
-+		.encryption =3D &tls_rc4,
-+		.mac =3D &tls_md5,
-+		.key_xchg =3D &tls_rsa,
-+	},
- };
- =
-
- static struct tls_cipher_suite *tls_find_cipher_suite(const uint8_t *id)
-@@ -257,6 +375,7 @@ static struct tls_compression_method *tls_find_compress=
-ion_method(
- }
- =
-
- static uint8_t tls_cert_type_pref[] =3D {
-+	1, /* RSA_sign */
- };
- =
-
- struct tls_signature_hash_algorithms {
-@@ -265,6 +384,11 @@ struct tls_signature_hash_algorithms {
- };
- =
-
- static struct tls_signature_hash_algorithms tls_signature_hash_pref[] =3D {
-+	{ 6, 1 }, /* SHA512 + RSA */
-+	{ 5, 1 }, /* SHA384 + RSA */
-+	{ 4, 1 }, /* SHA256 + RSA */
-+	{ 2, 1 }, /* SHA1 + RSA */
-+	{ 1, 1 }, /* MD5 + RSA */
- };
- =
-
- enum tls_handshake_type {
-@@ -567,6 +691,192 @@ static void tls_generate_master_secret(struct l_tls *=
-tls,
- 	memset(tls->pending.server_random, 0, 32);
- }
- =
-
-+static bool tls_send_rsa_client_key_xchg(struct l_tls *tls)
++static bool https_io_read(struct l_io *io, void *user_data)
 +{
-+	uint8_t buf[1024 + 32];
-+	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
-+	uint8_t pre_master_secret[48];
-+	struct l_rsa *rsa_server_pubkey;
-+	int key_size;
-+	bool result;
++	uint8_t buf[2048];
++	int l;
 +
-+	if (!tls->peer_pubkey) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
-+
-+		return false;
-+	}
-+
-+	pre_master_secret[0] =3D (uint8_t) (TLS_VERSION >> 8);
-+	pre_master_secret[1] =3D (uint8_t) (TLS_VERSION >> 0);
-+	l_getrandom(pre_master_secret + 2, 46);
-+
-+	/* Fill in the RSA Client Key Exchange body */
-+
-+	rsa_server_pubkey =3D l_rsa_pkcs1_v1_5_new(tls->peer_pubkey,
-+						tls->peer_pubkey_length);
-+	if (!rsa_server_pubkey) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
-+
-+		return false;
-+	}
-+
-+	key_size =3D l_rsa_get_key_size(rsa_server_pubkey);
-+
-+	if (key_size + 32 > (int) sizeof(buf)) {
-+		l_rsa_free(rsa_server_pubkey);
-+
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
-+
-+		return false;
-+	}
-+
-+	l_put_be16(key_size, ptr);
-+	result =3D l_rsa_encrypt(rsa_server_pubkey, pre_master_secret, ptr + 2,
-+				48, key_size);
-+	ptr +=3D key_size + 2;
-+
-+	l_rsa_free(rsa_server_pubkey);
-+
-+	if (!result) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
-+
-+		return false;
-+	}
-+
-+	tls_tx_handshake(tls, TLS_CLIENT_KEY_EXCHANGE, buf, ptr - buf);
-+
-+	tls_generate_master_secret(tls, pre_master_secret, 48);
-+	memset(pre_master_secret, 0, 48);
++	l =3D read(l_io_get_fd(io), buf, sizeof(buf));
++	if (l =3D=3D 0)
++		l_main_quit();
++	else if (l > 0)
++		l_tls_handle_rx(tls, buf, l);
 +
 +	return true;
 +}
 +
-+static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out, const uint8_t *=
-hash)
++static void https_tls_disconnected(void *user_data,
++					enum l_tls_alert_desc reason,
++					bool remote)
 +{
-+	struct l_rsa *rsa_privkey;
-+	uint8_t *privkey, *privkey_short;
-+	size_t key_size, short_size;
-+	bool result, encrypted;
-+	uint8_t digest_info[HANDSHAKE_HASH_SIZE + 32];
-+	size_t digest_info_len;
-+
-+	if (!tls->priv_key_path) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
-+				TLS_ALERT_BAD_CERT);
-+
-+		return false;
-+	}
-+
-+	privkey =3D l_cert_load_key_file(tls->priv_key_path,
-+					tls->priv_key_passphrase,
-+					&key_size, &encrypted);
-+	if (!privkey) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
-+				TLS_ALERT_BAD_CERT);
-+
-+		return false;
-+	}
-+
-+	privkey_short =3D l_cert_extract_rsakey(privkey, key_size, &short_size);
-+	l_cert_free_key(privkey, key_size);
-+
-+	if (!privkey_short) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
-+				TLS_ALERT_BAD_CERT);
-+
-+		return false;
-+	}
-+
-+	rsa_privkey =3D l_rsa_pkcs1_v1_5_new(privkey_short, short_size);
-+	l_cert_free_key(privkey_short, short_size);
-+
-+	if (!rsa_privkey) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
-+
-+		return false;
-+	}
-+
-+	key_size =3D l_rsa_get_key_size(rsa_privkey);
-+
-+	/*
-+	 * TODO: According to 4.7 we need to support at least two forms
-+	 * of the signed content here and at least three in the verification:
-+	 *  - pre 1.2 version which didn't use the DigestInfo form at all,
-+	 *  - DigestInfo with NULL AlgorithmIdentifier.parameters,
-+	 *  - DigestInfo with empty AlgorithmIdentifier.parameters.
-+	 *
-+	 * Additionally PKCS#1 now says BER is used in place of DER for
-+	 * DigestInfo encoding which adds more ambiguity in the encoding.
-+	 */
-+	pkcs1_write_digest_info(HANDSHAKE_HASH_TYPE,
-+				digest_info, &digest_info_len,
-+				hash, HANDSHAKE_HASH_SIZE);
-+
-+	(*out)[0] =3D HANDSHAKE_HASH_TYPE_TLS;
-+	(*out)[1] =3D 1;	/* RSA_sign */
-+	l_put_be16(key_size, *out + 2);
-+	result =3D l_rsa_sign(rsa_privkey, digest_info, *out + 4,
-+				digest_info_len, key_size);
-+	*out +=3D key_size + 4;
-+
-+	l_rsa_free(rsa_privkey);
-+
-+	return result;
++	if (reason)
++		printf("TLS error: %s\n", l_tls_alert_to_str(reason));
++	l_main_quit();
 +}
 +
-+static bool tls_rsa_verify(struct l_tls *tls, const uint8_t *in, size_t le=
-n,
-+				const uint8_t *hash)
++static void https_new_data(void *user_data, const uint8_t *data, size_t le=
+n)
 +{
-+	struct l_rsa *rsa_client_pubkey;
-+	size_t key_size;
-+	bool result;
-+	uint8_t expected[HANDSHAKE_HASH_SIZE + 32];
-+	size_t expected_len;
-+	uint8_t *digest_info;
++	int r;
 +
-+	if (len < 4 || (size_t) l_get_be16(in + 2) + 4 !=3D len) {
-+		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
++	while (len) {
++		r =3D write(1, data, len);
++		if (r < 0) {
++			l_main_quit();
++			break;
++		}
++		len -=3D r;
++		data +=3D r;
++	}
++}
 +
-+		return false;
++static void https_tls_write(void *user_data, const uint8_t *data, size_t l=
+en)
++{
++	int r;
++
++	while (len) {
++		r =3D write(l_io_get_fd(io), data, len);
++		if (r < 0) {
++			l_main_quit();
++			break;
++		}
++		len -=3D r;
++		data +=3D r;
++	}
++}
++
++static void https_tls_ready(void *user_data, const char *peer_identity)
++{
++	uint8_t buf[2048];
++	int l;
++
++	if (peer_identity)
++		printf("Server authenticated as %s\n", peer_identity);
++	else
++		printf("Server not authenticated\n");
++
++	l =3D snprintf((char *) buf, sizeof(buf),
++			"HEAD / HTTP/1.1\r\n"
++			"Connection: close\r\n"
++			"Host: %s\r\n\r\n", hostname);
++	l_tls_write(tls, buf, l);
++}
++
++int main(int argc, char *argv[])
++{
++	struct hostent *he;
++	struct in_addr **addr_list;
++	struct sockaddr_in addr;
++	int fd;
++
++	if (argc !=3D 2 && argc !=3D 3 && argc !=3D 6) {
++		printf("Usage: %s <https-host-name> [<ca-cert-path> "
++				"[<client-cert-path> <client-key-path> "
++				"<client-key-passphrase>]]\n"
++				"Note: The passphrase will be ignored if the "
++				"key is not encrypted.\n",
++				argv[0]);
++		return -1;
 +	}
 +
-+	rsa_client_pubkey =3D l_rsa_pkcs1_v1_5_new(tls->peer_pubkey,
-+						tls->peer_pubkey_length);
-+	if (!rsa_client_pubkey) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
++	l_log_set_stderr();
 +
-+		return false;
++	hostname =3D argv[1];
++	he =3D gethostbyname(hostname);
++	if (!he) {
++		printf("gethostbyname: %s\n", strerror(errno));
++		return -1;
 +	}
 +
-+	key_size =3D l_rsa_get_key_size(rsa_client_pubkey);
-+
-+	/* Only the default hash type supported */
-+	if (len !=3D 4 + key_size ||
-+			in[0] !=3D HANDSHAKE_HASH_TYPE_TLS ||
-+			in[1] !=3D 1 /* RSA_sign */) {
-+		tls_disconnect(tls, TLS_ALERT_DECRYPT_ERROR, 0);
-+
-+		return false;
++	addr_list =3D (struct in_addr **) he->h_addr_list;
++	if (!addr_list) {
++		printf("No host addresses found\n");
++		return -1;
 +	}
 +
-+	pkcs1_write_digest_info(HANDSHAKE_HASH_TYPE, expected, &expected_len,
-+				hash, HANDSHAKE_HASH_SIZE);
-+	digest_info =3D alloca(key_size);
-+
-+	result =3D l_rsa_verify(rsa_client_pubkey, in + 4, digest_info,
-+				key_size, expected_len);
-+
-+	l_rsa_free(rsa_client_pubkey);
-+
-+	if (!result || memcmp(digest_info, expected, expected_len)) {
-+		tls_disconnect(tls, TLS_ALERT_DECRYPT_ERROR, 0);
-+
-+		return false;
++	fd =3D socket(AF_INET, SOCK_STREAM, 0);
++	if (fd < 0) {
++		printf("socket: %s\n", strerror(errno));
++		return -1;
 +	}
++
++	addr.sin_family =3D AF_INET;
++	addr.sin_port =3D htons(443);
++	memcpy(&addr.sin_addr, addr_list[0], sizeof(addr.sin_addr));
++	if (connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
++		printf("connect: %s\n", strerror(errno));
++		return -1;
++	}
++
++	io =3D l_io_new(fd);
++	l_io_set_close_on_destroy(io, true);
++	l_io_set_read_handler(io, https_io_read, tls, NULL);
++	l_io_set_disconnect_handler(io, https_io_disconnect, tls, NULL);
++
++	tls =3D l_tls_new(false, https_new_data, https_tls_write,
++			https_tls_ready, https_tls_disconnected, NULL);
++	if (argc > 2)
++		l_tls_set_cacert(tls, argv[2]);
++	if (argc > 5)
++		l_tls_set_auth_data(tls, argv[3], argv[4], argv[5]);
++
++	l_main_run();
++
++	l_io_destroy(io);
++	l_tls_free(tls);
++
++	return 0;
++}
+diff --git a/examples/https-server-test.c b/examples/https-server-test.c
+new file mode 100644
+index 0000000..a666a00
+--- /dev/null
++++ b/examples/https-server-test.c
+@@ -0,0 +1,169 @@
++/*
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2011-2014  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <sys/socket.h>
++#include <sys/types.h>
++#include <netinet/in.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <errno.h>
++#include <arpa/inet.h>
++
++#include <ell/ell.h>
++
++static struct l_io *io;
++static struct l_tls *tls;
++bool served;
++
++static void https_io_disconnect(struct l_io *io, void *user_data)
++{
++	if (!served)
++		printf("Disconnected before serving a page\n");
++	l_main_quit();
++}
++
++static bool https_io_read(struct l_io *io, void *user_data)
++{
++	uint8_t buf[2048];
++	int l;
++
++	l =3D read(l_io_get_fd(io), buf, sizeof(buf));
++	if (l =3D=3D 0)
++		l_main_quit();
++	else if (l > 0)
++		l_tls_handle_rx(tls, buf, l);
 +
 +	return true;
 +}
 +
- static void tls_get_handshake_hash(struct l_tls *tls, uint8_t *out)
- {
- 	struct l_checksum *hash =3D l_checksum_clone(tls->handshake_hash);
-@@ -1027,6 +1337,98 @@ static void tls_handle_server_hello_done(struct l_tl=
-s *tls,
- 	tls->state =3D TLS_HANDSHAKE_WAIT_CHANGE_CIPHER_SPEC;
- }
- =
-
-+static void tls_handle_rsa_client_key_xchg(struct l_tls *tls,
-+						const uint8_t *buf, size_t len)
++static void https_tls_disconnected(void *user_data,
++					enum l_tls_alert_desc reason,
++					bool remote)
 +{
-+	uint8_t pre_master_secret[48], random_secret[46];
-+	struct l_rsa *rsa_server_privkey;
-+	uint8_t *privkey, *privkey_short;
-+	size_t key_size, short_size;
-+	bool result, encrypted;
-+
-+	if (!tls->priv_key_path) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
-+				TLS_ALERT_BAD_CERT);
-+
-+		return;
-+	}
-+
-+	privkey =3D l_cert_load_key_file(tls->priv_key_path,
-+					tls->priv_key_passphrase,
-+					&key_size, &encrypted);
-+	if (!privkey) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
-+				TLS_ALERT_BAD_CERT);
-+
-+		return;
-+	}
-+
-+	privkey_short =3D l_cert_extract_rsakey(privkey, key_size, &short_size);
-+	l_cert_free_key(privkey, key_size);
-+
-+	if (!privkey_short) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
-+				TLS_ALERT_BAD_CERT);
-+
-+		return;
-+	}
-+
-+	rsa_server_privkey =3D l_rsa_pkcs1_v1_5_new(privkey_short, short_size);
-+	l_cert_free_key(privkey_short, short_size);
-+
-+	if (!rsa_server_privkey) {
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
-+
-+		return;
-+	}
-+
-+	key_size =3D l_rsa_get_key_size(rsa_server_privkey);
-+
-+	if (len !=3D key_size + 2) {
-+		l_rsa_free(rsa_server_privkey);
-+
-+		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
-+
-+		return;
-+	}
-+
-+	len =3D l_get_be16(buf);
-+
-+	if (len !=3D key_size) {
-+		l_rsa_free(rsa_server_privkey);
-+
-+		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
-+
-+		return;
-+	}
-+
-+	result =3D l_rsa_decrypt(rsa_server_privkey, buf + 2, pre_master_secret,
-+				key_size, 48);
-+	l_rsa_free(rsa_server_privkey);
-+
-+	/*
-+	 * Assume correct premaster secret client version which according
-+	 * to the TLS1.2 spec is unlikely in client implementations SSLv3
-+	 * and prior.  Spec suggests either not supporting them or adding
-+	 * a configurable override for <=3D SSLv3 clients.  For now we have
-+	 * no need to support them.
-+	 *
-+	 * On any decode error randomise the Pre Master Secret as per the
-+	 * countermeasures in 7.4.7.1 and don't generate any alerts.
-+	 */
-+	l_getrandom(random_secret, 46);
-+
-+	pre_master_secret[0] =3D tls->client_version >> 8;
-+	pre_master_secret[1] =3D tls->client_version >> 0;
-+
-+	if (!result)
-+		memcpy(pre_master_secret + 2, random_secret, 46);
-+
-+	tls_generate_master_secret(tls, pre_master_secret, 48);
-+	memset(pre_master_secret, 0, 48);
-+	memset(random_secret, 0, 46);
++	if (reason)
++		printf("TLS error: %s\n", l_tls_alert_to_str(reason));
++	l_main_quit();
 +}
 +
- static void tls_handle_certificate_verify(struct l_tls *tls,
- 						const uint8_t *buf, size_t len)
- {
++static void https_new_data(void *user_data, const uint8_t *data, size_t le=
+n)
++{
++	char *reply =3D "HTTP/1.1 200 OK\r\n"
++		"Content-Type: text/plain\r\n"
++		"Connection: close\r\n"
++		"\r\n"
++		"Hello, world!\n";
++
++	if (len >=3D 4 && !memcmp(data + len - 4, "\r\n\r\n", 4)) {
++		l_tls_write(tls, (void *) reply, strlen(reply));
++		l_tls_close(tls);
++		served =3D true;
++		printf("Hello world page served\n");
++	}
++}
++
++static void https_tls_write(void *user_data, const uint8_t *data, size_t l=
+en)
++{
++	int r;
++
++	while (len) {
++		r =3D write(l_io_get_fd(io), data, len);
++		if (r < 0) {
++			l_main_quit();
++			break;
++		}
++		len -=3D r;
++		data +=3D r;
++	}
++}
++
++static void https_tls_ready(void *user_data, const char *peer_identity)
++{
++	if (peer_identity)
++		printf("Client authenticated as %s\n", peer_identity);
++	else
++		printf("Client not authenticated\n");
++}
++
++int main(int argc, char *argv[])
++{
++	struct sockaddr_in addr;
++	int fd, listenfd;
++
++	if (argc !=3D 4 && argc !=3D 5) {
++		printf("Usage: %s <server-cert-path> <server-key-path> "
++				"<server-key-passphrase> [<ca-cert-path>]\n"
++				"Note: The passphrase will be ignored if the "
++				"key is not encrypted.\n",
++				argv[0]);
++
++		return -1;
++	}
++
++	l_log_set_stderr();
++
++	listenfd =3D socket(AF_INET, SOCK_STREAM, 0);
++	setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &(int) { 1 },
++			sizeof(int));
++	addr.sin_family =3D AF_INET;
++	addr.sin_addr.s_addr =3D htonl(INADDR_ANY);
++	addr.sin_port =3D htons(1234);
++
++	if (bind(listenfd, (struct sockaddr *) &addr, sizeof(addr)) =3D=3D -1) {
++		printf("bind: %s\n", strerror(errno));
++		return -1;
++	}
++	if (listen(listenfd, 1) =3D=3D -1) {
++		printf("listen: %s\n", strerror(errno));
++		return -1;
++	}
++
++	printf("Try https://localhost:1234/ now\n");
++
++	fd =3D accept(listenfd, NULL, NULL);
++	close(listenfd);
++	if (fd =3D=3D -1) {
++		printf("accept: %s\n", strerror(errno));
++		return -1;
++	}
++
++	io =3D l_io_new(fd);
++	l_io_set_close_on_destroy(io, true);
++	l_io_set_read_handler(io, https_io_read, tls, NULL);
++	l_io_set_disconnect_handler(io, https_io_disconnect, tls, NULL);
++
++	tls =3D l_tls_new(true, https_new_data, https_tls_write,
++			https_tls_ready, https_tls_disconnected, NULL);
++	l_tls_set_auth_data(tls, argv[1], argv[2], argv[3]);
++	l_tls_set_cacert(tls, argc > 4 ? argv[4] : NULL);
++
++	l_main_run();
++
++	l_io_destroy(io);
++	l_tls_free(tls);
++
++	return 0;
++}
 -- =
 
 2.1.4
 
 
---===============0709942245304439020==--
+--===============7394445268597806526==--
 
