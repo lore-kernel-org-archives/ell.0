@@ -1,293 +1,84 @@
-Content-Type: multipart/mixed; boundary="===============2122750675567550314=="
+Content-Type: multipart/mixed; boundary="===============3898159820430521258=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 10/17] unit: Add a certificate verification test.
-Date: Fri, 24 Jul 2015 05:27:45 +0200
-Message-ID: <1437708472-28124-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 11/17] Add TLS utilities and definitions as ell/tls{.c, .h,
+ -private.h}
+Date: Fri, 24 Jul 2015 05:27:46 +0200
+Message-ID: <1437708472-28124-2-git-send-email-andrew.zaborowski@intel.com>
+In-Reply-To: <1437708472-28124-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2122750675567550314==
+--===============3898159820430521258==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Uses the included example certificate files and corresponding
-private key files are included for use in future tests (for TLS).
-This tests most of the cert.c functions and the RSA verify operation.
+This is the groundwork for TLS support, only general structures are
+added here and a part of the public API (l_tls_* functions).  Also
+the cryptographic utilities for the TLS1.2 Pseudo Random Function
+(RFC5246 section 5) and the pre-master-secret generation (section
+8.1) and the Change Cipher Spec operation used at the end of a
+succesful handshake are added.
 ---
- .gitignore               |  1 +
- Makefile.am              |  7 ++++--
- unit/cert-ca-key.pem     | 27 +++++++++++++++++++++++
- unit/cert-ca.pem         | 26 ++++++++++++++++++++++
- unit/cert-client-key.pem | 27 +++++++++++++++++++++++
- unit/cert-client.pem     | 26 ++++++++++++++++++++++
- unit/cert-server-key.pem | 27 +++++++++++++++++++++++
- unit/cert-server.pem     | 26 ++++++++++++++++++++++
- unit/test-cert.c         | 57 ++++++++++++++++++++++++++++++++++++++++++++=
+ Makefile.am       |   7 +-
+ ell/ell.h         |   1 +
+ ell/tls-private.h | 185 ++++++++++++++++++++++++
+ ell/tls.c         | 417 ++++++++++++++++++++++++++++++++++++++++++++++++++=
 ++++
- 9 files changed, 222 insertions(+), 2 deletions(-)
- create mode 100644 unit/cert-ca-key.pem
- create mode 100644 unit/cert-ca.pem
- create mode 100644 unit/cert-client-key.pem
- create mode 100644 unit/cert-client.pem
- create mode 100644 unit/cert-server-key.pem
- create mode 100644 unit/cert-server.pem
- create mode 100644 unit/test-cert.c
+ ell/tls.h         | 102 +++++++++++++
+ 5 files changed, 710 insertions(+), 2 deletions(-)
+ create mode 100644 ell/tls-private.h
+ create mode 100644 ell/tls.c
+ create mode 100644 ell/tls.h
 
-diff --git a/.gitignore b/.gitignore
-index 16f0103..b122511 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -46,6 +46,7 @@ unit/test-cipher
- unit/test-random
- unit/test-util
- unit/test-uintset
-+unit/test-cert
- unit/*.log
- unit/*.trs
- examples/dbus-service
 diff --git a/Makefile.am b/Makefile.am
-index 576641f..4792544 100644
+index 4792544..da1f4f1 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -125,7 +125,8 @@ unit_tests =3D unit/test-unit \
- 			unit/test-cipher \
- 			unit/test-random \
- 			unit/test-util \
--			unit/test-uintset
-+			unit/test-uintset \
-+			unit/test-cert
+@@ -37,7 +37,8 @@ pkginclude_HEADERS =3D ell/ell.h \
+ 			ell/cipher.h \
+ 			ell/random.h \
+ 			ell/uintset.h \
+-			ell/cert.h
++			ell/cert.h \
++			ell/tls.h
  =
 
- if MAINTAINER_MODE
- noinst_PROGRAMS +=3D $(unit_tests)
-@@ -187,6 +188,8 @@ unit_test_util_LDADD =3D ell/libell-private.la
+ lib_LTLIBRARIES =3D ell/libell.la
  =
 
- unit_test_uintset_LDADD =3D ell/libell-private.la
+@@ -81,7 +82,9 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
+ 			ell/cert-private.h \
+ 			ell/cert.c \
+ 			ell/rsa-private.h \
+-			ell/rsa.c
++			ell/rsa.c \
++			ell/tls-private.h \
++			ell/tls.c
  =
 
-+unit_test_cert_LDADD =3D ell/libell-private.la
-+
- if MAINTAINER_MODE
- noinst_LTLIBRARIES +=3D unit/example-plugin.la
- endif
-@@ -194,7 +197,7 @@ endif
- unit_example_plugin_la_LDFLAGS =3D -no-undefined -module -avoid-version \
- 							-rpath /dummy
+ ell_libell_la_LDFLAGS =3D -no-undefined \
+ 			-version-info $(ELL_CURRENT):$(ELL_REVISION):$(ELL_AGE)
+diff --git a/ell/ell.h b/ell/ell.h
+index 2c88216..c3c8ce5 100644
+--- a/ell/ell.h
++++ b/ell/ell.h
+@@ -39,6 +39,7 @@
+ #include <ell/random.h>
+ #include <ell/uintset.h>
+ #include <ell/cert.h>
++#include <ell/tls.h>
  =
 
--unit_test_data_files =3D unit/settings.test
-+unit_test_data_files =3D unit/settings.test unit/cert-ca.pem unit/cert-cli=
-ent.pem unit/cert-server.pem unit/cert-client-key.pem unit/cert-server-key.=
-pem
- =
-
- examples =3D examples/dbus-service
- =
-
-diff --git a/unit/cert-ca-key.pem b/unit/cert-ca-key.pem
+ #include <ell/netlink.h>
+ #include <ell/genl.h>
+diff --git a/ell/tls-private.h b/ell/tls-private.h
 new file mode 100644
-index 0000000..f121d73
+index 0000000..033403a
 --- /dev/null
-+++ b/unit/cert-ca-key.pem
-@@ -0,0 +1,27 @@
-+-----BEGIN RSA PRIVATE KEY-----
-+MIIEpQIBAAKCAQEAyz0GzVnm43TnX8Gl2aK1XknC4hhnw9MdJsEgOy3XJWYo8ijo
-+9YxJTuxPIFc0bz8wJYj7JO/Z7GuRsybNt4pq80ILU0LB5VSnO/yZdpEv01gfgMUk
-+2aCxIwZrnnQ3owHUq6x0+amlZD5NuWmPGE8TYUTXZILHRlLac6NP7fq1bHtT+CT4
-+/HIivb9lgGg/tPuMac5nFxdXyal4coVAmoQa+s8kAlbiFDEVwSMlWkh7IXf/8acx
-+31UOgD8XbNdo2HGrpN0TFkPX3qwLSq1CBApu4oX2PJ8/BemRbmsWZvAIxlHUyySa
-+J5zg3bxQaX/nS9nre65SXXN1DEVmPMymMxb7yQIDAQABAoIBADAuopsychOAlo3U
-+Ce6jrV3SHNqfMJJzTVjvtiVxg60BIDnwyvHTtVl5mnSvV+X70/1CEVA7cK2k/uC7
-+FVArB5nuEWNG01L8E72b8AH0/6KaJLXRhx/1AamtDvx8zufdOj8M3pqFxokSYDjR
-+trPro0uPF4Vjn7yjTdjWYc+ofTRfSFyOW25HviTztEFzWeZt4KVTbZ/a7Nc1mEDj
-+m04noAPh2+24akeahCQUeNLzy197DDpoCLWnrtAwUQc9o4v2RwOakTdoPUT+n8H/
-+oxhimB1sfZs3PS74iwf3Z2alFVarF6Surmt6cj7OqsT8GR1bcW5r4+zpaVq0MWs4
-+dch7kgECgYEA7AOx/+pHbVzrPN3G+flYnLuCivwck6jUueMjBzJ6Q8mntnI9r2vp
-+kHCmCV3sDgvust78jDj4oS8kQ/Q86wy28slZJbQv71XcUxbXCzDeRp/ZvGrAemHQ
-+RzfLMsuGdirL9g5XaHpzOYa67Gd2JR6aK3MBOCE24jtm+Iwd6cYs34kCgYEA3HLQ
-+dmZC9JJggTIM7Q72mqx3V8aLG54psO0B1O9QaG02yZe87YU4WY8GR729MGEK5VgQ
-+AqqfP8slczRYeOzd+5tgyQTtSsPmIc75zXBdwrrpEv0kC+ZS06vAPlPYfqh/4kRq
-+rXbGZulSIkmqOXHdnijqfUOc19GeJoUi6fOn6kECgYEArEPqOUvsBKQMw2lw4WYh
-+So0GtKFdzl0tn9xs5cTvPulCc8Wgxpiyaw398tpOANauzHo7xbGTsDpzcvIjQMEQ
-+C9fxLLb/QebeoPsLzQxHQS9Nwtv8T5dzaXgM5a9uHnQQWTGQlR7DWZrAdurxbhiP
-+GOWhXzHHGIuZFhNXhhlzCVkCgYEArdBVL1V361BSiOtGp88Jf3EGdA3WdsMhCiAF
-+NrguRPf/n7llPD2y7WJIyF4BAlkxdx0VGpUfFPR+pbQbIdVZPV4IVNbupemJ1RRV
-+f7beJoCq7s7rEfrbSYv8+uevJkaC9ouNNRIWYuQKX4CHl92AqIiIQpYB32Smdqa4
-+nZAA0EECgYEAoKA19JDFAJ28fAIPgxYmEvuO07P0O4QJrINzVNvXcQn+yUQ4jBcN
-+eiAuqObZV1pGquOdPcnvDmOZZ+/gu1xJwXaPaZInuVJN1UCCRRcUcy40tXkZgW40
-+kqb3e0GJPLMR31p5X1WdTpd7y4uh+IV0R9chuGVTc5dBwwoFNRMdWfk=3D
-+-----END RSA PRIVATE KEY-----
-diff --git a/unit/cert-ca.pem b/unit/cert-ca.pem
-new file mode 100644
-index 0000000..724f852
---- /dev/null
-+++ b/unit/cert-ca.pem
-@@ -0,0 +1,26 @@
-+-----BEGIN CERTIFICATE-----
-+MIIEVDCCAzygAwIBAgIJAIOyXTOJrYsaMA0GCSqGSIb3DQEBCwUAMHgxNTAzBgNV
-+BAoTLEludGVybmF0aW9uYWwgVW5pb24gb2YgRXhhbXBsZSBPcmdhbml6YXRpb25z
-+MR8wHQYDVQQDExZDZXJ0aWZpY2F0ZSBpc3N1ZXIgZ3V5MR4wHAYJKoZIhvcNAQkB
-+Fg9jYUBtYWlsLmV4YW1wbGUwHhcNMTUwNzIxMjIzMDU4WhcNMTcwNzIwMjIzMDU4
-+WjB4MTUwMwYDVQQKEyxJbnRlcm5hdGlvbmFsIFVuaW9uIG9mIEV4YW1wbGUgT3Jn
-+YW5pemF0aW9uczEfMB0GA1UEAxMWQ2VydGlmaWNhdGUgaXNzdWVyIGd1eTEeMBwG
-+CSqGSIb3DQEJARYPY2FAbWFpbC5leGFtcGxlMIIBIjANBgkqhkiG9w0BAQEFAAOC
-+AQ8AMIIBCgKCAQEAyz0GzVnm43TnX8Gl2aK1XknC4hhnw9MdJsEgOy3XJWYo8ijo
-+9YxJTuxPIFc0bz8wJYj7JO/Z7GuRsybNt4pq80ILU0LB5VSnO/yZdpEv01gfgMUk
-+2aCxIwZrnnQ3owHUq6x0+amlZD5NuWmPGE8TYUTXZILHRlLac6NP7fq1bHtT+CT4
-+/HIivb9lgGg/tPuMac5nFxdXyal4coVAmoQa+s8kAlbiFDEVwSMlWkh7IXf/8acx
-+31UOgD8XbNdo2HGrpN0TFkPX3qwLSq1CBApu4oX2PJ8/BemRbmsWZvAIxlHUyySa
-+J5zg3bxQaX/nS9nre65SXXN1DEVmPMymMxb7yQIDAQABo4HgMIHdMB0GA1UdDgQW
-+BBQwJusAXVPeEDyctL5+1/gVROm4vTCBqgYDVR0jBIGiMIGfgBQwJusAXVPeEDyc
-+tL5+1/gVROm4vaF8pHoweDE1MDMGA1UEChMsSW50ZXJuYXRpb25hbCBVbmlvbiBv
-+ZiBFeGFtcGxlIE9yZ2FuaXphdGlvbnMxHzAdBgNVBAMTFkNlcnRpZmljYXRlIGlz
-+c3VlciBndXkxHjAcBgkqhkiG9w0BCQEWD2NhQG1haWwuZXhhbXBsZYIJAIOyXTOJ
-+rYsaMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBADKZwqldI8Il
-+9ZgA4bhbEarcopiUUC3RMiH9cvy1rXDgYoSbC5RX2x6ptCIXDLfuAsTk+Qcl90KZ
-+xno2zrKjjB7QUeb5kdZAwuZ0IoqgLWPxvdayVUDHT/7B/rNFH2ExmKR4Qz2k+gxb
-+d5fUYQecRajfDQjOGhhoiDzJBq/GERXnJ2/WEOr3gFdOQ3QLFzTLjFRFlq+cxbm7
-+OmBt+f2wTaX1l/EMGbxdvLfD96VbDihAl6yIsK2hNYNghW032nJjFDs7pOqneRue
-+sCSbyRp2O8rBT8IPkn2e3QQl/zrdEv5FLnqrhSaB80bLJi/HGixkFkvvp+ZsWIBd
-+NQZHpZyYJ+Y=3D
-+-----END CERTIFICATE-----
-diff --git a/unit/cert-client-key.pem b/unit/cert-client-key.pem
-new file mode 100644
-index 0000000..b8f88cf
---- /dev/null
-+++ b/unit/cert-client-key.pem
-@@ -0,0 +1,27 @@
-+-----BEGIN RSA PRIVATE KEY-----
-+MIIEowIBAAKCAQEApmgm9gy2iv2QqjzXom8XlT34Vp5XV0QWHwaWmIYuCAYpw5A2
-+Y5cYNULg4M3BjsrjjmMVG9xncQ4WJHETkAs+l2d2cIqyvzmsRJ5EakeeQuxPbX+O
-+E4XTVUWK7U8MtFbioynO7fy4FXYOvG0rG9BUAocuaMgBVJZC0TIQsD+LPQizMMwl
-+gmkcK2dy0MAD7q4ouvIrWxdnn/JfcQernbl1s/ThLiFFxA+7s/QzP1zxm9nKaGSi
-+ITteqrwKPkPiRjlQPM3Ia8i3nvskMlyZTVgEU4z0ZmoQ9T+odZ94vhR4VGib0Xr2
-+7sn1Ejhlcl3+0Lt/v086hkhPSZ7nV5kjzOWy5wIDAQABAoIBACC03duEeihtWA6t
-+sLBDZ3401OepbX9AaZylfdnynX+EPpcqdBY071QglfR5XG7FX95viQmV01r8Ksv0
-+0aSBIUc+1Z+fEyzUmBBQjx/YfbmnmqDp7jHWHshmx7yGyfd0EE2DfSF3h3LoZlMQ
-+neV0l957VVrQ3LoUYoOddHw/sQ1IpEDzjHKxcCXrBRVDp/Tcc9yrg+rWRMC8smmj
-+bgf5bhUMIJLKaB1lhENLmwRYAALvo2hjUPMHhH9j1F+Q0js9MJGgBP772SEzDp4P
-+34pUuxrg0zJeygULc2kJHBNJZ1DOO9hXIxiVtiGlvHC79+7N9OYlwd3kd9xWxvmc
-+D7Fz9XECgYEA17VSI79KZaB2pSqP2nzHESHDMDZcfjLKa0GYMB6qbtUWbwexDxqv
-+bLP7L0UsYdJbY1bNJGsof97wypz2uiC9s5X1AdXFe2zylmSjXZ6MVdqik1EpWU4I
-+QDiU4lVPgIxGsu8v9owCGxo/9FV/jKME8u+C45KuVAxfmj1pxSeJRe8CgYEAxX1Z
-+RB4RFR38m8yH3MyzL6nj54VGhD8eT9auJwXWKmBYa+5fntOOgMngruql0AWZs/Yr
-+uexcX+ajNOj2yZVn+uERDBYLqNjQc92IoPAd6ZYIXjKHH8H6SO1GleylMmgW2MEp
-+uS6YQh9S95y7S4wtcY/jtiLgKYe5JNRTjf77GokCgYAyvyuV0Vj1U6zV6o9xPU2v
-+0BuVahSUc+p/FS1ylKRP8r2WXV7gSMzga+86DbIFSXHKiw8z9CnQ+2f2orrAyxcV
-++r9rMRmGkfj4PLDaQ4SMZiU9NyjdI6h5Q1ZzcNKFUXsIeZD1FbchHSnSl5KsSWXO
-+qV5Hn6h3iXmsVapegZCf7QKBgEzWv5OkSys3NqD7zGTZdGJ4LIdZMJ2l3UpdEfd2
-+6uQkBmNAJQ4r7AcqBPSpsYglla8SeeLmFu7tUtT0S4kVS5auWS6lqTWx3jEmodFU
-+e5711B2qdS6jD5muUEdnAsOBAlqllXFKss0PWP2kiq8TRF8qCARGv4cJGr08q6HU
-+8qhZAoGBAJNvpqpB6pPy5Y0j0wGkc9gRFXFUy8Ulxk6bBA15GW0tiGiyEt1P1SbK
-+/kwiWjwFryDn0eSATp4YRgqi1da0KG1oxdgzxbGNqNpVzZ9pDW4UcLyzzkBYDrjX
-+YY+reFnomF8Wd3XaXmoI4wESHIWJMN3W2deXt75fkb48hxCf9kzX
-+-----END RSA PRIVATE KEY-----
-diff --git a/unit/cert-client.pem b/unit/cert-client.pem
-new file mode 100644
-index 0000000..6b0fccf
---- /dev/null
-+++ b/unit/cert-client.pem
-@@ -0,0 +1,26 @@
-+-----BEGIN CERTIFICATE-----
-+MIIEbzCCA1egAwIBAgIJAIOyXTOJrYsbMA0GCSqGSIb3DQEBBAUAMHgxNTAzBgNV
-+BAoTLEludGVybmF0aW9uYWwgVW5pb24gb2YgRXhhbXBsZSBPcmdhbml6YXRpb25z
-+MR8wHQYDVQQDExZDZXJ0aWZpY2F0ZSBpc3N1ZXIgZ3V5MR4wHAYJKoZIhvcNAQkB
-+Fg9jYUBtYWlsLmV4YW1wbGUwIBcNMTUwNzIxMjIzMTE4WhgPMjExNTA2MjcyMjMx
-+MThaMGcxITAfBgNVBAoTGEJhciBFeGFtcGxlIE9yZ2FuaXphdGlvbjEhMB8GA1UE
-+AxMYQmFyIEV4YW1wbGUgT3JnYW5pemF0aW9uMR8wHQYJKoZIhvcNAQkBFhBiYXJA
-+bWFpbC5leGFtcGxlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApmgm
-+9gy2iv2QqjzXom8XlT34Vp5XV0QWHwaWmIYuCAYpw5A2Y5cYNULg4M3BjsrjjmMV
-+G9xncQ4WJHETkAs+l2d2cIqyvzmsRJ5EakeeQuxPbX+OE4XTVUWK7U8MtFbioynO
-+7fy4FXYOvG0rG9BUAocuaMgBVJZC0TIQsD+LPQizMMwlgmkcK2dy0MAD7q4ouvIr
-+Wxdnn/JfcQernbl1s/ThLiFFxA+7s/QzP1zxm9nKaGSiITteqrwKPkPiRjlQPM3I
-+a8i3nvskMlyZTVgEU4z0ZmoQ9T+odZ94vhR4VGib0Xr27sn1Ejhlcl3+0Lt/v086
-+hkhPSZ7nV5kjzOWy5wIDAQABo4IBCTCCAQUwCQYDVR0TBAIwADAsBglghkgBhvhC
-+AQ0EHxYdT3BlblNTTCBHZW5lcmF0ZWQgQ2VydGlmaWNhdGUwHQYDVR0OBBYEFICx
-+nSSUXhyrxVVOqUv/f3vZfTBoMIGqBgNVHSMEgaIwgZ+AFDAm6wBdU94QPJy0vn7X
-++BVE6bi9oXykejB4MTUwMwYDVQQKEyxJbnRlcm5hdGlvbmFsIFVuaW9uIG9mIEV4
-+YW1wbGUgT3JnYW5pemF0aW9uczEfMB0GA1UEAxMWQ2VydGlmaWNhdGUgaXNzdWVy
-+IGd1eTEeMBwGCSqGSIb3DQEJARYPY2FAbWFpbC5leGFtcGxlggkAg7JdM4mtixow
-+DQYJKoZIhvcNAQEEBQADggEBADqzKUMa7JZr9e7d8zmWj/kBP47XzXDl/3LZXHGT
-+mbdhB/j73BICEK4+2WAF8d8uKLz3zYXOXgq72l6arcPPJjyA7Q8MKfXPCIkCe1Oy
-+0oEUtTeiwrsT9cPGHXcbYInNZZ0GSw/w1nYoYTsmJeLV8dakY78bdvGjHjjYlUTU
-+OWC7V4HuIBq2ablHJ/i54vS+k4iN4XIppLBwXytNEnu2l5QEz+29ZIEhTlvhhIR+
-+D+DiPgNBxNGlPJH0m20qpErW6as/+UXKNQgadQbZ16gjmzCoZQJxUhT/WKqPhLhK
-+ApzmXLQwarIjHW2qmy4I4VXUeqe5PFT2638qshylw+Qxeug=3D
-+-----END CERTIFICATE-----
-diff --git a/unit/cert-server-key.pem b/unit/cert-server-key.pem
-new file mode 100644
-index 0000000..efb3922
---- /dev/null
-+++ b/unit/cert-server-key.pem
-@@ -0,0 +1,27 @@
-+-----BEGIN RSA PRIVATE KEY-----
-+MIIEowIBAAKCAQEAw52fx0CLmdfz2JzBse6CfzTJqYljq3j6W4z3XsGz3qFtmi1e
-+ZsPY9ZNj9jpA9+vvRNRG+VXfkF27OVIkyiwkdN6zeVtY7PdmAQjoSv1Akwr18Mrh
-+2mnGeKcN2+27PBglARl0uS7IWIGcGdHEV4idin54ExtMm7d/OW2H8WvUeMJ/vE4t
-+0BagPAMJosOtlIO0QzlfYsOuPfTxh2G4viRnw6vqD0My1jut68BqrwWJfO/h35Ok
-+hYj7sdWmWni38v2j8sbs/6YH3mR7YkmWijfGLlVke/tkOjx2PlItT7PIjwDOkHxs
-+Uu0yZCsEuh3w+wzuVv/ByzyW3K/0eAkF3ov6dQIDAQABAoIBAFWW6ykgabSHk68M
-+b4et5zVHYJEohw6o4UobdMTmFhBsK2uRPEPUn2Jb+hnrRS/08Hz6MI+57hbZnCip
-+c2VuSQlFw9tuh4sveFctkY32H0H3QsL30jhhnbB+z4aSDyFtIwvHGpZIDOsE0stN
-+SA5QvTWyvlEF2dAsSqNS9G9CkfW/yE46UU1sWb9YHCpK6bQDKolRPb6HxHFY7KBn
-+58MQd3mdripSjVUShEcXxuwq7aM/5hIPRVv/9SQyd450+STEKnA5iqjh3Wr1xvUN
-+BuqEcTwhUhx9pp4vwft+0TIcwadGymTf4xsdb0Id3TrTSP9TtqdTIOvuVwm5bm9f
-+DfHKFSUCgYEA7BXQEgqVWPU4vnlkrfZ21UMIh3tUYpwEKz+kqGapucdhdldb6EXp
-+LgWLyuJqCy7wvwh/1uP0qKFNUOzSrSBnEAUfuteJWZoGM/VxUOkUimKIgYN5daPY
-+JahRZl8Sehm24b6a2oh5v1oQhyLxYXuOCXrl8/fEsn5JU92LQE0HYJcCgYEA1B3i
-+oQKHS0vzn79T8jVv+M5k+KcUa9esNeP+hQ/ZyjR9KbeX8gyxzIvm6v0BZSmxKw3P
-+RV3A2GgJK67wzATdqrMB9I+mbC1lTkh7kVS5CFmViHkTmm/f6ppxHcebqEmqFCPh
-+BCLP2NqwDV0s7+SoRhTWfxDeytOCauxhUQmRUtMCgYA7+K6KZrXZizGG8T9qEZnO
-+QuD/yYx+IDPO6LPjM3EaCFPxw+9M6bV6Q15ng2x8usfdP0N6Sx3zWEZTsFU0NW74
-+2tRcmjQB1uaMfGT0sMDPBoi2nbdU8vINXtyOrMf8zFtwrQKZUOHcgfyA15eJs+E4
-+90dC2kXVMc9exoCBLRAasQKBgQCpiuWdKmc3oRKuigAwJdRE+7urH+jrtex4+q5y
-+btP2knPEh3GUz97BjsVY6DdYQ7XPou8cE67TinxiBSeE+xKuoPwcHUG5T6OcqcTS
-+yfRHn0stVRF9LJS+cQme8vAQ2ChwhqkRZD3bqBh15hbH/G0f7wHveG2Lkvm4Ow4h
-+9tLIbwKBgDIN1MBmY5Fwf7KLaXwqnX2pstt+tHXUlA74emNZd5L405kiGkqK7fUG
-+ezofIAm1mizAv4hcVOoxOllMPDjJadfhELoi9JMbkJxmpQ1ezW0d+cc6DgRsWEZ+
-+T0mhkJKaKfjWvNxsXZhsLgakjAU8J0/kqUdC6VLOO2e/HprlpEv9
-+-----END RSA PRIVATE KEY-----
-diff --git a/unit/cert-server.pem b/unit/cert-server.pem
-new file mode 100644
-index 0000000..7f54b7a
---- /dev/null
-+++ b/unit/cert-server.pem
-@@ -0,0 +1,26 @@
-+-----BEGIN CERTIFICATE-----
-+MIIEbzCCA1egAwIBAgIJAIOyXTOJrYscMA0GCSqGSIb3DQEBBAUAMHgxNTAzBgNV
-+BAoTLEludGVybmF0aW9uYWwgVW5pb24gb2YgRXhhbXBsZSBPcmdhbml6YXRpb25z
-+MR8wHQYDVQQDExZDZXJ0aWZpY2F0ZSBpc3N1ZXIgZ3V5MR4wHAYJKoZIhvcNAQkB
-+Fg9jYUBtYWlsLmV4YW1wbGUwIBcNMTUwNzIxMjIzMTUxWhgPMjExNTA2MjcyMjMx
-+NTFaMGcxITAfBgNVBAoTGEZvbyBFeGFtcGxlIE9yZ2FuaXphdGlvbjEhMB8GA1UE
-+AxMYRm9vIEV4YW1wbGUgT3JnYW5pemF0aW9uMR8wHQYJKoZIhvcNAQkBFhBmb29A
-+bWFpbC5leGFtcGxlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw52f
-+x0CLmdfz2JzBse6CfzTJqYljq3j6W4z3XsGz3qFtmi1eZsPY9ZNj9jpA9+vvRNRG
-++VXfkF27OVIkyiwkdN6zeVtY7PdmAQjoSv1Akwr18Mrh2mnGeKcN2+27PBglARl0
-+uS7IWIGcGdHEV4idin54ExtMm7d/OW2H8WvUeMJ/vE4t0BagPAMJosOtlIO0Qzlf
-+YsOuPfTxh2G4viRnw6vqD0My1jut68BqrwWJfO/h35OkhYj7sdWmWni38v2j8sbs
-+/6YH3mR7YkmWijfGLlVke/tkOjx2PlItT7PIjwDOkHxsUu0yZCsEuh3w+wzuVv/B
-+yzyW3K/0eAkF3ov6dQIDAQABo4IBCTCCAQUwCQYDVR0TBAIwADAsBglghkgBhvhC
-+AQ0EHxYdT3BlblNTTCBHZW5lcmF0ZWQgQ2VydGlmaWNhdGUwHQYDVR0OBBYEFL2v
-+/nxaoNJQM65oOfksgwHMOgy2MIGqBgNVHSMEgaIwgZ+AFDAm6wBdU94QPJy0vn7X
-++BVE6bi9oXykejB4MTUwMwYDVQQKEyxJbnRlcm5hdGlvbmFsIFVuaW9uIG9mIEV4
-+YW1wbGUgT3JnYW5pemF0aW9uczEfMB0GA1UEAxMWQ2VydGlmaWNhdGUgaXNzdWVy
-+IGd1eTEeMBwGCSqGSIb3DQEJARYPY2FAbWFpbC5leGFtcGxlggkAg7JdM4mtixow
-+DQYJKoZIhvcNAQEEBQADggEBAECllH+Ph+sxeYlYR4Xn/QcvBNhMW5p8jtWt0KJ+
-+drpnqGz428LojEm8E2i+ab6jIDcEEzDTnDZqcszpkIAKNhNhjJyREAoYpg0EXtW8
-+1SQ6rLuZwE+mkG7yGUISRN/fn9RGKkDBdDCOeeKjEkklBLijejSwTJQiai1xdIsg
-+KuQpqUX5iy++MS9gL/8BeFVGgqY5MJXWXNXryjnqy7gdhUc1YHwzJbG95rAFuo/v
-+yP1NTqnduchiBXbFxLPTMenpe0cGfBdfDVR39hsFZSEMnCohc+WpYSF2PPxq58iw
-+zdfAwPzGdSLU/F0knKRVxtAJ7/Paz6Mvv5bTYe8i8EfbLtU=3D
-+-----END CERTIFICATE-----
-diff --git a/unit/test-cert.c b/unit/test-cert.c
-new file mode 100644
-index 0000000..c217030
---- /dev/null
-+++ b/unit/test-cert.c
-@@ -0,0 +1,57 @@
++++ b/ell/tls-private.h
+@@ -0,0 +1,185 @@
 +/*
 + *
 + *  Embedded Linux library
@@ -311,45 +102,710 @@ index 0000000..c217030
 + *
 + */
 +
++/* Only TLS 1.2 supported */
++#define TLS_V12		((3 << 8) | 3)
++#define TLS_V11		((3 << 8) | 2)
++#define TLS_V10		((3 << 8) | 1)
++
++#define TLS_VERSION	TLS_V12
++#define TLS_MIN_VERSION	TLS_V10
++
++enum tls_cipher_type {
++	TLS_CIPHER_STREAM,
++	TLS_CIPHER_BLOCK,
++	TLS_CIPHER_AEAD,
++};
++
++struct tls_bulk_encryption_algorithm {
++	enum tls_cipher_type cipher_type;
++	enum l_cipher_type l_id;
++	size_t key_length;
++	size_t iv_length;
++	size_t block_length;
++};
++
++struct tls_key_exchange_algorithm {
++	uint8_t id;
++
++	bool certificate_check;
++	bool key_exchange_msg;
++
++	bool (*validate_cert_key_type)(struct l_cert *cert);
++
++	bool (*send_server_key_exchange)(struct l_tls *tls);
++	bool (*handle_server_key_exchange)(struct l_tls *tls,
++						const uint8_t *buf, size_t len);
++
++	bool (*send_client_key_exchange)(struct l_tls *tls);
++	void (*handle_client_key_exchange)(struct l_tls *tls,
++						const uint8_t *buf, size_t len);
++
++	bool (*sign)(struct l_tls *tls, uint8_t **out,
++			const uint8_t *hash);
++	bool (*verify)(struct l_tls *tls, const uint8_t *in, size_t len,
++			const uint8_t *hash);
++};
++
++struct tls_mac_algorithm {
++	uint8_t id;
++	enum l_checksum_type hmac_type;
++	size_t mac_length;
++};
++
++struct tls_cipher_suite {
++	uint8_t id[2];
++	const char *name;
++	int verify_data_length;
++
++	struct tls_bulk_encryption_algorithm *encryption;
++	struct tls_key_exchange_algorithm *key_xchg;
++	struct tls_mac_algorithm *mac;
++};
++
++struct tls_compression_method {
++	int id;
++};
++
++enum tls_handshake_state {
++	TLS_HANDSHAKE_WAIT_HELLO,
++	TLS_HANDSHAKE_WAIT_CERTIFICATE,
++	TLS_HANDSHAKE_WAIT_KEY_EXCHANGE,
++	TLS_HANDSHAKE_WAIT_HELLO_DONE,
++	TLS_HANDSHAKE_WAIT_CERTIFICATE_VERIFY,
++	TLS_HANDSHAKE_WAIT_CHANGE_CIPHER_SPEC,
++	TLS_HANDSHAKE_WAIT_FINISHED,
++	TLS_HANDSHAKE_DONE,
++};
++
++enum tls_content_type {
++	TLS_CT_CHANGE_CIPHER_SPEC	=3D 20,
++	TLS_CT_ALERT			=3D 21,
++	TLS_CT_HANDSHAKE		=3D 22,
++	TLS_CT_APPLICATION_DATA		=3D 23,
++};
++
++/*
++ * Decide the hash for the Certificate Verify digital signature and the
++ * Finished PRF seed so we don't have to accumulate all of messages full
++ * contents until the Finished message.  If we're sent a hash of different
++ * type and need to verify we'll give up.
++ */
++#define HANDSHAKE_HASH_TYPE	L_CHECKSUM_SHA256
++#define HANDSHAKE_HASH_SIZE	32
++#define HANDSHAKE_HASH_TYPE_TLS	4
++
++struct l_tls {
++	bool server;
++
++	l_tls_write_cb_t tx, rx;
++	l_tls_ready_cb_t ready_handle;
++	l_tls_disconnect_cb_t disconnected;
++	void *user_data;
++
++	char *ca_cert_path;
++	char *cert_path;
++	char *priv_key_path;
++	char *priv_key_passphrase;
++
++	/* Record layer */
++
++	uint8_t *record_buf;
++	int record_buf_len;
++	int record_buf_max_len;
++
++	uint8_t *message_buf;
++	int message_buf_len;
++	int message_buf_max_len;
++	enum tls_content_type message_content_type;
++
++	/* Handshake protocol layer */
++
++	enum tls_handshake_state state;
++	struct l_checksum *handshake_hash;
++	uint8_t prev_digest[HANDSHAKE_HASH_SIZE];
++
++	uint16_t client_version;
++	uint16_t negotiated_version;
++	bool cert_requested, cert_sent;
++	bool peer_authenticated;
++	struct l_cert *peer_cert;
++	uint8_t *peer_pubkey;
++	size_t peer_pubkey_length;
++
++	/* SecurityParameters current and pending */
++
++	struct {
++		struct tls_cipher_suite *cipher_suite;
++		struct tls_compression_method *compression_method;
++		uint8_t master_secret[48];
++		uint8_t client_random[32];
++		uint8_t server_random[32];
++		uint8_t key_block[136]; /* Max key block size per 6.3 v1.1 */
++	} pending;
++
++	enum tls_cipher_type cipher_type[2];
++	struct tls_cipher_suite *cipher_suite[2];
++	struct l_cipher *cipher[2];
++	struct l_checksum *mac[2];
++	size_t mac_length[2];
++	size_t block_length[2];
++	size_t record_iv_length[2];
++	uint64_t seq_num[2];
++	/*
++	 * Some of the key and IV parts of the "current" state are kept
++	 * inside the cipher and mac states in the kernel so we don't
++	 * duplicate them here.
++	 */
++
++	bool ready;
++};
++
++void tls12_prf(enum l_checksum_type type, size_t hash_len,
++		const uint8_t *secret, size_t secret_len,
++		const char *label,
++		const uint8_t *seed, size_t seed_len,
++		uint8_t *out, size_t out_len);
+diff --git a/ell/tls.c b/ell/tls.c
+new file mode 100644
+index 0000000..5b4fea9
+--- /dev/null
++++ b/ell/tls.c
+@@ -0,0 +1,417 @@
++/*
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2015  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ */
++
 +#ifdef HAVE_CONFIG_H
 +#include <config.h>
 +#endif
 +
-+#include <assert.h>
++#define _GNU_SOURCE
++#include <alloca.h>
++#include <time.h>
 +
-+#include <ell/ell.h>
++#include "util.h"
++#include "private.h"
++#include "tls.h"
++#include "checksum.h"
++#include "cipher.h"
++#include "random.h"
++#include "cert.h"
++#include "cert-private.h"
++#include "tls-private.h"
++#include "asn1-private.h"
++#include "rsa-private.h"
 +
-+static void test_cert_verify(const void *data)
++void tls12_prf(enum l_checksum_type type, size_t hash_len,
++		const uint8_t *secret, size_t secret_len,
++		const char *label,
++		const uint8_t *seed, size_t seed_len,
++		uint8_t *out, size_t out_len)
 +{
-+	struct l_cert *cert;
-+	struct l_cert *cacert;
++	struct l_checksum *hmac =3D l_checksum_new_hmac(type, secret, secret_len);
++	size_t a_len, chunk_len, prfseed_len =3D strlen(label) + seed_len;
++	uint8_t a[128], prfseed[prfseed_len];
 +
-+	cert =3D l_cert_load_file(TESTDATADIR "/cert-server.pem");
-+	assert(cert);
++	/* Generate the hash seed or A(0) as label + seed */
++	memcpy(prfseed, label, strlen(label));
++	memcpy(prfseed + strlen(label), seed, seed_len);
 +
-+	cacert =3D l_cert_load_file(TESTDATADIR "/cert-ca.pem");
-+	assert(cacert);
++	memcpy(a, prfseed, prfseed_len);
++	a_len =3D prfseed_len;
 +
-+	assert(l_cert_verify_certchain(cert, cacert));
++	while (out_len) {
++		/* Generate A(i) */
++		l_checksum_reset(hmac);
++		l_checksum_update(hmac, a, a_len);
++		l_checksum_get_digest(hmac, a, hash_len);
++		a_len =3D hash_len;
 +
-+	assert(!l_cert_verify_certchain(cacert, cert));
++		/* Append seed & generate output */
++		memcpy(a + a_len, prfseed, prfseed_len);
++		l_checksum_reset(hmac);
++		l_checksum_update(hmac, a, a_len + prfseed_len);
 +
-+	l_free(cert);
-+	l_free(cacert);
++		chunk_len =3D out_len < hash_len ? out_len : hash_len;
++		l_checksum_get_digest(hmac, out, chunk_len);
++		out +=3D chunk_len;
++		out_len -=3D chunk_len;
++	}
++
++	l_checksum_free(hmac);
 +}
 +
-+int main(int argc, char *argv[])
++static void tls_reset_handshake(struct l_tls *tls)
 +{
-+	l_test_init(&argc, &argv);
++	memset(tls->pending.master_secret, 0, 48);
++	memset(tls->pending.key_block, 0, sizeof(tls->pending.key_block));
 +
-+	l_test_add("Certchain verify", test_cert_verify, NULL);
++	if (tls->peer_cert) {
++		l_free(tls->peer_cert);
 +
-+	return l_test_run();
++		tls->peer_cert =3D NULL;
++		tls->peer_pubkey =3D NULL;
++	}
++
++	l_checksum_reset(tls->handshake_hash);
++
++	tls->state =3D TLS_HANDSHAKE_WAIT_HELLO;
++	tls->cert_requested =3D 0;
++	tls->cert_sent =3D 0;
 +}
++
++static bool tls_change_cipher_spec(struct l_tls *tls, bool txrx)
++{
++	struct tls_bulk_encryption_algorithm *enc;
++	struct tls_mac_algorithm *mac;
++	int key_offset;
++
++	if (tls->cipher[txrx]) {
++		l_cipher_free(tls->cipher[txrx]);
++		tls->cipher[txrx] =3D NULL;
++		tls->cipher_type[txrx] =3D TLS_CIPHER_STREAM;
++	}
++
++	if (tls->mac[txrx]) {
++		l_checksum_free(tls->mac[txrx]);
++		tls->mac[txrx] =3D NULL;
++	}
++
++	tls->mac_length[txrx] =3D 0;
++	tls->block_length[txrx] =3D 0;
++	tls->record_iv_length[txrx] =3D 0;
++
++	tls->seq_num[txrx] =3D 0;
++
++	tls->cipher_suite[txrx] =3D tls->pending.cipher_suite;
++	if (!tls->cipher_suite[txrx])
++		return true;
++
++	key_offset =3D 0;
++
++	if (tls->cipher_suite[txrx]->mac) {
++		mac =3D tls->cipher_suite[txrx]->mac;
++
++		/* Server write / client read is 2nd in the key block */
++		if ((tls->server && txrx) || (!tls->server && !txrx))
++			key_offset +=3D mac->mac_length;
++
++		tls->mac[txrx] =3D l_checksum_new_hmac(mac->hmac_type,
++						tls->pending.key_block +
++						key_offset, mac->mac_length);
++
++		/* Wipe out the now unneeded part of the key block */
++		memset(tls->pending.key_block + key_offset, 0, mac->mac_length);
++
++		if (!tls->mac[txrx])
++			return false;
++
++		tls->mac_length[txrx] =3D mac->mac_length;
++
++		key_offset =3D 2 * mac->mac_length;
++	}
++
++	if (tls->cipher_suite[txrx]->encryption) {
++		enc =3D tls->cipher_suite[txrx]->encryption;
++
++		/* Server write / client read is 4th in the key block */
++		if ((tls->server && txrx) || (!tls->server && !txrx))
++			key_offset +=3D enc->key_length;
++
++		tls->cipher[txrx] =3D l_cipher_new(enc->l_id,
++						tls->pending.key_block +
++						key_offset, enc->key_length);
++
++		/* Wipe out the now unneeded part of the key block */
++		memset(tls->pending.key_block + key_offset, 0, enc->key_length);
++
++		if (!tls->cipher[txrx])
++			return false;
++
++		tls->cipher_type[txrx] =3D enc->cipher_type;
++		if (enc->cipher_type =3D=3D TLS_CIPHER_BLOCK) {
++			tls->record_iv_length[txrx] =3D enc->iv_length;
++			tls->block_length[txrx] =3D enc->block_length;
++		}
++	}
++
++	return true;
++}
++
++static void tls_reset_cipher_spec(struct l_tls *tls, bool txrx)
++{
++	/* Reset everything to the TLS_NULL_WITH_NULL_NULL state */
++
++	tls->pending.cipher_suite =3D NULL;
++
++	tls_change_cipher_spec(tls, txrx);
++}
++
++static struct tls_cipher_suite tls_cipher_suite_pref[] =3D {
++};
++
++static struct tls_cipher_suite *tls_find_cipher_suite(const uint8_t *id)
++{
++	int i;
++
++	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_cipher_suite_pref); i++)
++		if (tls_cipher_suite_pref[i].id[0] =3D=3D id[0] &&
++				tls_cipher_suite_pref[i].id[1] =3D=3D id[1])
++			return &tls_cipher_suite_pref[i];
++
++	return NULL;
++}
++
++static struct tls_compression_method tls_compression_pref[] =3D {
++	/* CompressionMethod.null */
++	{
++		0,
++	},
++};
++
++static struct tls_compression_method *tls_find_compression_method(
++							const uint8_t id)
++{
++	int i;
++
++	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_compression_pref); i++)
++		if (tls_compression_pref[i].id =3D=3D id)
++			return &tls_compression_pref[i];
++
++	return NULL;
++}
++
++static void tls_generate_master_secret(struct l_tls *tls,
++					const uint8_t *pre_master_secret,
++					int pre_master_secret_len)
++{
++	uint8_t seed[64];
++	int key_block_size;
++
++	memcpy(seed +  0, tls->pending.client_random, 32);
++	memcpy(seed + 32, tls->pending.server_random, 32);
++
++	tls12_prf(L_CHECKSUM_SHA256, 32,
++			pre_master_secret, pre_master_secret_len,
++			"master secret", seed, 64,
++			tls->pending.master_secret, 48);
++
++	/* Directly generate the key block while we're at it */
++
++	/* 2x fixed_IV_length to be added for AEAD suppot */
++	key_block_size =3D 2 * tls->pending.cipher_suite->encryption->key_length +
++		2 * tls->pending.cipher_suite->mac->mac_length;
++
++	/* Reverse order from the master secret seed */
++	memcpy(seed +  0, tls->pending.server_random, 32);
++	memcpy(seed + 32, tls->pending.client_random, 32);
++
++	tls12_prf(L_CHECKSUM_SHA256, 32, tls->pending.master_secret, 48,
++			"key expansion", seed, 64,
++			tls->pending.key_block, key_block_size);
++
++	memset(seed, 0, 64);
++	memset(tls->pending.client_random, 0, 32);
++	memset(tls->pending.server_random, 0, 32);
++}
++
++static void tls_get_handshake_hash(struct l_tls *tls, uint8_t *out)
++{
++	struct l_checksum *hash =3D l_checksum_clone(tls->handshake_hash);
++
++	if (!hash)
++		return;
++
++	l_checksum_get_digest(hash, out, HANDSHAKE_HASH_SIZE);
++
++	l_checksum_free(hash);
++}
++
++LIB_EXPORT struct l_tls *l_tls_new(bool server,
++				l_tls_write_cb_t app_data_handler,
++				l_tls_write_cb_t tx_handler,
++				l_tls_ready_cb_t ready_handler,
++				l_tls_disconnect_cb_t disconnect_handler,
++				void *user_data)
++{
++	struct l_tls *tls;
++
++	tls =3D l_new(struct l_tls, 1);
++	tls->server =3D server;
++	tls->rx =3D app_data_handler;
++	tls->tx =3D tx_handler;
++	tls->ready_handle =3D ready_handler;
++	tls->disconnected =3D disconnect_handler;
++	tls->user_data =3D user_data;
++
++	tls->handshake_hash =3D l_checksum_new(HANDSHAKE_HASH_TYPE);
++	if (!tls->handshake_hash) {
++		l_free(tls);
++		return NULL;
++	}
++
++	tls_reset_handshake(tls);
++
++	/* If we're the client, start the handshake right away */
++	if (!tls->server)
++		tls_send_client_hello(tls);
++
++	tls->state =3D TLS_HANDSHAKE_WAIT_HELLO;
++
++	return tls;
++}
++
++LIB_EXPORT void l_tls_free(struct l_tls *tls)
++{
++	if (unlikely(!tls))
++		return;
++
++	l_tls_set_cacert(tls, NULL);
++	l_tls_set_auth_data(tls, NULL, NULL, NULL);
++
++	tls_reset_handshake(tls);
++
++	tls_reset_cipher_spec(tls, 0);
++	tls_reset_cipher_spec(tls, 1);
++
++	if (tls->record_buf)
++		l_free(tls->record_buf);
++
++	if (tls->message_buf)
++		l_free(tls->message_buf);
++
++	l_checksum_free(tls->handshake_hash);
++
++	l_free(tls);
++}
++
++LIB_EXPORT void l_tls_set_cacert(struct l_tls *tls, const char *ca_cert_pa=
+th)
++{
++	if (tls->ca_cert_path) {
++		l_free(tls->ca_cert_path);
++		tls->ca_cert_path =3D NULL;
++	}
++
++	if (ca_cert_path)
++		tls->ca_cert_path =3D l_strdup(ca_cert_path);
++}
++
++LIB_EXPORT void l_tls_set_auth_data(struct l_tls *tls, const char *cert_pa=
+th,
++				const char *priv_key_path,
++				const char *priv_key_passphrase)
++{
++	if (tls->cert_path) {
++		l_free(tls->cert_path);
++		l_free(tls->priv_key_path);
++		tls->cert_path =3D NULL;
++		tls->priv_key_path =3D NULL;
++	}
++
++	if (cert_path) {
++		tls->cert_path =3D l_strdup(cert_path);
++		tls->priv_key_path =3D l_strdup(priv_key_path);
++	}
++
++	if (tls->priv_key_passphrase) {
++		memset(tls->priv_key_passphrase, 0,
++				strlen(tls->priv_key_passphrase));
++		l_free(tls->priv_key_passphrase);
++		tls->priv_key_passphrase =3D NULL;
++	}
++
++	if (priv_key_passphrase)
++		tls->priv_key_passphrase =3D l_strdup(priv_key_passphrase);
++}
++
++LIB_EXPORT const char *l_tls_alert_to_str(enum l_tls_alert_desc desc)
++{
++	switch (desc) {
++	case TLS_ALERT_CLOSE_NOTIFY:
++		return "close_notify";
++	case TLS_ALERT_UNEXPECTED_MESSAGE:
++		return "unexpected_message";
++	case TLS_ALERT_BAD_RECORD_MAC:
++		return "bad_record_mac";
++	case TLS_ALERT_DECRYPT_FAIL_RESERVED:
++		return "decryption_failure_RESERVED";
++	case TLS_ALERT_RECORD_OVERFLOW:
++		return "record_overflow";
++	case TLS_ALERT_DECOMPRESS_FAIL:
++		return "decompression_failure";
++	case TLS_ALERT_HANDSHAKE_FAIL:
++		return "handshake_failure";
++	case TLS_ALERT_NO_CERT_RESERVED:
++		return "no_certificate_RESERVED";
++	case TLS_ALERT_BAD_CERT:
++		return "bad_certificate";
++	case TLS_ALERT_UNSUPPORTED_CERT:
++		return "unsupported_certificate";
++	case TLS_ALERT_CERT_REVOKED:
++		return "certificate_revoked";
++	case TLS_ALERT_CERT_EXPIRED:
++		return "certificate_expired";
++	case TLS_ALERT_CERT_UNKNOWN:
++		return "certificate_unknown";
++	case TLS_ALERT_ILLEGAL_PARAM:
++		return "illegal_parameter";
++	case TLS_ALERT_UNKNOWN_CA:
++		return "unknown_ca";
++	case TLS_ALERT_ACCESS_DENIED:
++		return "access_denied";
++	case TLS_ALERT_DECODE_ERROR:
++		return "decode_error";
++	case TLS_ALERT_DECRYPT_ERROR:
++		return "decrypt_error";
++	case TLS_ALERT_EXPORT_RES_RESERVED:
++		return "export_restriction_RESERVED";
++	case TLS_ALERT_PROTOCOL_VERSION:
++		return "protocol_version";
++	case TLS_ALERT_INSUFFICIENT_SECURITY:
++		return "insufficient_security";
++	case TLS_ALERT_INTERNAL_ERROR:
++		return "internal_error";
++	case TLS_ALERT_USER_CANCELED:
++		return "user_canceled";
++	case TLS_ALERT_NO_RENEGOTIATION:
++		return "no_renegotiation";
++	case TLS_ALERT_UNSUPPORTED_EXTENSION:
++		return "unsupported_extension";
++	}
++
++	return NULL;
++}
+diff --git a/ell/tls.h b/ell/tls.h
+new file mode 100644
+index 0000000..86c8521
+--- /dev/null
++++ b/ell/tls.h
+@@ -0,0 +1,102 @@
++/*
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2015  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ */
++
++#ifndef __ELL_TLS_H
++#define __ELL_TLS_H
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++struct l_tls;
++
++enum l_tls_alert_desc {
++	TLS_ALERT_CLOSE_NOTIFY		=3D 0,
++	TLS_ALERT_UNEXPECTED_MESSAGE	=3D 10,
++	TLS_ALERT_BAD_RECORD_MAC	=3D 20,
++	TLS_ALERT_DECRYPT_FAIL_RESERVED	=3D 21,
++	TLS_ALERT_RECORD_OVERFLOW	=3D 22,
++	TLS_ALERT_DECOMPRESS_FAIL	=3D 30,
++	TLS_ALERT_HANDSHAKE_FAIL	=3D 40,
++	TLS_ALERT_NO_CERT_RESERVED	=3D 41,
++	TLS_ALERT_BAD_CERT		=3D 42,
++	TLS_ALERT_UNSUPPORTED_CERT	=3D 43,
++	TLS_ALERT_CERT_REVOKED		=3D 44,
++	TLS_ALERT_CERT_EXPIRED		=3D 45,
++	TLS_ALERT_CERT_UNKNOWN		=3D 46,
++	TLS_ALERT_ILLEGAL_PARAM		=3D 47,
++	TLS_ALERT_UNKNOWN_CA		=3D 48,
++	TLS_ALERT_ACCESS_DENIED		=3D 49,
++	TLS_ALERT_DECODE_ERROR		=3D 50,
++	TLS_ALERT_DECRYPT_ERROR		=3D 51,
++	TLS_ALERT_EXPORT_RES_RESERVED	=3D 60,
++	TLS_ALERT_PROTOCOL_VERSION	=3D 70,
++	TLS_ALERT_INSUFFICIENT_SECURITY	=3D 71,
++	TLS_ALERT_INTERNAL_ERROR	=3D 80,
++	TLS_ALERT_USER_CANCELED		=3D 90,
++	TLS_ALERT_NO_RENEGOTIATION	=3D 100,
++	TLS_ALERT_UNSUPPORTED_EXTENSION	=3D 110,
++};
++
++typedef void (*l_tls_write_cb_t)(void *user_data, const uint8_t *data,
++					size_t len);
++typedef void (*l_tls_ready_cb_t)(void *user_data, const char *peer_identit=
+y);
++typedef void (*l_tls_disconnect_cb_t)(void *user_data,
++					enum l_tls_alert_desc reason,
++					bool remote);
++
++/*
++ * app_data_handler gets called with newly received decrypted data.
++ * tx_handler gets called to send TLS payloads off to remote end.
++ * ready_handler gets called when l_tls_write calls are first accepted.
++ */
++struct l_tls *l_tls_new(bool server, l_tls_write_cb_t app_data_handler,
++			l_tls_write_cb_t tx_handler,
++			l_tls_ready_cb_t ready_handler,
++			l_tls_disconnect_cb_t disconnect_handler,
++			void *user_data);
++
++void l_tls_free(struct l_tls *tls);
++
++/* If peer is to be authenticated, supply the CA certificate */
++void l_tls_set_cacert(struct l_tls *tls, const char *ca_cert_path);
++
++/*
++ * If we are to be authenticated, supply our certificate, private key and
++ * private key passphrase if needed (or NULL).  On the client this is opti=
+onal,
++ * but if supplied, negotiation will fail if the certificate type doesn't
++ * match or one of the files can't be loaded.
++ * TODO: accept a callback to be used for passphrase query.
++ * TODO: allow NULL private key if certificate file contains the key.
++ * TODO: it may also be useful for the caller to be able to supply
++ * one certificate of each type so they can be used depending on which
++ * is compatible with the negotiated parameters.
++ */
++void l_tls_set_auth_data(struct l_tls *tls, const char *cert_path,
++				const char *priv_key_path,
++				const char *priv_key_passphrase);
++
++const char *l_tls_alert_to_str(enum l_tls_alert_desc desc);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* __ELL_TLS_H */
 -- =
 
 2.1.4
 
 
---===============2122750675567550314==--
+--===============3898159820430521258==--
 
