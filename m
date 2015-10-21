@@ -1,47 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============8328052572566301360=="
+Content-Type: multipart/mixed; boundary="===============5346072800708373907=="
 MIME-Version: 1.0
 From: Szymon Janc <szymon.janc@codecoup.pl>
-Subject: [PATCH 1/4] uintset: Fix memory leak in l_uintset_new_from_range
-Date: Wed, 21 Oct 2015 23:13:12 +0200
-Message-ID: <1445461995-22036-1-git-send-email-szymon.janc@codecoup.pl>
+Subject: [PATCH 2/4] ringbuf: Remove dead code
+Date: Wed, 21 Oct 2015 23:13:13 +0200
+Message-ID: <1445461995-22036-2-git-send-email-szymon.janc@codecoup.pl>
+In-Reply-To: <1445461995-22036-1-git-send-email-szymon.janc@codecoup.pl>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8328052572566301360==
+--===============5346072800708373907==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Allocate ret only after checking size parameter.
+l_malloc cannot fail if size>0.
 ---
- ell/uintset.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ ell/ringbuf.c | 7 -------
+ 1 file changed, 7 deletions(-)
 
-diff --git a/ell/uintset.c b/ell/uintset.c
-index 3d9c8e3..4547ac9 100644
---- a/ell/uintset.c
-+++ b/ell/uintset.c
-@@ -149,12 +149,13 @@ struct l_uintset {
- LIB_EXPORT struct l_uintset *l_uintset_new_from_range(uint32_t min,
- 								uint32_t max)
- {
--	struct l_uintset *ret =3D l_new(struct l_uintset, 1);
-+	struct l_uintset *ret;
- 	unsigned int size =3D max - min + 1;
+diff --git a/ell/ringbuf.c b/ell/ringbuf.c
+index 9049618..4f1f280 100644
+--- a/ell/ringbuf.c
++++ b/ell/ringbuf.c
+@@ -93,14 +93,7 @@ LIB_EXPORT struct l_ringbuf *l_ringbuf_new(size_t size)
+ 	real_size =3D align_power2(size);
  =
 
- 	if (size > USHRT_MAX)
- 		return NULL;
+ 	ringbuf =3D l_new(struct l_ringbuf, 1);
+-	if (!ringbuf)
+-		return NULL;
+-
+ 	ringbuf->buffer =3D l_malloc(real_size);
+-	if (!ringbuf->buffer) {
+-		l_free(ringbuf);
+-		return NULL;
+-	}
  =
 
-+	ret =3D l_new(struct l_uintset, 1);
- 	ret->bits =3D l_new(unsigned long,
- 				(size + BITS_PER_LONG - 1) / BITS_PER_LONG);
- 	ret->size =3D size;
+ 	ringbuf->size =3D real_size;
+ 	ringbuf->in =3D RINGBUF_RESET;
 -- =
 
 2.6.2
 
 
---===============8328052572566301360==--
+--===============5346072800708373907==--
 
