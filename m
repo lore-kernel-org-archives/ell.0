@@ -1,192 +1,358 @@
-Content-Type: multipart/mixed; boundary="===============6916231481998483938=="
+Content-Type: multipart/mixed; boundary="===============3223545592669223008=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 7/8] dbus: Implement org.freedesktop.DBus.Properties
-Date: Fri, 05 Feb 2016 03:58:33 +0100
-Message-ID: <1454641114-3421-7-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 8/8] dbus: Implement org.freedesktop.DBus.ObjectManager
+Date: Fri, 05 Feb 2016 03:58:34 +0100
+Message-ID: <1454641114-3421-8-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1454641114-3421-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6916231481998483938==
+--===============3223545592669223008==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/dbus-service.c      | 270 ++++++++++++++++++++++++++++++++++++++++++++=
-++++
- ell/dbus.c              |   1 -
- examples/dbus-service.c |   7 ++
- 3 files changed, 277 insertions(+), 1 deletion(-)
+ ell/dbus-service.c      | 223 ++++++++++++++++++++++++++++++++++++++++++++=
++++-
+ ell/dbus.c              |  14 +++
+ ell/dbus.h              |   2 +
+ examples/dbus-service.c |   5 ++
+ 4 files changed, 242 insertions(+), 2 deletions(-)
 
 diff --git a/ell/dbus-service.c b/ell/dbus-service.c
-index c9e465c..2b38e0a 100644
+index 2b38e0a..fcdf9f9 100644
 --- a/ell/dbus-service.c
 +++ b/ell/dbus-service.c
-@@ -47,6 +47,8 @@ static const char *static_introspectable =3D
- 		"\t\t\t<arg name=3D\"xml\" type=3D\"s\" direction=3D\"out\"/>\n"
+@@ -27,6 +27,8 @@
+ #define _GNU_SOURCE
+ #include <stdarg.h>
+ #include <string.h>
++#include <stdio.h>
++#include <stdlib.h>
+ =
+
+ #include "util.h"
+ #include "queue.h"
+@@ -48,6 +50,7 @@ static const char *static_introspectable =3D
  		"\t\t</method>\n\t</interface>\n";
  =
 
-+#define DBUS_INTERFACE_PROPERTIES	"org.freedesktop.DBus.Properties"
-+
+ #define DBUS_INTERFACE_PROPERTIES	"org.freedesktop.DBus.Properties"
++#define DBUS_INTERFACE_OBJECT_MANAGER	"org.freedesktop.DBus.ObjectManager"
+ =
+
  struct _dbus_method {
  	l_dbus_interface_method_cb_t cb;
- 	uint32_t flags;
-@@ -509,6 +511,8 @@ static bool match_interface_instance(const void *a, con=
+@@ -98,10 +101,16 @@ struct object_node {
+ 	void (*destroy) (void *);
+ };
+ =
+
++struct object_manager {
++	char *path;
++	struct l_dbus *dbus;
++};
++
+ struct _dbus_object_tree {
+ 	struct l_hashmap *interfaces;
+ 	struct l_hashmap *objects;
+ 	struct object_node *root;
++	struct l_queue *object_managers;
+ };
+ =
+
+ void _dbus_method_introspection(struct _dbus_method *info,
+@@ -512,6 +521,7 @@ static bool match_interface_instance(const void *a, con=
 st void *b)
- 	return false;
  }
  =
 
-+static void properties_setup_func(struct l_dbus_interface *);
-+
+ static void properties_setup_func(struct l_dbus_interface *);
++static void object_manager_setup_func(struct l_dbus_interface *);
+ =
+
  struct _dbus_object_tree *_dbus_object_tree_new()
  {
- 	struct _dbus_object_tree *tree;
-@@ -524,6 +528,10 @@ struct _dbus_object_tree *_dbus_object_tree_new()
+@@ -532,6 +542,13 @@ struct _dbus_object_tree *_dbus_object_tree_new()
+ 						properties_setup_func, NULL,
+ 						false);
  =
 
- 	tree->root =3D l_new(struct object_node, 1);
- =
-
-+	_dbus_object_tree_register_interface(tree, DBUS_INTERFACE_PROPERTIES,
-+						properties_setup_func, NULL,
++	tree->object_managers =3D l_queue_new();
++
++	_dbus_object_tree_register_interface(tree,
++						DBUS_INTERFACE_OBJECT_MANAGER,
++						object_manager_setup_func, NULL,
 +						false);
 +
  	return tree;
  }
  =
 
-@@ -711,6 +719,7 @@ bool _dbus_object_tree_object_destroy(struct _dbus_obje=
-ct_tree *tree,
+@@ -556,6 +573,14 @@ static void subtree_free(struct object_node *node)
+ 	l_free(node);
+ }
+ =
+
++static void object_manager_free(void *data)
++{
++	struct object_manager *manager =3D data;
++
++	l_free(manager->path);
++	l_free(manager);
++}
++
+ void _dbus_object_tree_free(struct _dbus_object_tree *tree)
+ {
+ 	l_hashmap_destroy(tree->interfaces,
+@@ -564,6 +589,8 @@ void _dbus_object_tree_free(struct _dbus_object_tree *t=
+ree)
+ =
+
+ 	subtree_free(tree->root);
+ =
+
++	l_queue_destroy(tree->object_managers, object_manager_free);
++
+ 	l_free(tree);
+ }
+ =
+
+@@ -1010,6 +1037,44 @@ bool _dbus_object_tree_unregister_interface(struct _=
+dbus_object_tree *tree,
  	return true;
  }
  =
 
-+/* Send the signals associated with a property value change */
- void _dbus_object_tree_property_changed(struct l_dbus *dbus,
- 					const char *path,
- 					const char *interface_name,
-@@ -721,6 +730,7 @@ void _dbus_object_tree_property_changed(struct l_dbus *=
-dbus,
- 	struct l_dbus_message_builder *builder;
- 	char signature[256];
- 	const struct l_dbus_interface *interface;
-+	const struct object_node *object;
- 	struct l_dbus_message_iter value;
- 	struct _dbus_object_tree *tree =3D _dbus_get_tree(dbus);
++static bool build_interfaces_added_signal(const struct object_manager *man=
+ager,
++				const char *path,
++				const struct interface_instance *instance)
++{
++	struct l_dbus_message *signal;
++	struct l_dbus_message_builder *builder;
++
++	signal =3D l_dbus_message_new_signal(manager->dbus, manager->path,
++						DBUS_INTERFACE_OBJECT_MANAGER,
++						"InterfacesAdded");
++	builder =3D l_dbus_message_builder_new(signal);
++
++	l_dbus_message_builder_append_basic(builder, 'o', path);
++	l_dbus_message_builder_enter_array(builder, "{sa{sv}}");
++	l_dbus_message_builder_enter_dict(builder, "sa{sv}");
++	l_dbus_message_builder_append_basic(builder, 's',
++						instance->interface->name);
++
++	if (!get_properties_dict(manager->dbus, signal, builder,
++					instance->interface,
++					instance->user_data)) {
++		l_dbus_message_builder_destroy(builder);
++		l_dbus_message_unref(signal);
++
++		return false;
++	}
++
++	l_dbus_message_builder_leave_dict(builder);
++	l_dbus_message_builder_leave_array(builder);
++
++	l_dbus_message_builder_finalize(builder);
++	l_dbus_message_builder_destroy(builder);
++
++	l_dbus_send(manager->dbus, signal);
++
++	return true;
++}
++
+ bool _dbus_object_tree_add_interface(struct _dbus_object_tree *tree,
+ 					const char *path, const char *interface,
+ 					void *user_data)
+@@ -1017,6 +1082,9 @@ bool _dbus_object_tree_add_interface(struct _dbus_obj=
+ect_tree *tree,
+ 	struct object_node *object;
+ 	struct l_dbus_interface *dbi;
+ 	struct interface_instance *instance;
++	const struct l_queue_entry *entry;
++	struct object_manager *manager;
++	size_t path_len;
  =
 
-@@ -748,6 +758,37 @@ void _dbus_object_tree_property_changed(struct l_dbus =
-*dbus,
- 		l_dbus_message_builder_destroy(builder);
- 		l_dbus_send(dbus, signal);
- 	}
+ 	dbi =3D l_hashmap_lookup(tree->interfaces, interface);
+ 	if (!dbi)
+@@ -1044,15 +1112,47 @@ bool _dbus_object_tree_add_interface(struct _dbus_o=
+bject_tree *tree,
+ =
+
+ 	l_queue_push_tail(object->instances, instance);
+ =
+
++	for (entry =3D l_queue_get_entries(tree->object_managers); entry;
++			entry =3D entry->next) {
++		manager =3D entry->data;
++		path_len =3D strlen(manager->path);
 +
-+	object =3D l_hashmap_lookup(tree->objects, path);
++		if (memcmp(path, manager->path, path_len) ||
++				(path[path_len] !=3D '\0' &&
++				 path[path_len] !=3D '/'))
++			continue;
 +
-+	if (l_queue_find(object->instances, match_interface_instance,
-+				DBUS_INTERFACE_PROPERTIES)) {
-+		memcpy(&value, variant, sizeof(value));
++		build_interfaces_added_signal(manager, path, instance);
++	}
 +
-+		signal =3D l_dbus_message_new_signal(dbus, path,
-+						DBUS_INTERFACE_PROPERTIES,
-+						"PropertiesChanged");
++	if (!strcmp(interface, DBUS_INTERFACE_OBJECT_MANAGER)) {
++		manager =3D l_new(struct object_manager, 1);
++		manager->path =3D l_strdup(path);
++		manager->dbus =3D instance->user_data;
++
++		l_queue_push_tail(tree->object_managers, manager);
++	}
++
+ 	return true;
+ }
+ =
+
++static bool match_object_manager_path(const void *a, const void *b)
++{
++	const struct object_manager *manager =3D a;
++
++	return !strcmp(manager->path, b);
++}
++
+ bool _dbus_object_tree_remove_interface(struct _dbus_object_tree *tree,
+-					const char *path,
+-					const char *interface)
++					const char *path, const char *interface)
+ {
+ 	struct object_node *node;
+ 	struct interface_instance *instance;
++	const struct l_queue_entry *entry;
++	struct object_manager *manager;
++	struct l_dbus_message *signal;
++	struct l_dbus_message_builder *builder;
++	size_t path_len;
+ =
+
+ 	node =3D l_hashmap_lookup(tree->objects, path);
+ 	if (!node)
+@@ -1065,6 +1165,39 @@ bool _dbus_object_tree_remove_interface(struct _dbus=
+_object_tree *tree,
+ =
+
+ 	interface_instance_free(instance);
+ =
+
++	if (!strcmp(interface, DBUS_INTERFACE_OBJECT_MANAGER)) {
++		manager =3D l_queue_remove_if(tree->object_managers,
++						match_object_manager_path,
++						(char *) path);
++
++		object_manager_free(manager);
++	}
++
++	for (entry =3D l_queue_get_entries(tree->object_managers); entry;
++			entry =3D entry->next) {
++		manager =3D entry->data;
++		path_len =3D strlen(manager->path);
++
++		if (memcmp(path, manager->path, path_len) ||
++				(path[path_len] !=3D '\0' &&
++				 path[path_len] !=3D '/'))
++			continue;
++
++		signal =3D l_dbus_message_new_signal(manager->dbus, manager->path,
++						DBUS_INTERFACE_OBJECT_MANAGER,
++						"InterfacesRemoved");
 +
 +		builder =3D l_dbus_message_builder_new(signal);
 +
-+		l_dbus_message_builder_append_basic(builder, 's',
-+							interface_name);
-+		l_dbus_message_builder_enter_array(builder, "{sv}");
-+		l_dbus_message_builder_enter_dict(builder, "sv");
-+		l_dbus_message_builder_append_basic(builder, 's',
-+							property_name);
-+		l_dbus_message_builder_enter_variant(builder, signature);
-+		l_dbus_message_builder_append_from_iter(builder, &value);
-+		l_dbus_message_builder_leave_variant(builder);
-+		l_dbus_message_builder_leave_dict(builder);
-+		l_dbus_message_builder_leave_array(builder);
++		l_dbus_message_builder_append_basic(builder, 'o', path);
 +		l_dbus_message_builder_enter_array(builder, "s");
++		l_dbus_message_builder_append_basic(builder, 's', interface);
 +		l_dbus_message_builder_leave_array(builder);
-+
 +		l_dbus_message_builder_finalize(builder);
 +		l_dbus_message_builder_destroy(builder);
-+		l_dbus_send(dbus, signal);
++		l_dbus_send(manager->dbus, signal);
 +	}
- }
- =
-
- static void set_property_complete(struct l_dbus *dbus,
-@@ -1126,3 +1167,232 @@ bool _dbus_object_tree_dispatch(struct _dbus_object=
-_tree *tree,
- =
-
++
  	return true;
  }
+ =
+
+@@ -1396,3 +1529,89 @@ static void properties_setup_func(struct l_dbus_inte=
+rface *interface)
+ 				"interface_name", "changed_properties",
+ 				"invalidated_properties");
+ }
 +
-+static struct l_dbus_message *properties_get(struct l_dbus *dbus,
++static void collect_objects(struct l_dbus *dbus, struct l_dbus_message *me=
+ssage,
++				struct l_dbus_message_builder *builder,
++				const struct object_node *node,
++				const char *path)
++{
++	const struct l_queue_entry *entry;
++	const struct child_node *child;
++	char *child_path;
++	const struct interface_instance *instance;
++
++	if (!node->instances)
++		goto recurse;
++
++	l_dbus_message_builder_enter_dict(builder, "oa{sa{sv}}");
++	l_dbus_message_builder_append_basic(builder, 'o', path);
++	l_dbus_message_builder_enter_array(builder, "{sa{sv}}");
++
++	for (entry =3D l_queue_get_entries(node->instances); entry;
++			entry =3D entry->next) {
++		instance =3D entry->data;
++
++		l_dbus_message_builder_enter_dict(builder, "sa{sv}");
++		l_dbus_message_builder_append_basic(builder, 's',
++						instance->interface->name);
++		get_properties_dict(dbus, message, builder, instance->interface,
++					instance->user_data);
++		l_dbus_message_builder_leave_dict(builder);
++	}
++
++	l_dbus_message_builder_leave_array(builder);
++	l_dbus_message_builder_leave_dict(builder);
++
++recurse:
++	if (!strcmp(path, "/"))
++		path =3D "";
++
++	for (child =3D node->children; child; child =3D child->next) {
++		child_path =3D l_strdup_printf("%s/%s", path, child->subpath);
++
++		collect_objects(dbus, message, builder,
++				child->node, child_path);
++
++		l_free(child_path);
++	}
++}
++
++static struct l_dbus_message *get_managed_objects(struct l_dbus *dbus,
 +						struct l_dbus_message *message,
 +						void *user_data)
 +{
-+	const struct interface_instance *instance;
-+	const char *interface_name, *property_name, *signature;
-+	const struct _dbus_property *property;
 +	struct _dbus_object_tree *tree =3D _dbus_get_tree(dbus);
-+	const struct object_node *object;
++	const struct object_node *node;
 +	struct l_dbus_message *reply;
 +	struct l_dbus_message_builder *builder;
++	const char *path;
 +
-+	if (!l_dbus_message_get_arguments(message, "ss", &interface_name,
-+						&property_name))
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Invalid arguments");
-+
-+	object =3D l_hashmap_lookup(tree->objects,
-+					l_dbus_message_get_path(message));
-+	/* If we got here the object must exist */
-+
-+	instance =3D l_queue_find(object->instances,
-+				match_interface_instance,
-+				(char *) interface_name);
-+	if (!instance)
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Object has no interface %s",
-+						interface_name);
-+
-+	property =3D _dbus_interface_find_property(instance->interface,
-+							property_name);
-+	if (!property)
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Unknown Property %s",
-+						property_name);
-+
++	path =3D l_dbus_message_get_path(message);
++	node =3D l_hashmap_lookup(tree->objects, path);
 +
 +	reply =3D l_dbus_message_new_method_return(message);
 +	builder =3D l_dbus_message_builder_new(reply);
 +
-+	signature =3D property->metainfo + strlen(property->metainfo) + 1;
++	l_dbus_message_builder_enter_array(builder, "{oa{sa{sv}}}");
 +
-+	l_dbus_message_builder_enter_variant(builder, signature);
++	collect_objects(dbus, message, builder, node, path);
 +
-+	if (property->getter(dbus, message, builder, instance->user_data))
-+		l_dbus_message_builder_leave_variant(builder);
-+	else {
-+		l_dbus_message_unref(reply);
-+
-+		reply =3D l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"Failed",
-+						"Getting property value "
-+						"failed");
-+	}
++	l_dbus_message_builder_leave_array(builder);
 +
 +	l_dbus_message_builder_finalize(builder);
 +	l_dbus_message_builder_destroy(builder);
@@ -194,205 +360,91 @@ _tree *tree,
 +	return reply;
 +}
 +
-+static void properties_set_complete(struct l_dbus *dbus,
-+					struct l_dbus_message *message,
-+					struct l_dbus_message *error)
++static void object_manager_setup_func(struct l_dbus_interface *interface)
 +{
-+	struct l_dbus_message *reply;
-+	const char *interface_name, *property_name;
-+	struct l_dbus_message_iter variant;
++	l_dbus_interface_method(interface, "GetManagedObjects", 0,
++				get_managed_objects, "a{oa{sa{sv}}}", "",
++				"objpath_interfaces_and_properties");
 +
-+	if (error) {
-+		l_dbus_message_unref(message);
-+
-+		l_dbus_send(dbus, error);
-+
-+		return;
-+	}
-+
-+	reply =3D l_dbus_message_new_method_return(message);
-+	l_dbus_message_set_arguments(reply, "");
-+	l_dbus_send(dbus, reply);
-+
-+	l_dbus_message_get_arguments(message, "ssv", &interface_name,
-+					&property_name, &variant);
-+
-+	_dbus_object_tree_property_changed(dbus,
-+					l_dbus_message_get_path(message),
-+					interface_name, property_name,
-+					&variant);
-+
-+	l_dbus_message_unref(message);
-+}
-+
-+static struct l_dbus_message *properties_set(struct l_dbus *dbus,
-+						struct l_dbus_message *message,
-+						void *user_data)
-+{
-+	struct l_dbus_interface *interface;
-+	const struct interface_instance *instance;
-+	const char *interface_name, *property_name;
-+	const struct _dbus_property *property;
-+	struct l_dbus_message_iter variant;
-+	struct _dbus_object_tree *tree =3D _dbus_get_tree(dbus);
-+	const struct object_node *object;
-+
-+	if (!l_dbus_message_get_arguments(message, "ssv", &interface_name,
-+						&property_name, &variant))
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Invalid arguments");
-+
-+	interface =3D l_hashmap_lookup(tree->interfaces, interface_name);
-+	if (!interface)
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Unknown Interface %s",
-+						interface_name);
-+
-+	property =3D _dbus_interface_find_property(interface, property_name);
-+	if (!property)
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Unknown Property %s",
-+						property_name);
-+
-+	if (!property->setter)
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Property %s is read-only",
-+						property_name);
-+
-+	object =3D l_hashmap_lookup(tree->objects,
-+					l_dbus_message_get_path(message));
-+	/* If we got here the object must exist */
-+
-+	instance =3D l_queue_find(object->instances,
-+				match_interface_instance,
-+				(char *) interface_name);
-+	if (!instance)
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Object has no interface %s",
-+						interface_name);
-+
-+	property->setter(dbus, l_dbus_message_ref(message), &variant,
-+				properties_set_complete, instance->user_data);
-+
-+	return NULL;
-+}
-+
-+static struct l_dbus_message *properties_get_all(struct l_dbus *dbus,
-+						struct l_dbus_message *message,
-+						void *user_data)
-+{
-+	const struct interface_instance *instance;
-+	const char *interface_name;
-+	struct _dbus_object_tree *tree =3D _dbus_get_tree(dbus);
-+	const struct object_node *object;
-+	struct l_dbus_message *reply;
-+	struct l_dbus_message_builder *builder;
-+
-+	if (!l_dbus_message_get_arguments(message, "s", &interface_name))
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Invalid arguments");
-+
-+	object =3D l_hashmap_lookup(tree->objects,
-+					l_dbus_message_get_path(message));
-+	/* If we got here the object must exist */
-+
-+	instance =3D l_queue_find(object->instances,
-+				match_interface_instance,
-+				(char *) interface_name);
-+	if (!instance)
-+		return l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"InvalidArgs",
-+						"Object has no interface %s",
-+						interface_name);
-+
-+	reply =3D l_dbus_message_new_method_return(message);
-+	builder =3D l_dbus_message_builder_new(reply);
-+
-+	if (!get_properties_dict(dbus, message, builder, instance->interface,
-+					instance->user_data)) {
-+		l_dbus_message_unref(reply);
-+
-+		reply =3D l_dbus_message_new_error(message,
-+						"org.freedesktop.DBus.Error."
-+						"Failed",
-+						"Getting property values "
-+						"failed");
-+	}
-+
-+	l_dbus_message_builder_finalize(builder);
-+	l_dbus_message_builder_destroy(builder);
-+
-+	return reply;
-+}
-+
-+static void properties_setup_func(struct l_dbus_interface *interface)
-+{
-+	l_dbus_interface_method(interface, "Get", 0,
-+				properties_get, "v", "ss",
-+				"value", "interface_name", "property_name");
-+	l_dbus_interface_method(interface, "Set", 0,
-+				properties_set, "", "ssv",
-+				"interface_name", "property_name", "value");
-+	l_dbus_interface_method(interface, "GetAll", 0,
-+				properties_get_all, "a{sv}", "s",
-+				"props", "interface_name");
-+
-+	l_dbus_interface_signal(interface, "PropertiesChanged", 0, "sa{sv}as",
-+				"interface_name", "changed_properties",
-+				"invalidated_properties");
++	l_dbus_interface_signal(interface, "InterfacesAdded", 0, "oa{sa{sv}}",
++				"object_path", "interfaces_and_properties");
++	l_dbus_interface_signal(interface, "InterfacesRemoved", 0, "oas",
++				"object_path", "interfaces");
 +}
 diff --git a/ell/dbus.c b/ell/dbus.c
-index 796240f..873a8c2 100644
+index 873a8c2..8c9318a 100644
 --- a/ell/dbus.c
 +++ b/ell/dbus.c
-@@ -51,7 +51,6 @@
+@@ -51,6 +51,7 @@
  =
 
  #define DBUS_INTERFACE_DBUS		"org.freedesktop.DBus"
  #define DBUS_INTERFACE_INTROSPECTABLE	"org.freedesktop.DBus.Introspectable"
--#define DBUS_INTERFACE_PROPERTIES	"org.freedesktop.DBus.Properties"
++#define DBUS_INTERFACE_OBJECT_MANAGER	"org.freedesktop.DBus.ObjectManager"
  =
 
  #define DBUS_MAXIMUM_MATCH_RULE_LENGTH	1024
  =
 
-diff --git a/examples/dbus-service.c b/examples/dbus-service.c
-index 8abeba4..b974f37 100644
---- a/examples/dbus-service.c
-+++ b/examples/dbus-service.c
-@@ -234,6 +234,13 @@ int main(int argc, char *argv[])
- 		goto cleanup;
- 	}
+@@ -1380,6 +1381,19 @@ LIB_EXPORT bool l_dbus_object_remove_interface(struc=
+t l_dbus *dbus,
+ 							interface);
+ }
  =
 
-+	if (!l_dbus_object_add_interface(dbus, "/test",
-+				"org.freedesktop.DBus.Properties", NULL)) {
-+		l_info("Unable to instantiate the properties interface");
-+		test_data_destroy(test);
++LIB_EXPORT bool l_dbus_object_manager_enable(struct l_dbus *dbus)
++{
++	if (unlikely(!dbus))
++		return false;
++
++	if (unlikely(!dbus->tree))
++		return false;
++
++	return _dbus_object_tree_add_interface(dbus->tree, "/",
++						DBUS_INTERFACE_OBJECT_MANAGER,
++						dbus->tree);
++}
++
+ void _dbus1_filter_format_match(struct dbus1_filter_data *data, char *rule,
+ 					size_t size)
+ {
+diff --git a/ell/dbus.h b/ell/dbus.h
+index 29253b6..84bf7a4 100644
+--- a/ell/dbus.h
++++ b/ell/dbus.h
+@@ -211,6 +211,8 @@ bool l_dbus_object_add_interface(struct l_dbus *dbus, c=
+onst char *object,
+ bool l_dbus_object_remove_interface(struct l_dbus *dbus, const char *objec=
+t,
+ 					const char *interface);
+ =
+
++bool l_dbus_object_manager_enable(struct l_dbus *dbus);
++
+ unsigned int l_dbus_add_disconnect_watch(struct l_dbus *dbus,
+ 					const char *name,
+ 					l_dbus_watch_func_t disconnect_func,
+diff --git a/examples/dbus-service.c b/examples/dbus-service.c
+index b974f37..964d735 100644
+--- a/examples/dbus-service.c
++++ b/examples/dbus-service.c
+@@ -217,6 +217,11 @@ int main(int argc, char *argv[])
+ 				request_name_setup,
+ 				request_name_callback, NULL, NULL);
+ =
+
++	if (!l_dbus_object_manager_enable(dbus)) {
++		l_info("Unable to enable Object Manager");
 +		goto cleanup;
 +	}
 +
- 	l_main_run();
- =
-
- 	l_dbus_unregister_object(dbus, "/test");
+ 	test =3D l_new(struct test_data, 1);
+ 	test->string =3D l_strdup("Default");
+ 	test->integer =3D 42;
 -- =
 
 2.5.0
 
 
---===============6916231481998483938==--
+--===============3223545592669223008==--
 
