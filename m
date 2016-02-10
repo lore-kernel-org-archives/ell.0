@@ -1,32 +1,49 @@
-Content-Type: multipart/mixed; boundary="===============0706413428699395708=="
+Content-Type: multipart/mixed; boundary="===============5570525727431424877=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/8] dbus: More complete checks when removing nodes.
-Date: Mon, 08 Feb 2016 09:42:06 -0600
-Message-ID: <56B8B74E.8000704@gmail.com>
-In-Reply-To: <1454641114-3421-1-git-send-email-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH] dbus: Fix read after free during cleanup
+Date: Wed, 10 Feb 2016 11:45:47 +0100
+Message-ID: <1455101156-3587-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0706413428699395708==
+--===============5570525727431424877==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+subtree_free will be checking if interfaces of objects being freed have
+a destroy callback so the interfaces should not be freed before that.
+---
+ ell/dbus-service.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-On 02/04/2016 08:58 PM, Andrew Zaborowski wrote:
-> This addresses two problems with nodes being freed from the object tree
-> but not from tree->objects.
-> ---
->   ell/dbus-service.c | 9 +++++++--
->   1 file changed, 7 insertions(+), 2 deletions(-)
+diff --git a/ell/dbus-service.c b/ell/dbus-service.c
+index 5d49836..1e3bb66 100644
+--- a/ell/dbus-service.c
++++ b/ell/dbus-service.c
+@@ -583,12 +583,12 @@ static void object_manager_free(void *data)
+ =
 
-Applied, thanks.
+ void _dbus_object_tree_free(struct _dbus_object_tree *tree)
+ {
++	subtree_free(tree->root);
++
+ 	l_hashmap_destroy(tree->interfaces,
+ 			(l_hashmap_destroy_func_t) _dbus_interface_free);
+ 	l_hashmap_destroy(tree->objects, NULL);
+ =
 
-Regards,
--Denis
+-	subtree_free(tree->root);
+-
+ 	l_queue_destroy(tree->object_managers, object_manager_free);
+ =
+
+ 	l_free(tree);
+-- =
+
+2.5.0
 
 
---===============0706413428699395708==--
+--===============5570525727431424877==--
 
