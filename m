@@ -1,37 +1,64 @@
-Content-Type: multipart/mixed; boundary="===============2615571510737411718=="
+Content-Type: multipart/mixed; boundary="===============5767042587865393306=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 2/2] build: Undefine _FORTIFY_SOURCE when building without
- optimization
-Date: Thu, 11 Feb 2016 13:56:12 -0600
-Message-ID: <56BCE75C.7070705@gmail.com>
-In-Reply-To: <1455148122-20449-2-git-send-email-mathew.j.martineau@linux.intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 01/10] dbus: Send InterfacesRemoved on object unregister
+Date: Mon, 15 Feb 2016 17:44:14 +0100
+Message-ID: <1455554662-15608-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2615571510737411718==
+--===============5767042587865393306==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Make sure we call _dbus_object_tree_remove_interface to do all the
+necessary steps of interface removal when an object from the tree
+together with its interfaces.
+---
+ ell/dbus-service.c | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
 
-On 02/10/2016 05:48 PM, Mat Martineau wrote:
-> './configure --disable-optimization --enable-maintainer-mode' would
-> claim that signalfd was not available. _FORTIFY_SOURCE requires that
-> optimization is enabled and issues a compile-time warning which is
-> treated as an error. Disabling optimization takes precedence over
-> fortification in this case, since it is being explicitly requested.
-> ---
->   configure.ac | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
->
+diff --git a/ell/dbus-service.c b/ell/dbus-service.c
+index 1e3bb66..53e2512 100644
+--- a/ell/dbus-service.c
++++ b/ell/dbus-service.c
+@@ -733,13 +733,24 @@ bool _dbus_object_tree_object_destroy(struct _dbus_ob=
+ject_tree *tree,
+ 					const char *path)
+ {
+ 	struct object_node *node;
++	const struct l_queue_entry *entry;
++	const struct interface_instance *instance;
+ =
 
-Applied, thanks.
+-	node =3D l_hashmap_remove(tree->objects, path);
++	node =3D l_hashmap_lookup(tree->objects, path);
+ 	if (!node)
+ 		return false;
+ =
 
-Regards,
--Denis
+-	l_queue_destroy(node->instances,
+-			(l_queue_destroy_func_t) interface_instance_free);
++	while ((entry =3D l_queue_get_entries(node->instances))) {
++		instance =3D entry->data;
++
++		if (!_dbus_object_tree_remove_interface(tree, path,
++						instance->interface->name))
++			return false;
++	}
++
++	l_hashmap_remove(tree->objects, path);
++
++	l_queue_destroy(node->instances, NULL);
+ 	node->instances =3D NULL;
+ =
+
+ 	if (node->destroy) {
+-- =
+
+2.5.0
 
 
---===============2615571510737411718==--
+--===============5767042587865393306==--
 
