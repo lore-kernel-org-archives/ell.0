@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============2421282432724464400=="
+Content-Type: multipart/mixed; boundary="===============6813029311601607623=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/5] dbus: Coalesce InterfacesAdded/Removed signals
-Date: Fri, 26 Feb 2016 14:27:28 -0600
-Message-ID: <56D0B530.1060306@gmail.com>
-In-Reply-To: <1455765612-6577-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 2/5] dbus: Coalesce PropertiesChanged signals
+Date: Fri, 26 Feb 2016 14:30:15 -0600
+Message-ID: <56D0B5D7.8060209@gmail.com>
+In-Reply-To: <1455765612-6577-2-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2421282432724464400==
+--===============6813029311601607623==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,59 +16,118 @@ Content-Transfer-Encoding: quoted-printable
 Hi Andrew,
 
 On 02/17/2016 09:20 PM, Andrew Zaborowski wrote:
-> When multiple interfaces are added or removed during the same main loop
-> cycle emit one signal per object with all the interfaces added or
-> removed.  Move the signals to the idle callback.
+> When multiple properties are changed in one main loop cycle emit only
+> one signal per interface with all the changes.
 > ---
->   ell/dbus-service.c | 337 ++++++++++++++++++++++++++++++++++++++++------=
+>   ell/dbus-private.h |   3 +-
+>   ell/dbus-service.c | 256 ++++++++++++++++++++++++++++++++++++----------=
 -------
->   1 file changed, 257 insertions(+), 80 deletions(-)
+>   2 files changed, 177 insertions(+), 82 deletions(-)
+>
 
-I looked over these and was fine with them.  I went ahead and applied =
+<snip>
 
-all five patches.  I did tweak some naming afterward to be more =
+> @@ -991,76 +1132,25 @@ bool _dbus_object_tree_property_changed(struct l_d=
+bus *dbus,
+>   	if (!property)
+>   		return false;
+>
+> -	signature =3D property->metainfo + strlen(property->metainfo) + 1;
+> -
+> -	if (instance->interface->handle_old_style_properties) {
+> -		signal =3D l_dbus_message_new_signal(dbus, path,
+> -							interface_name,
+> -							"PropertyChanged");
+> +	rec =3D l_queue_find(tree->property_changes,
+> +				match_property_changes_instance, instance);
+>
+> -		builder =3D l_dbus_message_builder_new(signal);
+> -
+> -		l_dbus_message_builder_append_basic(builder, 's',
+> -							property_name);
+> -		l_dbus_message_builder_enter_variant(builder, signature);
 
-consistent.  Please eyeball that and let me know if you're okay with those.
+This looks a bit suspicious.  Should we be also comparing the object =
 
-One question I have is whether we could save a bit of space by =
+pointer, not just the instance pointer here?
 
-coalescing the path and object pointers in the three record objects into =
-
-a single structure.  E.g. go from
-
-struct interface_add_record {
-         char *path;
-         struct object_node *object;
-         struct l_queue *instances;
-};
-
-struct interface_remove_record {
-         char *path;
-         struct object_node *object;
-         struct l_queue *interface_names;
-};
-
-struct property_change_record {
-         char *path;
-         struct object_node *object;
-         struct interface_instance *instance;
-         struct l_queue *properties;
-};
-
-to:
-
-struct emit_signal_record {
-	char *path;
-	struct object_node *object;
-	struct l_queue *removed_interface_names;
-	struct l_queue *added_interface_instances;
-	struct l_queue *changed_properties;
-};
-
-?
+> +	if (rec) {
+> +		if (l_queue_find(rec->properties, match_pointer, property))
+> +			return true;
+> +	} else {
+> +		rec =3D l_new(struct property_changes, 1);
+> +		rec->path =3D l_strdup(path);
+> +		rec->object =3D object;
+> +		rec->instance =3D instance;
+> +		rec->properties =3D l_queue_new();
+>
+> -		if (variant) {
+> -			memcpy(&value, variant, sizeof(value));
+> -			r =3D l_dbus_message_builder_append_from_iter(builder,
+> -								&value);
+> -		} else {
+> -			r =3D property->getter(dbus, signal, builder,
+> -						instance->user_data);
+> -		}
+> -
+> -		if (r) {
+> -			l_dbus_message_builder_leave_variant(builder);
+> -
+> -			l_dbus_message_builder_finalize(builder);
+> -			l_dbus_send(dbus, signal);
+> -		}
+> -
+> -		l_dbus_message_builder_destroy(builder);
+> +		l_queue_push_tail(tree->property_changes, rec);
+>   	}
+>
+> -	if (l_queue_find(object->instances, match_interface_instance,
+> -				DBUS_INTERFACE_PROPERTIES)) {
+> -		signal =3D l_dbus_message_new_signal(dbus, path,
+> -						DBUS_INTERFACE_PROPERTIES,
+> -						"PropertiesChanged");
+> -
+> -		builder =3D l_dbus_message_builder_new(signal);
+> -
+> -		l_dbus_message_builder_append_basic(builder, 's',
+> -							interface_name);
+> -		l_dbus_message_builder_enter_array(builder, "{sv}");
+> -		l_dbus_message_builder_enter_dict(builder, "sv");
+> -		l_dbus_message_builder_append_basic(builder, 's',
+> -							property_name);
+> -		l_dbus_message_builder_enter_variant(builder, signature);
+> +	l_queue_push_tail(rec->properties, property);
+>
+> -		if (variant) {
+> -			memcpy(&value, variant, sizeof(value));
+> -			r =3D l_dbus_message_builder_append_from_iter(builder,
+> -								&value);
+> -		} else {
+> -			r =3D property->getter(dbus, signal, builder,
+> -						instance->user_data);
+> -		}
+> -
+> -		if (r) {
+> -			l_dbus_message_builder_leave_variant(builder);
+> -			l_dbus_message_builder_leave_dict(builder);
+> -			l_dbus_message_builder_leave_array(builder);
+> -			l_dbus_message_builder_enter_array(builder, "s");
+> -			l_dbus_message_builder_leave_array(builder);
+> -
+> -			l_dbus_message_builder_finalize(builder);
+> -			l_dbus_send(dbus, signal);
+> -		}
+> -
+> -		l_dbus_message_builder_destroy(builder);
+> -	}
+> +	schedule_emit_signals(dbus);
+>
+>   	return true;
+>   }
 
 Regards,
 -Denis
 
---===============2421282432724464400==--
+
+--===============6813029311601607623==--
 
