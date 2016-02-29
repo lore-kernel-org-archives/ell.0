@@ -1,133 +1,55 @@
-Content-Type: multipart/mixed; boundary="===============6813029311601607623=="
+Content-Type: multipart/mixed; boundary="===============0159951829466635520=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: Andrzej Zaborowski <andrew.zaborowski@intel.com>
 Subject: Re: [PATCH 2/5] dbus: Coalesce PropertiesChanged signals
-Date: Fri, 26 Feb 2016 14:30:15 -0600
-Message-ID: <56D0B5D7.8060209@gmail.com>
-In-Reply-To: <1455765612-6577-2-git-send-email-andrew.zaborowski@intel.com>
+Date: Mon, 29 Feb 2016 10:21:39 +0100
+Message-ID: <CAOq732+Ai=m+BVD6xxhip+CezQ8Um8rR5ehkAQVw-=US6bf+Aw@mail.gmail.com>
+In-Reply-To: <56D0B5D7.8060209@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6813029311601607623==
+--===============0159951829466635520==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi Denis,
 
-On 02/17/2016 09:20 PM, Andrew Zaborowski wrote:
-> When multiple properties are changed in one main loop cycle emit only
-> one signal per interface with all the changes.
-> ---
->   ell/dbus-private.h |   3 +-
->   ell/dbus-service.c | 256 ++++++++++++++++++++++++++++++++++++----------=
--------
->   2 files changed, 177 insertions(+), 82 deletions(-)
+On 26 February 2016 at 21:30, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 02/17/2016 09:20 PM, Andrew Zaborowski wrote:
+>>         if (!property)
+>>                 return false;
+>>
+>> -       signature =3D property->metainfo + strlen(property->metainfo) + =
+1;
+>> -
+>> -       if (instance->interface->handle_old_style_properties) {
+>> -               signal =3D l_dbus_message_new_signal(dbus, path,
+>> -                                                       interface_name,
+>> -
+>> "PropertyChanged");
+>> +       rec =3D l_queue_find(tree->property_changes,
+>> +                               match_property_changes_instance,
+>> instance);
+>>
+>> -               builder =3D l_dbus_message_builder_new(signal);
+>> -
+>> -               l_dbus_message_builder_append_basic(builder, 's',
+>> -                                                       property_name);
+>> -               l_dbus_message_builder_enter_variant(builder, signature);
 >
-
-<snip>
-
-> @@ -991,76 +1132,25 @@ bool _dbus_object_tree_property_changed(struct l_d=
-bus *dbus,
->   	if (!property)
->   		return false;
 >
-> -	signature =3D property->metainfo + strlen(property->metainfo) + 1;
-> -
-> -	if (instance->interface->handle_old_style_properties) {
-> -		signal =3D l_dbus_message_new_signal(dbus, path,
-> -							interface_name,
-> -							"PropertyChanged");
-> +	rec =3D l_queue_find(tree->property_changes,
-> +				match_property_changes_instance, instance);
->
-> -		builder =3D l_dbus_message_builder_new(signal);
-> -
-> -		l_dbus_message_builder_append_basic(builder, 's',
-> -							property_name);
-> -		l_dbus_message_builder_enter_variant(builder, signature);
+> This looks a bit suspicious.  Should we be also comparing the object
+> pointer, not just the instance pointer here?
 
-This looks a bit suspicious.  Should we be also comparing the object =
+Assuming that only one object can have the instance it shouldn't
+matter.  When the object or the instance are removed, the property
+change record is also removed so it won't accidentally point at a
+different instance.
 
-pointer, not just the instance pointer here?
+We also rely on that for the interface added notifications.
 
-> +	if (rec) {
-> +		if (l_queue_find(rec->properties, match_pointer, property))
-> +			return true;
-> +	} else {
-> +		rec =3D l_new(struct property_changes, 1);
-> +		rec->path =3D l_strdup(path);
-> +		rec->object =3D object;
-> +		rec->instance =3D instance;
-> +		rec->properties =3D l_queue_new();
->
-> -		if (variant) {
-> -			memcpy(&value, variant, sizeof(value));
-> -			r =3D l_dbus_message_builder_append_from_iter(builder,
-> -								&value);
-> -		} else {
-> -			r =3D property->getter(dbus, signal, builder,
-> -						instance->user_data);
-> -		}
-> -
-> -		if (r) {
-> -			l_dbus_message_builder_leave_variant(builder);
-> -
-> -			l_dbus_message_builder_finalize(builder);
-> -			l_dbus_send(dbus, signal);
-> -		}
-> -
-> -		l_dbus_message_builder_destroy(builder);
-> +		l_queue_push_tail(tree->property_changes, rec);
->   	}
->
-> -	if (l_queue_find(object->instances, match_interface_instance,
-> -				DBUS_INTERFACE_PROPERTIES)) {
-> -		signal =3D l_dbus_message_new_signal(dbus, path,
-> -						DBUS_INTERFACE_PROPERTIES,
-> -						"PropertiesChanged");
-> -
-> -		builder =3D l_dbus_message_builder_new(signal);
-> -
-> -		l_dbus_message_builder_append_basic(builder, 's',
-> -							interface_name);
-> -		l_dbus_message_builder_enter_array(builder, "{sv}");
-> -		l_dbus_message_builder_enter_dict(builder, "sv");
-> -		l_dbus_message_builder_append_basic(builder, 's',
-> -							property_name);
-> -		l_dbus_message_builder_enter_variant(builder, signature);
-> +	l_queue_push_tail(rec->properties, property);
->
-> -		if (variant) {
-> -			memcpy(&value, variant, sizeof(value));
-> -			r =3D l_dbus_message_builder_append_from_iter(builder,
-> -								&value);
-> -		} else {
-> -			r =3D property->getter(dbus, signal, builder,
-> -						instance->user_data);
-> -		}
-> -
-> -		if (r) {
-> -			l_dbus_message_builder_leave_variant(builder);
-> -			l_dbus_message_builder_leave_dict(builder);
-> -			l_dbus_message_builder_leave_array(builder);
-> -			l_dbus_message_builder_enter_array(builder, "s");
-> -			l_dbus_message_builder_leave_array(builder);
-> -
-> -			l_dbus_message_builder_finalize(builder);
-> -			l_dbus_send(dbus, signal);
-> -		}
-> -
-> -		l_dbus_message_builder_destroy(builder);
-> -	}
-> +	schedule_emit_signals(dbus);
->
->   	return true;
->   }
+Best regards
 
-Regards,
--Denis
-
-
---===============6813029311601607623==--
+--===============0159951829466635520==--
 
