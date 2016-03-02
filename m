@@ -1,163 +1,249 @@
-Content-Type: multipart/mixed; boundary="===============7799685735778749114=="
+Content-Type: multipart/mixed; boundary="===============1921860174890742510=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 2/2] key: Add keystore unit test
-Date: Tue, 01 Mar 2016 16:23:30 -0800
-Message-ID: <1456878210-17519-2-git-send-email-mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/2] key: Add basic keystore support
+Date: Wed, 02 Mar 2016 10:51:27 -0600
+Message-ID: <56D71A0F.4040601@gmail.com>
 In-Reply-To: <1456878210-17519-1-git-send-email-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7799685735778749114==
+--===============1921860174890742510==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- .gitignore      |  1 +
- Makefile.am     |  5 +++-
- unit/test-key.c | 88 +++++++++++++++++++++++++++++++++++++++++++++++++++++=
-++++
- 3 files changed, 93 insertions(+), 1 deletion(-)
- create mode 100644 unit/test-key.c
+Hi Mat,
 
-diff --git a/.gitignore b/.gitignore
-index 8a20ffe..6e35752 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -52,6 +52,7 @@ unit/test-base64
- unit/test-tls
- unit/test-pem
- unit/test-uuid
-+unit/test-key
- unit/*.log
- unit/*.trs
- examples/dbus-service
-diff --git a/Makefile.am b/Makefile.am
-index e5a8f94..256b163 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -131,7 +131,8 @@ unit_tests =3D unit/test-unit \
- 			unit/test-base64 \
- 			unit/test-pem \
- 			unit/test-tls \
--			unit/test-uuid
-+			unit/test-uuid \
-+			unit/test-key
- =
+On 03/01/2016 06:23 PM, Mat Martineau wrote:
+> ---
+>   Makefile.am |   6 ++-
+>   ell/ell.h   |   1 +
+>   ell/key.c   | 155 +++++++++++++++++++++++++++++++++++++++++++++++++++++=
++++++++
+>   ell/key.h   |  58 +++++++++++++++++++++++
+>   4 files changed, 218 insertions(+), 2 deletions(-)
+>   create mode 100644 ell/key.c
+>   create mode 100644 ell/key.h
+>
 
- dbus_tests =3D unit/test-kdbus \
- 			unit/test-dbus \
-@@ -215,6 +216,8 @@ unit_test_tls_LDADD =3D ell/libell-private.la
- =
+<snip>
 
- unit_test_uuid_LDADD =3D ell/libell-private.la
- =
+> diff --git a/ell/key.c b/ell/key.c
+> new file mode 100644
+> index 0000000..b6a1303
+> --- /dev/null
+> +++ b/ell/key.c
+> @@ -0,0 +1,155 @@
+> +/*
+> + *
+> + *  Embedded Linux library
+> + *
+> + *  Copyright (C) 2016  Intel Corporation. All rights reserved.
+> + *
+> + *  This library is free software; you can redistribute it and/or
+> + *  modify it under the terms of the GNU Lesser General Public
+> + *  License as published by the Free Software Foundation; either
+> + *  version 2.1 of the License, or (at your option) any later version.
+> + *
+> + *  This library is distributed in the hope that it will be useful,
+> + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+> + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+> + *  Lesser General Public License for more details.
+> + *
+> + *  You should have received a copy of the GNU Lesser General Public
+> + *  License along with this library; if not, write to the Free Software
+> + *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-130=
+1  USA
+> + *
+> + */
+> +
+> +#ifdef HAVE_CONFIG_H
+> +#include <config.h>
+> +#endif
+> +
+> +#define _GNU_SOURCE
+> +#include <unistd.h>
+> +#include <sys/syscall.h>
+> +#include <linux/keyctl.h>
+> +
+> +#include "private.h"
+> +#include "util.h"
+> +#include "key.h"
+> +
+> +//DEBUG
+> +#include <stdio.h>
 
-+unit_test_key_LDADD =3D ell/libell-private.la
-+
- if MAINTAINER_MODE
- noinst_LTLIBRARIES +=3D unit/example-plugin.la
- endif
-diff --git a/unit/test-key.c b/unit/test-key.c
-new file mode 100644
-index 0000000..a803166
---- /dev/null
-+++ b/unit/test-key.c
-@@ -0,0 +1,88 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2016  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <assert.h>
-+
-+#include <ell/ell.h>
-+
-+#define KEY1_STR "This key has exactly _32_ bytes!"
-+#define KEY1_LEN (strlen(KEY1_STR))
-+#define KEY2_STR "This key is longer than 32 bytes, just to be different."
-+#define KEY2_LEN (strlen(KEY2_STR))
-+
-+static void test_unsupported(const void *data)
-+{
-+	struct l_key *key;
-+
-+	key =3D l_key_new(42, KEY1_STR, KEY1_LEN);
-+	assert(!key);
-+}
-+
-+static void test_user(const void *data)
-+{
-+	struct l_key *key;
-+	bool ok;
-+	char buf[64] =3D { 0 };
-+	size_t len;
-+
-+	assert(KEY1_LEN < KEY2_LEN);
-+	assert(KEY2_LEN < sizeof(buf));
-+
-+	key =3D l_key_new(L_KEY_USER, KEY1_STR, KEY1_LEN);
-+	assert(key);
-+
-+	len =3D KEY1_LEN - 1;
-+	ok =3D l_key_get_payload(key, buf, &len);
-+	assert(!ok);
-+
-+	len =3D sizeof(buf);
-+	ok =3D l_key_get_payload(key, buf, &len);
-+	assert(ok);
-+	assert(len =3D=3D KEY1_LEN);
-+	assert(!strcmp(buf, KEY1_STR));
-+
-+	ok =3D l_key_set_payload(key, KEY2_STR, KEY2_LEN);
-+	assert(ok);
-+
-+	len =3D sizeof(buf);
-+	ok =3D l_key_get_payload(key, buf, &len);
-+	assert(ok);
-+	assert(len =3D=3D KEY2_LEN);
-+	assert(!strcmp(buf, KEY2_STR));
-+
-+	l_key_free(key);
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	l_test_init(&argc, &argv);
-+
-+	l_test_add("unsupported", test_unsupported, NULL);
-+
-+	l_test_add("user key", test_user, NULL);
-+
-+	return l_test_run();
-+}
--- =
+Still needed?
 
-2.7.2
+> +
+> +#define is_valid_type(type) ((type) <=3D L_KEY_DH_PRIVATE)
+> +
+> +static int keyring_base;
+> +
+> +struct l_key {
+> +	int type;
+> +	long serial;
+> +};
+> +
+> +static long kernel_add_key(char *type, char *description,
+> +				const void *payload, size_t len, long keyring)
+> +{
+> +	return syscall(__NR_add_key, type, description, payload, len, keyring);
+> +}
+> +
+> +static long kernel_read_key(long serial, const void *payload, size_t len)
+> +{
+> +	return syscall(__NR_keyctl, KEYCTL_READ, serial, payload, len);
+> +}
+> +
+> +static long kernel_update_key(long serial, const void *payload, size_t l=
+en)
+> +{
+> +	return syscall(__NR_keyctl, KEYCTL_UPDATE, serial, payload, len);
+> +}
+> +
+> +static long kernel_revoke_key(long serial)
+> +{
+> +	return syscall(__NR_keyctl, KEYCTL_REVOKE, serial);
+> +}
+> +
+> +static bool setup_keyring_base(void)
+> +{
+> +	keyring_base =3D kernel_add_key("keyring", "ell", 0, 0,
+> +					KEY_SPEC_THREAD_KEYRING);
+> +
+
+This is fine for now, but I think we might want to expose the concept of =
+
+keyrings in the future.
+
+> +	if (keyring_base <=3D 0) {
+> +		keyring_base =3D 0;
+> +		return false;
+> +	}
+> +
+> +	return true;
+> +}
+> +
+> +LIB_EXPORT struct l_key *l_key_new(enum l_key_type type, const void *pay=
+load,
+> +					size_t payload_length)
+> +{
+> +	struct l_key *key;
+> +
+> +	if (unlikely(!payload))
+> +		return NULL;
+> +
+> +	if (unlikely(!is_valid_type(type)))
+> +		return NULL;
+> +
+> +	if (!keyring_base && !setup_keyring_base()) {
+> +		return NULL;
+> +	}
+> +
+> +	key =3D l_new(struct l_key, 1);
+> +	key->type =3D type;
+> +	key->serial =3D kernel_add_key("user", "testing", payload, payload_leng=
+th,
+> +					keyring_base);
+> +
+> +	if (key->serial < 0) {
+> +		l_free(key);
+> +		key =3D NULL;
+> +	}
+> +
+> +	return key;
+> +}
+> +
+> +LIB_EXPORT void l_key_free(struct l_key *key)
+> +{
+> +	if (unlikely(!key))
+> +		return;
+> +
+> +	kernel_revoke_key(key->serial);
+> +
+> +	l_free(key);
+> +}
+> +
+> +LIB_EXPORT bool l_key_set_payload(struct l_key *key, void *payload, size=
+_t len)
+
+I'm not sure I like the name.  Perhaps l_key_update?
+
+> +{
+> +	long error;
+> +
+> +	if (unlikely(!key))
+> +		return false;
+> +
+> +	error =3D kernel_update_key(key->serial, payload, len);
+> +
+> +	return error =3D=3D 0;
+> +}
+> +
+> +LIB_EXPORT bool l_key_get_payload(struct l_key *key, void *payload, size=
+_t *len)
+
+Maybe l_key_extract, l_key_extract_raw_bytes, l_key_get_raw_bytes?
+
+> +{
+> +	long copied;
+> +
+> +	if (unlikely(!key))
+> +		return false;
+> +
+> +	copied =3D kernel_read_key(key->serial, payload, *len);
+> +
+> +	if (copied < 0 || (size_t)copied > *len)
+> +		return false;
+
+So what is the behavior of the kernel syscall here?  How can copied ever =
+
+be greater than len?
+
+Another issue is whether userspace has any way of obtaining information =
+
+on how large the payload is.  E.g. what size len to pass in.  Should we =
+
+track the key size or extract it out somehow?
+
+> +
+> +	*len =3D copied;
+> +	return true;
+> +}
+> +
+> +LIB_EXPORT bool l_key_get_type(struct l_key *key, enum l_key_type *type)
+
+We avoided having to deal with this type of situation where an enum =
+
+needs to be extracted back out of an instance.  Some may like doing =
+
+something like:
+
+enum l_key_type l_key_get_type(struct l_key *key) better.  However, =
+
+doing it this way would require us to introduce an _INVALID enum value. =
+
+  Not sure which one is better/worse.
+
+I'm okay with the approach taken in the patch, but maybe others have =
+
+thoughts on this?  We'd need to standardize on something.
+
+> +{
+> +	if (unlikely(!key))
+> +		return false;
+> +
+> +	*type =3D key->type;
+> +	return true;
+> +}
+
+<snip>
+
+Regards,
+-Denis
 
 
---===============7799685735778749114==--
+--===============1921860174890742510==--
 
