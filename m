@@ -1,80 +1,168 @@
-Content-Type: multipart/mixed; boundary="===============8401652913722693796=="
+Content-Type: multipart/mixed; boundary="===============3839829902078598537=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] key: Add basic keystore support
-Date: Thu, 03 Mar 2016 17:42:58 -0600
-Message-ID: <56D8CC02.1000704@gmail.com>
-In-Reply-To: <alpine.OSX.2.20.1603031011210.922@mjmartin-mac01.wa.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v2 2/2] key: Add keystore unit test
+Date: Fri, 04 Mar 2016 10:18:01 -0800
+Message-ID: <1457115481-20440-2-git-send-email-mathew.j.martineau@linux.intel.com>
+In-Reply-To: <1457115481-20440-1-git-send-email-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8401652913722693796==
+--===============3839829902078598537==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+---
+ .gitignore      |  1 +
+ Makefile.am     |  5 +++-
+ unit/test-key.c | 92 +++++++++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 3 files changed, 97 insertions(+), 1 deletion(-)
+ create mode 100644 unit/test-key.c
 
- >> Are there kernel keyctl internal enumerations for key types as well?
->> E.g. how do we know that a certificate loaded by keyctl is a private
->> key vs a public key?
->>
->
-> Asymmetric keys have a "subtype", but there's only one right now (x509).
-> When an asymmetric key is created, it has a list of parsers to attempt,
-> and a successful parser will set the subtype appropriately. After the
-> key is created, KEYCTL_DESCRIBE will return a string which contains the
-> key type and subtype information.
->
-> User keys are just a blob.
->
-> This leads me to think that the type should be retrieved from the kernel
-> dynamically, similar to how the size is handled.
->
+diff --git a/.gitignore b/.gitignore
+index 8a20ffe..6e35752 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -52,6 +52,7 @@ unit/test-base64
+ unit/test-tls
+ unit/test-pem
+ unit/test-uuid
++unit/test-key
+ unit/*.log
+ unit/*.trs
+ examples/dbus-service
+diff --git a/Makefile.am b/Makefile.am
+index e5a8f94..256b163 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -131,7 +131,8 @@ unit_tests =3D unit/test-unit \
+ 			unit/test-base64 \
+ 			unit/test-pem \
+ 			unit/test-tls \
+-			unit/test-uuid
++			unit/test-uuid \
++			unit/test-key
+ =
 
-My thinking as well.  Last I looked the keyctl 'types' were a bit weird. =
+ dbus_tests =3D unit/test-kdbus \
+ 			unit/test-dbus \
+@@ -215,6 +216,8 @@ unit_test_tls_LDADD =3D ell/libell-private.la
+ =
 
-  So we may need to do some additional work here.
+ unit_test_uuid_LDADD =3D ell/libell-private.la
+ =
 
->
-> My current DH implementation in the kernel has separate keyctl commands
-> for deriving the public key and shared secret (with the internal
-> implementation sharing the common math and key handling), but I'm going
-> to change that to just one KEYCTL_DH_COMPUTE command. The user then gets
-> the public key by passing in the generator key id, and the shared secret
-> by passing in the peer public key.
++unit_test_key_LDADD =3D ell/libell-private.la
++
+ if MAINTAINER_MODE
+ noinst_LTLIBRARIES +=3D unit/example-plugin.la
+ endif
+diff --git a/unit/test-key.c b/unit/test-key.c
+new file mode 100644
+index 0000000..f4e78d7
+--- /dev/null
++++ b/unit/test-key.c
+@@ -0,0 +1,92 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2016  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <assert.h>
++
++#include <ell/ell.h>
++
++#define KEY1_STR "This key has exactly _32_ bytes!"
++#define KEY1_LEN (strlen(KEY1_STR))
++#define KEY2_STR "This key is longer than 32 bytes, just to be different."
++#define KEY2_LEN (strlen(KEY2_STR))
++
++static void test_unsupported(const void *data)
++{
++	struct l_key *key;
++
++	key =3D l_key_new(42, KEY1_STR, KEY1_LEN);
++	assert(!key);
++}
++
++static void test_user(const void *data)
++{
++	struct l_key *key;
++	bool ok;
++	char buf[64] =3D { 0 };
++	size_t len;
++	ssize_t reported_len;
++
++	assert(KEY1_LEN < KEY2_LEN);
++	assert(KEY2_LEN < sizeof(buf));
++
++	key =3D l_key_new(L_KEY_RAW, KEY1_STR, KEY1_LEN);
++	assert(key);
++
++	reported_len =3D l_key_get_size(key);
++	assert(reported_len =3D=3D KEY1_LEN);
++	=
 
-Yep, I think that's a good way of doing it.  Lets see what the kernel =
++	len =3D KEY1_LEN - 1;
++	ok =3D l_key_extract(key, buf, &len);
++	assert(!ok);
++
++	len =3D sizeof(buf);
++	ok =3D l_key_extract(key, buf, &len);
++	assert(ok);
++	assert(len =3D=3D KEY1_LEN);
++	assert(!strcmp(buf, KEY1_STR));
++
++	ok =3D l_key_update(key, KEY2_STR, KEY2_LEN);
++	assert(ok);
++
++	len =3D sizeof(buf);
++	ok =3D l_key_extract(key, buf, &len);
++	assert(ok);
++	assert(len =3D=3D KEY2_LEN);
++	assert(!strcmp(buf, KEY2_STR));
++
++	l_key_free(key);
++}
++
++int main(int argc, char *argv[])
++{
++	l_test_init(&argc, &argv);
++
++	l_test_add("unsupported", test_unsupported, NULL);
++
++	l_test_add("user key", test_user, NULL);
++
++	return l_test_run();
++}
+-- =
 
-guys think :)
-
->
->>
->> What key type do we use for prime and generator?
->> Do we really need to make the distinction between private / public
->> types?  If the types are dropped above, not much of value is lost...
->
-> On the kernel side, they're all "user" keys
-> (prime/generator/public/private), since the asymmetric type only handles
-> x509 format.
->
-> There isn't much value in tracking the key types for DH. The motivation
-> has more to do with asymmetric ciphers. When creating a new key in the
-> kernel, a type string must be specified ("user", "asymmetric", etc.),
-> and the enumerations would map to the appropriate kernel key type
-> string. However, it's sufficient to have more general types like
-> L_KEY_RAW and L_KEY_ASYMMETRIC. Sound like a better approach?
->
-
-Yep, I think so.  We can also postpone adding the key type for now until =
-
-our understanding of the asymmetric key types and key type extraction =
-
-from the kernel are a bit less fuzzy.
-
-Regards,
--Denis
+2.7.2
 
 
---===============8401652913722693796==--
+--===============3839829902078598537==--
 
