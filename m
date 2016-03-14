@@ -1,112 +1,104 @@
-Content-Type: multipart/mixed; boundary="===============2559303401742015396=="
+Content-Type: multipart/mixed; boundary="===============6326179467973378677=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 01/20] dbus: Add _dbus1_message_iter_skip_entry and gvariant
- variant
-Date: Mon, 14 Mar 2016 04:41:17 +0100
-Message-ID: <1457926896-9843-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 02/20] dbus: Add _dbus_message_get_nth_string_argument
+Date: Mon, 14 Mar 2016 04:41:18 +0100
+Message-ID: <1457926896-9843-2-git-send-email-andrew.zaborowski@intel.com>
+In-Reply-To: <1457926896-9843-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2559303401742015396==
+--===============6326179467973378677==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This will be used for the get_nth_string_argument function in
-dbus-message.c.  There seems to be no other way to skip over an iterator
-entry without knowing the data type.
+We happen to need to access n-th argument specifically only if it is
+of a string type in at least three places, so add this shortcut.
 ---
- ell/dbus-private.h     |  1 +
- ell/dbus-util.c        | 16 ++++++++++++++++
- ell/gvariant-private.h |  1 +
- ell/gvariant-util.c    | 10 ++++++++++
- 4 files changed, 28 insertions(+)
+ ell/dbus-message.c | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ ell/dbus-private.h |  2 ++
+ 2 files changed, 47 insertions(+)
 
+diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+index c876863..f3557b8 100644
+--- a/ell/dbus-message.c
++++ b/ell/dbus-message.c
+@@ -392,6 +392,51 @@ LIB_EXPORT void l_dbus_message_unref(struct l_dbus_mes=
+sage *message)
+ 	l_free(message);
+ }
+ =
+
++const char *_dbus_message_get_nth_string_argument(
++					struct l_dbus_message *message, int n)
++{
++	struct l_dbus_message_iter iter;
++	const char *signature, *value;
++	void *body;
++	size_t size;
++	char type;
++	bool (*skip_entry)(struct l_dbus_message_iter *);
++	bool (*get_basic)(struct l_dbus_message_iter *, char, void *);
++
++	signature =3D l_dbus_message_get_signature(message);
++	body =3D _dbus_message_get_body(message, &size);
++
++	if (!signature)
++		return NULL;
++
++	if (_dbus_message_is_gvariant(message)) {
++		if (!_gvariant_iter_init(&iter, message, signature, NULL,
++						body, size))
++			return NULL;
++
++		skip_entry =3D _gvariant_iter_skip_entry;
++		get_basic =3D _gvariant_iter_next_entry_basic;
++	} else {
++		_dbus1_iter_init(&iter, message, signature, NULL, body, size);
++
++		skip_entry =3D _dbus1_iter_skip_entry;
++		get_basic =3D _dbus1_iter_next_entry_basic;
++	}
++
++	while (n--)
++		if (!skip_entry(&iter))
++			return NULL;
++
++	type =3D l_dbus_message_iter_get_type(&iter);
++	if (!strchr("sog", type))
++		return NULL;
++
++	if (!get_basic(&iter, type, &value))
++		return NULL;
++
++	return value;
++}
++
+ static bool message_iter_next_entry_valist(struct l_dbus_message_iter *ori=
+g,
+ 						va_list args)
+ {
 diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index 8322475..cfed4f7 100644
+index cfed4f7..607fdf4 100644
 --- a/ell/dbus-private.h
 +++ b/ell/dbus-private.h
-@@ -77,6 +77,7 @@ bool _dbus1_iter_enter_variant(struct l_dbus_message_iter=
- *iter,
- 					struct l_dbus_message_iter *variant);
- bool _dbus1_iter_enter_array(struct l_dbus_message_iter *iter,
- 					struct l_dbus_message_iter *array);
-+bool _dbus1_iter_skip_entry(struct l_dbus_message_iter *iter);
+@@ -115,6 +115,8 @@ enum dbus_message_type _dbus_message_get_type(struct l_=
+dbus_message *message);
+ const char * _dbus_message_get_type_as_string(struct l_dbus_message *messa=
+ge);
+ uint8_t _dbus_message_get_version(struct l_dbus_message *message);
+ uint8_t _dbus_message_get_endian(struct l_dbus_message *message);
++const char *_dbus_message_get_nth_string_argument(
++					struct l_dbus_message *message, int n);
  =
 
- struct dbus_builder *_dbus1_builder_new(void *body, size_t body_size);
- void _dbus1_builder_free(struct dbus_builder *builder);
-diff --git a/ell/dbus-util.c b/ell/dbus-util.c
-index 5ab4298..9d5b5af 100644
---- a/ell/dbus-util.c
-+++ b/ell/dbus-util.c
-@@ -805,6 +805,22 @@ bool _dbus1_iter_enter_array(struct l_dbus_message_ite=
-r *iter,
- 	return true;
- }
- =
-
-+bool _dbus1_iter_skip_entry(struct l_dbus_message_iter *iter)
-+{
-+	size_t len;
-+	const char *sig_end;
-+
-+	sig_end =3D calc_len_next_item(iter->sig_start + iter->sig_pos,
-+					iter->data, iter->pos, iter->len, &len);
-+	if (!sig_end)
-+		return false;
-+
-+	iter->pos +=3D len;
-+	iter->sig_pos =3D sig_end - iter->sig_start;
-+
-+	return true;
-+}
-+
- struct dbus_builder {
- 	struct l_string *signature;
- 	void *body;
-diff --git a/ell/gvariant-private.h b/ell/gvariant-private.h
-index 1acac74..2a20feb 100644
---- a/ell/gvariant-private.h
-+++ b/ell/gvariant-private.h
-@@ -35,6 +35,7 @@ bool _gvariant_iter_enter_variant(struct l_dbus_message_i=
-ter *iter,
- 					struct l_dbus_message_iter *variant);
- bool _gvariant_iter_enter_array(struct l_dbus_message_iter *iter,
- 					struct l_dbus_message_iter *array);
-+bool _gvariant_iter_skip_entry(struct l_dbus_message_iter *iter);
- =
-
- bool _gvariant_valid_signature(const char *sig);
- int _gvariant_get_alignment(const char *signature);
-diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
-index 7534509..1aaddc3 100644
---- a/ell/gvariant-util.c
-+++ b/ell/gvariant-util.c
-@@ -731,6 +731,16 @@ bool _gvariant_iter_enter_array(struct l_dbus_message_=
-iter *iter,
- 						start, item_size);
- }
- =
-
-+bool _gvariant_iter_skip_entry(struct l_dbus_message_iter *iter)
-+{
-+	size_t size;
-+
-+	if (!next_item(iter, &size))
-+		return false;
-+
-+	return true;
-+}
-+
- struct dbus_builder {
- 	struct l_string *signature;
- 	void *body;
+ struct l_dbus_message *_dbus_message_new_method_call(uint8_t version,
+ 							const char *destination,
 -- =
 
 2.5.0
 
 
---===============2559303401742015396==--
+--===============6326179467973378677==--
 
