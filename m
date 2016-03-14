@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============6619099229235963567=="
+Content-Type: multipart/mixed; boundary="===============9190630124936643865=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 07/20] dbus-filter: Name owner change tracking support.
-Date: Mon, 14 Mar 2016 13:03:34 -0500
-Message-ID: <56E6FCF6.5070505@gmail.com>
-In-Reply-To: <1457926896-9843-7-git-send-email-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 08/20] dbus: Classic dbus filter_ops implementation.
+Date: Mon, 14 Mar 2016 13:18:20 -0500
+Message-ID: <56E7006C.2070109@gmail.com>
+In-Reply-To: <1457926896-9843-8-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6619099229235963567==
+--===============9190630124936643865==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,264 +16,248 @@ Content-Transfer-Encoding: quoted-printable
 Hi Andrew,
 
 On 03/13/2016 10:41 PM, Andrew Zaborowski wrote:
-> This is needed because incoming message callbacks normally care what
-> Well-known Bus Name the message comes from but the sender field of the
-> message normally stores unique bus names in classic dbus.  The
-> Well-known names may be re-assigned to different unique names while the
-> rule is in place.
+> For the name owner tracking I decided to subscribe to all name
+> owner changes instead of adding separate rules for every name because
+> in some scenarios that saves us cycles/memory and we don't have
+> to hold a list of IDs of every such rule so that we could remove them
+> when no longer needed.
 > ---
->   ell/dbus-filter.c  | 102 ++++++++++++++++++++++++++++++++++++++++++++++=
-++++++-
->   ell/dbus-private.h |   5 +++
->   2 files changed, 106 insertions(+), 1 deletion(-)
+>   ell/dbus-filter.c |   5 +++
+>   ell/dbus.c        | 132 +++++++++++++++++++++++++++++++++++++++++++++++=
++++++++
+>   2 files changed, 137 insertions(+)
 >
 > diff --git a/ell/dbus-filter.c b/ell/dbus-filter.c
-> index 2541374..f2cc023 100644
+> index f2cc023..47f2a0b 100644
 > --- a/ell/dbus-filter.c
 > +++ b/ell/dbus-filter.c
-> @@ -62,6 +62,12 @@ struct _dbus_filter {
->   	unsigned int signal_id;
->   	unsigned int last_id;
->   	const struct _dbus_filter_ops *driver;
-> +	struct l_hashmap *unique_names;
+> @@ -189,6 +189,11 @@ void _dbus_filter_dispatch(struct l_dbus_message *me=
+ssage, void *user_data)
+>   void _dbus_filter_name_owner_notify(struct _dbus_filter *filter,
+>   					const char *name, const char *owner)
+>   {
+> +	struct unique_name_record *name_rec;
+> +
+> +	if (!filter)
+> +		return;
+> +
+>   	if (_dbus_parse_unique_name(name, NULL))
+>   		return;
+
+Does this belong in a different patch?
+
+>
+> diff --git a/ell/dbus.c b/ell/dbus.c
+> index 2ac9e58..e9d3424 100644
+> --- a/ell/dbus.c
+> +++ b/ell/dbus.c
+> @@ -63,6 +63,7 @@ struct l_dbus_ops {
+>   				struct l_dbus_message *message);
+>   	struct l_dbus_message *(*recv_message)(struct l_dbus *bus);
+>   	void (*free)(struct l_dbus *bus);
+> +	struct _dbus_filter_ops filter_ops;
+>   };
+>
+>   struct l_dbus {
+> @@ -87,6 +88,7 @@ struct l_dbus {
+>   	l_dbus_destroy_func_t debug_destroy;
+>   	void *debug_data;
+>   	struct _dbus_object_tree *tree;
+> +	struct _dbus_filter *filter;
+>
+>   	const struct l_dbus_ops *driver;
+>   };
+> @@ -103,6 +105,7 @@ struct l_dbus_classic {
+>   	struct l_dbus super;
+>   	void *auth_command;
+>   	enum auth_state auth_state;
+> +	struct l_hashmap *match_strings;
+>   };
+>
+>   struct message_callback {
+> @@ -553,6 +556,7 @@ static void classic_free(struct l_dbus *dbus)
+>   		container_of(dbus, struct l_dbus_classic, super);
+>
+>   	l_free(classic->auth_command);
+> +	l_hashmap_destroy(classic->match_strings, l_free);
+>   	l_free(classic);
+>   }
+>
+> @@ -664,13 +668,129 @@ cmsg_fail:
+>   	return NULL;
+>   }
+>
+> +static bool classic_add_match(struct l_dbus *dbus, unsigned int id,
+> +				const struct _dbus_filter_condition *rule,
+> +				int rule_len)
+> +{
+> +	struct l_dbus_classic *classic =3D
+> +		container_of(dbus, struct l_dbus_classic, super);
+> +	char *match_str;
+> +	struct l_dbus_message *message;
+> +
+> +	match_str =3D _dbus_filter_rule_to_str(rule, rule_len);
+> +
+> +	l_hashmap_insert(classic->match_strings, L_UINT_TO_PTR(id), match_str);
+> +
+> +	message =3D l_dbus_message_new_method_call(dbus,
+> +						DBUS_SERVICE_DBUS,
+> +						DBUS_PATH_DBUS,
+> +						L_DBUS_INTERFACE_DBUS,
+> +						"AddMatch");
+> +
+> +	l_dbus_message_set_arguments(message, "s", match_str);
+> +
+> +	send_message(dbus, false, message, NULL, NULL, NULL);
+> +
+> +	return true;
+> +}
+> +
+> +static bool classic_remove_match(struct l_dbus *dbus, unsigned int id)
+> +{
+> +	struct l_dbus_classic *classic =3D
+> +		container_of(dbus, struct l_dbus_classic, super);
+> +	char *match_str =3D l_hashmap_remove(classic->match_strings,
+> +						L_UINT_TO_PTR(id));
+> +	struct l_dbus_message *message;
+> +
+> +	if (!match_str)
+> +		return false;
+> +
+> +	message =3D l_dbus_message_new_method_call(dbus,
+> +						DBUS_SERVICE_DBUS,
+> +						DBUS_PATH_DBUS,
+> +						L_DBUS_INTERFACE_DBUS,
+> +						"RemoveMatch");
+> +
+> +	l_dbus_message_set_arguments(message, "s", match_str);
+> +
+> +	send_message(dbus, false, message, NULL, NULL, NULL);
+> +
+> +	l_free(match_str);
+> +
+> +	return true;
+> +}
+> +
+> +struct get_name_owner_request {
+> +	struct l_dbus_message *message;
+> +	struct l_dbus *dbus;
 > +};
 > +
-> +struct unique_name_record {
-> +	int ref_count;
-> +	char *unique_name;
+> +static void get_name_owner_reply_cb(struct l_dbus_message *reply,
+> +					void *user_data)
+> +{
+> +	struct get_name_owner_request *req =3D user_data;
+> +	const char *name, *owner;
+> +
+> +	/* No name owner yet */
+> +	if (l_dbus_message_is_error(reply))
+> +		return;
+> +
+> +	/* Shouldn't happen */
+> +	if (!l_dbus_message_get_arguments(reply, "s", &owner))
+> +		return;
+> +
+> +	/* Shouldn't happen */
+> +	if (!l_dbus_message_get_arguments(req->message, "s", &name))
+> +		return;
+> +
+> +	_dbus_filter_name_owner_notify(req->dbus->filter, name, owner);
+> +}
+> +
+> +static bool classic_get_name_owner(struct l_dbus *bus, const char *name)
+> +{
+> +	struct get_name_owner_request *req;
+> +
+> +	req =3D l_new(struct get_name_owner_request, 1);
+> +	req->dbus =3D bus;
+> +	req->message =3D l_dbus_message_new_method_call(bus,
+> +							DBUS_SERVICE_DBUS,
+> +							DBUS_PATH_DBUS,
+> +							L_DBUS_INTERFACE_DBUS,
+> +							"GetNameOwner");
+> +
+> +	l_dbus_message_set_arguments(req->message, "s", name);
+> +
+> +	send_message(bus, false, req->message, get_name_owner_reply_cb,
+> +			req, l_free);
+> +
+> +	return true;
+> +}
+> +
+>   static const struct l_dbus_ops classic_ops =3D {
+>   	.version =3D 1,
+>   	.send_message =3D classic_send_message,
+>   	.recv_message =3D classic_recv_message,
+>   	.free =3D classic_free,
+> +	.filter_ops =3D {
+> +		.track_name_owner_change =3D true,
+> +		.add_match =3D classic_add_match,
+> +		.remove_match =3D classic_remove_match,
+> +		.get_name_owner =3D classic_get_name_owner,
+> +	},
 >   };
 >
->   static void filter_subtree_free(struct filter_node *node)
-> @@ -86,6 +92,14 @@ static void filter_subtree_free(struct filter_node *no=
-de)
->   	}
->   }
->
-> +static void unique_name_record_free(void *data)
+> +static void name_owner_changed_cb(struct l_dbus_message *message,
+> +					void *user_data)
 > +{
-> +	struct unique_name_record *name_rec =3D data;
+> +	struct l_dbus *dbus =3D user_data;
+> +	char *name, *old, *new;
 > +
-> +	l_free(name_rec->unique_name);
-> +	l_free(name_rec);
+> +	if (!l_dbus_message_get_arguments(message, "sss", &name, &old, &new))
+> +		return;
+> +
+> +	_dbus_filter_name_owner_notify(dbus->filter, name, new);
 > +}
 > +
->   static void dbus_filter_destroy(void *data)
+>   static struct l_dbus *setup_dbus1(int fd, const char *guid)
 >   {
->   	struct _dbus_filter *filter =3D data;
-> @@ -93,6 +107,10 @@ static void dbus_filter_destroy(void *data)
->   	if (filter->root)
->   		filter_subtree_free(filter->root);
+>   	static const unsigned char creds =3D 0x00;
+> @@ -680,6 +800,13 @@ static struct l_dbus *setup_dbus1(int fd, const char=
+ *guid)
+>   	ssize_t written;
+>   	unsigned int i;
+>   	long flags;
+> +	static struct _dbus_filter_condition rule[] =3D {
+> +		{ L_DBUS_MATCH_TYPE,		"signal" },
+> +		{ L_DBUS_MATCH_SENDER,		DBUS_SERVICE_DBUS },
+> +		{ L_DBUS_MATCH_PATH,		DBUS_PATH_DBUS },
+> +		{ L_DBUS_MATCH_INTERFACE,	L_DBUS_INTERFACE_DBUS },
+> +		{ L_DBUS_MATCH_MEMBER,		"NameOwnerChanged" },
+> +	};
 >
-> +	if (filter->unique_names)
-> +		l_hashmap_destroy(filter->unique_names,
-> +					unique_name_record_free);
+>   	if (snprintf(uid, sizeof(uid), "%d", geteuid()) < 1) {
+>   		close(fd);
+> @@ -714,6 +841,8 @@ static struct l_dbus *setup_dbus1(int fd, const char =
+*guid)
+>   	dbus =3D &classic->super;
+>   	dbus->driver =3D &classic_ops;
+>
+> +	classic->match_strings =3D l_hashmap_new();
 > +
->   	l_free(filter);
+>   	dbus_init(dbus, fd);
+>   	dbus->guid =3D l_strdup(guid);
+>
+> @@ -726,6 +855,9 @@ static struct l_dbus *setup_dbus1(int fd, const char =
+*guid)
+>   	l_io_set_read_handler(dbus->io, auth_read_handler, dbus, NULL);
+>   	l_io_set_write_handler(dbus->io, auth_write_handler, dbus, NULL);
+>
+> +	_dbus_filter_add_rule(dbus->filter, rule, L_ARRAY_SIZE(rule),
+> +				name_owner_changed_cb, dbus);
+> +
+
+Do we need to treat DBUS_SERVICE_DBUS conditions specially since this =
+
+one is not subject to unique name resolution?
+
+>   	return dbus;
 >   }
->
-> @@ -101,6 +119,8 @@ static void filter_dispatch_match_recurse(struct _dbu=
-s_filter *filter,
->   						struct l_dbus_message *message)
->   {
->   	const char *value =3D NULL;
-> +	const char *alt_value =3D NULL;
-> +	const struct unique_name_record *name_rec;
->   	struct filter_node *child;
->
->   	switch ((int) node->type) {
-> @@ -141,7 +161,18 @@ static void filter_dispatch_match_recurse(struct _db=
-us_filter *filter,
->   	if (!value)
->   		return;
->
-> -	if (strcmp(value, node->match.value))
-> +	if ((node->type =3D=3D L_DBUS_MATCH_SENDER ||
-> +				node->type =3D=3D L_DBUS_MATCH_DESTINATION) &&
-
-According to DBus specification, destination matches only match the =
-
-unique name:
-"Matches messages which are being sent to the given unique name. An =
-
-example of a destination match is destination=3D':1.0'"
-
-> +			filter->unique_names) {
-> +		name_rec =3D l_hashmap_lookup(filter->unique_names,
-> +						node->match.value);
-> +
-> +		if (name_rec)
-> +			alt_value =3D name_rec->unique_name;
-> +	}
-> +
-> +	if (strcmp(value, node->match.value) &&
-> +			(!alt_value || strcmp(value, alt_value)))
->   		return;
->
->   	for (child =3D node->match.children; child; child =3D child->next)
-> @@ -155,6 +186,21 @@ void _dbus_filter_dispatch(struct l_dbus_message *me=
-ssage, void *user_data)
->   	filter_dispatch_match_recurse(filter, filter->root, message);
->   }
->
-> +void _dbus_filter_name_owner_notify(struct _dbus_filter *filter,
-> +					const char *name, const char *owner)
-> +{
-> +	if (_dbus_parse_unique_name(name, NULL))
-> +		return;
-> +
-> +	name_rec =3D l_hashmap_lookup(filter->unique_names, name);
-> +	if (!name_rec)
-> +		return;
-> +
-> +	l_free(name_rec->unique_name);
-> +
-> +	name_rec->unique_name =3D (owner && *owner) ? l_strdup(owner) : NULL;
-> +}
-> +
->   struct _dbus_filter *_dbus_filter_new(struct l_dbus *dbus,
->   					const struct _dbus_filter_ops *driver)
->   {
-> @@ -170,6 +216,9 @@ struct _dbus_filter *_dbus_filter_new(struct l_dbus *=
-dbus,
->   							filter,
->   							dbus_filter_destroy);
->
-> +	if (filter->driver->track_name_owner_change)
-
-Is this ever going to be false?
-
-> +		filter->unique_names =3D l_hashmap_string_new();
-> +
->   	return filter;
->   }
->
-> @@ -184,6 +233,49 @@ void _dbus_filter_free(struct _dbus_filter *filter)
->   		dbus_filter_destroy(filter);
->   }
->
-> +static void filter_add_bus_name(struct _dbus_filter *filter, const char =
-*name)
-> +{
-> +	struct unique_name_record *name_rec;
-> +
-> +	if (!filter->unique_names)
-> +		return;
-> +
-> +	if (_dbus_parse_unique_name(name, NULL))
-> +		return;
-
-Do you need to add a check for valid_bus_name?
-
-Should this function return something?
-
-> +
-> +	name_rec =3D l_hashmap_lookup(filter->unique_names, name);
-> +	if (!name_rec) {
-> +		name_rec =3D l_new(struct unique_name_record, 1);
-> +
-> +		l_hashmap_insert(filter->unique_names, name, name_rec);
-> +
-> +		filter->driver->get_name_owner(filter->dbus, name);
-> +	}
-> +
-> +	name_rec->ref_count++;
-> +}
-> +
-> +static void filter_remove_bus_name(struct _dbus_filter *filter,
-> +					const char *name)
-> +{
-> +	struct unique_name_record *name_rec;
-> +
-> +	if (!filter->unique_names)
-> +		return;
-> +
-> +	if (_dbus_parse_unique_name(name, NULL))
-> +		return;
-> +
-> +	name_rec =3D l_hashmap_lookup(filter->unique_names, name);
-> +
-> +	if (--name_rec->ref_count)
-> +		return;
-> +
-> +	l_hashmap_remove(filter->unique_names, name);
-> +
-> +	unique_name_record_free(name_rec);
-> +}
-> +
->   static int condition_compare(const void *a, const void *b)
->   {
->   	const struct _dbus_filter_condition *condition_a =3D a, *condition_b =
-=3D b;
-> @@ -225,6 +317,10 @@ unsigned int _dbus_filter_add_rule(struct _dbus_filt=
-er *filter,
->   			node->match.value =3D l_strdup(condition->value);
->
->   			*node_ptr =3D node;
-> +
-> +			if (node->type =3D=3D L_DBUS_MATCH_SENDER ||
-> +					node->type =3D=3D L_DBUS_MATCH_DESTINATION)
-> +				filter_add_bus_name(filter, node->match.value);
-
-As mentioned before, L_DBUS_MATCH_DESTINATION does not seem to be =
-
-relevant here.
-
->   		}
->
->   		node_ptr =3D &node->match.children;
-> @@ -286,6 +382,10 @@ static bool remove_recurse(struct _dbus_filter *filt=
-er,
->   		if (tmp->match.remote_rule)
->   			filter->driver->remove_match(filter->dbus, tmp->id);
->
-> +		if (tmp->type =3D=3D L_DBUS_MATCH_SENDER ||
-> +				tmp->type =3D=3D L_DBUS_MATCH_DESTINATION)
-> +			filter_remove_bus_name(filter, tmp->match.value);
-> +
->   		filter_subtree_free(tmp);
->   	}
->
-> diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-> index d4a4782..de4e706 100644
-> --- a/ell/dbus-private.h
-> +++ b/ell/dbus-private.h
-> @@ -250,11 +250,13 @@ struct _dbus_filter_condition {
->   };
->
->   struct _dbus_filter_ops {
-> +	bool track_name_owner_change;
-
-Do we really need this? I think we can safely assume that this is true =
-
-if get_name_owner implementation is provided.
-
->   	bool skip_register;
->   	bool (*add_match)(struct l_dbus *bus, unsigned int id,
->   				const struct _dbus_filter_condition *rule,
->   				int rule_len);
->   	bool (*remove_match)(struct l_dbus *bus, unsigned int id);
-> +	bool (*get_name_owner)(struct l_dbus *bus, const char *name);
->   };
->
->   struct _dbus_filter *_dbus_filter_new(struct l_dbus *dbus,
-> @@ -270,7 +272,10 @@ bool _dbus_filter_remove_rule(struct _dbus_filter *f=
-ilter, unsigned int id);
->
->   char *_dbus_filter_rule_to_str(const struct _dbus_filter_condition *rul=
-e,
->   				int rule_len);
-> +
->   void _dbus_filter_dispatch(struct l_dbus_message *message, void *user_d=
-ata);
-> +void _dbus_filter_name_owner_notify(struct _dbus_filter *filter,
-> +					const char *name, const char *owner);
->
->   struct dbus1_filter_data;
 >
 >
 
 Regards,
 -Denis
 
---===============6619099229235963567==--
+--===============9190630124936643865==--
 
