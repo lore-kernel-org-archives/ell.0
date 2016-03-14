@@ -1,173 +1,132 @@
-Content-Type: multipart/mixed; boundary="===============7380937809105155502=="
+Content-Type: multipart/mixed; boundary="===============7386641185930074215=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 18/20] dbus: Classic dbus driver->name_acquire and public
- API.
-Date: Mon, 14 Mar 2016 14:18:02 -0500
-Message-ID: <56E70E6A.7050508@gmail.com>
-In-Reply-To: <1457926896-9843-18-git-send-email-andrew.zaborowski@intel.com>
+From: Andrzej Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 04/20] dbus: Fix _dbus_kernel_calculate_bloom for multiple
+ arguments.
+Date: Mon, 14 Mar 2016 23:11:49 +0100
+Message-ID: <CAOq732JHOTHzDxX2_Trcae_h5gL=8TQe2C2BRGiCTiC0wpovjw@mail.gmail.com>
+In-Reply-To: <56E6EB92.9020305@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7380937809105155502==
+--===============7386641185930074215==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+ Hi Denis,
 
-On 03/13/2016 10:41 PM, Andrew Zaborowski wrote:
-> ---
->   ell/dbus.c | 89 +++++++++++++++++++++++++++++++++++++++++++++++++++++++=
-+++++++
->   ell/dbus.h |  5 ++++
->   2 files changed, 94 insertions(+)
+On 14 March 2016 at 17:49, Denis Kenzior <denkenz@gmail.com> wrote:
+> Hi Andrew,
+>
+> On 03/13/2016 10:41 PM, Andrew Zaborowski wrote:
+>>
+>> It seems that l_dbus_message_iter_get_type can't be used to get the
+>> value of a single argument and be called repeatedly, it might crash if
+>
+>
+> Looking at l_dbus_message_iter_get_type, it just returns
+> iter->sig_start[iter->sig_pos].  Is there something deeper going on here
+> that is not readily apparent?
 
-I'd reflow this patch and one preceding it like this:
-
-1. kdbus name_acquire variant
-2. dbus1 name acquire variant
-3. public API + driver method definitions
+Sorry, l_dbus_message_iter_get_type is a typo, I wanted to say
+message_iter_next_entry here.  This function calls it with a fixed
+number of parameters and sooner or later it will receive a message
+with more arguments and by my reading will segfault.
 
 >
-> diff --git a/ell/dbus.c b/ell/dbus.c
-> index c5cc1fc..6c267ae 100644
-> --- a/ell/dbus.c
-> +++ b/ell/dbus.c
-> @@ -822,6 +822,84 @@ static bool classic_get_name_owner(struct l_dbus *bu=
-s, const char *name)
->   	return true;
->   }
+>> the number and types of call arguments don't match the message arguments.
+>> Also try to support the string arguments that come after non-string
+>> arguments in the bloom filter.
 >
-> +struct name_request {
-> +	l_dbus_name_acquire_func_t callback;
-> +	void *user_data;
-> +	struct l_dbus *dbus;
-> +};
-> +
-> +enum dbus_name_flag {
-> +	DBUS_NAME_FLAG_ALLOW_REPLACEMENT	=3D 0x1,
-> +	DBUS_NAME_FLAG_REPLACE_EXISTING		=3D 0x2,
-> +	DBUS_NAME_FLAG_DO_NOT_QUEUE		=3D 0x4,
-> +};
-> +
-> +enum dbus_name_reply {
-> +	DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER	=3D 1,
-> +	DBUS_REQUEST_NAME_REPLY_IN_QUEUE	=3D 2,
-> +	DBUS_REQUEST_NAME_REPLY_EXISTS		=3D 3,
-> +	DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER	=3D 4,
-> +};
-> +
-> +static void request_name_reply_cb(struct l_dbus_message *reply, void *us=
-er_data)
-> +{
-> +	struct name_request *req =3D user_data;
-> +	bool success =3D false, queued =3D false;
-> +	uint32_t retval;
-> +
-> +	if (!req->callback)
-> +		return;
-> +
-> +	/* No name owner yet */
-> +	if (l_dbus_message_is_error(reply))
-> +		goto call_back;
-> +
-> +	/* Shouldn't happen */
-> +	if (!l_dbus_message_get_arguments(reply, "u", &retval))
-> +		goto call_back;
-> +
-> +	success =3D (retval =3D=3D DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) ||
-> +		(retval =3D=3D DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER) ||
-> +		(retval =3D=3D DBUS_REQUEST_NAME_REPLY_IN_QUEUE);
-> +	queued =3D (retval =3D=3D DBUS_REQUEST_NAME_REPLY_IN_QUEUE);
-> +
-> +call_back:
-> +	req->callback(req->dbus, success, queued, req->user_data);
-> +}
-> +
-> +static uint32_t classic_name_acquire(struct l_dbus *dbus, const char *na=
-me,
-> +					bool allow_replacement,
-> +					bool replace_existing, bool queue,
-> +					l_dbus_name_acquire_func_t callback,
-> +					void *user_data)
-> +{
-> +	struct name_request *req;
-> +	struct l_dbus_message *message;
-> +	uint32_t flags =3D 0;
-> +
-> +	req =3D l_new(struct name_request, 1);
-> +	req->dbus =3D dbus;
-> +	req->user_data =3D user_data;
-> +	req->callback =3D callback;
-> +
-> +	message =3D l_dbus_message_new_method_call(dbus, DBUS_SERVICE_DBUS,
-> +							DBUS_PATH_DBUS,
-> +							L_DBUS_INTERFACE_DBUS,
-> +							"RequestName");
-> +
-> +	if (allow_replacement)
-> +		flags |=3D DBUS_NAME_FLAG_ALLOW_REPLACEMENT;
-> +	if (replace_existing)
-> +		flags |=3D DBUS_NAME_FLAG_REPLACE_EXISTING;
-> +	if (!queue)
-> +		flags |=3D DBUS_NAME_FLAG_DO_NOT_QUEUE;
-> +
-> +	l_dbus_message_set_arguments(message, "su", name, flags);
-> +
-> +	return send_message(dbus, false, message, request_name_reply_cb,
-> +				req, free);
-> +}
-> +
->   static const struct l_dbus_ops classic_ops =3D {
->   	.version =3D 1,
->   	.send_message =3D classic_send_message,
-> @@ -833,6 +911,7 @@ static const struct l_dbus_ops classic_ops =3D {
->   		.remove_match =3D classic_remove_match,
->   		.get_name_owner =3D classic_get_name_owner,
->   	},
-> +	.name_acquire =3D classic_name_acquire,
->   };
 >
->   static void name_owner_changed_cb(struct l_dbus_message *message,
-> @@ -2048,3 +2127,13 @@ LIB_EXPORT bool l_dbus_remove_signal_watch(struct =
-l_dbus *dbus, unsigned int id)
->   {
->   	return _dbus_filter_remove_rule(dbus->filter, id);
->   }
-> +
-> +LIB_EXPORT uint32_t l_dbus_name_acquire(struct l_dbus *dbus, const char =
-*name,
-> +				bool allow_replacement, bool replace_existing,
-> +				bool queue, l_dbus_name_acquire_func_t callback,
-> +				void *user_data)
-> +{
-> +	return dbus->driver->name_acquire(dbus, name, allow_replacement,
-> +						replace_existing, queue,
-> +						callback, user_data);
-> +}
-> diff --git a/ell/dbus.h b/ell/dbus.h
-> index 0b82899..f4b2527 100644
-> --- a/ell/dbus.h
-> +++ b/ell/dbus.h
-> @@ -256,6 +256,11 @@ unsigned int l_dbus_add_signal_watch(struct l_dbus *=
-dbus,
->   					const char *member, ...);
->   bool l_dbus_remove_signal_watch(struct l_dbus *dbus, unsigned int id);
+> From my reading of systemd code, I didn't think this was possible.  But I
+> could be wrong...
+
+I see no problem with the bloom filter containing, say, arg3=3D"hello",
+even though arguments 1 and 2 are integers.  I don't know if systemd
+supports that but if for example a client adds a match with this kind
+of filter, the service must also support that or the signal won't pass
+through the filter.
+
 >
-> +uint32_t l_dbus_name_acquire(struct l_dbus *dbus, const char *name,
-> +				bool allow_replacement, bool replace_existing,
-> +				bool queue, l_dbus_name_acquire_func_t callback,
-> +				void *user_data);
-> +
-
-What's the uint32_t return for?
-
->   #ifdef __cplusplus
->   }
->   #endif
 >
+>> ---
+>>   ell/dbus-message.c | 38 ++++++++++++++++++++++++++++----------
+>>   1 file changed, 28 insertions(+), 10 deletions(-)
+>>
+>> diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+>> index f223c70..a123a8a 100644
+>> --- a/ell/dbus-message.c
+>> +++ b/ell/dbus-message.c
+>> @@ -1412,9 +1412,12 @@ bool _dbus_kernel_calculate_bloom(struct
+>> l_dbus_message *message,
+>>         const char *signature;
+>>         void *body;
+>>         size_t body_size;
+>> -       struct l_dbus_message_iter iter;
+>> +       struct l_dbus_message_iter iter, tmp;
+>>         uint8_t argn;
+>>         char buf[256];
+>> +       bool (*skip_entry)(struct l_dbus_message_iter *);
+>> +       bool (*get_basic)(struct l_dbus_message_iter *, char, void *);
+>> +       char type;
+>>
+>>         /* The string "interface:" suffixed by the interface name */
+>>         attr =3D l_dbus_message_get_interface(message);
+>> @@ -1458,17 +1461,32 @@ bool _dbus_kernel_calculate_bloom(struct
+>> l_dbus_message *message,
+>>
+>>         body =3D _dbus_message_get_body(message, &body_size);
+>>
+>> -       if (_dbus_message_is_gvariant(message))
+>> -               _gvariant_iter_init(&iter, message, signature, NULL,
+>> -                                       body, body_size);
+>> -       else
+>> +       if (_dbus_message_is_gvariant(message)) {
+>> +               if (!_gvariant_iter_init(&iter, message, signature, NULL,
+>> +                                               body, body_size))
+>> +                       return false;
+>> +
+>> +               skip_entry =3D _gvariant_iter_skip_entry;
+>> +               get_basic =3D _gvariant_iter_next_entry_basic;
+>> +       } else {
+>>                 _dbus1_iter_init(&iter, message, signature, NULL,
+>> -                               body, body_size);
+>> +                                       body, body_size);
+>> +
+>> +               skip_entry =3D _dbus1_iter_skip_entry;
+>> +               get_basic =3D _dbus1_iter_next_entry_basic;
+>> +       }
+>>
+>>         argn =3D 0;
+>>
+>> -       while (*signature =3D=3D 's' || *signature =3D=3D 'o' || *signat=
+ure =3D=3D
+>> 'g') {
+>> -               if (!message_iter_next_entry(&iter, &attr))
+>> +       do {
+>> +               type =3D l_dbus_message_iter_get_type(&iter);
+>> +               if (!strchr("sog", type))
+>> +                       goto next;
+>> +
+>> +               /* Don't let get_basic move iter->pos without moving
+>> sig_pos */
+>> +               memcpy(&tmp, &iter, sizeof(tmp));
+>> +
+>> +               if (!get_basic(&tmp, type, &attr))
+>>                         return false;
+>
+>
+> Is this to avoid double skipping this entry?  Can we find a less hacky way
+> to do this?  Perhaps peek_basic, or restructure the loop in some way?
 
+The problem is that get_basic moves the data position (iter->pos) but
+doesn't move the iter->sig_pos, as fas as I can see.  Maybe instead we
+should just do iter->sig_pos +=3D 1, similarly to what
+message_iter_next_entry_valist does?
 
---===============7380937809105155502==--
+Best regards
+
+--===============7386641185930074215==--
 
