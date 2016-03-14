@@ -1,33 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============8163090707014658035=="
+Content-Type: multipart/mixed; boundary="===============7451088316436325785=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2] dbus: Change type for pointer / integer cast to fix
- 32-bit break
-Date: Mon, 14 Mar 2016 10:40:03 -0500
-Message-ID: <56E6DB53.8030609@gmail.com>
-In-Reply-To: <1457968777-16212-1-git-send-email-mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH] dbus: free previous sender string in
+ _dbus_message_set_sender
+Date: Mon, 14 Mar 2016 10:41:14 -0500
+Message-ID: <56E6DB9A.30007@gmail.com>
+In-Reply-To: <1457966979-3259-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8163090707014658035==
+--===============7451088316436325785==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Hi Andrew,
 
-On 03/14/2016 10:19 AM, Mat Martineau wrote:
-> Casting void* to uint64_t on 32-bit x86 causes a build error with gcc
-> 5.3.1, so cast to uintptr_t instead.
+On 03/14/2016 09:49 AM, Andrew Zaborowski wrote:
+> Allow _dbus_message_set_sender and _dbus_message_set_destination to be
+> called multiple times.
 > ---
->   ell/dbus-kernel.c | 4 ++--
->   1 file changed, 2 insertions(+), 2 deletions(-)
+>   ell/dbus-message.c | 4 ++++
+>   1 file changed, 4 insertions(+)
 >
 
-Applied after tweaking the commit description.  Remember item M5 ;)
+Applied, thanks.
 
 Regards,
 -Denis
 
---===============8163090707014658035==--
+
+--===============7451088316436325785==--
 
