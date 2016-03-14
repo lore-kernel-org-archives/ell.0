@@ -1,85 +1,53 @@
-Content-Type: multipart/mixed; boundary="===============3902566385353517488=="
+Content-Type: multipart/mixed; boundary="===============3027840172144388044=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 20/20] examples: Use l_dbus_name_acquire to acquire well-known
- name.
-Date: Mon, 14 Mar 2016 04:41:36 +0100
-Message-ID: <1457926896-9843-20-git-send-email-andrew.zaborowski@intel.com>
-In-Reply-To: <1457926896-9843-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH] dbus: free previous sender string in _dbus_message_set_sender
+Date: Mon, 14 Mar 2016 15:49:39 +0100
+Message-ID: <1457966979-3259-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3902566385353517488==
+--===============3027840172144388044==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Allow _dbus_message_set_sender and _dbus_message_set_destination to be
+called multiple times.
 ---
- examples/dbus-service.c | 33 ++++++---------------------------
- 1 file changed, 6 insertions(+), 27 deletions(-)
+ ell/dbus-message.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/examples/dbus-service.c b/examples/dbus-service.c
-index 347faae..51b7e4f 100644
---- a/examples/dbus-service.c
-+++ b/examples/dbus-service.c
-@@ -50,29 +50,11 @@ static void signal_handler(struct l_signal *signal, uin=
-t32_t signo,
- 	}
+diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+index a123a8a..84d42d4 100644
+--- a/ell/dbus-message.c
++++ b/ell/dbus-message.c
+@@ -1390,6 +1390,8 @@ void _dbus_message_set_sender(struct l_dbus_message *=
+message,
+ 	if (!_dbus_message_is_gvariant(message))
+ 		return;
+ =
+
++	l_free(message->sender);
++
+ 	message->sender =3D l_strdup(sender);
+ 	message->kdbus_sender =3D true;
  }
+@@ -1400,6 +1402,8 @@ void _dbus_message_set_destination(struct l_dbus_mess=
+age *message,
+ 	if (!_dbus_message_is_gvariant(message))
+ 		return;
  =
 
--static void request_name_setup(struct l_dbus_message *message, void *user_=
-data)
-+static void request_name_callback(struct l_dbus *dbus, bool success,
-+					bool queued, void *user_data)
- {
--	const char *name =3D "org.test";
--
--	l_dbus_message_set_arguments(message, "su", name, 0);
--}
--
--static void request_name_callback(struct l_dbus_message *message,
--							void *user_data)
--{
--	const char *error, *text;
--	uint32_t result;
--
--	if (l_dbus_message_get_error(message, &error, &text)) {
--		l_error("error=3D%s", error);
--		l_error("message=3D%s", text);
--		return;
--	}
--
--	if (!l_dbus_message_get_arguments(message, "u", &result))
--		return;
--
--	l_info("request name result=3D%d", result);
-+	l_info("request name result=3D%s",
-+		success ? (queued ? "queued" : "success") : "failed");
++	l_free(message->destination);
++
+ 	message->destination =3D l_strdup(destination);
+ 	message->kdbus_destination =3D true;
  }
- =
-
- static void ready_callback(void *user_data)
-@@ -211,11 +193,8 @@ int main(int argc, char *argv[])
- 	l_dbus_set_ready_handler(dbus, ready_callback, dbus, NULL);
- 	l_dbus_set_disconnect_handler(dbus, disconnect_callback, NULL, NULL);
- =
-
--	l_dbus_method_call(dbus, "org.freedesktop.DBus",
--				"/org/freedesktop/DBus",
--				L_DBUS_INTERFACE_DBUS, "RequestName",
--				request_name_setup,
--				request_name_callback, NULL, NULL);
-+	l_dbus_name_acquire(dbus, "org.test", false, false, false,
-+				request_name_callback, NULL);
- =
-
- 	if (!l_dbus_object_manager_enable(dbus)) {
- 		l_info("Unable to enable Object Manager");
 -- =
 
 2.5.0
 
 
---===============3902566385353517488==--
+--===============3027840172144388044==--
 
