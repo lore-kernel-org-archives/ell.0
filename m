@@ -1,186 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============0613809940143831308=="
+Content-Type: multipart/mixed; boundary="===============2523193639240235648=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 04/20] dbus: Fix _dbus_kernel_calculate_bloom for multiple
- arguments.
-Date: Tue, 15 Mar 2016 11:27:04 -0500
-Message-ID: <56E837D8.5040907@gmail.com>
-In-Reply-To: <CAOq732JHOTHzDxX2_Trcae_h5gL=8TQe2C2BRGiCTiC0wpovjw@mail.gmail.com>
+Subject: Re: [PATCH 08/20] dbus: Classic dbus filter_ops implementation.
+Date: Tue, 15 Mar 2016 11:32:06 -0500
+Message-ID: <56E83906.3060907@gmail.com>
+In-Reply-To: <CAOq732JyhYnKjs8SSu9mtSpRiNm2RhaBaPEX997zkPYWt+5dpw@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0613809940143831308==
+--===============2523193639240235648==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
-On 03/14/2016 05:11 PM, Andrzej Zaborowski wrote:
->   Hi Denis,
->
-> On 14 March 2016 at 17:49, Denis Kenzior <denkenz@gmail.com> wrote:
->> Hi Andrew,
->>
->> On 03/13/2016 10:41 PM, Andrew Zaborowski wrote:
->>>
->>> It seems that l_dbus_message_iter_get_type can't be used to get the
->>> value of a single argument and be called repeatedly, it might crash if
->>
->>
->> Looking at l_dbus_message_iter_get_type, it just returns
->> iter->sig_start[iter->sig_pos].  Is there something deeper going on here
->> that is not readily apparent?
->
-> Sorry, l_dbus_message_iter_get_type is a typo, I wanted to say
-> message_iter_next_entry here.  This function calls it with a fixed
-> number of parameters and sooner or later it will receive a message
-> with more arguments and by my reading will segfault.
->
-
-So l_dbus_message_iter_next_entry is assuming that the programmer knows =
-
-the signature of the next parameter and passes in a variable meant to =
-
-hold that parameter.  If there's a mismatch, then yes, it might crash. =
-
-However, that is why we check the signature ahead of time.
-
-I guess I'm still not quite sure what you're trying to say here :)
-
->>
->>> the number and types of call arguments don't match the message argument=
-s.
->>> Also try to support the string arguments that come after non-string
->>> arguments in the bloom filter.
->>
->>
->>  From my reading of systemd code, I didn't think this was possible.  But=
- I
->> could be wrong...
->
-> I see no problem with the bloom filter containing, say, arg3=3D"hello",
-> even though arguments 1 and 2 are integers.  I don't know if systemd
-> supports that but if for example a client adds a match with this kind
-> of filter, the service must also support that or the signal won't pass
-> through the filter.
->
-
-That is the problem with systemd, it does not explicitly document what =
-
-is and what is not supported.  Having glanced at their bloom filter code =
-
-again, I'm pretty sure only string arguments are currently supported and =
-
-non-string arguments in between are not skipped.  This is why our code =
-
-looks the way it does.
-
-Can you also take a look and confirm?  We are stuck supporting only what =
-
-systemd supports.
-
->>
->>
->>> ---
->>>    ell/dbus-message.c | 38 ++++++++++++++++++++++++++++----------
->>>    1 file changed, 28 insertions(+), 10 deletions(-)
->>>
->>> diff --git a/ell/dbus-message.c b/ell/dbus-message.c
->>> index f223c70..a123a8a 100644
->>> --- a/ell/dbus-message.c
->>> +++ b/ell/dbus-message.c
->>> @@ -1412,9 +1412,12 @@ bool _dbus_kernel_calculate_bloom(struct
->>> l_dbus_message *message,
->>>          const char *signature;
->>>          void *body;
->>>          size_t body_size;
->>> -       struct l_dbus_message_iter iter;
->>> +       struct l_dbus_message_iter iter, tmp;
->>>          uint8_t argn;
->>>          char buf[256];
->>> +       bool (*skip_entry)(struct l_dbus_message_iter *);
->>> +       bool (*get_basic)(struct l_dbus_message_iter *, char, void *);
->>> +       char type;
->>>
->>>          /* The string "interface:" suffixed by the interface name */
->>>          attr =3D l_dbus_message_get_interface(message);
->>> @@ -1458,17 +1461,32 @@ bool _dbus_kernel_calculate_bloom(struct
->>> l_dbus_message *message,
->>>
->>>          body =3D _dbus_message_get_body(message, &body_size);
->>>
->>> -       if (_dbus_message_is_gvariant(message))
->>> -               _gvariant_iter_init(&iter, message, signature, NULL,
->>> -                                       body, body_size);
->>> -       else
->>> +       if (_dbus_message_is_gvariant(message)) {
->>> +               if (!_gvariant_iter_init(&iter, message, signature, NUL=
-L,
->>> +                                               body, body_size))
->>> +                       return false;
+ >>> +       _dbus_filter_add_rule(dbus->filter, rule, L_ARRAY_SIZE(rule),
+>>> +                               name_owner_changed_cb, dbus);
 >>> +
->>> +               skip_entry =3D _gvariant_iter_skip_entry;
->>> +               get_basic =3D _gvariant_iter_next_entry_basic;
->>> +       } else {
->>>                  _dbus1_iter_init(&iter, message, signature, NULL,
->>> -                               body, body_size);
->>> +                                       body, body_size);
->>> +
->>> +               skip_entry =3D _dbus1_iter_skip_entry;
->>> +               get_basic =3D _dbus1_iter_next_entry_basic;
->>> +       }
->>>
->>>          argn =3D 0;
->>>
->>> -       while (*signature =3D=3D 's' || *signature =3D=3D 'o' || *signa=
-ture =3D=3D
->>> 'g') {
->>> -               if (!message_iter_next_entry(&iter, &attr))
->>> +       do {
->>> +               type =3D l_dbus_message_iter_get_type(&iter);
->>> +               if (!strchr("sog", type))
->>> +                       goto next;
->>> +
->>> +               /* Don't let get_basic move iter->pos without moving
->>> sig_pos */
->>> +               memcpy(&tmp, &iter, sizeof(tmp));
->>> +
->>> +               if (!get_basic(&tmp, type, &attr))
->>>                          return false;
 >>
 >>
->> Is this to avoid double skipping this entry?  Can we find a less hacky w=
-ay
->> to do this?  Perhaps peek_basic, or restructure the loop in some way?
+>> Do we need to treat DBUS_SERVICE_DBUS conditions specially since this on=
+e is
+>> not subject to unique name resolution?
 >
-> The problem is that get_basic moves the data position (iter->pos) but
-> doesn't move the iter->sig_pos, as fas as I can see.  Maybe instead we
+> Good point, we don't *need* to, but we can save a GetNameOwner call if
+> we do that.  Possibly we can just return "org.freedesktop.Dbus"
+> immediately from classic_get_name_owner.
+>
 
-I'm pretty sure it does.  See bottom of _dbus1_iter_next_entry_basic() =
+That could work, or alternatively notify the filtering code that name =
 
-for example.  However, the signature handling is full of nasty details. =
+resolution should not be performed.  Saves us the alternative =
 
-  See below.
-
-> should just do iter->sig_pos +=3D 1, similarly to what
-> message_iter_next_entry_valist does?
-
-It is really bad form to mess with iterator's internal data structures =
-
-outside its core functions.  If you need it to do something specific, =
-
-lets introduce an iterator method specific to your usecase.
-
-Hence my suggestion to restructure the loop or introduce new operations.
+computation and comparison.
 
 Regards,
 -Denis
 
->
-> Best regards
->
 
-
---===============0613809940143831308==--
+--===============2523193639240235648==--
 
