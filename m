@@ -1,119 +1,133 @@
-Content-Type: multipart/mixed; boundary="===============5801517262852343496=="
+Content-Type: multipart/mixed; boundary="===============4292510430357227451=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v2 2/3] unit: Add race condition test to test-main
-Date: Wed, 16 Mar 2016 13:01:14 -0700
-Message-ID: <1458158475-16965-2-git-send-email-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v2 3/3] main: Safely free watch_data structures
+Date: Wed, 16 Mar 2016 13:01:15 -0700
+Message-ID: <1458158475-16965-3-git-send-email-mathew.j.martineau@linux.intel.com>
 In-Reply-To: <1458158475-16965-1-git-send-email-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5801517262852343496==
+--===============4292510430357227451==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This test excercises the case where multiple events are returned from
-the same epoll_wait call and an early event deletes a watch that is
-waiting to be processed in the same event loop iteration.
+The race condition test in test-main exposed a case where the events
+array returned by epoll_wait could have a stale watch_data
+pointer. This triggered a use-after-free error that was reported by
+the address sanitizer (./configure --enable-asan).
+
+When the event loop is running, watch_remove now queues the watch_data
+structure to be freed later. The watch_data callback is modified so
+that a safe function is executed if the event loop attempts a callback
+on a pending removed watch. Any queued watch_data structures are freed
+at the end of each event loop iteration.
 ---
- unit/test-main.c | 35 +++++++++++++++++++++++++++++++----
- 1 file changed, 31 insertions(+), 4 deletions(-)
+ ell/main.c | 28 +++++++++++++++++++++++++++-
+ 1 file changed, 27 insertions(+), 1 deletion(-)
 
-diff --git a/unit/test-main.c b/unit/test-main.c
-index b61e337..26df8ad 100644
---- a/unit/test-main.c
-+++ b/unit/test-main.c
-@@ -25,6 +25,7 @@
- #endif
+diff --git a/ell/main.c b/ell/main.c
+index f8fa4ac..135a6da 100644
+--- a/ell/main.c
++++ b/ell/main.c
+@@ -56,6 +56,7 @@ static int idle_id;
+ static int exit_status =3D EXIT_FAILURE;
  =
 
- #include <ell/ell.h>
-+#include <unistd.h>
+ static struct l_queue *idle_list;
++static struct l_queue *watch_free_list;
  =
 
- static void signal_handler(struct l_signal *signal, uint32_t signo,
- 							void *user_data)
-@@ -38,7 +39,7 @@ static void signal_handler(struct l_signal *signal, uint3=
-2_t signo,
+ struct watch_data {
+ 	int fd;
+@@ -101,6 +102,10 @@ static inline bool __attribute__ ((always_inline)) cre=
+ate_epoll(void)
+ =
+
+ 	idle_id =3D 0;
+ =
+
++	watch_free_list =3D l_queue_new();
++	if (!watch_free_list)
++		goto free_idle_list;
++
+ 	watch_entries =3D DEFAULT_WATCH_ENTRIES;
+ =
+
+ 	for (i =3D 0; i < watch_entries; i++)
+@@ -108,6 +113,10 @@ static inline bool __attribute__ ((always_inline)) cre=
+ate_epoll(void)
+ =
+
+ 	return true;
+ =
+
++free_idle_list:
++	l_queue_destroy(idle_list, NULL);
++	idle_list =3D NULL;
++
+ free_watch_list:
+ 	free(watch_list);
+ 	watch_list =3D NULL;
+@@ -190,6 +199,11 @@ int watch_modify(int fd, uint32_t events, bool force)
+ 	return 0;
+ }
+ =
+
++static void watch_nop_callback(int fd, uint32_t events, void *user_data)
++{
++	return;
++}
++
+ int watch_remove(int fd)
+ {
+ 	struct watch_data *data;
+@@ -212,7 +226,15 @@ int watch_remove(int fd)
+ 	if (data->destroy)
+ 		data->destroy(data->user_data);
+ =
+
+-	l_free(data);
++	if (epoll_running) {
++		/* The epoll events array may point to the same memory as
++		 * 'data', so let the event loop free it later
++		 */
++		data->callback =3D watch_nop_callback;
++		l_queue_push_tail(watch_free_list, data);
++	} else {
++		l_free(data);
++	}
+ =
+
+ 	return err;
+ }
+@@ -352,6 +374,7 @@ LIB_EXPORT int l_main_run(void)
+ =
+
+ 		l_queue_foreach(idle_list, idle_dispatch, NULL);
+ 		l_queue_foreach_remove(idle_list, idle_prune, NULL);
++		l_queue_clear(watch_free_list, l_free);
  	}
- }
  =
 
--static void timeout_handler(struct l_timeout *timeout, void *user_data)
-+static void timeout_quit_handler(struct l_timeout *timeout, void *user_dat=
-a)
- {
- 	l_main_quit();
- }
-@@ -58,9 +59,25 @@ static void oneshot_handler(void *user_data)
- 	l_info("One-shot");
- }
+ 	for (i =3D 0; i < watch_entries; i++) {
+@@ -378,6 +401,9 @@ LIB_EXPORT int l_main_run(void)
+ 	l_queue_destroy(idle_list, idle_destroy);
+ 	idle_list =3D NULL;
  =
 
-+static void race_delay_handler(struct l_timeout *timeout, void *user_data)
-+{
-+	usleep(250 * 1000);
-+}
++	l_queue_destroy(watch_free_list, l_free);
++	watch_free_list =3D NULL;
 +
-+static void race_handler(struct l_timeout *timeout, void *user_data)
-+{
-+	struct l_timeout **other_racer =3D user_data;
-+
-+	l_timeout_remove(*other_racer);
-+	*other_racer =3D NULL;
-+}
-+
- int main(int argc, char *argv[])
- {
--	struct l_timeout *timeout;
-+	struct l_timeout *timeout_quit;
-+	struct l_timeout *race_delay;
-+	struct l_timeout *race1;
-+	struct l_timeout *race2;
- 	struct l_signal *signal;
- 	struct l_idle *idle;
- 	sigset_t mask;
-@@ -71,7 +88,13 @@ int main(int argc, char *argv[])
+ 	epoll_running =3D false;
  =
 
- 	signal =3D l_signal_create(&mask, signal_handler, NULL, NULL);
- =
-
--	timeout =3D l_timeout_create(3, timeout_handler, NULL, NULL);
-+	timeout_quit =3D l_timeout_create(3, timeout_quit_handler, NULL, NULL);
-+
-+	race_delay =3D l_timeout_create(1, race_delay_handler, NULL, NULL);
-+	race1 =3D l_timeout_create_with_nanoseconds(1, 100000000, race_handler,
-+						  &race2, NULL);
-+	race2 =3D l_timeout_create_with_nanoseconds(1, 100000000, race_handler,
-+						  &race1, NULL);
- =
-
- 	idle =3D l_idle_create(idle_handler, NULL, NULL);
- =
-
-@@ -85,7 +108,11 @@ int main(int argc, char *argv[])
- =
-
- 	l_main_run();
- =
-
--	l_timeout_remove(timeout);
-+	l_timeout_remove(race_delay);
-+	l_timeout_remove(race1);
-+	l_timeout_remove(race2);
-+
-+	l_timeout_remove(timeout_quit);
- =
-
- 	l_signal_remove(signal);
- =
-
+ 	close(epoll_fd);
 -- =
 
 2.7.3
 
 
---===============5801517262852343496==--
+--===============4292510430357227451==--
 
