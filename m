@@ -1,138 +1,155 @@
-Content-Type: multipart/mixed; boundary="===============3806821599447122295=="
+Content-Type: multipart/mixed; boundary="===============1804933708912206922=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 04/20] dbus: Fix _dbus_kernel_calculate_bloom for multiple
- arguments.
-Date: Tue, 15 Mar 2016 21:06:17 -0500
-Message-ID: <56E8BF99.4080205@gmail.com>
-In-Reply-To: <CAOq732KHuTsBx0WZ+681pyEe4rzJx+xchnvcjxWDHHnqRXixaA@mail.gmail.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 1/3] build: Add sanitizer options
+Date: Wed, 16 Mar 2016 11:47:50 -0700
+Message-ID: <1458154072-14292-1-git-send-email-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3806821599447122295==
+--===============1804933708912206922==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Build using Address Sanitizer (asan), Leak Sanitizer (lsan), or
+Undefined Behavior Sanitizer (ubsan) by using one of these options for
+the configure script:
 
-On 03/15/2016 05:08 PM, Andrzej Zaborowski wrote:
-> Hi Denis,
->
-> On 15 March 2016 at 17:27, Denis Kenzior <denkenz@gmail.com> wrote:
->> On 03/14/2016 05:11 PM, Andrzej Zaborowski wrote:
->>> Sorry, l_dbus_message_iter_get_type is a typo, I wanted to say
->>> message_iter_next_entry here.  This function calls it with a fixed
->>> number of parameters and sooner or later it will receive a message
->>> with more arguments and by my reading will segfault.
->>>
->>
->> So l_dbus_message_iter_next_entry is assuming that the programmer knows =
-the
->> signature of the next parameter and passes in a variable meant to hold t=
-hat
->> parameter.  If there's a mismatch, then yes, it might crash. However, th=
-at
->> is why we check the signature ahead of time.
->
-> So i've looked at l_dbus_message_iter_next_entry many times and it
-> seems it won't stop at the next parameter, although the name could
-> suggest that.  It is expecting that the arguments list has a pointer
-> for every remaining item in the iterator and it doesn't check for
-> NULLs either.  So you can't just pass a single parameter without
-> knowing how many items are in the message. and you can't call it
-> multiple times on the same iterator except with arrays (I think...).
->
+  --enable-asan
+  --enable-lsan
+  --enable-ubsan
 
-Ah, now I understand.  Yes, you are correct.
+For each of these to work, the compiler must support the requested
+sanitizer and the requisite libraries must be installed (libasan,
+liblsan, libubsan).
+---
+ acinclude.m4 | 36 ++++++++++++++++++++++++++++++++++++
+ configure.ac | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 81 insertions(+)
 
-l_dbus_message_iter_next_entry wants you to consume everything in the =
+diff --git a/acinclude.m4 b/acinclude.m4
+index 0ba4287..8aab4ee 100644
+--- a/acinclude.m4
++++ b/acinclude.m4
+@@ -10,6 +10,42 @@ AC_DEFUN([AC_PROG_CC_PIE], [
+ 	])
+ ])
+ =
 
-enclosing structure.  It is not meant to be used like the traditional =
++AC_DEFUN([AC_PROG_CC_ASAN], [
++	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Daddress], ac_cv_pro=
+g_cc_asan, [
++		echo 'void f(){}' > conftest.c
++		if test -z "`${CC-cc} -fsanitize=3Daddress -c conftest.c 2>&1`"; then
++			ac_cv_prog_cc_asan=3Dyes
++		else
++			ac_cv_prog_cc_asan=3Dno
++		fi
++		rm -rf conftest*
++	])
++])
++
++AC_DEFUN([AC_PROG_CC_LSAN], [
++	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Dleak], ac_cv_prog_c=
+c_lsan, [
++		echo 'void f(){}' > conftest.c
++		if test -z "`${CC-cc} -fsanitize=3Dleak -c conftest.c 2>&1`"; then
++			ac_cv_prog_cc_lsan=3Dyes
++		else
++			ac_cv_prog_cc_lsan=3Dno
++		fi
++		rm -rf conftest*
++	])
++])
++
++AC_DEFUN([AC_PROG_CC_UBSAN], [
++	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Dundefined], ac_cv_p=
+rog_cc_ubsan, [
++		echo 'void f(){}' > conftest.c
++		if test -z "`${CC-cc} -fsanitize=3Dundefined -c conftest.c 2>&1`"; then
++			ac_cv_prog_cc_ubsan=3Dyes
++		else
++			ac_cv_prog_cc_ubsan=3Dno
++		fi
++		rm -rf conftest*
++	])
++])
++
+ AC_DEFUN([COMPILER_FLAGS], [
+ 	if (test "${CFLAGS}" =3D ""); then
+ 		CFLAGS=3D"-Wall -O2 -fsigned-char"
+diff --git a/configure.ac b/configure.ac
+index 39755fe..e4ca5b2 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -20,6 +20,9 @@ AC_LANG_C
+ =
 
-reference dbus_iter API that iterates over a single item at a time.
+ AC_PROG_CC
+ AC_PROG_CC_PIE
++AC_PROG_CC_ASAN
++AC_PROG_CC_LSAN
++AC_PROG_CC_UBSAN
+ AC_PROG_INSTALL
+ =
 
-Our setup uses get_arguments to parse/validate the top level structure =
+ AC_C_CHAR_UNSIGNED
+@@ -54,6 +57,48 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
+ 	fi
+ ])
+ =
 
-and the iterators obtained must then match the signature that the =
++save_LIBS=3D$LIBS
++AC_CHECK_LIB(asan, __sanitizer_cov_init)
++LIBS=3D$save_LIBS
++
++AC_ARG_ENABLE(asan, AC_HELP_STRING([--enable-asan],
++			[enable linking with address sanitizer]), [
++	if (test "${enableval}" =3D "yes" &&
++				test "${ac_cv_lib_asan___sanitizer_cov_init}" =3D "yes" &&
++				test "${ac_cv_prog_cc_asan}" =3D "yes"); then
++		CFLAGS=3D"$CFLAGS -fsanitize=3Daddress";
++		LDFLAGS=3D"$LDFLAGS -fsanitize=3Daddress"
++	fi
++])
++
++save_LIBS=3D$LIBS
++AC_CHECK_LIB(lsan, __sanitizer_cov_init)
++LIBS=3D$save_LIBS
++
++AC_ARG_ENABLE(lsan, AC_HELP_STRING([--enable-lsan],
++			[enable linking with leak sanitizer]), [
++	if (test "${enableval}" =3D "yes" &&
++				test "${ac_cv_lib_lsan___sanitizer_cov_init}" =3D "yes" &&
++				test "${ac_cv_prog_cc_lsan}" =3D "yes"); then
++		CFLAGS=3D"$CFLAGS -fsanitize=3Dleak";
++		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dleak"
++	fi
++])
++
++save_LIBS=3D$LIBS
++AC_CHECK_LIB(ubsan, __sanitizer_cov_init)
++LIBS=3D$save_LIBS
++
++AC_ARG_ENABLE(ubsan, AC_HELP_STRING([--enable-ubsan],
++			[enable linking with undefined behavior sanitizer]), [
++	if (test "${enableval}" =3D "yes" &&
++				test "${ac_cv_lib_ubsan___sanitizer_cov_init}" =3D "yes" &&
++				test "${ac_cv_prog_cc_ubsan}" =3D "yes"); then
++		CFLAGS=3D"$CFLAGS -fsanitize=3Dundefined";
++		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dundefined"
++	fi
++])
++
+ AC_CHECK_FUNC(signalfd, dummy=3Dyes,
+ 			AC_MSG_ERROR(signalfd support is required))
+ =
 
-programmer expected.
+-- =
 
-I'm not quite sure why _dbus_kernel_calculate_bloom attempts to use =
+2.7.3
 
-message_iter_next_entry.  Don't recall whether the behavior of =
 
-next_entry changed afterward or it was just never tested.  Either way, =
-
-its a bug now.
-
->>
->> I guess I'm still not quite sure what you're trying to say here :)
->>
->>>>
->>>>> the number and types of call arguments don't match the message
->>>>> arguments.
->>>>> Also try to support the string arguments that come after non-string
->>>>> arguments in the bloom filter.
->>>>
->>>>
->>>>
->>>>   From my reading of systemd code, I didn't think this was possible.  =
-But
->>>> I
->>>> could be wrong...
->>>
->>>
->>> I see no problem with the bloom filter containing, say, arg3=3D"hello",
->>> even though arguments 1 and 2 are integers.  I don't know if systemd
->>> supports that but if for example a client adds a match with this kind
->>> of filter, the service must also support that or the signal won't pass
->>> through the filter.
->>>
->>
->> That is the problem with systemd, it does not explicitly document what is
->> and what is not supported.  Having glanced at their bloom filter code ag=
-ain,
->> I'm pretty sure only string arguments are currently supported and non-st=
-ring
->> arguments in between are not skipped.  This is why our code looks the wa=
-y it
->> does.
->>
->> Can you also take a look and confirm?  We are stuck supporting only what
->> systemd supports.
->
-> I'm going to look at the systemd code although I'd like to think kdbus
-> is not systemd.  Could we do what seems correct and submit a bug
-> report against systemd?
->
-
-You'd like to think that, but in reality this is not true :)  systemd =
-
-contains the only kdbus implementation in existence.  So what systemd =
-
-does is the reference behavior.  I'm not aware of any attempts to =
-
-document how argument filters work over kdbus.
-
-> I'm pretty sure it is a bug if a message with "foo" as the 3rd
-> argument doesn't match a filter which includes arg2=3D"foo" (2 because
-> 0-based..), and there's not even a warning issued when you create such
-> a filter, or in the docs.
->
-
-*Shrug* Welcome to open source :)  Don't get me wrong, I do agree with =
-
-you and have submitted patches to systemd in the past.  But that project =
-
-is a very deep rabbit hole.
-
-However, in reality, nobody actually uses arg filtering, outside of =
-
-maybe filtering by arg0.  So its no big loss anyway.
-
-Regards,
--Denis
-
---===============3806821599447122295==--
+--===============1804933708912206922==--
 
