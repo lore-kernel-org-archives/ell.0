@@ -1,45 +1,155 @@
-Content-Type: multipart/mixed; boundary="===============9093095365247892588=="
+Content-Type: multipart/mixed; boundary="===============3825480374347552130=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2 3/3] main: Safely free watch_data structures
-Date: Wed, 16 Mar 2016 18:35:33 -0500
-Message-ID: <56E9EDC5.3030803@gmail.com>
-In-Reply-To: <alpine.OSX.2.20.1603161550420.19388@mjmartin-mac01.wa.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v3 1/5] build: Add sanitizer options
+Date: Thu, 17 Mar 2016 11:15:38 -0700
+Message-ID: <1458238542-11711-1-git-send-email-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============9093095365247892588==
+--===============3825480374347552130==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Build using Address Sanitizer (asan), Leak Sanitizer (lsan), or
+Undefined Behavior Sanitizer (ubsan) by using one of these options for
+the configure script:
 
- >>> be optimized (use a bitmap to flag which ones to free), but there's
->>> another problem: watch_list is indexed by an fd which was likely closed
->>> by the data->destroy() callback. It's possible for the fd to get re-used
->>> and a new watch to be created on that fd even before the data->destroy
->>> callback returns.
->>
->> But then won't you be calling the watch's callback erroneously anyway?
->> If this is a concern, then all new watches need to be postponed until
->> after the epoll processing has been completed.
->>
->
-> No, the stale data is a pointer to watch_data not an fd value. By
-> deferring the free we can make sure the event loop is calling something
-> valid. The contents of watch_data can be reset however we need to. The
-> problem is with pointer values stored in watch_list getting clobbered
-> before they get used to free memory.
+  --enable-asan
+  --enable-lsan
+  --enable-ubsan
 
-Now I get it.  I'm good with the proposed solution, but can we avoid =
+For each of these to work, the compiler must support the requested
+sanitizer and the requisite libraries must be installed (libasan,
+liblsan, libubsan).
+---
+ acinclude.m4 | 36 ++++++++++++++++++++++++++++++++++++
+ configure.ac | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 81 insertions(+)
 
-having dummy callbacks?  Why not simply set the callback to zero (or set =
+diff --git a/acinclude.m4 b/acinclude.m4
+index 0ba4287..8aab4ee 100644
+--- a/acinclude.m4
++++ b/acinclude.m4
+@@ -10,6 +10,42 @@ AC_DEFUN([AC_PROG_CC_PIE], [
+ 	])
+ ])
+ =
 
-some flag) and not call it.
++AC_DEFUN([AC_PROG_CC_ASAN], [
++	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Daddress], ac_cv_pro=
+g_cc_asan, [
++		echo 'void f(){}' > conftest.c
++		if test -z "`${CC-cc} -fsanitize=3Daddress -c conftest.c 2>&1`"; then
++			ac_cv_prog_cc_asan=3Dyes
++		else
++			ac_cv_prog_cc_asan=3Dno
++		fi
++		rm -rf conftest*
++	])
++])
++
++AC_DEFUN([AC_PROG_CC_LSAN], [
++	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Dleak], ac_cv_prog_c=
+c_lsan, [
++		echo 'void f(){}' > conftest.c
++		if test -z "`${CC-cc} -fsanitize=3Dleak -c conftest.c 2>&1`"; then
++			ac_cv_prog_cc_lsan=3Dyes
++		else
++			ac_cv_prog_cc_lsan=3Dno
++		fi
++		rm -rf conftest*
++	])
++])
++
++AC_DEFUN([AC_PROG_CC_UBSAN], [
++	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Dundefined], ac_cv_p=
+rog_cc_ubsan, [
++		echo 'void f(){}' > conftest.c
++		if test -z "`${CC-cc} -fsanitize=3Dundefined -c conftest.c 2>&1`"; then
++			ac_cv_prog_cc_ubsan=3Dyes
++		else
++			ac_cv_prog_cc_ubsan=3Dno
++		fi
++		rm -rf conftest*
++	])
++])
++
+ AC_DEFUN([COMPILER_FLAGS], [
+ 	if (test "${CFLAGS}" =3D ""); then
+ 		CFLAGS=3D"-Wall -O2 -fsigned-char"
+diff --git a/configure.ac b/configure.ac
+index 39755fe..e4ca5b2 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -20,6 +20,9 @@ AC_LANG_C
+ =
 
-Regards,
--Denis
+ AC_PROG_CC
+ AC_PROG_CC_PIE
++AC_PROG_CC_ASAN
++AC_PROG_CC_LSAN
++AC_PROG_CC_UBSAN
+ AC_PROG_INSTALL
+ =
 
---===============9093095365247892588==--
+ AC_C_CHAR_UNSIGNED
+@@ -54,6 +57,48 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
+ 	fi
+ ])
+ =
+
++save_LIBS=3D$LIBS
++AC_CHECK_LIB(asan, __sanitizer_cov_init)
++LIBS=3D$save_LIBS
++
++AC_ARG_ENABLE(asan, AC_HELP_STRING([--enable-asan],
++			[enable linking with address sanitizer]), [
++	if (test "${enableval}" =3D "yes" &&
++				test "${ac_cv_lib_asan___sanitizer_cov_init}" =3D "yes" &&
++				test "${ac_cv_prog_cc_asan}" =3D "yes"); then
++		CFLAGS=3D"$CFLAGS -fsanitize=3Daddress";
++		LDFLAGS=3D"$LDFLAGS -fsanitize=3Daddress"
++	fi
++])
++
++save_LIBS=3D$LIBS
++AC_CHECK_LIB(lsan, __sanitizer_cov_init)
++LIBS=3D$save_LIBS
++
++AC_ARG_ENABLE(lsan, AC_HELP_STRING([--enable-lsan],
++			[enable linking with leak sanitizer]), [
++	if (test "${enableval}" =3D "yes" &&
++				test "${ac_cv_lib_lsan___sanitizer_cov_init}" =3D "yes" &&
++				test "${ac_cv_prog_cc_lsan}" =3D "yes"); then
++		CFLAGS=3D"$CFLAGS -fsanitize=3Dleak";
++		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dleak"
++	fi
++])
++
++save_LIBS=3D$LIBS
++AC_CHECK_LIB(ubsan, __sanitizer_cov_init)
++LIBS=3D$save_LIBS
++
++AC_ARG_ENABLE(ubsan, AC_HELP_STRING([--enable-ubsan],
++			[enable linking with undefined behavior sanitizer]), [
++	if (test "${enableval}" =3D "yes" &&
++				test "${ac_cv_lib_ubsan___sanitizer_cov_init}" =3D "yes" &&
++				test "${ac_cv_prog_cc_ubsan}" =3D "yes"); then
++		CFLAGS=3D"$CFLAGS -fsanitize=3Dundefined";
++		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dundefined"
++	fi
++])
++
+ AC_CHECK_FUNC(signalfd, dummy=3Dyes,
+ 			AC_MSG_ERROR(signalfd support is required))
+ =
+
+-- =
+
+2.7.3
+
+
+--===============3825480374347552130==--
 
