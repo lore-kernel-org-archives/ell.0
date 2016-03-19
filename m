@@ -1,40 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============5164678958951003064=="
+Content-Type: multipart/mixed; boundary="===============6727295252878519042=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v3 3/5] main: Safely free watch_data structures
-Date: Thu, 17 Mar 2016 13:35:57 -0500
-Message-ID: <56EAF90D.1090805@gmail.com>
-In-Reply-To: <1458238542-11711-3-git-send-email-mathew.j.martineau@linux.intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH] dbus: More complete buffer size check in
+ dbus_message_from_blob
+Date: Sat, 19 Mar 2016 07:00:39 +0100
+Message-ID: <1458367247-14607-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5164678958951003064==
+--===============6727295252878519042==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+---
+ ell/dbus-message.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-On 03/17/2016 01:15 PM, Mat Martineau wrote:
-> The race condition test in test-main exposed a case where the events
-> array returned by epoll_wait could have a stale watch_data
-> pointer. This triggered a use-after-free error that was reported by
-> the address sanitizer (./configure --enable-asan).
->
-> When the event loop is running, watch_data structures with events
-> being dispatched are flagged. If watch_remove is called on a flagged
-> structure, the l_free() is deferred until after all events are
-> dispatched and the callback for that event is skipped.
-> ---
->   ell/main.c | 31 +++++++++++++++++++++++++++++--
->   1 file changed, 29 insertions(+), 2 deletions(-)
->
+diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+index 84d42d4..f9e13e2 100644
+--- a/ell/dbus-message.c
++++ b/ell/dbus-message.c
+@@ -643,9 +643,14 @@ struct l_dbus_message *dbus_message_from_blob(const vo=
+id *data, size_t size)
+ =
 
-Patches 3-5 applied.  Thanks.
+ 	message->header_size =3D align_len(DBUS_HEADER_SIZE +
+ 						hdr->field_length, 8);
+-	message->header =3D l_malloc(message->header_size);
+-
+ 	message->body_size =3D hdr->body_length;
++
++	if (message->header_size + message->body_size < size) {
++		l_free(message);
++		return NULL;
++	}
++
++	message->header =3D l_malloc(message->header_size);
+ 	message->body =3D l_malloc(message->body_size);
+ =
 
-Regards,
--Denis
+ 	memcpy(message->header, data, message->header_size);
+-- =
+
+2.5.0
 
 
---===============5164678958951003064==--
+--===============6727295252878519042==--
 
