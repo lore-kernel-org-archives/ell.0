@@ -1,40 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============0103093440220493936=="
+Content-Type: multipart/mixed; boundary="===============6332644024679314481=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] gvariant: Reset container's variable_is_last for fixed-size
- structs.
-Date: Sat, 19 Mar 2016 07:00:44 +0100
-Message-ID: <1458367247-14607-6-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH] dbus: Fix returned body_size in _dbus1_builder_finish.
+Date: Sat, 19 Mar 2016 07:00:45 +0100
+Message-ID: <1458367247-14607-7-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1458367247-14607-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0103093440220493936==
+--===============6332644024679314481==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-We reset container->variable_is_last after basic fixed-size types but
-not after structs and dicts.  This would probably produce incorrect
-results for fixed-size structs that are the last element in a
-variable-size struct, e.g. (s(u))
+Seems we missed this in the _mark and _rewind patch.
 ---
- ell/gvariant-util.c | 2 ++
- 1 file changed, 2 insertions(+)
+ ell/dbus-util.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
-index 61e5b52..4601222 100644
---- a/ell/gvariant-util.c
-+++ b/ell/gvariant-util.c
-@@ -994,6 +994,8 @@ static bool leave_struct_dict_common(struct dbus_builde=
-r *builder,
- 	if (_gvariant_is_fixed_size(container->signature)) {
- 		int alignment =3D _gvariant_get_alignment(container->signature);
- 		grow_body(builder, 0, alignment);
-+
-+		parent->variable_is_last =3D false;
- 	} else {
- 		size_t offset;
+diff --git a/ell/dbus-util.c b/ell/dbus-util.c
+index 9d5b5af..ab0600a 100644
+--- a/ell/dbus-util.c
++++ b/ell/dbus-util.c
+@@ -1275,7 +1275,7 @@ char *_dbus1_builder_finish(struct dbus_builder *buil=
+der,
+ 	builder->signature =3D NULL;
+ =
+
+ 	*body =3D builder->body;
+-	*body_size =3D builder->body_size;
++	*body_size =3D builder->body_pos;
+ 	builder->body =3D NULL;
+ 	builder->body_size =3D 0;
  =
 
 -- =
@@ -42,5 +39,5 @@ r *builder,
 2.5.0
 
 
---===============0103093440220493936==--
+--===============6332644024679314481==--
 
