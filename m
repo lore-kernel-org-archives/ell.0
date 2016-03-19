@@ -1,60 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============0078855445150594576=="
+Content-Type: multipart/mixed; boundary="===============6830249006880032391=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] unit: Add int64_t casts in dbus tests failing on i386.
-Date: Sat, 19 Mar 2016 07:00:41 +0100
-Message-ID: <1458367247-14607-3-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH] dbus: Take iter->sig_len into account in
+ l_dbus_message_iter_get_variant
+Date: Sat, 19 Mar 2016 07:00:42 +0100
+Message-ID: <1458367247-14607-4-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1458367247-14607-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0078855445150594576==
+--===============6830249006880032391==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Make sure the values are passed as 64-bit ones, adding LL would probably
-also work for gcc.
 ---
- unit/test-dbus-message.c     | 2 +-
- unit/test-gvariant-message.c | 3 ++-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ ell/dbus-message.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/unit/test-dbus-message.c b/unit/test-dbus-message.c
-index 4008d2b..ce58769 100644
---- a/unit/test-dbus-message.c
-+++ b/unit/test-dbus-message.c
-@@ -1555,7 +1555,7 @@ static void build_basic_7(const void *data)
- {
- 	struct l_dbus_message *msg =3D build_message(data);
+diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+index f9e13e2..30c09b9 100644
+--- a/ell/dbus-message.c
++++ b/ell/dbus-message.c
+@@ -1379,7 +1379,8 @@ LIB_EXPORT bool l_dbus_message_iter_get_variant(
+ 	if (unlikely(!iter))
+ 		return false;
  =
 
--	l_dbus_message_set_arguments(msg, "t", 10000);
-+	l_dbus_message_set_arguments(msg, "t", (uint64_t) 10000);
+-	if (!iter->sig_start || strcmp(iter->sig_start, signature))
++	if (!iter->sig_start || strlen(signature) !=3D iter->sig_len ||
++			memcmp(iter->sig_start, signature, iter->sig_len))
+ 		return false;
  =
 
- 	compare_message(msg, data);
- }
-diff --git a/unit/test-gvariant-message.c b/unit/test-gvariant-message.c
-index 324c341..5573e63 100644
---- a/unit/test-gvariant-message.c
-+++ b/unit/test-gvariant-message.c
-@@ -208,7 +208,8 @@ static void build_basic_1(const void *data)
- =
-
- 	result =3D l_dbus_message_set_arguments(msg, "bynqiuxtd", true, 255,
- 						-32, 32, -24, 24,
--						140179142606749, 99L, 5.0);
-+						(uint64_t) 140179142606749,
-+						(int64_t) 99, 5.0);
- 	assert(result);
- =
-
- 	_dbus_message_set_serial(msg, 1111);
+ 	va_start(args, signature);
 -- =
 
 2.5.0
 
 
---===============0078855445150594576==--
+--===============6830249006880032391==--
 
