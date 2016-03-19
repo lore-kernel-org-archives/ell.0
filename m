@@ -1,251 +1,236 @@
-Content-Type: multipart/mixed; boundary="===============2569370863737451778=="
+Content-Type: multipart/mixed; boundary="===============9017506541463104803=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/2] dbus: Add _gvariant_builder_mark and _rewind.
-Date: Sat, 19 Mar 2016 07:00:46 +0100
-Message-ID: <1458367247-14607-8-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] unit: reuse mark+rewind,
+ complex 1 tests for gvariant-message.
+Date: Sat, 19 Mar 2016 07:00:47 +0100
+Message-ID: <1458367247-14607-9-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1458367247-14607-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2569370863737451778==
+--===============9017506541463104803==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/dbus-message.c     |  2 ++
- ell/gvariant-private.h |  2 ++
- ell/gvariant-util.c    | 78 +++++++++++++++++++++++++++++++++++++++++-----=
-----
- 3 files changed, 69 insertions(+), 13 deletions(-)
+ unit/test-gvariant-message.c | 158 +++++++++++++++++++++++++++++++++++++++=
+++--
+ 1 file changed, 152 insertions(+), 6 deletions(-)
 
-diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-index 30c09b9..ef6a50d 100644
---- a/ell/dbus-message.c
-+++ b/ell/dbus-message.c
-@@ -773,6 +773,8 @@ static struct builder_driver gvariant_driver =3D {
- 	.enter_array =3D _gvariant_builder_enter_array,
- 	.leave_array =3D _gvariant_builder_leave_array,
- 	.finish =3D _gvariant_builder_finish,
-+	.mark =3D _gvariant_builder_mark,
-+	.rewind =3D _gvariant_builder_rewind,
- 	.new =3D _gvariant_builder_new,
- 	.free =3D _gvariant_builder_free,
- };
-diff --git a/ell/gvariant-private.h b/ell/gvariant-private.h
-index 2a20feb..f8f1313 100644
---- a/ell/gvariant-private.h
-+++ b/ell/gvariant-private.h
-@@ -47,6 +47,8 @@ struct dbus_builder *_gvariant_builder_new(void *body, si=
-ze_t body_size);
- void _gvariant_builder_free(struct dbus_builder *builder);
- bool _gvariant_builder_append_basic(struct dbus_builder *builder,
- 					char type, const void *value);
-+bool _gvariant_builder_mark(struct dbus_builder *builder);
-+bool _gvariant_builder_rewind(struct dbus_builder *builder);
- char *_gvariant_builder_finish(struct dbus_builder *builder,
- 				void **body, size_t *body_size);
- bool _gvariant_builder_enter_struct(struct dbus_builder *builder,
-diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
-index 4601222..79f1a68 100644
---- a/ell/gvariant-util.c
-+++ b/ell/gvariant-util.c
-@@ -753,7 +753,15 @@ struct dbus_builder {
- 	struct l_string *signature;
- 	void *body;
- 	size_t body_size;
-+	size_t body_pos;
- 	struct l_queue *containers;
-+	struct {
-+		struct container *container;
-+		int sig_end;
-+		size_t body_pos;
-+		size_t offset_index;
-+		bool variable_is_last : 1;
-+	} mark;
+diff --git a/unit/test-gvariant-message.c b/unit/test-gvariant-message.c
+index 5573e63..c2cb811 100644
+--- a/unit/test-gvariant-message.c
++++ b/unit/test-gvariant-message.c
+@@ -79,6 +79,40 @@ static const struct message_data message_data_basic_1 =
+=3D {
+ 	.binary_len	=3D 184,
  };
  =
 
- struct container {
-@@ -770,18 +778,19 @@ struct container {
- static inline size_t grow_body(struct dbus_builder *builder,
- 					size_t len, unsigned int alignment)
++static const unsigned char message_binary_complex_1[] =3D {
++	0x6c, 0x01, 0x00, 0x02, 0x4f, 0x00, 0x00, 0x00, 0x57, 0x04, 0x00, 0x00,
++	0x86, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	0x2f, 0x63, 0x6f, 0x6d, 0x2f, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65,
++	0x2f, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x00, 0x00, 0x6f, 0x00, 0x00,
++	0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x6d, 0x65, 0x74, 0x68,
++	0x6f, 0x64, 0x00, 0x00, 0x73, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63, 0x6f, 0x6d, 0x2e,
++	0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x69, 0x6e, 0x74, 0x65,
++	0x72, 0x66, 0x61, 0x63, 0x65, 0x00, 0x00, 0x73, 0x06, 0x00, 0x00, 0x00,
++	0x00, 0x00, 0x00, 0x00, 0x63, 0x6f, 0x6d, 0x2e, 0x65, 0x78, 0x61, 0x6d,
++	0x70, 0x6c, 0x65, 0x00, 0x00, 0x73, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
++	0x00, 0x00, 0x00, 0x00, 0x6f, 0x61, 0x7b, 0x73, 0x76, 0x7d, 0x00, 0x00,
++	0x67, 0x1e, 0x31, 0x58, 0x6e, 0x81, 0x00, 0x00, 0x2f, 0x63, 0x6f, 0x6d,
++	0x2f, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2f, 0x6f, 0x62, 0x6a,
++	0x65, 0x63, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4e, 0x61, 0x6d, 0x65,
++	0x00, 0x00, 0x00, 0x00, 0x4c, 0x69, 0x6e, 0x75, 0x73, 0x20, 0x54, 0x6f,
++	0x72, 0x76, 0x61, 0x6c, 0x64, 0x73, 0x00, 0x00, 0x73, 0x05, 0x00, 0x00,
++	0x00, 0x00, 0x00, 0x00, 0x44, 0x65, 0x76, 0x65, 0x6c, 0x6f, 0x70, 0x65,
++	0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x62, 0x0a,
++	0x1a, 0x34, 0x14,
++};
++
++static const struct message_data message_data_complex_1 =3D {
++	.type		=3D "method_call",
++	.path		=3D "/com/example/object",
++	.interface	=3D "com.example.interface",
++	.member		=3D "method",
++	.destination	=3D "com.example",
++	.signature	=3D "oa{sv}",
++	.binary		=3D message_binary_complex_1,
++	.binary_len	=3D sizeof(message_binary_complex_1),
++};
++
+ static struct l_dbus_message *check_message(const struct message_data *msg=
+_data)
  {
--	size_t size =3D align_len(builder->body_size, alignment);
-+	size_t size =3D align_len(builder->body_pos, alignment);
- =
-
- 	if (size + len > builder->body_size) {
- 		builder->body =3D l_realloc(builder->body, size + len);
--
--		if (size - builder->body_size > 0)
--			memset(builder->body + builder->body_size, 0,
--						size - builder->body_size);
--
- 		builder->body_size =3D size + len;
- 	}
- =
-
-+	if (size - builder->body_pos > 0)
-+		memset(builder->body + builder->body_pos, 0,
-+			size - builder->body_pos);
-+
-+	builder->body_pos =3D size + len;
-+
- 	return size;
+ 	struct l_dbus_message *msg;
+@@ -133,6 +167,17 @@ static struct l_dbus_message *check_message(const stru=
+ct message_data *msg_data)
+ 	return msg;
  }
  =
 
-@@ -840,7 +849,7 @@ static void container_append_struct_offsets(struct cont=
-ainer *container,
- 	if (container->offset_index =3D=3D 0)
- 		return;
- =
-
--	offset_size =3D offset_length(builder->body_size,
-+	offset_size =3D offset_length(builder->body_pos,
- 						container->offset_index);
- 	i =3D container->offset_index - 1;
- =
-
-@@ -863,7 +872,7 @@ static void container_append_array_offsets(struct conta=
-iner *container,
- 	if (container->offset_index =3D=3D 0)
- 		return;
- =
-
--	offset_size =3D offset_length(builder->body_size,
-+	offset_size =3D offset_length(builder->body_pos,
- 						container->offset_index);
- 	start =3D grow_body(builder, offset_size * container->offset_index, 1);
- =
-
-@@ -888,6 +897,9 @@ struct dbus_builder *_gvariant_builder_new(void *body, =
-size_t body_size)
- =
-
- 	builder->body =3D body;
- 	builder->body_size =3D body_size;
-+	builder->body_pos =3D body_size;
-+
-+	builder->mark.container =3D root;
- =
-
- 	return builder;
- }
-@@ -1003,7 +1015,7 @@ static bool leave_struct_dict_common(struct dbus_buil=
-der *builder,
- 			return false;
- =
-
- 		container_append_struct_offsets(container, builder);
--		offset =3D builder->body_size - parent->start;
-+		offset =3D builder->body_pos - parent->start;
- 		parent->offsets[parent->offset_index++] =3D offset;
- 		parent->variable_is_last =3D true;
- 	}
-@@ -1086,7 +1098,7 @@ bool _gvariant_builder_leave_variant(struct dbus_buil=
-der *builder)
- 	if (!grow_offsets(parent))
- 		return false;
- =
-
--	offset =3D builder->body_size - parent->start;
-+	offset =3D builder->body_pos - parent->start;
- 	parent->offsets[parent->offset_index++] =3D offset;
- 	parent->variable_is_last =3D true;
- =
-
-@@ -1166,7 +1178,7 @@ bool _gvariant_builder_leave_array(struct dbus_builde=
-r *builder)
- 	if (!grow_offsets(parent))
- 		return false;
- =
-
--	offset =3D builder->body_size - parent->start;
-+	offset =3D builder->body_pos - parent->start;
- 	parent->offsets[parent->offset_index++] =3D offset;
- 	parent->variable_is_last =3D true;
- =
-
-@@ -1225,7 +1237,7 @@ bool _gvariant_builder_append_basic(struct dbus_build=
-er *builder,
- 	start =3D grow_body(builder, len, alignment);
- 	memcpy(builder->body + start, value, len);
- =
-
--	offset =3D builder->body_size - container->start;
-+	offset =3D builder->body_pos - container->start;
- 	container->offsets[container->offset_index++] =3D offset;
- 	container->variable_is_last =3D true;
- =
-
-@@ -1235,6 +1247,46 @@ bool _gvariant_builder_append_basic(struct dbus_buil=
-der *builder,
- 	return true;
- }
- =
-
-+bool _gvariant_builder_mark(struct dbus_builder *builder)
++static struct l_dbus_message *build_message(const struct message_data *msg=
+_data)
 +{
-+	struct container *container =3D l_queue_peek_head(builder->containers);
++	struct l_dbus_message *msg;
 +
-+	builder->mark.container =3D container;
++	msg =3D _dbus_message_new_method_call(2, msg_data->destination,
++			msg_data->path, msg_data->interface, msg_data->member);
++	assert(msg);
 +
-+	if (l_queue_length(builder->containers) =3D=3D 1)
-+		builder->mark.sig_end =3D l_string_length(builder->signature);
-+	else
-+		builder->mark.sig_end =3D container->sigindex;
-+
-+	builder->mark.body_pos =3D builder->body_pos;
-+	builder->mark.offset_index =3D container->offset_index;
-+	builder->mark.variable_is_last =3D container->variable_is_last;
-+
-+	return true;
++	return msg;
 +}
 +
-+bool _gvariant_builder_rewind(struct dbus_builder *builder)
+ static void compare_message(struct l_dbus_message *msg,
+ 					const struct message_data *msg_data)
+ {
+@@ -198,14 +243,9 @@ static void parse_basic_1(const void *data)
+ =
+
+ static void build_basic_1(const void *data)
+ {
+-	const struct message_data *msg_data =3D data;
+-	struct l_dbus_message *msg;
++	struct l_dbus_message *msg =3D build_message(data);
+ 	bool result;
+ =
+
+-	msg =3D _dbus_message_new_method_call(2, msg_data->destination,
+-			msg_data->path, msg_data->interface, msg_data->member);
+-	assert(msg);
+-
+ 	result =3D l_dbus_message_set_arguments(msg, "bynqiuxtd", true, 255,
+ 						-32, 32, -24, 24,
+ 						(uint64_t) 140179142606749,
+@@ -217,6 +257,104 @@ static void build_basic_1(const void *data)
+ 	compare_message(msg, data);
+ }
+ =
+
++static void check_complex_1(const void *data)
 +{
-+	struct container *container;
++	struct l_dbus_message *msg =3D check_message(data);
++	struct l_dbus_message_iter dict, iter;
++	const char *path, *str;
++	bool result, val;
 +
-+	while ((container =3D l_queue_peek_head(builder->containers)) !=3D
-+				builder->mark.container) {
-+		container_free(container);
-+		l_queue_pop_head(builder->containers);
-+	}
++	result =3D l_dbus_message_get_arguments(msg, "oa{sv}", &path, &dict);
++	assert(result);
++	assert(!strcmp(path, "/com/example/object"));
 +
-+	builder->body_pos =3D builder->mark.body_pos;
-+	container->offset_index =3D builder->mark.offset_index;
-+	container->variable_is_last =3D builder->mark.variable_is_last;
++	result =3D l_dbus_message_iter_next_entry(&dict, &str, &iter);
++	assert(result);
++	assert(!strcmp(str, "Name"));
 +
-+	if (l_queue_length(builder->containers) =3D=3D 1)
-+		l_string_truncate(builder->signature, builder->mark.sig_end);
-+	else
-+		container->sigindex =3D builder->mark.sig_end;
++	result =3D l_dbus_message_iter_get_variant(&iter, "s", &str);
++	assert(result);
++	assert(!strcmp(str, "Linus Torvalds"));
 +
-+	return true;
++	result =3D l_dbus_message_iter_next_entry(&dict, &str, &iter);
++	assert(result);
++	assert(!strcmp(str, "Developer"));
++
++	result =3D l_dbus_message_iter_get_variant(&iter, "b", &val);
++	assert(result);
++	assert(val);
++
++	result =3D l_dbus_message_iter_next_entry(&dict, &str, &iter);
++	assert(!result);
++
++	l_dbus_message_unref(msg);
 +}
 +
- char *_gvariant_builder_finish(struct dbus_builder *builder,
- 				void **body, size_t *body_size)
++static void build_complex_1(const void *data)
++{
++	struct l_dbus_message *msg =3D build_message(data);
++	bool result;
++
++	result =3D l_dbus_message_set_arguments(msg, "oa{sv}",
++						"/com/example/object", 2,
++						"Name", "s", "Linus Torvalds",
++						"Developer", "b", true);
++	assert(result);
++
++	_dbus_message_set_serial(msg, 1111);
++
++	compare_message(msg, data);
++}
++
++static void builder_rewind(const void *data)
++{
++	struct l_dbus_message *msg =3D build_message(data);
++	struct l_dbus_message_builder *builder;
++	bool b =3D true;
++
++	builder =3D l_dbus_message_builder_new(msg);
++	assert(builder);
++
++	assert(l_dbus_message_builder_append_basic(builder, 'o',
++							"/com/example/object"));
++
++	assert(l_dbus_message_builder_enter_array(builder, "{sv}"));
++
++	assert(_dbus_message_builder_mark(builder));
++
++	assert(l_dbus_message_builder_enter_dict(builder, "sv"));
++	assert(l_dbus_message_builder_append_basic(builder, 's', "Name"));
++	assert(l_dbus_message_builder_enter_variant(builder, "s"));
++	assert(l_dbus_message_builder_append_basic(builder, 's',
++							"Invalid"));
++	assert(l_dbus_message_builder_leave_variant(builder));
++	assert(l_dbus_message_builder_leave_dict(builder));
++
++	assert(_dbus_message_builder_rewind(builder));
++
++	assert(l_dbus_message_builder_enter_dict(builder, "sv"));
++	assert(l_dbus_message_builder_append_basic(builder, 's', "Name"));
++	assert(l_dbus_message_builder_enter_variant(builder, "s"));
++	assert(l_dbus_message_builder_append_basic(builder, 's',
++							"Linus Torvalds"));
++	assert(l_dbus_message_builder_leave_variant(builder));
++	assert(l_dbus_message_builder_leave_dict(builder));
++
++	assert(l_dbus_message_builder_enter_dict(builder, "sv"));
++	assert(l_dbus_message_builder_append_basic(builder, 's', "Developer"));
++	assert(l_dbus_message_builder_enter_variant(builder, "b"));
++	assert(l_dbus_message_builder_append_basic(builder, 'b', &b));
++	assert(l_dbus_message_builder_leave_variant(builder));
++	assert(l_dbus_message_builder_leave_dict(builder));
++
++	assert(l_dbus_message_builder_leave_array(builder));
++
++	assert(l_dbus_message_builder_finalize(builder));
++	l_dbus_message_builder_destroy(builder);
++
++	compare_message(msg, data);
++}
++
+ int main(int argc, char *argv[])
  {
-@@ -1259,7 +1311,7 @@ char *_gvariant_builder_finish(struct dbus_builder *b=
-uilder,
- 		container_append_struct_offsets(root, builder);
+ 	l_test_init(&argc, &argv);
+@@ -224,5 +362,13 @@ int main(int argc, char *argv[])
+ 	l_test_add("Basic 1 (parse)", parse_basic_1, &message_data_basic_1);
+ 	l_test_add("Basic 1 (build)", build_basic_1, &message_data_basic_1);
  =
 
- 	*body =3D builder->body;
--	*body_size =3D builder->body_size;
-+	*body_size =3D builder->body_pos;
- 	builder->body =3D NULL;
- 	builder->body_size =3D 0;
- =
-
++	l_test_add("Complex 1 (parse)", check_complex_1,
++						&message_data_complex_1);
++	l_test_add("Complex 1 (build)", build_complex_1,
++						&message_data_complex_1);
++
++	l_test_add("Message Builder Rewind Complex 1", builder_rewind,
++						&message_data_complex_1);
++
+ 	return l_test_run();
+ }
 -- =
 
 2.5.0
 
 
---===============2569370863737451778==--
+--===============9017506541463104803==--
 
