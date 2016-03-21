@@ -1,482 +1,285 @@
-Content-Type: multipart/mixed; boundary="===============0919306225356912609=="
+Content-Type: multipart/mixed; boundary="===============5828618571623476360=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 06/15] dbus: Add message filter logic in dbus-filter.c
-Date: Mon, 21 Mar 2016 23:10:15 +0100
-Message-ID: <1458598224-29325-6-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 07/15] unit: Add dbus message filter tests.
+Date: Mon, 21 Mar 2016 23:10:16 +0100
+Message-ID: <1458598224-29325-7-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1458598224-29325-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0919306225356912609==
+--===============5828618571623476360==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This will be used for the public API for adding and removing signal
-callbacks.
 ---
- Makefile.am        |   1 +
- ell/dbus-filter.c  | 351 +++++++++++++++++++++++++++++++++++++++++++++++++=
+ unit/test-dbus-watch.c | 229 +++++++++++++++++++++++++++++++++++++++++++++=
 ++++
- ell/dbus-private.h |  31 +++++
- ell/dbus.h         |  12 ++
- 4 files changed, 395 insertions(+)
- create mode 100644 ell/dbus-filter.c
+ 1 file changed, 229 insertions(+)
 
-diff --git a/Makefile.am b/Makefile.am
-index 256b163..7283a7e 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -75,6 +75,7 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/dbus-message.c \
- 			ell/dbus-util.c \
- 			ell/dbus-service.c \
-+			ell/dbus-filter.c \
- 			ell/gvariant-private.h \
- 			ell/gvariant-util.c \
- 			ell/siphash-private.h \
-diff --git a/ell/dbus-filter.c b/ell/dbus-filter.c
-new file mode 100644
-index 0000000..048f59a
---- /dev/null
-+++ b/ell/dbus-filter.c
-@@ -0,0 +1,351 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2016  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#define _GNU_SOURCE
-+#include <stdlib.h>
-+#include <stdio.h>
-+
-+#include "util.h"
-+#include "queue.h"
-+#include "hashmap.h"
-+#include "string.h"
-+#include "dbus.h"
-+#include "dbus-private.h"
-+#include "gvariant-private.h"
-+#include "private.h"
-+
-+#define NODE_TYPE_CALLBACK	L_DBUS_MATCH_NONE
-+
-+struct filter_node {
-+	enum l_dbus_match_type type;
-+	union {
-+		struct {
-+			char *value;
-+			struct filter_node *children;
-+			bool remote_rule;
-+		} match;
-+		struct {
-+			l_dbus_message_func_t func;
-+			void *user_data;
-+		} callback;
+diff --git a/unit/test-dbus-watch.c b/unit/test-dbus-watch.c
+index 104f432..684ac34 100644
+--- a/unit/test-dbus-watch.c
++++ b/unit/test-dbus-watch.c
+@@ -33,6 +33,7 @@
+ =
+
+ #include <ell/ell.h>
+ #include "ell/dbus-private.h"
++#include "ell/private.h"
+ =
+
+ #define DBUS_SERVICE_DBUS	"org.freedesktop.DBus"
+ #define DBUS_PATH_DBUS		"/org/freedesktop/DBus"
+@@ -245,6 +246,230 @@ static void test_disconnect_watch(const void *test_da=
+ta)
+ 	_dbus1_filter_data_destroy(data);
+ }
+ =
+
++static void test_rule_to_str(const void *test_data)
++{
++	static const struct _dbus_filter_condition rule1[] =3D {
++		{ L_DBUS_MATCH_TYPE, "signal" },
++		{ L_DBUS_MATCH_SENDER, DBUS_SERVICE_DBUS },
++		{ L_DBUS_MATCH_PATH, DBUS_PATH_DBUS },
++		{ L_DBUS_MATCH_INTERFACE, DBUS_INTERFACE_DBUS },
++		{ L_DBUS_MATCH_MEMBER, "NameOwnerChanged" },
++		{ L_DBUS_MATCH_ARGUMENT(0), ":1.101" }
 +	};
-+	unsigned int id;
-+	struct filter_node *next;
++	static const char *expected1 =3D "type=3D'signal',"
++		"sender=3D'org.freedesktop.DBus',"
++		"path=3D'/org/freedesktop/DBus',"
++		"interface=3D'org.freedesktop.DBus',"
++		"member=3D'NameOwnerChanged',"
++		"arg0=3D':1.101'";
++	static const struct _dbus_filter_condition rule2[] =3D {
++		{ L_DBUS_MATCH_ARGUMENT(0), "'" },
++		{ L_DBUS_MATCH_ARGUMENT(1), "\\" },
++		{ L_DBUS_MATCH_ARGUMENT(2), "," },
++		{ L_DBUS_MATCH_ARGUMENT(3), "\\\\" }
++	};
++	static const char *expected2 =3D
++		"arg0=3D''\\''',arg1=3D'\\',arg2=3D',',arg3=3D'\\\\'";
++	char *str;
++
++	str =3D _dbus_filter_rule_to_str(rule1, L_ARRAY_SIZE(rule1));
++	assert(str && !strcmp(str, expected1));
++	l_free(str);
++
++	str =3D _dbus_filter_rule_to_str(rule2, L_ARRAY_SIZE(rule2));
++	assert(str && !strcmp(str, expected2));
++	l_free(str);
++}
++
++struct l_dbus {
 +};
 +
-+struct _dbus_filter {
-+	struct l_dbus *dbus;
-+	struct filter_node *root;
-+	unsigned int signal_id;
-+	unsigned int last_id;
-+	const struct _dbus_filter_ops *driver;
++struct filter_test_state {
++	struct l_dbus dbus;
++	const struct _dbus_filter_condition *expected_rule;
++	int expected_rule_len;
++	unsigned int expected_id, new_id;
++	int calls[4];
 +};
 +
-+static void filter_subtree_free(struct filter_node *node)
++static void rule_compare(const struct _dbus_filter_condition *a, int len_a,
++			const struct _dbus_filter_condition *b, int len_b)
 +{
-+	struct filter_node *child, *next;
++	int i, j;
++	bool matched[len_a];
 +
-+	if (node->type =3D=3D NODE_TYPE_CALLBACK) {
-+		l_free(node);
-+		return;
-+	}
++	assert(len_a =3D=3D len_b);
 +
-+	next =3D node->match.children;
++	for (i =3D 0; i < len_a; i++)
++		matched[i] =3D false;
 +
-+	l_free(node->match.value);
-+	l_free(node);
-+
-+	while (next) {
-+		child =3D next;
-+		next =3D child->next;
-+
-+		filter_subtree_free(child);
-+	}
-+}
-+
-+static void dbus_filter_destroy(void *data)
-+{
-+	struct _dbus_filter *filter =3D data;
-+
-+	if (filter->root)
-+		filter_subtree_free(filter->root);
-+
-+	l_free(filter);
-+}
-+
-+static void filter_dispatch_match_recurse(struct _dbus_filter *filter,
-+						struct filter_node *node,
-+						struct l_dbus_message *message)
-+{
-+	const char *value =3D NULL;
-+	struct filter_node *child;
-+
-+	switch ((int) node->type) {
-+	case NODE_TYPE_CALLBACK:
-+		node->callback.func(message, node->callback.user_data);
-+		return;
-+
-+	case L_DBUS_MATCH_SENDER:
-+		value =3D l_dbus_message_get_sender(message);
-+		break;
-+
-+	case L_DBUS_MATCH_TYPE:
-+		value =3D _dbus_message_get_type_as_string(message);
-+		break;
-+
-+	case L_DBUS_MATCH_PATH:
-+		value =3D l_dbus_message_get_path(message);
-+		break;
-+
-+	case L_DBUS_MATCH_INTERFACE:
-+		value =3D l_dbus_message_get_interface(message);
-+		break;
-+
-+	case L_DBUS_MATCH_MEMBER:
-+		value =3D l_dbus_message_get_member(message);
-+		break;
-+
-+	case L_DBUS_MATCH_ARG0...(L_DBUS_MATCH_ARG0 + 63):
-+		value =3D _dbus_message_get_nth_string_argument(message,
-+						node->type - L_DBUS_MATCH_ARG0);
-+		break;
-+	}
-+
-+	if (!value)
-+		return;
-+
-+	if (strcmp(value, node->match.value))
-+		return;
-+
-+	for (child =3D node->match.children; child; child =3D child->next)
-+		filter_dispatch_match_recurse(filter, child, message);
-+}
-+
-+void _dbus_filter_dispatch(struct l_dbus_message *message, void *user_data)
-+{
-+	struct _dbus_filter *filter =3D user_data;
-+
-+	filter_dispatch_match_recurse(filter, filter->root, message);
-+}
-+
-+struct _dbus_filter *_dbus_filter_new(struct l_dbus *dbus,
-+					const struct _dbus_filter_ops *driver)
-+{
-+	struct _dbus_filter *filter;
-+
-+	filter =3D l_new(struct _dbus_filter, 1);
-+
-+	filter->dbus =3D dbus;
-+	filter->driver =3D driver;
-+
-+	if (!filter->driver->skip_register)
-+		filter->signal_id =3D l_dbus_register(dbus, _dbus_filter_dispatch,
-+							filter,
-+							dbus_filter_destroy);
-+
-+	return filter;
-+}
-+
-+void _dbus_filter_free(struct _dbus_filter *filter)
-+{
-+	if (!filter)
-+		return;
-+
-+	if (!filter->driver->skip_register)
-+		l_dbus_unregister(filter->dbus, filter->signal_id);
-+	else
-+		dbus_filter_destroy(filter);
-+}
-+
-+static int condition_compare(const void *a, const void *b)
-+{
-+	const struct _dbus_filter_condition *condition_a =3D a, *condition_b =3D =
-b;
-+
-+	return condition_a->type - condition_b->type;
-+}
-+
-+unsigned int _dbus_filter_add_rule(struct _dbus_filter *filter,
-+					struct _dbus_filter_condition *rule,
-+					int rule_len,
-+					l_dbus_message_func_t signal_func,
-+					void *user_data)
-+{
-+	struct filter_node **node_ptr =3D &filter->root;
-+	struct filter_node *node;
-+	struct filter_node *parent =3D filter->root;
-+	bool remote_rule =3D false;
-+	struct _dbus_filter_condition *condition, *end =3D rule + rule_len;
-+
-+	qsort(rule, rule_len, sizeof(*rule), condition_compare);
-+
-+	for (condition =3D rule; condition < end; condition++) {
-+		/* See if this condition is already a child of the node */
-+		while (*node_ptr) {
-+			node =3D *node_ptr;
-+
-+			if (node->type =3D=3D condition->type &&
-+					!strcmp(node->match.value,
-+						condition->value))
++	for (i =3D 0; i < len_a; i++) {
++		for (j =3D 0; j < len_a; j++)
++			if (!matched[j] && a[i].type =3D=3D b[j].type &&
++					!strcmp(a[i].value, b[j].value))
 +				break;
 +
-+			node_ptr =3D &node->next;
-+		}
-+
-+		/* Add one */
-+		if (!*node_ptr) {
-+			node =3D l_new(struct filter_node, 1);
-+			node->type =3D condition->type;
-+			node->match.value =3D l_strdup(condition->value);
-+
-+			*node_ptr =3D node;
-+		}
-+
-+		node_ptr =3D &node->match.children;
-+
-+		parent =3D node;
-+
-+		/*
-+		 * Only have to call AddMatch if none of the parent nodes
-+		 * have yet created an AddMatch rule on the server.
-+		 */
-+		remote_rule |=3D node->match.remote_rule;
++		assert(j < len_a);
++		matched[j] =3D true;
 +	}
-+
-+	node =3D l_new(struct filter_node, 1);
-+	node->type =3D NODE_TYPE_CALLBACK;
-+	node->callback.func =3D signal_func;
-+	node->callback.user_data =3D user_data;
-+	node->id =3D ++filter->last_id;
-+	node->next =3D *node_ptr;
-+
-+	if (!remote_rule) {
-+		if (!filter->driver->add_match(filter->dbus, node->id,
-+						rule, rule_len)) {
-+			l_free(node);
-+			return 0;
-+		}
-+
-+		parent->id =3D node->id;
-+		parent->match.remote_rule =3D true;
-+	}
-+
-+	*node_ptr =3D node;
-+
-+	return node->id;
 +}
 +
-+static bool remove_recurse(struct _dbus_filter *filter,
-+				struct filter_node **node, unsigned int id)
++static bool test_add_match(struct l_dbus *dbus, unsigned int id,
++				const struct _dbus_filter_condition *rule,
++				int rule_len)
 +{
-+	struct filter_node *tmp;
++	struct filter_test_state *test =3D
++		container_of(dbus, struct filter_test_state, dbus);
 +
-+	for (; *node; node =3D &(*node)->next) {
-+		if ((*node)->type =3D=3D NODE_TYPE_CALLBACK && (*node)->id =3D=3D id)
-+			break;
++	assert(test->expected_rule);
 +
-+		if ((*node)->type !=3D NODE_TYPE_CALLBACK &&
-+				remove_recurse(filter, &(*node)->match.children,
-+						id))
-+			break;
-+	}
++	rule_compare(test->expected_rule, test->expected_rule_len,
++			rule, rule_len);
 +
-+	if (!*node)
-+		return false;
-+
-+	if ((*node)->type =3D=3D NODE_TYPE_CALLBACK || !(*node)->match.children) {
-+		tmp =3D *node;
-+		*node =3D tmp->next;
-+
-+		if (tmp->match.remote_rule)
-+			filter->driver->remove_match(filter->dbus, tmp->id);
-+
-+		filter_subtree_free(tmp);
-+	}
++	test->new_id =3D id;
++	test->expected_rule =3D NULL;
 +
 +	return true;
 +}
 +
-+bool _dbus_filter_remove_rule(struct _dbus_filter *filter, unsigned int id)
++static bool test_remove_match(struct l_dbus *dbus, unsigned int id)
 +{
-+	return remove_recurse(filter, &filter->root, id);
++	struct filter_test_state *test =3D
++		container_of(dbus, struct filter_test_state, dbus);
++
++	assert(test->expected_id =3D=3D id && id);
++
++	test->expected_id =3D 0;
++
++	return true;
 +}
 +
-+char *_dbus_filter_rule_to_str(const struct _dbus_filter_condition *rule,
-+				int rule_len)
++static void test_rule1_cb(struct l_dbus_message *message, void *user_data)
 +{
-+	struct l_string *str =3D l_string_new(63);
-+	char *key, arg_buf[6];
-+	const char *value, *endp;
++	struct filter_test_state *test =3D user_data;
 +
-+	for (; rule_len; rule++, rule_len--) {
-+		switch ((int) rule->type) {
-+		case L_DBUS_MATCH_SENDER:
-+			key =3D "sender";
-+			break;
-+		case L_DBUS_MATCH_TYPE:
-+			key =3D "type";
-+			break;
-+		case L_DBUS_MATCH_PATH:
-+			key =3D "path";
-+			break;
-+		case L_DBUS_MATCH_INTERFACE:
-+			key =3D "interface";
-+			break;
-+		case L_DBUS_MATCH_MEMBER:
-+			key =3D "member";
-+			break;
-+		case L_DBUS_MATCH_ARG0...(L_DBUS_MATCH_ARG0 + 63):
-+			key =3D arg_buf;
-+			snprintf(arg_buf, sizeof(arg_buf), "arg%i",
-+					rule->type - L_DBUS_MATCH_ARG0);
-+			break;
-+		default:
-+			l_string_free(str, true);
-+			return NULL;
-+		}
-+
-+		l_string_append(str, key);
-+		l_string_append(str, "=3D'");
-+
-+		/* We only need to escape single-quotes in the values */
-+		value =3D rule->value;
-+
-+		while ((endp =3D strchr(value, '\''))) {
-+			l_string_append_fixed(str, value, endp - value);
-+			l_string_append(str, "'\\''");
-+
-+			value =3D endp + 1;
-+		}
-+
-+		l_string_append(str, value);
-+		l_string_append_c(str, '\'');
-+
-+		if (rule_len > 1)
-+			l_string_append_c(str, ',');
-+	}
-+
-+	return l_string_free(str, false);
++	test->calls[0]++;
 +}
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index 607fdf4..d4a4782 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -64,6 +64,9 @@ struct _dbus_property;
- struct l_dbus_message_iter;
- struct l_dbus_message;
- struct l_dbus;
-+struct _dbus_filter;
-+struct _dbus_filter_condition;
-+struct _dbus_filter_ops;
++
++static void test_rule2_cb(struct l_dbus_message *message, void *user_data)
++{
++	struct filter_test_state *test =3D user_data;
++
++	test->calls[1]++;
++}
++
++static void test_rule3_cb(struct l_dbus_message *message, void *user_data)
++{
++	struct filter_test_state *test =3D user_data;
++
++	test->calls[2]++;
++}
++
++static void test_rule4_cb(struct l_dbus_message *message, void *user_data)
++{
++	struct filter_test_state *test =3D user_data;
++
++	test->calls[3]++;
++}
++
++static void test_filter_tree(const void *test_data)
++{
++	struct _dbus_filter *filter;
++	struct filter_test_state test =3D { .calls =3D { 0, 0, 0, 0 } };
++	static const struct _dbus_filter_ops filter_ops =3D {
++		.skip_register =3D true,
++		.add_match =3D test_add_match,
++		.remove_match =3D test_remove_match,
++	};
++	static struct _dbus_filter_condition rule123[] =3D {
++		{ L_DBUS_MATCH_TYPE, "signal" },
++		{ L_DBUS_MATCH_SENDER, DBUS_SERVICE_DBUS },
++		{ L_DBUS_MATCH_PATH, DBUS_PATH_DBUS },
++		{ L_DBUS_MATCH_INTERFACE, DBUS_INTERFACE_DBUS },
++		{ L_DBUS_MATCH_MEMBER, "NameOwnerChanged" },
++		{ L_DBUS_MATCH_ARGUMENT(0), ":1.101" }
++	};
++	static struct _dbus_filter_condition rule4[] =3D {
++		{ L_DBUS_MATCH_TYPE, "signal" },
++		{ L_DBUS_MATCH_SENDER, "foo" },
++	};
++	unsigned int id1, id2, id3, id4, internal_id1, internal_id4;
++	struct l_dbus_message *message;
++
++	filter =3D _dbus_filter_new(&test.dbus, &filter_ops);
++	assert(filter);
++
++	test.expected_rule =3D rule123;
++	test.expected_rule_len =3D 2;
++	id1 =3D _dbus_filter_add_rule(filter, rule123, 2, test_rule1_cb, &test);
++	assert(id1);
++	assert(!test.expected_rule);
++	internal_id1 =3D test.new_id;
++
++	id2 =3D _dbus_filter_add_rule(filter, rule123, 4, test_rule2_cb, &test);
++	id3 =3D _dbus_filter_add_rule(filter, rule123, 6, test_rule3_cb, &test);
++	assert(id2 && id3 && id2 !=3D id1 && id3 !=3D id1 && id3 !=3D id2);
++
++	test.expected_rule =3D rule4;
++	test.expected_rule_len =3D 2;
++	id4 =3D _dbus_filter_add_rule(filter, rule4, 2, test_rule4_cb, &test);
++	assert(id4 && id4 !=3D id1 && id4 !=3D id2 && id4 !=3D id3);
++	assert(!test.expected_rule);
++	internal_id4 =3D test.new_id;
++
++	assert(test.calls[0] =3D=3D 0 && test.calls[1] =3D=3D 0 &&
++			test.calls[2] =3D=3D 0 && test.calls[3] =3D=3D 0);
++
++	message =3D _dbus_message_new_signal(2, DBUS_PATH_DBUS,
++						DBUS_INTERFACE_DBUS,
++						"NameOwnerChanged");
++	l_dbus_message_set_arguments(message, "sss", ":1.101", "", ":1.101");
++	_dbus_message_set_sender(message, DBUS_SERVICE_DBUS);
++	_dbus_filter_dispatch(message, filter);
++	l_dbus_message_unref(message);
++
++	message =3D _dbus_message_new_signal(2, DBUS_PATH_DBUS,
++						DBUS_INTERFACE_DBUS,
++						"NameOwnerChanged");
++	l_dbus_message_set_arguments(message, "");
++	_dbus_message_set_sender(message, DBUS_SERVICE_DBUS);
++	_dbus_filter_dispatch(message, filter);
++	l_dbus_message_unref(message);
++
++	message =3D _dbus_message_new_signal(2, DBUS_PATH_DBUS, "foo", "Bar");
++	l_dbus_message_set_arguments(message, "");
++	_dbus_message_set_sender(message, DBUS_SERVICE_DBUS);
++	_dbus_filter_dispatch(message, filter);
++
++	_dbus_message_set_sender(message, "foo");
++	_dbus_filter_dispatch(message, filter);
++
++	_dbus_message_set_sender(message, "bar");
++	_dbus_filter_dispatch(message, filter);
++	l_dbus_message_unref(message);
++
++	assert(test.calls[0] =3D=3D 3 && test.calls[1] =3D=3D 2 &&
++			test.calls[2] =3D=3D 1 && test.calls[3] =3D=3D 1);
++
++	test.expected_id =3D 0;
++	assert(_dbus_filter_remove_rule(filter, id2));
++
++	assert(_dbus_filter_remove_rule(filter, id1));
++
++	test.expected_id =3D internal_id4;
++	assert(_dbus_filter_remove_rule(filter, id4));
++	assert(!test.expected_id);
++
++	test.expected_id =3D internal_id1;
++	assert(_dbus_filter_remove_rule(filter, id3));
++	assert(!test.expected_id);
++
++	_dbus_filter_free(filter);
++
++	assert(test.calls[0] =3D=3D 3 && test.calls[1] =3D=3D 2 &&
++			test.calls[2] =3D=3D 1 && test.calls[3] =3D=3D 1);
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -264,5 +489,9 @@ int main(int argc, char *argv[])
+ 	l_test_add("DBus disconnect watch", test_disconnect_watch,
+ 						&disconnect_test);
  =
 
- void _dbus1_iter_init(struct l_dbus_message_iter *iter,
- 			struct l_dbus_message *message,
-@@ -241,6 +244,34 @@ uint8_t _dbus_get_version(struct l_dbus *dbus);
- int _dbus_get_fd(struct l_dbus *dbus);
- struct _dbus_object_tree *_dbus_get_tree(struct l_dbus *dbus);
- =
-
-+struct _dbus_filter_condition {
-+	enum l_dbus_match_type type;
-+	const char *value;
-+};
++	l_test_add("_dbus_filter_rule_to_str", test_rule_to_str, NULL);
 +
-+struct _dbus_filter_ops {
-+	bool skip_register;
-+	bool (*add_match)(struct l_dbus *bus, unsigned int id,
-+				const struct _dbus_filter_condition *rule,
-+				int rule_len);
-+	bool (*remove_match)(struct l_dbus *bus, unsigned int id);
-+};
++	l_test_add("DBus filter tree", test_filter_tree, NULL);
 +
-+struct _dbus_filter *_dbus_filter_new(struct l_dbus *dbus,
-+					const struct _dbus_filter_ops *driver);
-+void _dbus_filter_free(struct _dbus_filter *filter);
-+
-+unsigned int _dbus_filter_add_rule(struct _dbus_filter *filter,
-+					struct _dbus_filter_condition *rule,
-+					int rule_len,
-+					l_dbus_message_func_t signal_func,
-+					void *user_data);
-+bool _dbus_filter_remove_rule(struct _dbus_filter *filter, unsigned int id=
-);
-+
-+char *_dbus_filter_rule_to_str(const struct _dbus_filter_condition *rule,
-+				int rule_len);
-+void _dbus_filter_dispatch(struct l_dbus_message *message, void *user_data=
-);
-+
- struct dbus1_filter_data;
- =
-
- void _dbus1_filter_format_match(struct dbus1_filter_data *data, char *rule,
-diff --git a/ell/dbus.h b/ell/dbus.h
-index c8fdec1..083f2ff 100644
---- a/ell/dbus.h
-+++ b/ell/dbus.h
-@@ -42,6 +42,18 @@ enum l_dbus_bus {
- 	L_DBUS_SESSION_BUS,
- };
- =
-
-+enum l_dbus_match_type {
-+	L_DBUS_MATCH_NONE =3D 0,
-+	L_DBUS_MATCH_TYPE,
-+	L_DBUS_MATCH_SENDER,
-+	L_DBUS_MATCH_PATH,
-+	L_DBUS_MATCH_INTERFACE,
-+	L_DBUS_MATCH_MEMBER,
-+	L_DBUS_MATCH_ARG0,
-+};
-+
-+#define L_DBUS_MATCH_ARGUMENT(i)	(L_DBUS_MATCH_ARG0 + (i))
-+
- struct l_dbus;
- struct l_dbus_interface;
- struct l_dbus_message_builder;
+ 	return l_test_run();
+ }
 -- =
 
 2.5.0
 
 
---===============0919306225356912609==--
+--===============5828618571623476360==--
 
