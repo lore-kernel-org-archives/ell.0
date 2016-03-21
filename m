@@ -1,14 +1,15 @@
-Content-Type: multipart/mixed; boundary="===============8662163218736402756=="
+Content-Type: multipart/mixed; boundary="===============8386603158190329805=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] dbus: Add _gvariant_builder_mark and _rewind.
-Date: Mon, 21 Mar 2016 13:05:46 -0500
-Message-ID: <56F037FA.7050008@gmail.com>
-In-Reply-To: <1458367247-14607-8-git-send-email-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 2/2] unit: reuse mark+rewind,
+ complex 1 tests for gvariant-message.
+Date: Mon, 21 Mar 2016 13:06:32 -0500
+Message-ID: <56F03828.8050606@gmail.com>
+In-Reply-To: <1458367247-14607-9-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8662163218736402756==
+--===============8386603158190329805==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -17,17 +18,17 @@ Hi Andrew,
 
 On 03/19/2016 01:00 AM, Andrew Zaborowski wrote:
 > ---
->   ell/dbus-message.c     |  2 ++
->   ell/gvariant-private.h |  2 ++
->   ell/gvariant-util.c    | 78 +++++++++++++++++++++++++++++++++++++++++--=
--------
->   3 files changed, 69 insertions(+), 13 deletions(-)
+>   unit/test-gvariant-message.c | 158 ++++++++++++++++++++++++++++++++++++=
++++++--
+>   1 file changed, 152 insertions(+), 6 deletions(-)
+>
 
-Applied, thanks.
+Applied.  Need you to resubmit the iter offsets patch for this to pass =
+
+properly.
 
 Regards,
 -Denis
 
-
---===============8662163218736402756==--
+--===============8386603158190329805==--
 
