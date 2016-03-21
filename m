@@ -1,75 +1,72 @@
-Content-Type: multipart/mixed; boundary="===============8097159779174568173=="
+Content-Type: multipart/mixed; boundary="===============4371231476605624643=="
 MIME-Version: 1.0
-From: Andrzej Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH] gvariant: Exclude container's offsets from child iterator
- len.
-Date: Mon, 21 Mar 2016 23:09:34 +0100
-Message-ID: <CAOq732KiSxTG3f02BP1PEhj4Y9Cha1Ek=3ORi0+v7OTp3tuvJw@mail.gmail.com>
-In-Reply-To: <56F035FD.2050301@gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 01/15] dbus: Add _dbus1_message_iter_skip_entry.
+Date: Mon, 21 Mar 2016 23:10:10 +0100
+Message-ID: <1458598224-29325-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8097159779174568173==
+--===============4371231476605624643==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+This will be used for the get_nth_string_argument function in
+dbus-message.c.  There seems to be no other way to skip over an iterator
+entry without knowing the data type.
+---
+ ell/dbus-private.h |  1 +
+ ell/dbus-util.c    | 16 ++++++++++++++++
+ 2 files changed, 17 insertions(+)
 
-On 21 March 2016 at 18:57, Denis Kenzior <denkenz@gmail.com> wrote:
-> Hi Andrew,
->
-> On 03/19/2016 01:00 AM, Andrew Zaborowski wrote:
->>
->> ---
->>   ell/gvariant-util.c | 10 +++++++++-
->>   1 file changed, 9 insertions(+), 1 deletion(-)
->>
->> diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
->> index 1aaddc3..61e5b52 100644
->> --- a/ell/gvariant-util.c
->> +++ b/ell/gvariant-util.c
->> @@ -497,6 +497,7 @@ static const void *next_item(struct
->> l_dbus_message_iter *iter,
->>         bool last_member;
->>         unsigned int sig_len;
->>         unsigned int offset_len;
->> +       unsigned int len =3D iter->len;
->
->
-> Looks like this belongs in the if block below.
+diff --git a/ell/dbus-private.h b/ell/dbus-private.h
+index 8322475..cfed4f7 100644
+--- a/ell/dbus-private.h
++++ b/ell/dbus-private.h
+@@ -77,6 +77,7 @@ bool _dbus1_iter_enter_variant(struct l_dbus_message_iter=
+ *iter,
+ 					struct l_dbus_message_iter *variant);
+ bool _dbus1_iter_enter_array(struct l_dbus_message_iter *iter,
+ 					struct l_dbus_message_iter *array);
++bool _dbus1_iter_skip_entry(struct l_dbus_message_iter *iter);
+ =
 
-True, it's also redundant.
+ struct dbus_builder *_dbus1_builder_new(void *body, size_t body_size);
+ void _dbus1_builder_free(struct dbus_builder *builder);
+diff --git a/ell/dbus-util.c b/ell/dbus-util.c
+index 5ab4298..9d5b5af 100644
+--- a/ell/dbus-util.c
++++ b/ell/dbus-util.c
+@@ -805,6 +805,22 @@ bool _dbus1_iter_enter_array(struct l_dbus_message_ite=
+r *iter,
+ 	return true;
+ }
+ =
 
->
->>
->>         memcpy(sig, iter->sig_start + iter->sig_pos,
->>                         iter->sig_len - iter->sig_pos);
->> @@ -529,7 +530,14 @@ static const void *next_item(struct
->> l_dbus_message_iter *iter,
->>         }
->>
->>         if (iter->container_type !=3D DBUS_CONTAINER_TYPE_ARRAY &&
->> last_member) {
->> -               *out_item_size =3D iter->len - iter->pos;
->> +               offset_len =3D offset_length(iter->len, 0);
->> +               len =3D iter->len;
->> +
->> +               if (iter->offsets && iter->offsets + offset_len <
->> +                               iter->data + len)
->> +                       len =3D iter->offsets + offset_len - iter->data;
->> +
->> +               *out_item_size =3D len - iter->pos;
->
->
-> This looks fine to me.  I'm guessing the location of the child iterator's
-> offsets was being messed up?  Hence variable length field sizes were
-> incorrect.  Right?
++bool _dbus1_iter_skip_entry(struct l_dbus_message_iter *iter)
++{
++	size_t len;
++	const char *sig_end;
++
++	sig_end =3D calc_len_next_item(iter->sig_start + iter->sig_pos,
++					iter->data, iter->pos, iter->len, &len);
++	if (!sig_end)
++		return false;
++
++	iter->pos +=3D len;
++	iter->sig_pos =3D sig_end - iter->sig_start;
++
++	return true;
++}
++
+ struct dbus_builder {
+ 	struct l_string *signature;
+ 	void *body;
+-- =
 
-I think that is what was happening, in the end it would read some
-child value from a completely wrong place.
+2.5.0
 
-Best regards
 
---===============8097159779174568173==--
+--===============4371231476605624643==--
 
