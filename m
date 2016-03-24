@@ -1,14 +1,15 @@
-Content-Type: multipart/mixed; boundary="===============5453418900884868528=="
+Content-Type: multipart/mixed; boundary="===============0110981609192725081=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 14/15] unit: Use the message filter API in dbus tests.
-Date: Thu, 24 Mar 2016 13:06:37 -0500
-Message-ID: <56F42CAD.6000705@gmail.com>
-In-Reply-To: <1458598224-29325-14-git-send-email-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 15/15] dbus: Don't send replies to messages with no reply
+ flag.
+Date: Thu, 24 Mar 2016 13:12:51 -0500
+Message-ID: <56F42E23.6090300@gmail.com>
+In-Reply-To: <1458598224-29325-15-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5453418900884868528==
+--===============0110981609192725081==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,17 +17,146 @@ Content-Transfer-Encoding: quoted-printable
 Hi Andrew,
 
 On 03/21/2016 05:10 PM, Andrew Zaborowski wrote:
+> Kdbus doesn't store the cookies for messages that have the no reply flag
+> and throws error when a reply is sent with reply_cookie that it doesn't
+> know.  It's not fatal, but we also save some cycles by not sending the
+> message.  A further change could be made to not even let users create a
+> message as a return from a method call but that may be confusing.
 > ---
->   unit/test-dbus-properties.c | 142 +++++++++++++++++++++----------------=
--------
->   unit/test-kdbus.c           |   3 +-
->   2 files changed, 69 insertions(+), 76 deletions(-)
+>   ell/dbus-message.c | 32 +++++++++++++++++++++++++++-----
+>   ell/dbus-private.h |  1 +
+>   ell/dbus.c         |  5 +++++
+>   3 files changed, 33 insertions(+), 5 deletions(-)
+>
+> diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+> index a7c9699..5ecac8d 100644
+> --- a/ell/dbus-message.c
+> +++ b/ell/dbus-message.c
+> @@ -43,6 +43,7 @@
+>
+>   #define DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED	0x01
+>   #define DBUS_MESSAGE_FLAG_NO_AUTO_START		0x02
+> +#define DBUS_MESSAGE_FLAG_DISCARD		0x04
 
-Applied, thanks.
+No, you're over-riding the ALLOW_INTERACTIVE_AUTHORIZATION flag.
+>
+>   #define DBUS_MESSAGE_FIELD_PATH		1
+>   #define DBUS_MESSAGE_FIELD_INTERFACE	2
+> @@ -185,6 +186,22 @@ LIB_EXPORT bool l_dbus_message_get_no_autostart(stru=
+ct l_dbus_message *msg)
+>
+>   }
+>
+> +bool _dbus_message_get_discard(struct l_dbus_message *msg)
+> +{
+> +	struct dbus_header *hdr;
+> +
+> +	if (unlikely(!msg))
+> +		return false;
+> +
+> +	hdr =3D msg->header;
+> +
+> +	if (hdr->flags & DBUS_MESSAGE_FLAG_DISCARD)
+> +		return true;
+
+No, please don't do it this way.  hdr gets sent over the wire.  We need =
+
+to store this flag locally.  Lets just add
+
+bool discard : 1;
+
+to struct l_dbus_message
+
+> +
+> +	return false;
+> +
+
+Spurious whitespace
+
+> +}
+> +
+>   static struct l_dbus_message *message_new_common(uint8_t type, uint8_t =
+flags,
+>   						uint8_t version)
+>   {
+> @@ -285,10 +302,13 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_ne=
+w_method_return(
+>   	struct l_dbus_message *message;
+>   	struct dbus_header *hdr =3D method_call->header;
+>   	const char *sender;
+> +	uint8_t flags =3D DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED;
+> +
+> +	if (l_dbus_message_get_no_reply(method_call))
+> +		flags |=3D DBUS_MESSAGE_FLAG_DISCARD;
+>
+>   	message =3D message_new_common(DBUS_MESSAGE_TYPE_METHOD_RETURN,
+> -					DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED,
+> -					hdr->version);
+> +					flags, hdr->version);
+
+if (l_dbus_message_get_no_reply(method_call))
+	message->discard =3D true;
+
+>
+>   	message->reply_serial =3D hdr->serial;
+>
+> @@ -308,14 +328,16 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_ne=
+w_error_valist(
+>   	struct l_dbus_message *reply;
+>   	struct dbus_header *hdr =3D method_call->header;
+>   	const char *sender;
+> +	uint8_t flags =3D DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED;
+>
+>   	if (!_dbus_valid_interface(name))
+>   		return NULL;
+>
+> +	if (l_dbus_message_get_no_reply(method_call))
+> +		flags |=3D DBUS_MESSAGE_FLAG_DISCARD;
+> +
+>   	vsnprintf(str, sizeof(str), format, args);
+> -	reply =3D message_new_common(DBUS_MESSAGE_TYPE_ERROR,
+> -					DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED,
+> -					hdr->version);
+> +	reply =3D message_new_common(DBUS_MESSAGE_TYPE_ERROR, flags, hdr->versi=
+on);
+>
+>   	reply->reply_serial =3D hdr->serial;
+>
+> diff --git a/ell/dbus-private.h b/ell/dbus-private.h
+> index 0ae4c69..3b40fea 100644
+> --- a/ell/dbus-private.h
+> +++ b/ell/dbus-private.h
+> @@ -108,6 +108,7 @@ void *_dbus_message_get_header(struct l_dbus_message =
+*msg, size_t *out_size);
+>   void _dbus_message_set_serial(struct l_dbus_message *msg, uint32_t seri=
+al);
+>   uint32_t _dbus_message_get_serial(struct l_dbus_message *msg);
+>   uint32_t _dbus_message_get_reply_serial(struct l_dbus_message *message);
+> +bool _dbus_message_get_discard(struct l_dbus_message *msg);
+>
+>   void _dbus_message_set_sender(struct l_dbus_message *message,
+>   					const char *sender);
+> diff --git a/ell/dbus.c b/ell/dbus.c
+> index b9864bd..d976496 100644
+> --- a/ell/dbus.c
+> +++ b/ell/dbus.c
+> @@ -1323,6 +1323,11 @@ LIB_EXPORT uint32_t l_dbus_send(struct l_dbus *dbu=
+s,
+>   	if (unlikely(!dbus || !message))
+>   		return 0;
+>
+> +	if (_dbus_message_get_discard(message)) {
+> +		l_dbus_message_unref(message);
+> +		return 0;
+> +	}
+> +
+>   	return send_message(dbus, false, message, NULL, NULL, NULL);
+>   }
+>
+>
 
 Regards,
 -Denis
 
-
---===============5453418900884868528==--
+--===============0110981609192725081==--
 
