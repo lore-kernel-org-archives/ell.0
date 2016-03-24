@@ -1,290 +1,111 @@
-Content-Type: multipart/mixed; boundary="===============6204346243238342725=="
+Content-Type: multipart/mixed; boundary="===============0334159777096673208=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 3/8] dbus: Remove now unused filter logic
-Date: Thu, 24 Mar 2016 03:07:04 +0100
-Message-ID: <1458785229-23266-3-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 4/8] dbus: l_dbus_name_acquire public API and driver
+ declarations
+Date: Thu, 24 Mar 2016 03:07:05 +0100
+Message-ID: <1458785229-23266-4-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1458785229-23266-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6204346243238342725==
+--===============0334159777096673208==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/dbus-private.h |  20 -----
- ell/dbus.c         | 209 -------------------------------------------------=
-----
- 2 files changed, 229 deletions(-)
+ ell/dbus.c | 33 +++++++++++++++++++++++++++++++++
+ ell/dbus.h |  8 ++++++++
+ 2 files changed, 41 insertions(+)
 
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index 3b40fea..b455df2 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -287,23 +287,3 @@ char *_dbus_filter_rule_to_str(const struct _dbus_filt=
-er_condition *rule,
- void _dbus_filter_dispatch(struct l_dbus_message *message, void *user_data=
-);
- void _dbus_filter_name_owner_notify(struct _dbus_filter *filter,
- 					const char *name, const char *owner);
--
--struct dbus1_filter_data;
--
--void _dbus1_filter_format_match(struct dbus1_filter_data *data, char *rule,
--								size_t size);
--
--struct dbus1_filter_data *_dbus1_filter_data_get(struct l_dbus *dbus,
--					l_dbus_message_func_t filter,
--					const char *sender,
--					const char *path,
--					const char *interface,
--					const char *member,
--					const char *argument,
--					l_dbus_watch_func_t disconnect_func,
--					void *user_data,
--					l_dbus_destroy_func_t destroy);
--void _dbus1_filter_data_destroy(void *user_data);
--void _dbus1_signal_dispatcher(struct l_dbus_message *message, void *user_d=
-ata);
--void _dbus1_name_owner_changed_filter(struct l_dbus_message *message,
--							void *user_data);
 diff --git a/ell/dbus.c b/ell/dbus.c
-index 6bf5734..b52192d 100644
+index b52192d..1570d33 100644
 --- a/ell/dbus.c
 +++ b/ell/dbus.c
-@@ -139,23 +139,6 @@ struct service_watch_data {
- 	bool removed;
+@@ -64,6 +64,10 @@ struct l_dbus_ops {
+ 	struct l_dbus_message *(*recv_message)(struct l_dbus *bus);
+ 	void (*free)(struct l_dbus *bus);
+ 	struct _dbus_filter_ops filter_ops;
++	uint32_t (*name_acquire)(struct l_dbus *dbus, const char *name,
++				bool allow_replacement, bool replace_existing,
++				bool queue, l_dbus_name_acquire_func_t callback,
++				void *user_data);
  };
  =
 
--struct dbus1_filter_data {
--	struct l_dbus *dbus;
--	char *sender;
--	char *path;
--	char *interface;
--	char *member;
--	char *argument;
--	void *user_data;
--	l_dbus_message_func_t handle_func;
--	l_dbus_destroy_func_t destroy_func;
--
--	l_dbus_watch_func_t connect_func;
--	l_dbus_watch_func_t disconnect_func;
--	char *owner;
--	uint32_t get_name_owner_id;
--};
--
- static void message_queue_destroy(void *data)
+ struct l_dbus {
+@@ -1893,3 +1897,32 @@ LIB_EXPORT bool l_dbus_remove_signal_watch(struct l_=
+dbus *dbus, unsigned int id)
  {
- 	struct message_callback *callback =3D data;
-@@ -1683,198 +1666,6 @@ LIB_EXPORT bool l_dbus_object_manager_enable(struct=
- l_dbus *dbus)
- 						dbus);
+ 	return _dbus_filter_remove_rule(dbus->filter, id);
  }
++
++/**
++ * l_dbus_name_acquire:
++ * @dbus: D-Bus connection
++ * @name: Well-known bus name to be acquired
++ * @allow_replacement: Whether to allow another peer's name request to
++ *                     take the name ownership away from this connection
++ * @replace_existing: Whether to allow D-Bus to take the name's ownership
++ *                    away from another peer in case the name is already
++ *                    owned and allows replacement.  Ignored if name is
++ *                    currently free.
++ * @queue: Whether to allow the name request to be queued by D-Bus in
++ *         case it cannot be acquired now, rather than to return a failure.
++ * @callback: Callback to receive the request result when done.
++ *
++ * Acquire a well-known bus name (service name) on the bus.
++ *
++ * Returns: a non-zero request serial that can be passed to l_dbus_cancel
++ *          while waiting for the callback, or zero on failure.
++ **/
++LIB_EXPORT uint32_t l_dbus_name_acquire(struct l_dbus *dbus, const char *n=
+ame,
++				bool allow_replacement, bool replace_existing,
++				bool queue, l_dbus_name_acquire_func_t callback,
++				void *user_data)
++{
++	return dbus->driver->name_acquire(dbus, name, allow_replacement,
++						replace_existing, queue,
++						callback, user_data);
++}
+diff --git a/ell/dbus.h b/ell/dbus.h
+index 0f20499..b096ed3 100644
+--- a/ell/dbus.h
++++ b/ell/dbus.h
+@@ -67,6 +67,9 @@ typedef void (*l_dbus_interface_setup_func_t) (struct l_d=
+bus_interface *);
  =
 
--void _dbus1_filter_format_match(struct dbus1_filter_data *data, char *rule,
--					size_t size)
--{
--	int offset;
--
--	offset =3D snprintf(rule, size, "type=3D'signal'");
--
--	if (data->sender)
--		offset +=3D snprintf(rule + offset, size - offset,
--				",sender=3D'%s'", data->sender);
--	if (data->path)
--		offset +=3D snprintf(rule + offset, size - offset,
--				",path=3D'%s'", data->path);
--	if (data->interface)
--		offset +=3D snprintf(rule + offset, size - offset,
--				",interface=3D'%s'", data->interface);
--	if (data->member)
--		offset +=3D snprintf(rule + offset, size - offset,
--				",member=3D'%s'", data->member);
--	if (data->argument)
--		snprintf(rule + offset, size - offset,
--				",arg0=3D'%s'", data->argument);
--}
--
--struct dbus1_filter_data *_dbus1_filter_data_get(struct l_dbus *dbus,
--					l_dbus_message_func_t filter,
--					const char *sender,
--					const char *path,
--					const char *interface,
--					const char *member,
--					const char *argument,
--					l_dbus_watch_func_t disconnect_func,
--					void *user_data,
--					l_dbus_destroy_func_t destroy)
--{
--	struct dbus1_filter_data *data;
--
--	data =3D l_new(struct dbus1_filter_data, 1);
--
--	data->dbus =3D dbus;
--	data->handle_func =3D filter;
--	data->sender =3D l_strdup(sender);
--	data->path =3D l_strdup(path);
--	data->interface =3D l_strdup(interface);
--	data->member =3D l_strdup(member);
--	data->argument =3D l_strdup(argument);
--	data->user_data =3D user_data;
--	data->destroy_func =3D destroy;
--
--	data->disconnect_func =3D disconnect_func;
--
--	return data;
--}
--
--void _dbus1_filter_data_destroy(void *user_data)
--{
--	struct dbus1_filter_data *data =3D user_data;
--
--	l_free(data->sender);
--	l_free(data->path);
--	l_free(data->interface);
--	l_free(data->member);
--	l_free(data->argument);
--
--	l_free(data->owner);
--
--	if (data->get_name_owner_id)
--		l_dbus_cancel(data->dbus, data->get_name_owner_id);
--
--	if (data->destroy_func)
--		data->destroy_func(data->user_data);
--
--	l_free(data);
--}
--
--static void dbus1_send_match(struct l_dbus *dbus, const char *rule,
--						const char *method)
--{
--	struct l_dbus_message *message;
--
--	message =3D l_dbus_message_new_method_call(dbus,
--						DBUS_SERVICE_DBUS,
--						DBUS_PATH_DBUS,
--						L_DBUS_INTERFACE_DBUS,
--						method);
--
--	l_dbus_message_set_arguments(message, "s", rule);
--
--	send_message(dbus, false, message, NULL, NULL, NULL);
--}
--
--static void dbus1_bus_add_match(struct l_dbus *dbus, const char *rule)
--{
--	dbus1_send_match(dbus, rule, "AddMatch");
--}
--
--static void dbus1_bus_remove_match(struct l_dbus *dbus, const char *rule)
--{
--	dbus1_send_match(dbus, rule, "RemoveMatch");
--}
--
--static void add_match(struct dbus1_filter_data *data)
--{
--	char rule[DBUS_MAXIMUM_MATCH_RULE_LENGTH];
--
--	_dbus1_filter_format_match(data, rule, sizeof(rule));
--
--	dbus1_bus_add_match(data->dbus, rule);
--}
--
--static void remove_match(struct dbus1_filter_data *data)
--{
--	char rule[DBUS_MAXIMUM_MATCH_RULE_LENGTH];
--
--	_dbus1_filter_format_match(data, rule, sizeof(rule));
--
--	dbus1_bus_remove_match(data->dbus, rule);
--}
--
--static void filter_data_destroy(void *user_data)
--{
--	remove_match(user_data);
--
--	_dbus1_filter_data_destroy(user_data);
--}
--
--void _dbus1_signal_dispatcher(struct l_dbus_message *message, void *user_d=
-ata)
--{
--	struct dbus1_filter_data *data =3D user_data;
--	const char *sender, *path, *iface, *member;
--
--	if (_dbus_message_get_type(message) !=3D DBUS_MESSAGE_TYPE_SIGNAL)
--		return;
--
--	sender =3D l_dbus_message_get_sender(message);
--	if (!sender)
--		return;
--
--	if (data->sender && strcmp(sender, data->sender))
--		return;
--
--	path =3D l_dbus_message_get_path(message);
--	if (data->path && strcmp(path, data->path))
--		return;
--
--	iface =3D l_dbus_message_get_interface(message);
--	if (data->interface && strcmp(iface, data->interface))
--		return;
--
--	member =3D l_dbus_message_get_member(message);
--	if (data->member && strcmp(member, data->member))
--		return;
--
--	if (data->handle_func)
--		data->handle_func(message, data);
--}
--
--void _dbus1_name_owner_changed_filter(struct l_dbus_message *message,
--							void *user_data)
--{
--	struct dbus1_filter_data *data =3D user_data;
--	char *name, *old, *new;
--
--	if (!l_dbus_message_get_arguments(message, "sss",
--						&name, &old, &new))
--		return;
--
--	if (strcmp(name, data->argument))
--		return;
--
--	if (!data->owner) {
--		if (data->get_name_owner_id)
--			l_dbus_cancel(data->dbus, data->get_name_owner_id);
--
--		data->get_name_owner_id =3D 0;
--	} else {
--		if (!strcmp(data->owner, new))
--			return;
--	}
--
--	l_free(data->owner);
--	data->owner =3D l_strdup(new);
--
--	if (*new =3D=3D '\0') {
--		if (data->disconnect_func)
--			data->disconnect_func(data->dbus, data->user_data);
--	} else {
--		if (data->connect_func)
--			data->connect_func(data->dbus, data->user_data);
--	}
--}
--
- LIB_EXPORT unsigned int l_dbus_add_disconnect_watch(struct l_dbus *dbus,
- 					const char *name,
- 					l_dbus_watch_func_t disconnect_func,
+ typedef void (*l_dbus_watch_func_t) (struct l_dbus *dbus, void *user_data);
+ =
+
++typedef void (*l_dbus_name_acquire_func_t) (struct l_dbus *dbus, bool succ=
+ess,
++						bool queued, void *user_data);
++
+ struct l_dbus *l_dbus_new(const char *address);
+ struct l_dbus *l_dbus_new_default(enum l_dbus_bus bus);
+ void l_dbus_destroy(struct l_dbus *dbus);
+@@ -252,6 +255,11 @@ unsigned int l_dbus_add_signal_watch(struct l_dbus *db=
+us,
+ 					const char *member, ...);
+ bool l_dbus_remove_signal_watch(struct l_dbus *dbus, unsigned int id);
+ =
+
++uint32_t l_dbus_name_acquire(struct l_dbus *dbus, const char *name,
++				bool allow_replacement, bool replace_existing,
++				bool queue, l_dbus_name_acquire_func_t callback,
++				void *user_data);
++
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
 2.5.0
 
 
---===============6204346243238342725==--
+--===============0334159777096673208==--
 
