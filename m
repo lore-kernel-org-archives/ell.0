@@ -1,128 +1,122 @@
-Content-Type: multipart/mixed; boundary="===============2199979350387170982=="
+Content-Type: multipart/mixed; boundary="===============9186487205475702841=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 6/8] dbus: Classic driver->name_acquire implementation
-Date: Thu, 24 Mar 2016 03:07:07 +0100
-Message-ID: <1458785229-23266-6-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 7/8] unit: Use l_dbus_name_acquire to acquire well-known name
+Date: Thu, 24 Mar 2016 03:07:08 +0100
+Message-ID: <1458785229-23266-7-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1458785229-23266-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2199979350387170982==
+--===============9186487205475702841==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/dbus.c | 79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=
-++++
- 1 file changed, 79 insertions(+)
+ unit/test-dbus-properties.c | 36 ++++++------------------------------
+ unit/test-kdbus.c           | 14 +++++++++-----
+ 2 files changed, 15 insertions(+), 35 deletions(-)
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index e79e23d..a82fa9a 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -812,6 +812,84 @@ static bool classic_get_name_owner(struct l_dbus *bus,=
- const char *name)
- 	return true;
+diff --git a/unit/test-dbus-properties.c b/unit/test-dbus-properties.c
+index be91dd3..c7ed384 100644
+--- a/unit/test-dbus-properties.c
++++ b/unit/test-dbus-properties.c
+@@ -152,32 +152,11 @@ static void test_next()
+ 		}	\
+ 	} while (0)
+ =
+
+-static void request_name_setup(struct l_dbus_message *message, void *user_=
+data)
++static void request_name_callback(struct l_dbus *dbus, bool success,
++					bool queued, void *user_data)
+ {
+-	const char *name =3D "org.test";
+-
+-	l_dbus_message_set_arguments(message, "su", name, 0);
+-}
+-
+-static void request_name_callback(struct l_dbus_message *message,
+-					void *user_data)
+-{
+-	const char *error, *text;
+-	uint32_t result;
+-
+-	if (l_dbus_message_get_error(message, &error, &text)) {
+-		l_error("error=3D%s", error);
+-		l_error("message=3D%s", text);
+-		l_main_quit();
+-		return;
+-	}
+-
+-	if (!l_dbus_message_get_arguments(message, "u", &result)) {
+-		l_main_quit();
+-		return;
+-	}
+-
+-	l_info("request name result=3D%d", result);
++	l_info("request name result=3D%s",
++		success ? (queued ? "queued" : "success") : "failed");
+ =
+
+ 	test_next();
+ }
+@@ -938,11 +917,8 @@ int main(int argc, char *argv[])
+ 	l_dbus_set_ready_handler(dbus, ready_callback, dbus, NULL);
+ 	l_dbus_set_disconnect_handler(dbus, disconnect_callback, NULL, NULL);
+ =
+
+-	l_dbus_method_call(dbus, "org.freedesktop.DBus",
+-				"/org/freedesktop/DBus",
+-				"org.freedesktop.DBus", "RequestName",
+-				request_name_setup,
+-				request_name_callback, NULL, NULL);
++	l_dbus_name_acquire(dbus, "org.test", false, false, false,
++				request_name_callback, NULL);
+ =
+
+ 	if (!l_dbus_register_interface(dbus, "org.test", setup_test_interface,
+ 					NULL, true)) {
+diff --git a/unit/test-kdbus.c b/unit/test-kdbus.c
+index dde2596..8cac761 100644
+--- a/unit/test-kdbus.c
++++ b/unit/test-kdbus.c
+@@ -97,16 +97,20 @@ static void client_ready_callback(void *user_data)
+ 				NULL, NULL, NULL);
  }
  =
 
-+struct name_request {
-+	l_dbus_name_acquire_func_t callback;
-+	void *user_data;
-+	struct l_dbus *dbus;
-+};
-+
-+enum dbus_name_flag {
-+	DBUS_NAME_FLAG_ALLOW_REPLACEMENT	=3D 0x1,
-+	DBUS_NAME_FLAG_REPLACE_EXISTING		=3D 0x2,
-+	DBUS_NAME_FLAG_DO_NOT_QUEUE		=3D 0x4,
-+};
-+
-+enum dbus_name_reply {
-+	DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER	=3D 1,
-+	DBUS_REQUEST_NAME_REPLY_IN_QUEUE	=3D 2,
-+	DBUS_REQUEST_NAME_REPLY_EXISTS		=3D 3,
-+	DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER	=3D 4,
-+};
-+
-+static void request_name_reply_cb(struct l_dbus_message *reply, void *user=
-_data)
++static void service_name_acquire_callback(struct l_dbus *dbus, bool succes=
+s,
++						bool queued, void *user_data)
 +{
-+	struct name_request *req =3D user_data;
-+	bool success =3D false, queued =3D false;
-+	uint32_t retval;
-+
-+	if (!req->callback)
-+		return;
-+
-+	/* No name owner yet */
-+	if (l_dbus_message_is_error(reply))
-+		goto call_back;
-+
-+	/* Shouldn't happen */
-+	if (!l_dbus_message_get_arguments(reply, "u", &retval))
-+		goto call_back;
-+
-+	success =3D (retval =3D=3D DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) ||
-+		(retval =3D=3D DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER) ||
-+		(retval =3D=3D DBUS_REQUEST_NAME_REPLY_IN_QUEUE);
-+	queued =3D (retval =3D=3D DBUS_REQUEST_NAME_REPLY_IN_QUEUE);
-+
-+call_back:
-+	req->callback(req->dbus, success, queued, req->user_data);
++	if (!success)
++		l_info("Failed to acquire name");
 +}
 +
-+static uint32_t classic_name_acquire(struct l_dbus *dbus, const char *name,
-+					bool allow_replacement,
-+					bool replace_existing, bool queue,
-+					l_dbus_name_acquire_func_t callback,
-+					void *user_data)
-+{
-+	struct name_request *req;
-+	struct l_dbus_message *message;
-+	uint32_t flags =3D 0;
-+
-+	req =3D l_new(struct name_request, 1);
-+	req->dbus =3D dbus;
-+	req->user_data =3D user_data;
-+	req->callback =3D callback;
-+
-+	message =3D l_dbus_message_new_method_call(dbus, DBUS_SERVICE_DBUS,
-+							DBUS_PATH_DBUS,
-+							L_DBUS_INTERFACE_DBUS,
-+							"RequestName");
-+
-+	if (allow_replacement)
-+		flags |=3D DBUS_NAME_FLAG_ALLOW_REPLACEMENT;
-+	if (replace_existing)
-+		flags |=3D DBUS_NAME_FLAG_REPLACE_EXISTING;
-+	if (!queue)
-+		flags |=3D DBUS_NAME_FLAG_DO_NOT_QUEUE;
-+
-+	l_dbus_message_set_arguments(message, "su", name, flags);
-+
-+	return send_message(dbus, false, message, request_name_reply_cb,
-+				req, free);
-+}
-+
- static const struct l_dbus_ops classic_ops =3D {
- 	.version =3D 1,
- 	.send_message =3D classic_send_message,
-@@ -822,6 +900,7 @@ static const struct l_dbus_ops classic_ops =3D {
- 		.remove_match =3D classic_remove_match,
- 		.get_name_owner =3D classic_get_name_owner,
- 	},
-+	.name_acquire =3D classic_name_acquire,
- };
+ static void service_ready_callback(void *user_data)
+ {
+ 	struct l_dbus *dbus =3D user_data;
+ 	struct l_dbus_message *message;
+-	int fd =3D _dbus_get_fd(dbus);
+-	int r;
  =
 
- static void name_owner_changed_cb(struct l_dbus_message *message,
+-	r =3D _dbus_kernel_name_acquire(fd, "org.test");
+-	if (r < 0)
+-		l_info("Failed to acquire name: %s", strerror(-r));
++	l_dbus_name_acquire(dbus, "org.test", false, false, false,
++				service_name_acquire_callback, NULL);
+ =
+
+ 	l_info("service ready");
+ =
+
 -- =
 
 2.5.0
 
 
---===============2199979350387170982==--
+--===============9186487205475702841==--
 
