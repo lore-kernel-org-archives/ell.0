@@ -1,85 +1,35 @@
-Content-Type: multipart/mixed; boundary="===============2036677252071240794=="
+Content-Type: multipart/mixed; boundary="===============4920769524590008403=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 8/8] examples: Use l_dbus_name_acquire to acquire well-known
- name
-Date: Thu, 24 Mar 2016 03:07:09 +0100
-Message-ID: <1458785229-23266-8-git-send-email-andrew.zaborowski@intel.com>
-In-Reply-To: <1458785229-23266-1-git-send-email-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 01/15] dbus: Add _dbus1_message_iter_skip_entry.
+Date: Thu, 24 Mar 2016 09:35:19 -0500
+Message-ID: <56F3FB27.70005@gmail.com>
+In-Reply-To: <1458598224-29325-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2036677252071240794==
+--===============4920769524590008403==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- examples/dbus-service.c | 33 ++++++---------------------------
- 1 file changed, 6 insertions(+), 27 deletions(-)
+Hi Andrew,
 
-diff --git a/examples/dbus-service.c b/examples/dbus-service.c
-index 347faae..51b7e4f 100644
---- a/examples/dbus-service.c
-+++ b/examples/dbus-service.c
-@@ -50,29 +50,11 @@ static void signal_handler(struct l_signal *signal, uin=
-t32_t signo,
- 	}
- }
- =
+On 03/21/2016 05:10 PM, Andrew Zaborowski wrote:
+> This will be used for the get_nth_string_argument function in
+> dbus-message.c.  There seems to be no other way to skip over an iterator
+> entry without knowing the data type.
+> ---
+>   ell/dbus-private.h |  1 +
+>   ell/dbus-util.c    | 16 ++++++++++++++++
+>   2 files changed, 17 insertions(+)
+>
 
--static void request_name_setup(struct l_dbus_message *message, void *user_=
-data)
-+static void request_name_callback(struct l_dbus *dbus, bool success,
-+					bool queued, void *user_data)
- {
--	const char *name =3D "org.test";
--
--	l_dbus_message_set_arguments(message, "su", name, 0);
--}
--
--static void request_name_callback(struct l_dbus_message *message,
--							void *user_data)
--{
--	const char *error, *text;
--	uint32_t result;
--
--	if (l_dbus_message_get_error(message, &error, &text)) {
--		l_error("error=3D%s", error);
--		l_error("message=3D%s", text);
--		return;
--	}
--
--	if (!l_dbus_message_get_arguments(message, "u", &result))
--		return;
--
--	l_info("request name result=3D%d", result);
-+	l_info("request name result=3D%s",
-+		success ? (queued ? "queued" : "success") : "failed");
- }
- =
+Applied, thanks.
 
- static void ready_callback(void *user_data)
-@@ -211,11 +193,8 @@ int main(int argc, char *argv[])
- 	l_dbus_set_ready_handler(dbus, ready_callback, dbus, NULL);
- 	l_dbus_set_disconnect_handler(dbus, disconnect_callback, NULL, NULL);
- =
-
--	l_dbus_method_call(dbus, "org.freedesktop.DBus",
--				"/org/freedesktop/DBus",
--				L_DBUS_INTERFACE_DBUS, "RequestName",
--				request_name_setup,
--				request_name_callback, NULL, NULL);
-+	l_dbus_name_acquire(dbus, "org.test", false, false, false,
-+				request_name_callback, NULL);
- =
-
- 	if (!l_dbus_object_manager_enable(dbus)) {
- 		l_info("Unable to enable Object Manager");
--- =
-
-2.5.0
+Regards,
+-Denis
 
 
---===============2036677252071240794==--
+--===============4920769524590008403==--
 
