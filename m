@@ -1,59 +1,164 @@
-Content-Type: multipart/mixed; boundary="===============8138124466236156830=="
+Content-Type: multipart/mixed; boundary="===============5582322681933603617=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 4/8] dbus: l_dbus_name_acquire public API and driver
- declarations
-Date: Thu, 24 Mar 2016 22:03:59 -0500
-Message-ID: <56F4AA9F.2040600@gmail.com>
-In-Reply-To: <1458785229-23266-4-git-send-email-andrew.zaborowski@intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH v3 1/5] build: Add sanitizer options
+Date: Fri, 25 Mar 2016 14:51:40 -0700
+Message-ID: <alpine.OSX.2.20.1603251448140.18637@mjmartin-mac01.local>
+In-Reply-To: <1458238542-11711-1-git-send-email-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8138124466236156830==
+--===============5582322681933603617==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
 
-On 03/23/2016 09:07 PM, Andrew Zaborowski wrote:
-> ---
->   ell/dbus.c | 33 +++++++++++++++++++++++++++++++++
->   ell/dbus.h |  8 ++++++++
->   2 files changed, 41 insertions(+)
+Marcel - any issues with this patch?
 
-<snip>
 
+On Thu, 17 Mar 2016, Mat Martineau wrote:
+
+> Build using Address Sanitizer (asan), Leak Sanitizer (lsan), or
+> Undefined Behavior Sanitizer (ubsan) by using one of these options for
+> the configure script:
 >
+>  --enable-asan
+>  --enable-lsan
+>  --enable-ubsan
+>
+> For each of these to work, the compiler must support the requested
+> sanitizer and the requisite libraries must be installed (libasan,
+> liblsan, libubsan).
+> ---
+> acinclude.m4 | 36 ++++++++++++++++++++++++++++++++++++
+> configure.ac | 45 +++++++++++++++++++++++++++++++++++++++++++++
+> 2 files changed, 81 insertions(+)
+>
+> diff --git a/acinclude.m4 b/acinclude.m4
+> index 0ba4287..8aab4ee 100644
+> --- a/acinclude.m4
+> +++ b/acinclude.m4
+> @@ -10,6 +10,42 @@ AC_DEFUN([AC_PROG_CC_PIE], [
+> 	])
+> ])
+>
+> +AC_DEFUN([AC_PROG_CC_ASAN], [
+> +	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Daddress], ac_cv_p=
+rog_cc_asan, [
+> +		echo 'void f(){}' > conftest.c
+> +		if test -z "`${CC-cc} -fsanitize=3Daddress -c conftest.c 2>&1`"; then
+> +			ac_cv_prog_cc_asan=3Dyes
+> +		else
+> +			ac_cv_prog_cc_asan=3Dno
+> +		fi
+> +		rm -rf conftest*
+> +	])
+> +])
 > +
-> +/**
-> + * l_dbus_name_acquire:
-> + * @dbus: D-Bus connection
-> + * @name: Well-known bus name to be acquired
-> + * @allow_replacement: Whether to allow another peer's name request to
-> + *                     take the name ownership away from this connection
-> + * @replace_existing: Whether to allow D-Bus to take the name's ownership
-> + *                    away from another peer in case the name is already
-> + *                    owned and allows replacement.  Ignored if name is
-> + *                    currently free.
-> + * @queue: Whether to allow the name request to be queued by D-Bus in
-> + *         case it cannot be acquired now, rather than to return a failu=
-re.
-> + * @callback: Callback to receive the request result when done.
-> + *
-> + * Acquire a well-known bus name (service name) on the bus.
-> + *
-> + * Returns: a non-zero request serial that can be passed to l_dbus_cancel
-> + *          while waiting for the callback, or zero on failure.
+> +AC_DEFUN([AC_PROG_CC_LSAN], [
+> +	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Dleak], ac_cv_prog=
+_cc_lsan, [
+> +		echo 'void f(){}' > conftest.c
+> +		if test -z "`${CC-cc} -fsanitize=3Dleak -c conftest.c 2>&1`"; then
+> +			ac_cv_prog_cc_lsan=3Dyes
+> +		else
+> +			ac_cv_prog_cc_lsan=3Dno
+> +		fi
+> +		rm -rf conftest*
+> +	])
+> +])
+> +
+> +AC_DEFUN([AC_PROG_CC_UBSAN], [
+> +	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Dundefined], ac_cv=
+_prog_cc_ubsan, [
+> +		echo 'void f(){}' > conftest.c
+> +		if test -z "`${CC-cc} -fsanitize=3Dundefined -c conftest.c 2>&1`"; then
+> +			ac_cv_prog_cc_ubsan=3Dyes
+> +		else
+> +			ac_cv_prog_cc_ubsan=3Dno
+> +		fi
+> +		rm -rf conftest*
+> +	])
+> +])
+> +
+> AC_DEFUN([COMPILER_FLAGS], [
+> 	if (test "${CFLAGS}" =3D ""); then
+> 		CFLAGS=3D"-Wall -O2 -fsigned-char"
+> diff --git a/configure.ac b/configure.ac
+> index 39755fe..e4ca5b2 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -20,6 +20,9 @@ AC_LANG_C
+>
+> AC_PROG_CC
+> AC_PROG_CC_PIE
+> +AC_PROG_CC_ASAN
+> +AC_PROG_CC_LSAN
+> +AC_PROG_CC_UBSAN
+> AC_PROG_INSTALL
+>
+> AC_C_CHAR_UNSIGNED
+> @@ -54,6 +57,48 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
+> 	fi
+> ])
+>
+> +save_LIBS=3D$LIBS
+> +AC_CHECK_LIB(asan, __sanitizer_cov_init)
+> +LIBS=3D$save_LIBS
+> +
+> +AC_ARG_ENABLE(asan, AC_HELP_STRING([--enable-asan],
+> +			[enable linking with address sanitizer]), [
+> +	if (test "${enableval}" =3D "yes" &&
+> +				test "${ac_cv_lib_asan___sanitizer_cov_init}" =3D "yes" &&
+> +				test "${ac_cv_prog_cc_asan}" =3D "yes"); then
+> +		CFLAGS=3D"$CFLAGS -fsanitize=3Daddress";
+> +		LDFLAGS=3D"$LDFLAGS -fsanitize=3Daddress"
+> +	fi
+> +])
+> +
+> +save_LIBS=3D$LIBS
+> +AC_CHECK_LIB(lsan, __sanitizer_cov_init)
+> +LIBS=3D$save_LIBS
+> +
+> +AC_ARG_ENABLE(lsan, AC_HELP_STRING([--enable-lsan],
+> +			[enable linking with leak sanitizer]), [
+> +	if (test "${enableval}" =3D "yes" &&
+> +				test "${ac_cv_lib_lsan___sanitizer_cov_init}" =3D "yes" &&
+> +				test "${ac_cv_prog_cc_lsan}" =3D "yes"); then
+> +		CFLAGS=3D"$CFLAGS -fsanitize=3Dleak";
+> +		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dleak"
+> +	fi
+> +])
+> +
+> +save_LIBS=3D$LIBS
+> +AC_CHECK_LIB(ubsan, __sanitizer_cov_init)
+> +LIBS=3D$save_LIBS
+> +
+> +AC_ARG_ENABLE(ubsan, AC_HELP_STRING([--enable-ubsan],
+> +			[enable linking with undefined behavior sanitizer]), [
+> +	if (test "${enableval}" =3D "yes" &&
+> +				test "${ac_cv_lib_ubsan___sanitizer_cov_init}" =3D "yes" &&
+> +				test "${ac_cv_prog_cc_ubsan}" =3D "yes"); then
+> +		CFLAGS=3D"$CFLAGS -fsanitize=3Dundefined";
+> +		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dundefined"
+> +	fi
+> +])
+> +
+> AC_CHECK_FUNC(signalfd, dummy=3Dyes,
+> 			AC_MSG_ERROR(signalfd support is required))
+>
+> -- =
 
-Yet kdbus version returns some hard-coded number that can't be used by =
+> 2.7.3
+>
+>
 
-l_dbus_cancel.  I don't like this API asymmetry.  Can't we just return =
 
-void and let the callback parameters tell the application what happened?
+--
+Mat Martineau
+Intel OTC
 
-Regards,
--Denis
 
---===============8138124466236156830==--
+--===============5582322681933603617==--
 
