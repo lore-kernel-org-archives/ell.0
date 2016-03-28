@@ -1,142 +1,128 @@
-Content-Type: multipart/mixed; boundary="===============0101276847480458875=="
+Content-Type: multipart/mixed; boundary="===============5789542359924606304=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/5] dbus: kdbus driver->name_acquire implementation
-Date: Tue, 29 Mar 2016 00:09:20 +0200
-Message-ID: <1459202963-12390-2-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/5] dbus: Classic driver->name_acquire implementation
+Date: Tue, 29 Mar 2016 00:09:21 +0200
+Message-ID: <1459202963-12390-3-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1459202963-12390-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0101276847480458875==
+--===============5789542359924606304==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/dbus-kernel.c  | 13 ++++++++++++-
- ell/dbus-private.h |  4 +++-
- ell/dbus.c         | 28 ++++++++++++++++++++++++++++
- 3 files changed, 43 insertions(+), 2 deletions(-)
+ ell/dbus.c | 79 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 1 file changed, 79 insertions(+)
 
-diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
-index b47f973..9bc99d7 100644
---- a/ell/dbus-kernel.c
-+++ b/ell/dbus-kernel.c
-@@ -626,7 +626,8 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
- 	return r;
- }
- =
-
--int _dbus_kernel_name_acquire(int fd, const char *name)
-+int _dbus_kernel_name_acquire(int fd, const char *name, bool allow_replace=
-ment,
-+				bool replace_existing, bool queue, bool *queued)
- {
- 	struct {
- 		struct kdbus_cmd head;
-@@ -651,9 +652,19 @@ int _dbus_kernel_name_acquire(int fd, const char *name)
- 	item->type =3D KDBUS_ITEM_NAME;
- 	strcpy(item->str, name);
- =
-
-+	if (replace_existing)
-+		cmd_name.head.flags |=3D KDBUS_NAME_REPLACE_EXISTING;
-+	if (allow_replacement)
-+		cmd_name.head.flags |=3D KDBUS_NAME_ALLOW_REPLACEMENT;
-+	if (queue)
-+		cmd_name.head.flags |=3D KDBUS_NAME_QUEUE;
-+
- 	if (ioctl(fd, KDBUS_CMD_NAME_ACQUIRE, &cmd_name) < 0)
- 		return -errno;
- =
-
-+	if (queued)
-+		*queued =3D !!(cmd_name.head.flags & KDBUS_NAME_IN_QUEUE);
-+
- 	return 0;
- }
- =
-
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index 0ae4c69..764ed42 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -242,7 +242,9 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
- 			_dbus_name_owner_change_func_t name_owner_change_func,
- 			void *user_data);
- =
-
--int _dbus_kernel_name_acquire(int fd, const char *name);
-+int _dbus_kernel_name_acquire(int fd, const char *name, bool allow_replace=
-ment,
-+				bool replace_existing, bool queue,
-+				bool *queued);
- int _dbus_kernel_add_match(int fd, uint64_t bloom_size, uint64_t bloom_n_h=
-ash,
- 				const struct _dbus_filter_condition *rule,
- 				int rule_len, unsigned int id);
 diff --git a/ell/dbus.c b/ell/dbus.c
-index 7d873ff..b9987a2 100644
+index b9987a2..dfeacbc 100644
 --- a/ell/dbus.c
 +++ b/ell/dbus.c
-@@ -33,6 +33,7 @@
- #include <string.h>
- #include <sys/socket.h>
- #include <sys/un.h>
-+#include <errno.h>
- =
-
- #include "util.h"
- #include "io.h"
-@@ -1087,6 +1088,32 @@ static bool kdbus_get_name_owner(struct l_dbus *dbus=
-, const char *name)
+@@ -784,6 +784,84 @@ static bool classic_get_name_owner(struct l_dbus *bus,=
+ const char *name)
  	return true;
  }
  =
 
-+static uint32_t kdbus_name_acquire(struct l_dbus *dbus, const char *name,
++struct name_request {
++	l_dbus_name_acquire_func_t callback;
++	void *user_data;
++	struct l_dbus *dbus;
++};
++
++enum dbus_name_flag {
++	DBUS_NAME_FLAG_ALLOW_REPLACEMENT	=3D 0x1,
++	DBUS_NAME_FLAG_REPLACE_EXISTING		=3D 0x2,
++	DBUS_NAME_FLAG_DO_NOT_QUEUE		=3D 0x4,
++};
++
++enum dbus_name_reply {
++	DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER	=3D 1,
++	DBUS_REQUEST_NAME_REPLY_IN_QUEUE	=3D 2,
++	DBUS_REQUEST_NAME_REPLY_EXISTS		=3D 3,
++	DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER	=3D 4,
++};
++
++static void request_name_reply_cb(struct l_dbus_message *reply, void *user=
+_data)
++{
++	struct name_request *req =3D user_data;
++	bool success =3D false, queued =3D false;
++	uint32_t retval;
++
++	if (!req->callback)
++		return;
++
++	/* No name owner yet */
++	if (l_dbus_message_is_error(reply))
++		goto call_back;
++
++	/* Shouldn't happen */
++	if (!l_dbus_message_get_arguments(reply, "u", &retval))
++		goto call_back;
++
++	success =3D (retval =3D=3D DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) ||
++		(retval =3D=3D DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER) ||
++		(retval =3D=3D DBUS_REQUEST_NAME_REPLY_IN_QUEUE);
++	queued =3D (retval =3D=3D DBUS_REQUEST_NAME_REPLY_IN_QUEUE);
++
++call_back:
++	req->callback(req->dbus, success, queued, req->user_data);
++}
++
++static uint32_t classic_name_acquire(struct l_dbus *dbus, const char *name,
 +					bool allow_replacement,
 +					bool replace_existing, bool queue,
 +					l_dbus_name_acquire_func_t callback,
 +					void *user_data)
 +{
-+	int fd =3D l_io_get_fd(dbus->io);
-+	bool queued =3D false;
-+	bool result;
-+	int r;
++	struct name_request *req;
++	struct l_dbus_message *message;
++	uint32_t flags =3D 0;
 +
-+	r =3D _dbus_kernel_name_acquire(fd, name, allow_replacement,
-+					replace_existing, queue, &queued);
++	req =3D l_new(struct name_request, 1);
++	req->dbus =3D dbus;
++	req->user_data =3D user_data;
++	req->callback =3D callback;
 +
-+	result =3D r >=3D 0 || r =3D=3D -EALREADY;
++	message =3D l_dbus_message_new_method_call(dbus, DBUS_SERVICE_DBUS,
++							DBUS_PATH_DBUS,
++							L_DBUS_INTERFACE_DBUS,
++							"RequestName");
 +
-+	if (!result)
-+		l_util_debug(dbus->debug_handler,
-+				dbus->debug_data, strerror(-r));
++	if (allow_replacement)
++		flags |=3D DBUS_NAME_FLAG_ALLOW_REPLACEMENT;
++	if (replace_existing)
++		flags |=3D DBUS_NAME_FLAG_REPLACE_EXISTING;
++	if (!queue)
++		flags |=3D DBUS_NAME_FLAG_DO_NOT_QUEUE;
 +
-+	if (callback)
-+		callback(dbus, result, queued, user_data);
++	l_dbus_message_set_arguments(message, "su", name, flags);
 +
-+	return 0;
++	return send_message(dbus, false, message, request_name_reply_cb,
++				req, free);
 +}
 +
- static const struct l_dbus_ops kdbus_ops =3D {
- 	.version  =3D 2,
- 	.free =3D kdbus_free,
-@@ -1097,6 +1124,7 @@ static const struct l_dbus_ops kdbus_ops =3D {
- 		.remove_match =3D kdbus_remove_match,
- 		.get_name_owner =3D kdbus_get_name_owner,
+ static const struct l_dbus_ops classic_ops =3D {
+ 	.version =3D 1,
+ 	.send_message =3D classic_send_message,
+@@ -794,6 +872,7 @@ static const struct l_dbus_ops classic_ops =3D {
+ 		.remove_match =3D classic_remove_match,
+ 		.get_name_owner =3D classic_get_name_owner,
  	},
-+	.name_acquire =3D kdbus_name_acquire,
++	.name_acquire =3D classic_name_acquire,
  };
  =
 
- static struct l_dbus *setup_kdbus(int fd)
+ static void name_owner_changed_cb(struct l_dbus_message *message,
 -- =
 
 2.5.0
 
 
---===============0101276847480458875==--
+--===============5789542359924606304==--
 
