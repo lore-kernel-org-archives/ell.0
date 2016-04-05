@@ -1,36 +1,58 @@
-Content-Type: multipart/mixed; boundary="===============3280985040172853882=="
+Content-Type: multipart/mixed; boundary="===============3677909393434499032=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dbus: Fix _dbus_kernel_calculate_bloom for multiple
- arguments
-Date: Mon, 04 Apr 2016 14:22:46 -0500
-Message-ID: <5702BF06.1090601@gmail.com>
-In-Reply-To: <1459478466-6299-4-git-send-email-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH] dbus: Avoid EPOLL_CTL_ADD on kdbus fd before hello command
+Date: Tue, 05 Apr 2016 04:04:40 +0200
+Message-ID: <1459821880-7050-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3280985040172853882==
+--===============3677909393434499032==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Reorder the kdbus initialisation to avoid epoll_ctl(fd, EPOLL_CTL_ADD,
+...) being called (from watch_add in l_io_new in dbus_init) before
+KDBUS_CMD_HELLO is sent.  On the kernel side the kdbus handle is in the
+BUS_OWNER state until the hello command changes is to CONNECTED state,
+and will exit from f_ops->poll and not do anything to make epoll work.
+handle->conn is created only once in CONNECTED state but only the
+first f_ops->poll call by a given eventpoll has a chance to add the
+handle->conn->wait to its poll table.
+---
+ ell/dbus.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-On 03/31/2016 09:41 PM, Andrew Zaborowski wrote:
-> l_dbus_message_iter_get_type can't be used to get the value of a
-> single argument and be called repeatedly, might crash if the number
-> and types of call arguments don't match the message arguments.
-> Add a comment explaining why arguments after first non-string argument
-> are not considered.
-> ---
->   ell/dbus-message.c | 32 ++++++++++++++++++++++++++------
->   1 file changed, 26 insertions(+), 6 deletions(-)
+diff --git a/ell/dbus.c b/ell/dbus.c
+index dfeacbc..94d819a 100644
+--- a/ell/dbus.c
++++ b/ell/dbus.c
+@@ -1216,8 +1216,6 @@ static struct l_dbus *setup_kdbus(int fd)
+ 	dbus =3D &kdbus->super;
+ 	dbus->driver =3D &kdbus_ops;
+ =
 
-Applied, thanks.
+-	dbus_init(dbus, fd);
+-
+ 	if (_dbus_kernel_hello(fd, "ell-connection",
+ 				&kdbus->bloom_size, &kdbus->bloom_n_hash,
+ 				&kdbus->kdbus_id, &kdbus->kdbus_pool,
+@@ -1227,6 +1225,8 @@ static struct l_dbus *setup_kdbus(int fd)
+ 		return NULL;
+ 	}
+ =
 
-Regards,
--Denis
++	dbus_init(dbus, fd);
++
+ 	dbus->unique_name =3D l_strdup_printf(":1.%llu", kdbus->kdbus_id);
+ =
+
+ 	l_idle_oneshot(kdbus_ready, dbus, NULL);
+-- =
+
+2.5.0
 
 
---===============3280985040172853882==--
+--===============3677909393434499032==--
 
