@@ -1,112 +1,56 @@
-Content-Type: multipart/mixed; boundary="===============1681740932386911607=="
+Content-Type: multipart/mixed; boundary="===============3605325802513241430=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 09/12] dbus: Fix the kdbus message encoding
-Date: Sun, 10 Apr 2016 06:02:41 +0200
-Message-ID: <1460260961-9183-9-git-send-email-andrew.zaborowski@intel.com>
-In-Reply-To: <1460260961-9183-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 10/12] dbus: Rename _dbus_header_is_valid to
+ _dbus1_header_is_valid
+Date: Sun, 10 Apr 2016 06:03:05 +0200
+Message-ID: <1460260987-9235-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1681740932386911607==
+--===============3605325802513241430==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Keep sending the message header+padding as a separate
-KDBUS_ITEM_PAYLOAD_OFF buffer like in DBus-1, the systemd busctl utility
-also seems to do that.  But fix what we send after the header.
 ---
- ell/dbus-kernel.c  | 17 +++++++++--------
- ell/dbus-message.c | 19 +++++++++++++++++++
- ell/dbus-private.h |  3 +++
- 3 files changed, 31 insertions(+), 8 deletions(-)
+ ell/dbus-private.h | 2 +-
+ ell/dbus-util.c    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
-index 7797153..da5920f 100644
---- a/ell/dbus-kernel.c
-+++ b/ell/dbus-kernel.c
-@@ -427,14 +427,15 @@ int _dbus_kernel_send(int fd, size_t bloom_size, uint=
-8_t bloom_n_hash,
- 	item->vec.size =3D header_size;
- 	item =3D KDBUS_ITEM_NEXT(item);
+diff --git a/ell/dbus-private.h b/ell/dbus-private.h
+index b7f00b6..c921cf3 100644
+--- a/ell/dbus-private.h
++++ b/ell/dbus-private.h
+@@ -153,7 +153,7 @@ bool _dbus_valid_method(const char *method);
+ bool _dbus_parse_unique_name(const char *name, uint64_t *out_id);
+ bool _dbus_valid_bus_name(const char *bus_name);
  =
 
--	body =3D _dbus_message_get_body(message, &body_size);
--	if (body_size > 0) {
--		item->size =3D KDBUS_ITEM_HEADER_SIZE + sizeof(struct kdbus_vec);
--		item->type =3D KDBUS_ITEM_PAYLOAD_VEC;
--		item->vec.address =3D (uintptr_t) body;
--		item->vec.size =3D body_size;
--		item =3D KDBUS_ITEM_NEXT(item);
--	}
-+	_dbus_message_build_contents(message, NULL, &body_size);
-+	body =3D alloca(body_size);
-+	_dbus_message_build_contents(message, body, NULL);
-+
-+	item->size =3D KDBUS_ITEM_HEADER_SIZE + sizeof(struct kdbus_vec);
-+	item->type =3D KDBUS_ITEM_PAYLOAD_VEC;
-+	item->vec.address =3D (uintptr_t) body;
-+	item->vec.size =3D body_size;
-+	item =3D KDBUS_ITEM_NEXT(item);
+-bool _dbus_header_is_valid(void *data, size_t size);
++bool _dbus1_header_is_valid(void *data, size_t size);
  =
 
- 	kmsg->size =3D (void *)item - (void *)kmsg;
- =
-
-diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-index dc05694..e46bfaa 100644
---- a/ell/dbus-message.c
-+++ b/ell/dbus-message.c
-@@ -107,6 +107,25 @@ void *_dbus_message_get_body(struct l_dbus_message *ms=
-g, size_t *out_size)
- 	return msg->body;
+ void _dbus_method_introspection(struct _dbus_method *info,
+ 					struct l_string *buf);
+diff --git a/ell/dbus-util.c b/ell/dbus-util.c
+index ab0600a..e0e2bc7 100644
+--- a/ell/dbus-util.c
++++ b/ell/dbus-util.c
+@@ -412,7 +412,7 @@ const char *_dbus_signature_end(const char *signature)
+ 	return NULL;
  }
  =
 
-+void _dbus_message_build_contents(struct l_dbus_message *msg,
-+					uint8_t *out_buf, size_t *out_size)
-+{
-+	if (_dbus_message_is_gvariant(msg)) {
-+		_gvariant_message_build_contents(msg->header_end, msg->body,
-+							msg->body_size,
-+							msg->signature,
-+							out_buf, out_size);
-+
-+		return;
-+	}
-+
-+	if (out_size)
-+		*out_size =3D msg->body_size;
-+
-+	if (out_buf)
-+		memcpy(out_buf, msg->body, msg->body_size);
-+}
-+
- void _dbus_message_set_serial(struct l_dbus_message *msg, uint32_t serial)
+-bool _dbus_header_is_valid(void *data, size_t size)
++bool _dbus1_header_is_valid(void *data, size_t size)
  {
- 	struct dbus_header *hdr =3D msg->header;
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index 764ed42..b7f00b6 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -141,6 +141,9 @@ bool dbus_message_compare(struct l_dbus_message *messag=
-e,
- bool _dbus_message_builder_mark(struct l_dbus_message_builder *builder);
- bool _dbus_message_builder_rewind(struct l_dbus_message_builder *builder);
- =
-
-+void _dbus_message_build_contents(struct l_dbus_message *msg,
-+					uint8_t *out_buf, size_t *out_size);
-+
- const char *_dbus_signature_end(const char *signature);
- =
-
- bool _dbus_valid_object_path(const char *path);
+ 	struct dbus_header *hdr;
+ 	size_t header_len;
 -- =
 
 2.5.0
 
 
---===============1681740932386911607==--
+--===============3605325802513241430==--
 
