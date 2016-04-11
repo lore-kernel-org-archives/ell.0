@@ -1,199 +1,75 @@
-Content-Type: multipart/mixed; boundary="===============6952876820830808663=="
+Content-Type: multipart/mixed; boundary="===============0684391274027173582=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: Andrzej Zaborowski <andrew.zaborowski@intel.com>
 Subject: Re: [PATCH 02/12] dbus: Validate field type in get_header_field
-Date: Mon, 11 Apr 2016 15:00:40 -0500
-Message-ID: <570C0268.3020301@gmail.com>
-In-Reply-To: <1460260961-9183-2-git-send-email-andrew.zaborowski@intel.com>
+Date: Mon, 11 Apr 2016 22:06:19 +0200
+Message-ID: <CAOq732Kmf1ktLcM8=tFwdD0iYrmGzuDSb+zFe74yM0P9M8B13A@mail.gmail.com>
+In-Reply-To: <570C0268.3020301@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6952876820830808663==
+--===============0684391274027173582==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi Denis,
 
-On 04/09/2016 11:02 PM, Andrew Zaborowski wrote:
-> It seems there's no place where we are validating the header
-> fields of incoming messages so let's do it here.
-> ---
->   ell/dbus-message.c | 35 ++++++++++++++++++++---------------
->   1 file changed, 20 insertions(+), 15 deletions(-)
+On 11 April 2016 at 22:00, Denis Kenzior <denkenz@gmail.com> wrote:
+> Hi Andrew,
 >
-> diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-> index ece98a4..6e2831b 100644
-> --- a/ell/dbus-message.c
-> +++ b/ell/dbus-message.c
-> @@ -554,7 +554,8 @@ static inline bool message_iter_next_entry(struct l_d=
-bus_message_iter *iter,
->   }
+> On 04/09/2016 11:02 PM, Andrew Zaborowski wrote:
+>>
+>> It seems there's no place where we are validating the header
+>> fields of incoming messages so let's do it here.
+>> ---
+>>   ell/dbus-message.c | 35 ++++++++++++++++++++---------------
+>>   1 file changed, 20 insertions(+), 15 deletions(-)
+>>
+>> diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+>> index ece98a4..6e2831b 100644
+>> --- a/ell/dbus-message.c
+>> +++ b/ell/dbus-message.c
+>> @@ -554,7 +554,8 @@ static inline bool message_iter_next_entry(struct
+>> l_dbus_message_iter *iter,
+>>   }
+>>
+>>   static bool get_header_field_from_iter_valist(struct l_dbus_message
+>> *message,
+>> -                                               uint8_t type, va_list
+>> args)
+>> +                                               uint8_t type, char
+>> data_type,
+>> +                                               va_list args)
+>>   {
+>>         struct l_dbus_message_iter header;
+>>         struct l_dbus_message_iter array, iter;
+>> @@ -591,6 +592,9 @@ static bool get_header_field_from_iter_valist(struct
+>> l_dbus_message *message,
+>>                 if (field_type !=3D type)
+>>                         continue;
+>>
+>> +               if (iter.sig_start[iter->sig_pos] !=3D data_type)
+>> +                       return false;
+>> +
 >
->   static bool get_header_field_from_iter_valist(struct l_dbus_message *me=
-ssage,
-> -						uint8_t type, va_list args)
-> +						uint8_t type, char data_type,
-> +						va_list args)
->   {
->   	struct l_dbus_message_iter header;
->   	struct l_dbus_message_iter array, iter;
-> @@ -591,6 +592,9 @@ static bool get_header_field_from_iter_valist(struct =
-l_dbus_message *message,
->   		if (field_type !=3D type)
->   			continue;
 >
-> +		if (iter.sig_start[iter->sig_pos] !=3D data_type)
-> +			return false;
-> +
+>   CC       ell/dbus-message.lo
+> ell/dbus-message.c: In function =E2=80=98get_header_field_from_iter_valis=
+t=E2=80=99:
+> ell/dbus-message.c:595:26: error: invalid type argument of =E2=80=98->=E2=
+=80=99 (have
+> =E2=80=98struct l_dbus_message_iter=E2=80=99)
+>    if (iter.sig_start[iter->sig_pos] !=3D data_type)
+>                           ^
+> Should that be iter.sig_pos?
 
-   CC       ell/dbus-message.lo
-ell/dbus-message.c: In function =E2=80=98get_header_field_from_iter_valist=
-=E2=80=99:
-ell/dbus-message.c:595:26: error: invalid type argument of =E2=80=98->=E2=
-=80=99 (have =
+Yes, unfortunately I did a poor job splitting my changes into patches
+and the intermediate states don't compile, for example after this
+patch 2 and after patch 4.  Note patches 4-5 also breaks something,
+I'm going to resend them when I fix the issue.
 
-=E2=80=98struct l_dbus_message_iter=E2=80=99)
-    if (iter.sig_start[iter->sig_pos] !=3D data_type)
-                           ^
-Should that be iter.sig_pos?
+Best regards
 
->   		return message_iter_next_entry_valist(&iter, args);
->   	}
->
-> @@ -598,13 +602,14 @@ static bool get_header_field_from_iter_valist(struc=
-t l_dbus_message *message,
->   }
->
->   static inline bool get_header_field(struct l_dbus_message *message,
-> -                                                uint8_t type, ...)
-> +					uint8_t type, char data_type, ...)
->   {
->   	va_list args;
->   	bool result;
->
-> -	va_start(args, type);
-> -	result =3D get_header_field_from_iter_valist(message, type, args);
-> +	va_start(args, data_type);
-> +	result =3D get_header_field_from_iter_valist(message, type, data_type,
-> +							args);
->   	va_end(args);
->
->   	return result;
-> @@ -658,7 +663,7 @@ struct l_dbus_message *dbus_message_from_blob(const v=
-oid *data, size_t size)
->
->   	message->sealed =3D true;
->
-> -	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE,
-> +	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
->   						&message->signature);
->
->   	return message;
-> @@ -690,7 +695,7 @@ struct l_dbus_message *dbus_message_build(void *heade=
-r, size_t header_size,
->
->   	message->sealed =3D true;
->
-> -	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE,
-> +	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
->   						&message->signature);
->
->   	return message;
-> @@ -1095,7 +1100,7 @@ static bool append_arguments(struct l_dbus_message =
-*message,
->   	build_header(message, signature);
->   	message->sealed =3D true;
->
-> -	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE,
-> +	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
->   						&message->signature);
->
->   	return true;
-> @@ -1130,7 +1135,7 @@ LIB_EXPORT bool l_dbus_message_get_error(struct l_d=
-bus_message *message,
->   		return false;
->
->   	if (!message->error_name)
-> -		get_header_field(message, DBUS_MESSAGE_FIELD_ERROR_NAME,
-> +		get_header_field(message, DBUS_MESSAGE_FIELD_ERROR_NAME, 's',
->   					&message->error_name);
->
->   	if (name)
-> @@ -1213,7 +1218,7 @@ LIB_EXPORT const char *l_dbus_message_get_path(stru=
-ct l_dbus_message *message)
->   		return NULL;
->
->   	if (!message->path)
-> -		get_header_field(message, DBUS_MESSAGE_FIELD_PATH,
-> +		get_header_field(message, DBUS_MESSAGE_FIELD_PATH, 'o',
->   					&message->path);
->
->   	return message->path;
-> @@ -1225,7 +1230,7 @@ LIB_EXPORT const char *l_dbus_message_get_interface=
-(struct l_dbus_message *messa
->   		return NULL;
->
->   	if (!message->interface)
-> -		get_header_field(message, DBUS_MESSAGE_FIELD_INTERFACE,
-> +		get_header_field(message, DBUS_MESSAGE_FIELD_INTERFACE, 's',
->   					&message->interface);
->
->   	return message->interface;
-> @@ -1237,7 +1242,7 @@ LIB_EXPORT const char *l_dbus_message_get_member(st=
-ruct l_dbus_message *message)
->   		return NULL;
->
->   	if (!message->member)
-> -		get_header_field(message, DBUS_MESSAGE_FIELD_MEMBER,
-> +		get_header_field(message, DBUS_MESSAGE_FIELD_MEMBER, 's',
->   					&message->member);
->
->   	return message->member;
-> @@ -1249,7 +1254,7 @@ LIB_EXPORT const char *l_dbus_message_get_destinati=
-on(struct l_dbus_message *mes
->   		return NULL;
->
->   	if (!message->destination)
-> -		get_header_field(message, DBUS_MESSAGE_FIELD_DESTINATION,
-> +		get_header_field(message, DBUS_MESSAGE_FIELD_DESTINATION, 's',
->   							&message->destination);
->
->   	return message->destination;
-> @@ -1261,7 +1266,7 @@ LIB_EXPORT const char *l_dbus_message_get_sender(st=
-ruct l_dbus_message *message)
->   		return NULL;
->
->   	if (!message->sender)
-> -		get_header_field(message, DBUS_MESSAGE_FIELD_SENDER,
-> +		get_header_field(message, DBUS_MESSAGE_FIELD_SENDER, 's',
->   					&message->sender);
->
->   	return message->sender;
-> @@ -1282,7 +1287,7 @@ uint32_t _dbus_message_get_reply_serial(struct l_db=
-us_message *message)
->   		return 0;
->
->   	if (message->reply_serial =3D=3D 0)
-> -		get_header_field(message, DBUS_MESSAGE_FIELD_REPLY_SERIAL,
-> +		get_header_field(message, DBUS_MESSAGE_FIELD_REPLY_SERIAL, 'u',
->   					&message->reply_serial);
->
->   	return message->reply_serial;
-> @@ -1809,7 +1814,7 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_bu=
-ilder_finalize(
->   	build_header(builder->message, generated_signature);
->   	builder->message->sealed =3D true;
->
-> -	get_header_field(builder->message, DBUS_MESSAGE_FIELD_SIGNATURE,
-> +	get_header_field(builder->message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
->   						&builder->message->signature);
->   	l_free(generated_signature);
->
->
-
-Regards,
--Denis
-
---===============6952876820830808663==--
+--===============0684391274027173582==--
 
