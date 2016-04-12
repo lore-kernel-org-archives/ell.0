@@ -1,124 +1,149 @@
-Content-Type: multipart/mixed; boundary="===============5908829704299616354=="
+Content-Type: multipart/mixed; boundary="===============6671365980565814788=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH v2 02/11] dbus: Check some more return values when parsing
- messages
-Date: Tue, 12 Apr 2016 03:56:06 +0200
-Message-ID: <1460426175-25501-2-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH v2 03/11] dbus: GVariant header field identifiers are 64-bit
+Date: Tue, 12 Apr 2016 03:56:07 +0200
+Message-ID: <1460426175-25501-3-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1460426175-25501-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5908829704299616354==
+--===============6671365980565814788==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Without this we will still segfault on some incoming messages.  Add a
-comment to clarify no get_header_field value check.
+For little-endian messages the 8-bit field identifiers were always
+right-padded with zeros (or should have been) which worked out to look
+same as 64-bit values in encoded messages so things would have
+magically worked, but not with big-endian messages.
 ---
- ell/dbus-kernel.c  |  2 ++
- ell/dbus-message.c | 27 ++++++++++++++++++---------
- 2 files changed, 20 insertions(+), 9 deletions(-)
+ ell/dbus-message.c | 46 ++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 32 insertions(+), 14 deletions(-)
 
-diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
-index 2b41177..09721c2 100644
---- a/ell/dbus-kernel.c
-+++ b/ell/dbus-kernel.c
-@@ -561,6 +561,8 @@ static int _dbus_kernel_make_message(struct kdbus_msg *=
-kmsg,
- =
-
- 	*out_message =3D dbus_message_build(header, header_size, body, body_size,
- 						NULL, 0);
-+	if (!*out_message)
-+		return -EBADMSG;
- =
-
- 	if (kmsg->src_id !=3D KDBUS_SRC_ID_KERNEL) {
- 		sprintf(unique_bus_name, ":1.%llu", kmsg->src_id);
 diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-index 25875a9..70f98b8 100644
+index 70f98b8..3bc52ea 100644
 --- a/ell/dbus-message.c
 +++ b/ell/dbus-message.c
-@@ -568,16 +568,21 @@ static bool get_header_field_from_iter_valist(struct =
+@@ -559,14 +559,16 @@ static bool get_header_field_from_iter_valist(struct =
 l_dbus_message *message,
- 	if (_dbus_message_is_gvariant(message)) {
- 		uint32_t header_length;
+ {
+ 	struct l_dbus_message_iter header;
+ 	struct l_dbus_message_iter array, iter;
+-	uint8_t endian, message_type, flags, version, field_type;
++	uint8_t endian, message_type, flags, version;
+ 	uint32_t body_length, serial;
++	bool found;
  =
 
--		_gvariant_iter_init(&header, message, "yyyyuuu", NULL,
--					message->header, message->header_size);
-+		if (!_gvariant_iter_init(&header, message, "yyyyuuu", NULL,
-+					message->header, message->header_size))
-+			return false;
-+
- 		if (!message_iter_next_entry(&header, &endian, &message_type,
- 						&flags, &version, &body_length,
+ 	if (!message->sealed)
+ 		return false;
+ =
+
+ 	if (_dbus_message_is_gvariant(message)) {
+ 		uint32_t header_length;
++		uint64_t field_type;
+ =
+
+ 		if (!_gvariant_iter_init(&header, message, "yyyyuuu", NULL,
+ 					message->header, message->header_size))
+@@ -577,13 +579,20 @@ static bool get_header_field_from_iter_valist(struct =
+l_dbus_message *message,
  						&serial, &header_length))
  			return false;
  =
 
--		_gvariant_iter_init(&header, message, "a(yv)", NULL,
--					message->header + 16, header_length);
--		_gvariant_iter_enter_array(&header, &array);
-+		if (!_gvariant_iter_init(&header, message, "a(yv)", NULL,
-+					message->header + 16, header_length))
-+			return false;
+-		if (!_gvariant_iter_init(&header, message, "a(yv)", NULL,
++		if (!_gvariant_iter_init(&header, message, "a(tv)", NULL,
+ 					message->header + 16, header_length))
+ 			return false;
+ =
+
+ 		if (!_gvariant_iter_enter_array(&header, &array))
+ 			return false;
 +
-+		if (!_gvariant_iter_enter_array(&header, &array))
-+			return false;
++		while ((found =3D message_iter_next_entry(&array,
++							&field_type, &iter)))
++			if (field_type =3D=3D type)
++				break;
  	} else {
++		uint8_t field_type;
++
  		_dbus1_iter_init(&header, message, "yyyyuua(yv)", NULL,
  				message->header, message->header_size);
-@@ -663,6 +668,7 @@ struct l_dbus_message *dbus_message_from_blob(const voi=
-d *data, size_t size)
  =
 
- 	message->sealed =3D true;
+@@ -591,19 +600,20 @@ static bool get_header_field_from_iter_valist(struct =
+l_dbus_message *message,
+ 						&message_type, &flags, &version,
+ 						&body_length, &serial, &array))
+ 			return false;
+-	}
  =
 
-+	/* If the field is absent message->signature will remain NULL */
- 	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
- 						&message->signature);
+-	while (message_iter_next_entry(&array, &field_type, &iter)) {
+-		if (field_type !=3D type)
+-			continue;
++		while ((found =3D message_iter_next_entry(&array,
++							&field_type, &iter)))
++			if (field_type =3D=3D type)
++				break;
++	}
  =
 
-@@ -695,6 +701,7 @@ struct l_dbus_message *dbus_message_build(void *header,=
- size_t header_size,
+-		if (iter.sig_start[iter.sig_pos] !=3D data_type)
+-			return false;
++	if (!found)
++		return false;
  =
 
- 	message->sealed =3D true;
+-		return message_iter_next_entry_valist(&iter, args);
+-	}
++	if (iter.sig_start[iter.sig_pos] !=3D data_type)
++		return false;
  =
 
-+	/* If the field is absent message->signature will remain NULL */
- 	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
- 						&message->signature);
+-	return false;
++	return message_iter_next_entry_valist(&iter, args);
+ }
  =
 
-@@ -1179,10 +1186,12 @@ LIB_EXPORT bool l_dbus_message_get_arguments(struct=
- l_dbus_message *message,
- 	if (!signature || strcmp(message->signature, signature))
- 		return false;
+ static inline bool get_header_field(struct l_dbus_message *message,
+@@ -795,8 +805,15 @@ static void add_field(struct dbus_builder *builder,
+ 			struct builder_driver *driver,
+ 			uint8_t field, const char *type, const void *value)
+ {
+-	driver->enter_struct(builder, "yv");
+-	driver->append_basic(builder, 'y', &field);
++	if (driver =3D=3D &gvariant_driver) {
++		uint64_t long_field =3D field;
++
++		driver->enter_struct(builder, "tv");
++		driver->append_basic(builder, 't', &long_field);
++	} else {
++		driver->enter_struct(builder, "yv");
++		driver->append_basic(builder, 'y', &field);
++	}
+ 	driver->enter_variant(builder, type);
+ 	driver->append_basic(builder, type[0], value);
+ 	driver->leave_variant(builder);
+@@ -823,7 +840,8 @@ static void build_header(struct l_dbus_message *message=
+, const char *signature)
+ 		driver->append_basic(builder, 'u', &field_length);
+ 	}
  =
 
--	if (_dbus_message_is_gvariant(message))
--		_gvariant_iter_init(&iter, message, message->signature, NULL,
--					message->body, message->body_size);
--	else
-+	if (_dbus_message_is_gvariant(message)) {
-+		if (!_gvariant_iter_init(&iter, message, message->signature,
-+						NULL, message->body,
-+						message->body_size))
-+			return false;
-+	} else
- 		_dbus1_iter_init(&iter, message, message->signature, NULL,
- 				message->body, message->body_size);
+-	driver->enter_array(builder, "(yv)");
++	driver->enter_array(builder, _dbus_message_is_gvariant(message) ?
++				"(tv)" : "(yv)");
  =
 
+ 	if (message->path) {
+ 		add_field(builder, driver, DBUS_MESSAGE_FIELD_PATH,
 -- =
 
 2.5.0
 
 
---===============5908829704299616354==--
+--===============6671365980565814788==--
 
