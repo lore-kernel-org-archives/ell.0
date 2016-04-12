@@ -1,207 +1,118 @@
-Content-Type: multipart/mixed; boundary="===============8723484902572972694=="
+Content-Type: multipart/mixed; boundary="===============5908829704299616354=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH v2 01/11] dbus: Validate field type in get_header_field
-Date: Tue, 12 Apr 2016 03:56:05 +0200
-Message-ID: <1460426175-25501-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH v2 02/11] dbus: Check some more return values when parsing
+ messages
+Date: Tue, 12 Apr 2016 03:56:06 +0200
+Message-ID: <1460426175-25501-2-git-send-email-andrew.zaborowski@intel.com>
+In-Reply-To: <1460426175-25501-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8723484902572972694==
+--===============5908829704299616354==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-It seems there's no place where we are validating the header
-fields of incoming messages so let's do it here.
+Without this we will still segfault on some incoming messages.  Add a
+comment to clarify no get_header_field value check.
 ---
- ell/dbus-message.c | 35 ++++++++++++++++++++---------------
- 1 file changed, 20 insertions(+), 15 deletions(-)
+ ell/dbus-kernel.c  |  2 ++
+ ell/dbus-message.c | 27 ++++++++++++++++++---------
+ 2 files changed, 20 insertions(+), 9 deletions(-)
 
+diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
+index 2b41177..09721c2 100644
+--- a/ell/dbus-kernel.c
++++ b/ell/dbus-kernel.c
+@@ -561,6 +561,8 @@ static int _dbus_kernel_make_message(struct kdbus_msg *=
+kmsg,
+ =
+
+ 	*out_message =3D dbus_message_build(header, header_size, body, body_size,
+ 						NULL, 0);
++	if (!*out_message)
++		return -EBADMSG;
+ =
+
+ 	if (kmsg->src_id !=3D KDBUS_SRC_ID_KERNEL) {
+ 		sprintf(unique_bus_name, ":1.%llu", kmsg->src_id);
 diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-index ece98a4..25875a9 100644
+index 25875a9..70f98b8 100644
 --- a/ell/dbus-message.c
 +++ b/ell/dbus-message.c
-@@ -554,7 +554,8 @@ static inline bool message_iter_next_entry(struct l_dbu=
-s_message_iter *iter,
- }
+@@ -568,16 +568,21 @@ static bool get_header_field_from_iter_valist(struct =
+l_dbus_message *message,
+ 	if (_dbus_message_is_gvariant(message)) {
+ 		uint32_t header_length;
  =
 
- static bool get_header_field_from_iter_valist(struct l_dbus_message *messa=
-ge,
--						uint8_t type, va_list args)
-+						uint8_t type, char data_type,
-+						va_list args)
- {
- 	struct l_dbus_message_iter header;
- 	struct l_dbus_message_iter array, iter;
-@@ -591,6 +592,9 @@ static bool get_header_field_from_iter_valist(struct l_=
-dbus_message *message,
- 		if (field_type !=3D type)
- 			continue;
- =
-
-+		if (iter.sig_start[iter.sig_pos] !=3D data_type)
+-		_gvariant_iter_init(&header, message, "yyyyuuu", NULL,
+-					message->header, message->header_size);
++		if (!_gvariant_iter_init(&header, message, "yyyyuuu", NULL,
++					message->header, message->header_size))
 +			return false;
 +
- 		return message_iter_next_entry_valist(&iter, args);
- 	}
+ 		if (!message_iter_next_entry(&header, &endian, &message_type,
+ 						&flags, &version, &body_length,
+ 						&serial, &header_length))
+ 			return false;
  =
 
-@@ -598,13 +602,14 @@ static bool get_header_field_from_iter_valist(struct =
-l_dbus_message *message,
- }
- =
-
- static inline bool get_header_field(struct l_dbus_message *message,
--                                                uint8_t type, ...)
-+					uint8_t type, char data_type, ...)
- {
- 	va_list args;
- 	bool result;
- =
-
--	va_start(args, type);
--	result =3D get_header_field_from_iter_valist(message, type, args);
-+	va_start(args, data_type);
-+	result =3D get_header_field_from_iter_valist(message, type, data_type,
-+							args);
- 	va_end(args);
- =
-
- 	return result;
-@@ -658,7 +663,7 @@ struct l_dbus_message *dbus_message_from_blob(const voi=
+-		_gvariant_iter_init(&header, message, "a(yv)", NULL,
+-					message->header + 16, header_length);
+-		_gvariant_iter_enter_array(&header, &array);
++		if (!_gvariant_iter_init(&header, message, "a(yv)", NULL,
++					message->header + 16, header_length))
++			return false;
++
++		if (!_gvariant_iter_enter_array(&header, &array))
++			return false;
+ 	} else {
+ 		_dbus1_iter_init(&header, message, "yyyyuua(yv)", NULL,
+ 				message->header, message->header_size);
+@@ -663,6 +668,7 @@ struct l_dbus_message *dbus_message_from_blob(const voi=
 d *data, size_t size)
  =
 
  	message->sealed =3D true;
  =
 
--	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE,
-+	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
++	/* If the field is absent message->signature will remain NULL */
+ 	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
  						&message->signature);
  =
 
- 	return message;
-@@ -690,7 +695,7 @@ struct l_dbus_message *dbus_message_build(void *header,=
+@@ -695,6 +701,7 @@ struct l_dbus_message *dbus_message_build(void *header,=
  size_t header_size,
  =
 
  	message->sealed =3D true;
  =
 
--	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE,
-+	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
++	/* If the field is absent message->signature will remain NULL */
+ 	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
  						&message->signature);
  =
 
- 	return message;
-@@ -1095,7 +1100,7 @@ static bool append_arguments(struct l_dbus_message *m=
-essage,
- 	build_header(message, signature);
- 	message->sealed =3D true;
- =
-
--	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE,
-+	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
- 						&message->signature);
- =
-
- 	return true;
-@@ -1130,7 +1135,7 @@ LIB_EXPORT bool l_dbus_message_get_error(struct l_dbu=
-s_message *message,
+@@ -1179,10 +1186,12 @@ LIB_EXPORT bool l_dbus_message_get_arguments(struct=
+ l_dbus_message *message,
+ 	if (!signature || strcmp(message->signature, signature))
  		return false;
  =
 
- 	if (!message->error_name)
--		get_header_field(message, DBUS_MESSAGE_FIELD_ERROR_NAME,
-+		get_header_field(message, DBUS_MESSAGE_FIELD_ERROR_NAME, 's',
- 					&message->error_name);
- =
-
- 	if (name)
-@@ -1213,7 +1218,7 @@ LIB_EXPORT const char *l_dbus_message_get_path(struct=
- l_dbus_message *message)
- 		return NULL;
- =
-
- 	if (!message->path)
--		get_header_field(message, DBUS_MESSAGE_FIELD_PATH,
-+		get_header_field(message, DBUS_MESSAGE_FIELD_PATH, 'o',
- 					&message->path);
- =
-
- 	return message->path;
-@@ -1225,7 +1230,7 @@ LIB_EXPORT const char *l_dbus_message_get_interface(s=
-truct l_dbus_message *messa
- 		return NULL;
- =
-
- 	if (!message->interface)
--		get_header_field(message, DBUS_MESSAGE_FIELD_INTERFACE,
-+		get_header_field(message, DBUS_MESSAGE_FIELD_INTERFACE, 's',
- 					&message->interface);
- =
-
- 	return message->interface;
-@@ -1237,7 +1242,7 @@ LIB_EXPORT const char *l_dbus_message_get_member(stru=
-ct l_dbus_message *message)
- 		return NULL;
- =
-
- 	if (!message->member)
--		get_header_field(message, DBUS_MESSAGE_FIELD_MEMBER,
-+		get_header_field(message, DBUS_MESSAGE_FIELD_MEMBER, 's',
- 					&message->member);
- =
-
- 	return message->member;
-@@ -1249,7 +1254,7 @@ LIB_EXPORT const char *l_dbus_message_get_destination=
-(struct l_dbus_message *mes
- 		return NULL;
- =
-
- 	if (!message->destination)
--		get_header_field(message, DBUS_MESSAGE_FIELD_DESTINATION,
-+		get_header_field(message, DBUS_MESSAGE_FIELD_DESTINATION, 's',
- 							&message->destination);
- =
-
- 	return message->destination;
-@@ -1261,7 +1266,7 @@ LIB_EXPORT const char *l_dbus_message_get_sender(stru=
-ct l_dbus_message *message)
- 		return NULL;
- =
-
- 	if (!message->sender)
--		get_header_field(message, DBUS_MESSAGE_FIELD_SENDER,
-+		get_header_field(message, DBUS_MESSAGE_FIELD_SENDER, 's',
- 					&message->sender);
- =
-
- 	return message->sender;
-@@ -1282,7 +1287,7 @@ uint32_t _dbus_message_get_reply_serial(struct l_dbus=
-_message *message)
- 		return 0;
- =
-
- 	if (message->reply_serial =3D=3D 0)
--		get_header_field(message, DBUS_MESSAGE_FIELD_REPLY_SERIAL,
-+		get_header_field(message, DBUS_MESSAGE_FIELD_REPLY_SERIAL, 'u',
- 					&message->reply_serial);
- =
-
- 	return message->reply_serial;
-@@ -1809,7 +1814,7 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_buil=
-der_finalize(
- 	build_header(builder->message, generated_signature);
- 	builder->message->sealed =3D true;
- =
-
--	get_header_field(builder->message, DBUS_MESSAGE_FIELD_SIGNATURE,
-+	get_header_field(builder->message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
- 						&builder->message->signature);
- 	l_free(generated_signature);
+-	if (_dbus_message_is_gvariant(message))
+-		_gvariant_iter_init(&iter, message, message->signature, NULL,
+-					message->body, message->body_size);
+-	else
++	if (_dbus_message_is_gvariant(message)) {
++		if (!_gvariant_iter_init(&iter, message, message->signature,
++						NULL, message->body,
++						message->body_size))
++			return false;
++	} else
+ 		_dbus1_iter_init(&iter, message, message->signature, NULL,
+ 				message->body, message->body_size);
  =
 
 -- =
@@ -209,5 +120,5 @@ der_finalize(
 2.5.0
 
 
---===============8723484902572972694==--
+--===============5908829704299616354==--
 
