@@ -1,44 +1,61 @@
-Content-Type: multipart/mixed; boundary="===============5135003751046937110=="
+Content-Type: multipart/mixed; boundary="===============8112368444572240086=="
 MIME-Version: 1.0
 From: Andrzej Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH v2 07/11] gvariant: Utility to build GVariant message out
- of header+body
-Date: Wed, 13 Apr 2016 00:06:18 +0200
-Message-ID: <CAOq732KwW=77E3tL6snMgZ5i3_TAJ16P6aiyyOrPBKXmZryLGA@mail.gmail.com>
-In-Reply-To: <570D6C5A.9080502@gmail.com>
+Subject: Re: [PATCH v2 08/11] dbus: Fix the kdbus message encoding
+Date: Wed, 13 Apr 2016 00:10:25 +0200
+Message-ID: <CAOq732K6svEyShfP5qziUMyggjDHG_A5tdTqRy32HxOnhX3tjQ@mail.gmail.com>
+In-Reply-To: <570D6CCC.4050903@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5135003751046937110==
+--===============8112368444572240086==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On 12 April 2016 at 23:44, Denis Kenzior <denkenz@gmail.com> wrote:
-> Hi Andrew,
->
->> +     out_buf[pos++] =3D 0;
+Hi Denis,
+
+On 12 April 2016 at 23:46, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 04/11/2016 08:56 PM, Andrew Zaborowski wrote:
 >>
->> +       out_buf[pos++] =3D '(';
->> +       memcpy(out_buf + pos, signature, strlen(signature));
->> +       pos +=3D strlen(signature);
->> +       out_buf[pos++] =3D ')';
+>> Keep sending the message header+padding as a separate
+>> KDBUS_ITEM_PAYLOAD_OFF buffer like in DBus-1, the systemd busctl utility
+>> also seems to do that.  But fix what we send after the header.
+>> ---
+>>   ell/dbus-kernel.c  | 17 +++++++++--------
+>>   ell/dbus-message.c | 19 +++++++++++++++++++
+>>   ell/dbus-private.h |  3 +++
+>>   3 files changed, 31 insertions(+), 8 deletions(-)
+>>
+>> diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
+>> index 7797153..da5920f 100644
+>> --- a/ell/dbus-kernel.c
+>> +++ b/ell/dbus-kernel.c
+>> @@ -427,14 +427,15 @@ int _dbus_kernel_send(int fd, size_t bloom_size,
+>> uint8_t bloom_n_hash,
+>>         item->vec.size =3D header_size;
+>>         item =3D KDBUS_ITEM_NEXT(item);
+>>
+>> -       body =3D _dbus_message_get_body(message, &body_size);
+>> -       if (body_size > 0) {
+>> -               item->size =3D KDBUS_ITEM_HEADER_SIZE + sizeof(struct
+>> kdbus_vec);
+>> -               item->type =3D KDBUS_ITEM_PAYLOAD_VEC;
+>> -               item->vec.address =3D (uintptr_t) body;
+>> -               item->vec.size =3D body_size;
+>> -               item =3D KDBUS_ITEM_NEXT(item);
+>> -       }
+>> +       _dbus_message_build_contents(message, NULL, &body_size);
+>> +       body =3D alloca(body_size);
 >
 >
-> Is this written down anywhere?  Why is the body enclosed in a structure?
+> This will fail badly somewhere around body_size >=3D 64k, depending on the
+> platform.  Why can't we write the contents directly like we used to?
 
-Well, the message signature is not a single dbus type but a sequence
-of types (possibly empty) and variant only accepts one dbus type so we
-need a structure.
-
->
-> Do we handle this structure in the parsing phase somewhere?  Can't seem to
-> locate that.
-
-In patch 04 in dbus_message_from_blob I believe the last
-_gvariant_iter_enter_struct() handles that.
+Hmm true.  But the body is now enclosed in a variant, so what buffer
+do you suggest to write that into and assign to item->ver.address?
 
 Best regards
 
---===============5135003751046937110==--
+--===============8112368444572240086==--
 
