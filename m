@@ -1,168 +1,186 @@
-Content-Type: multipart/mixed; boundary="===============0686152544753096120=="
+Content-Type: multipart/mixed; boundary="===============4434708629634132030=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH v2 05/11] dbus: GVariant message cookie and reply cookie are
- 64-bit
-Date: Tue, 12 Apr 2016 03:56:09 +0200
-Message-ID: <1460426175-25501-5-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH v2 06/11] dbus: Don't rely on 1st KDBUS_ITEM_PAYLOAD_OFF being
+ the header
+Date: Tue, 12 Apr 2016 03:56:10 +0200
+Message-ID: <1460426175-25501-6-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1460426175-25501-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0686152544753096120==
+--===============4434708629634132030==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-They're 64-bit but the systemd docs discourage using the upper 32 bits,
-so we take advantage of that and only support cookie values that fit 32
-bits to avoid too big code changes (we use the dbus1 header layout for
-the cookie storage so we'd have to move the cookie/serial out of that
-header like we do with sender, path, etc.).  This only tries to fix the
-parsing and encoding.
+The header of the GVariant message can't be split into multiple
+KDBUS_ITEM_PAYLOAD_OFF items according to the docs but it doesn't have
+to be split from the body.  We need to use dbus_message_from_blob
+because we can't know the header/body split positions without parsing
+the received contents.
 ---
- ell/dbus-message.c | 60 ++++++++++++++++++++++++++++++++++++++++++++++----=
+ ell/dbus-kernel.c | 75 +++++++++++++++------------------------------------=
 ----
- 1 file changed, 52 insertions(+), 8 deletions(-)
+ 1 file changed, 20 insertions(+), 55 deletions(-)
 
-diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-index 964b925..eb47eb3 100644
---- a/ell/dbus-message.c
-+++ b/ell/dbus-message.c
-@@ -111,13 +111,27 @@ void _dbus_message_set_serial(struct l_dbus_message *=
-msg, uint32_t serial)
+diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
+index 4a3aed0..7797153 100644
+--- a/ell/dbus-kernel.c
++++ b/ell/dbus-kernel.c
+@@ -449,84 +449,51 @@ int _dbus_kernel_send(int fd, size_t bloom_size, uint=
+8_t bloom_n_hash,
+ 	return 0;
+ }
+ =
+
+-static int collect_body_parts(struct kdbus_msg *kmsg,
+-					size_t header_size, void **out_header,
+-					size_t body_size, void **out_body)
++static void collect_body_parts(struct kdbus_msg *kmsg, size_t size, void *=
+*data)
  {
- 	struct dbus_header *hdr =3D msg->header;
+ 	struct kdbus_item *item;
+-	void *body;
+-	void *header;
+-	bool saw_header =3D false;
+ 	size_t offset =3D 0;
  =
 
--	hdr->serial =3D serial;
-+	if (_dbus_message_is_gvariant(msg)) {
-+		if (_dbus_message_get_endian(msg) =3D=3D
-+				DBUS_MESSAGE_LITTLE_ENDIAN) {
-+			hdr->serial =3D serial;
-+			hdr->field_length =3D 0;
-+		} else {
-+			hdr->serial =3D 0;
-+			hdr->field_length =3D serial;
-+		}
-+	} else
-+		hdr->serial =3D serial;
+-	header =3D l_malloc(header_size);
+-	if (!header)
+-		return -ENOMEM;
+-
+-	body =3D NULL;
+-
+-	if (body_size > 0) {
+-		body =3D l_malloc(body_size);
+-		if (!body) {
+-			l_free(header);
+-			return -ENOMEM;
+-		}
+-	}
++	*data =3D l_malloc(size);
+ =
+
+ 	KDBUS_ITEM_FOREACH(item, kmsg, items) {
+ 		switch (item->type) {
+ 		case KDBUS_ITEM_PAYLOAD_OFF:
+-			if (saw_header) {
+-				memcpy(body + offset,
+-					(void *)kmsg + item->vec.offset,
+-					item->vec.size);
++			memcpy(*data + offset, (void *) kmsg + item->vec.offset,
++				item->vec.size);
+ =
+
+-				offset +=3D item->vec.size;
+-			} else {
+-				memcpy(header, (void *)kmsg + item->vec.offset,
+-					item->vec.size);
+-				saw_header =3D true;
+-			}
++			offset +=3D item->vec.size;
+ =
+
+ 			break;
+ 		}
+ 	}
+-
+-	*out_body =3D body;
+-	*out_header =3D header;
+-
+-	return 0;
  }
  =
 
- uint32_t _dbus_message_get_serial(struct l_dbus_message *msg)
+ static int _dbus_kernel_make_message(struct kdbus_msg *kmsg,
+ 				struct l_dbus_message **out_message)
  {
- 	struct dbus_header *hdr =3D msg->header;
+ 	struct kdbus_item *item;
+-	void *header =3D 0;
+-	size_t header_size =3D 0;
++	void *data =3D 0;
++	size_t size =3D 0;
+ 	struct dbus_header *hdr;
+-	void *body =3D 0;
+-	size_t body_size =3D 0;
+-	int r;
+ 	const char *destination =3D 0;
+ 	char unique_bus_name[128];
  =
 
-+	if (_dbus_message_is_gvariant(msg) && _dbus_message_get_endian(msg) =3D=
-=3D
-+			DBUS_MESSAGE_BIG_ENDIAN)
-+		return hdr->field_length;
-+
- 	return hdr->serial;
- }
+ 	KDBUS_ITEM_FOREACH(item, kmsg, items) {
+ 		switch (item->type) {
+ 		case KDBUS_ITEM_PAYLOAD_OFF:
+-			if (!header_size) {
+-				header =3D (void *)kmsg + item->vec.offset;
++			if (!size) {
++				if (item->vec.size < sizeof(struct dbus_header))
++					return -EBADMSG;
  =
 
-@@ -294,7 +308,7 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_new_me=
-thod_return(
- 					DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED,
- 					hdr->version);
+-				header_size =3D item->vec.size;
++				hdr =3D (void *)kmsg + item->vec.offset;
++			}
  =
 
--	message->reply_serial =3D hdr->serial;
-+	message->reply_serial =3D _dbus_message_get_serial(method_call);
+-				if (!_dbus_header_is_valid(header, header_size))
+-					return -EBADMSG;
+-			} else
+-				body_size +=3D item->vec.size;
++			size +=3D item->vec.size;
  =
 
- 	sender =3D l_dbus_message_get_sender(method_call);
- 	if (sender)
-@@ -321,7 +335,7 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_new_er=
-ror_valist(
- 					DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED,
- 					hdr->version);
+ 			break;
+ 		case KDBUS_ITEM_PAYLOAD_MEMFD:
+-			if (!header_size)
++			if (!size)
+ 				return -EBADMSG;
  =
 
--	reply->reply_serial =3D hdr->serial;
-+	reply->reply_serial =3D _dbus_message_get_serial(method_call);
- =
-
- 	sender =3D l_dbus_message_get_sender(method_call);
- 	if (sender)
-@@ -641,8 +655,17 @@ static bool valid_header(const struct dbus_header *hdr)
- 	if (hdr->version !=3D 1 && hdr->version !=3D 2)
- 		return false;
- =
-
--	if (hdr->serial =3D=3D 0)
--		return false;
-+	if (hdr->version =3D=3D 1) {
-+		if (hdr->serial =3D=3D 0)
-+			return false;
-+	} else if (hdr->endian =3D=3D DBUS_MESSAGE_LITTLE_ENDIAN) {
-+		/* We don't support 64-bit GVariant cookies */
-+		if (hdr->serial =3D=3D 0 || hdr->field_length !=3D 0)
-+			return false;
-+	} else
-+		/* We don't support 64-bit GVariant cookies */
-+		if (hdr->serial !=3D 0 || hdr->field_length =3D=3D 0)
-+			return false;
- =
-
- 	return true;
- }
-@@ -916,8 +939,18 @@ static void build_header(struct l_dbus_message *messag=
-e, const char *signature)
+ 			return -ENOTSUP;
+@@ -541,23 +508,21 @@ static int _dbus_kernel_make_message(struct kdbus_msg=
+ *kmsg,
+ 		}
  	}
  =
 
- 	if (message->reply_serial !=3D 0) {
--		add_field(builder, driver, DBUS_MESSAGE_FIELD_REPLY_SERIAL,
-+		if (gvariant) {
-+			uint64_t reply_serial =3D message->reply_serial;
-+
-+			add_field(builder, driver,
-+					DBUS_MESSAGE_FIELD_REPLY_SERIAL,
-+					"t", &reply_serial);
-+		} else {
-+			add_field(builder, driver,
-+					DBUS_MESSAGE_FIELD_REPLY_SERIAL,
- 					"u", &message->reply_serial);
-+		}
-+
- 		message->reply_serial =3D 0;
- 	}
+-	if (!header)
++	if (!size)
+ 		return -EBADMSG;
  =
 
-@@ -1351,9 +1384,20 @@ uint32_t _dbus_message_get_reply_serial(struct l_dbu=
-s_message *message)
- 	if (unlikely(!message))
- 		return 0;
+-	hdr =3D header;
+ 	if (hdr->endian !=3D DBUS_NATIVE_ENDIAN)
+ 		return -EPROTOTYPE;
  =
 
--	if (message->reply_serial =3D=3D 0)
--		get_header_field(message, DBUS_MESSAGE_FIELD_REPLY_SERIAL, 'u',
-+	if (message->reply_serial =3D=3D 0) {
-+		if (_dbus_message_is_gvariant(message)) {
-+			uint64_t reply_serial;
-+
-+			get_header_field(message,
-+					DBUS_MESSAGE_FIELD_REPLY_SERIAL, 't',
-+					&reply_serial);
-+
-+			message->reply_serial =3D reply_serial;
-+		} else
-+			get_header_field(message,
-+					DBUS_MESSAGE_FIELD_REPLY_SERIAL, 'u',
- 					&message->reply_serial);
-+	}
+ 	if (hdr->version !=3D 2)
+ 		return -EPROTO;
  =
 
- 	return message->reply_serial;
- }
+-	r =3D collect_body_parts(kmsg, header_size, &header,
+-						body_size, &body);
+-	if (r < 0)
+-		return r;
++	collect_body_parts(kmsg, size, &data);
++
++	*out_message =3D dbus_message_from_blob(data, size);
++
++	l_free(data);
+ =
+
+-	*out_message =3D dbus_message_build(header, header_size, body, body_size,
+-						NULL, 0);
+ 	if (!*out_message)
+ 		return -EBADMSG;
+ =
+
 -- =
 
 2.5.0
 
 
---===============0686152544753096120==--
+--===============4434708629634132030==--
 
