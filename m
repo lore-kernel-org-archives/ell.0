@@ -1,83 +1,129 @@
-Content-Type: multipart/mixed; boundary="===============1056558454764117301=="
+Content-Type: multipart/mixed; boundary="===============1793668669413354024=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH v2 11/11] unit: Fix GVariant test messages
-Date: Tue, 12 Apr 2016 03:56:15 +0200
-Message-ID: <1460426175-25501-11-git-send-email-andrew.zaborowski@intel.com>
-In-Reply-To: <1460426175-25501-1-git-send-email-andrew.zaborowski@intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 2/3] key: Add Diffie-Hellman support using keyctl
+Date: Tue, 12 Apr 2016 09:42:43 -0700
+Message-ID: <1460479364-14478-2-git-send-email-mathew.j.martineau@linux.intel.com>
+In-Reply-To: <1460479364-14478-1-git-send-email-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1056558454764117301==
+--===============1793668669413354024==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-gvariant-message.c | 16 +++++++++-------
- 1 file changed, 9 insertions(+), 7 deletions(-)
+ ell/key.c | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/key.h |  6 ++++++
+ 2 files changed, 61 insertions(+)
 
-diff --git a/unit/test-gvariant-message.c b/unit/test-gvariant-message.c
-index c2cb811..b163a67 100644
---- a/unit/test-gvariant-message.c
-+++ b/unit/test-gvariant-message.c
-@@ -50,8 +50,8 @@ struct message_data {
- };
+diff --git a/ell/key.c b/ell/key.c
+index f9f8b7e..b0afc2f 100644
+--- a/ell/key.c
++++ b/ell/key.c
+@@ -34,6 +34,16 @@
+ #include "util.h"
+ #include "key.h"
  =
 
- static const unsigned char basic_1[] =3D {
--	0x6c, 0x01, 0x00, 0x02, 0x28, 0x00, 0x00, 0x00, 0x57, 0x04, 0x00, 0x00,
--	0x79, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+	0x6c, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x57, 0x04, 0x00, 0x00,
-+	0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
- 	0x2f, 0x66, 0x6f, 0x6f, 0x2f, 0x62, 0x61, 0x72, 0x00, 0x00, 0x6f, 0x00,
- 	0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
- 	0x46, 0x6f, 0x6f, 0x62, 0x61, 0x72, 0x00, 0x00, 0x73, 0x00, 0x00, 0x00,
-@@ -65,7 +65,8 @@ static const unsigned char basic_1[] =3D {
- 	0x01, 0xff, 0xe0, 0xff, 0x20, 0x00, 0x00, 0x00, 0xe8, 0xff, 0xff, 0xff,
- 	0x18, 0x00, 0x00, 0x00, 0x9d, 0xff, 0xff, 0xff, 0x7d, 0x7f, 0x00, 0x00,
- 	0x63, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
--	0x00, 0x00, 0x14, 0x40,
-+	0x00, 0x00, 0x14, 0x40, 0x00, 0x28, 0x62, 0x79, 0x6e, 0x71, 0x69, 0x75,
-+	0x78, 0x74, 0x64, 0x29, 0x89,
- };
++#ifndef KEYCTL_DH_COMPUTE
++#define KEYCTL_DH_COMPUTE 23
++
++struct keyctl_dh_params {
++	int32_t private;
++	int32_t prime;
++	int32_t base;
++};
++#endif
++
+ static int32_t keyring_base;
  =
 
- static const struct message_data message_data_basic_1 =3D {
-@@ -76,12 +77,12 @@ static const struct message_data message_data_basic_1 =
-=3D {
- 	.destination	=3D "foo.bar",
- 	.signature	=3D "bynqiuxtd",
- 	.binary		=3D basic_1,
--	.binary_len	=3D 184,
-+	.binary_len	=3D sizeof(basic_1),
- };
+ struct l_key {
+@@ -67,6 +77,16 @@ static long kernel_revoke_key(int32_t serial)
+ 	return syscall(__NR_keyctl, KEYCTL_REVOKE, serial);
+ }
  =
 
- static const unsigned char message_binary_complex_1[] =3D {
--	0x6c, 0x01, 0x00, 0x02, 0x4f, 0x00, 0x00, 0x00, 0x57, 0x04, 0x00, 0x00,
--	0x86, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+	0x6c, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x57, 0x04, 0x00, 0x00,
-+	0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
- 	0x2f, 0x63, 0x6f, 0x6d, 0x2f, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65,
- 	0x2f, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x00, 0x00, 0x6f, 0x00, 0x00,
- 	0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x6d, 0x65, 0x74, 0x68,
-@@ -99,7 +100,8 @@ static const unsigned char message_binary_complex_1[] =
-=3D {
- 	0x72, 0x76, 0x61, 0x6c, 0x64, 0x73, 0x00, 0x00, 0x73, 0x05, 0x00, 0x00,
- 	0x00, 0x00, 0x00, 0x00, 0x44, 0x65, 0x76, 0x65, 0x6c, 0x6f, 0x70, 0x65,
- 	0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x62, 0x0a,
--	0x1a, 0x34, 0x14,
-+	0x1a, 0x34, 0x14, 0x00, 0x28, 0x6f, 0x61, 0x7b, 0x73, 0x76, 0x7d, 0x29,
-+	0x96,
- };
++static long kernel_dh_compute(int32_t private, int32_t prime, int32_t base,
++			      void *payload, size_t len)
++{
++	struct keyctl_dh_params params =3D { .private =3D private,
++					   .prime =3D prime,
++					   .base =3D base };
++
++	return syscall(__NR_keyctl, KEYCTL_DH_COMPUTE, &params, payload, len);
++}
++
+ static bool setup_keyring_base(void)
+ {
+ 	keyring_base =3D kernel_add_key("keyring", "ell-keyring", 0, 0,
+@@ -155,3 +175,38 @@ LIB_EXPORT ssize_t l_key_get_size(struct l_key *key)
+ {
+ 	return kernel_read_key(key->serial, NULL, 0);
+ }
++
++static bool compute_common(struct l_key *base,
++			   struct l_key *private,
++			   struct l_key *prime,
++			   void *payload, size_t *len)
++{
++	long result_len;
++	bool usable_payload =3D *len !=3D 0;
++
++	result_len =3D kernel_dh_compute(private->serial, prime->serial,
++				       base->serial, payload, *len);
++
++	if (result_len > 0) {
++		*len =3D result_len;
++		return usable_payload;
++	} else {
++		return false;
++	}
++}
++
++LIB_EXPORT bool l_key_compute_dh_public(struct l_key *generator,
++					struct l_key *private,
++					struct l_key *prime,
++					void *payload, size_t *len)
++{
++	return compute_common(generator, private, prime, payload, len);
++}
++
++LIB_EXPORT bool l_key_compute_dh_secret(struct l_key *other_public,
++					struct l_key *private,
++					struct l_key *prime,
++					void *payload, size_t *len)
++{
++	return compute_common(other_public, private, prime, payload, len);
++}
+diff --git a/ell/key.h b/ell/key.h
+index 73c2c97..7d48c4d 100644
+--- a/ell/key.h
++++ b/ell/key.h
+@@ -48,6 +48,12 @@ bool l_key_extract(struct l_key *key, void *payload, siz=
+e_t *len);
  =
 
- static const struct message_data message_data_complex_1 =3D {
+ ssize_t l_key_get_size(struct l_key *key);
+ =
+
++bool l_key_compute_dh_public(struct l_key *generator, struct l_key *privat=
+e,
++			     struct l_key *prime, void *payload, size_t *len);
++
++bool l_key_compute_dh_secret(struct l_key *other_public, struct l_key *pri=
+vate,
++			     struct l_key *prime, void *payload, size_t *len);
++
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
-2.5.0
+2.8.1
 
 
---===============1056558454764117301==--
+--===============1793668669413354024==--
 
