@@ -1,186 +1,118 @@
-Content-Type: multipart/mixed; boundary="===============6901259918064299923=="
+Content-Type: multipart/mixed; boundary="===============4501940323116427515=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH v3 2/9] dbus: Don't rely on 1st KDBUS_ITEM_PAYLOAD_OFF being
- the header
-Date: Fri, 15 Apr 2016 02:33:55 +0200
-Message-ID: <1460680442-15201-2-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH v3 3/9] gvariant: New gvariant message format support
+Date: Fri, 15 Apr 2016 02:33:56 +0200
+Message-ID: <1460680442-15201-3-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1460680442-15201-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6901259918064299923==
+--===============4501940323116427515==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The header of the GVariant message can't be split into multiple
-KDBUS_ITEM_PAYLOAD_OFF items according to the docs but it doesn't have
-to be split from the body.  We need to use dbus_message_from_blob
-because we can't know the header/body split positions without parsing
-the received contents.
+Make the builder write a complete struct enclosed in a variant and add a
+utility to add the final framing offset to produce a single parseable
+GVariant blob.
 ---
- ell/dbus-kernel.c | 75 +++++++++++++++------------------------------------=
-----
- 1 file changed, 20 insertions(+), 55 deletions(-)
+ ell/gvariant-private.h |  4 ++++
+ ell/gvariant-util.c    | 44 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 48 insertions(+)
 
-diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
-index 4a3aed0..7797153 100644
---- a/ell/dbus-kernel.c
-+++ b/ell/dbus-kernel.c
-@@ -449,84 +449,51 @@ int _dbus_kernel_send(int fd, size_t bloom_size, uint=
-8_t bloom_n_hash,
- 	return 0;
- }
- =
-
--static int collect_body_parts(struct kdbus_msg *kmsg,
--					size_t header_size, void **out_header,
--					size_t body_size, void **out_body)
-+static void collect_body_parts(struct kdbus_msg *kmsg, size_t size, void *=
-*data)
- {
- 	struct kdbus_item *item;
--	void *body;
--	void *header;
--	bool saw_header =3D false;
- 	size_t offset =3D 0;
- =
-
--	header =3D l_malloc(header_size);
--	if (!header)
--		return -ENOMEM;
--
--	body =3D NULL;
--
--	if (body_size > 0) {
--		body =3D l_malloc(body_size);
--		if (!body) {
--			l_free(header);
--			return -ENOMEM;
--		}
--	}
-+	*data =3D l_malloc(size);
- =
-
- 	KDBUS_ITEM_FOREACH(item, kmsg, items) {
- 		switch (item->type) {
- 		case KDBUS_ITEM_PAYLOAD_OFF:
--			if (saw_header) {
--				memcpy(body + offset,
--					(void *)kmsg + item->vec.offset,
--					item->vec.size);
-+			memcpy(*data + offset, (void *) kmsg + item->vec.offset,
-+				item->vec.size);
- =
-
--				offset +=3D item->vec.size;
--			} else {
--				memcpy(header, (void *)kmsg + item->vec.offset,
--					item->vec.size);
--				saw_header =3D true;
--			}
-+			offset +=3D item->vec.size;
- =
-
- 			break;
- 		}
- 	}
--
--	*out_body =3D body;
--	*out_header =3D header;
--
--	return 0;
- }
- =
-
- static int _dbus_kernel_make_message(struct kdbus_msg *kmsg,
- 				struct l_dbus_message **out_message)
- {
- 	struct kdbus_item *item;
--	void *header =3D 0;
--	size_t header_size =3D 0;
-+	void *data =3D 0;
-+	size_t size =3D 0;
- 	struct dbus_header *hdr;
--	void *body =3D 0;
--	size_t body_size =3D 0;
--	int r;
- 	const char *destination =3D 0;
- 	char unique_bus_name[128];
- =
-
- 	KDBUS_ITEM_FOREACH(item, kmsg, items) {
- 		switch (item->type) {
- 		case KDBUS_ITEM_PAYLOAD_OFF:
--			if (!header_size) {
--				header =3D (void *)kmsg + item->vec.offset;
-+			if (!size) {
-+				if (item->vec.size < sizeof(struct dbus_header))
-+					return -EBADMSG;
- =
-
--				header_size =3D item->vec.size;
-+				hdr =3D (void *)kmsg + item->vec.offset;
-+			}
- =
-
--				if (!_dbus_header_is_valid(header, header_size))
--					return -EBADMSG;
--			} else
--				body_size +=3D item->vec.size;
-+			size +=3D item->vec.size;
- =
-
- 			break;
- 		case KDBUS_ITEM_PAYLOAD_MEMFD:
--			if (!header_size)
-+			if (!size)
- 				return -EBADMSG;
- =
-
- 			return -ENOTSUP;
-@@ -541,23 +508,21 @@ static int _dbus_kernel_make_message(struct kdbus_msg=
- *kmsg,
- 		}
- 	}
- =
-
--	if (!header)
-+	if (!size)
- 		return -EBADMSG;
- =
-
--	hdr =3D header;
- 	if (hdr->endian !=3D DBUS_NATIVE_ENDIAN)
- 		return -EPROTOTYPE;
- =
-
- 	if (hdr->version !=3D 2)
- 		return -EPROTO;
- =
-
--	r =3D collect_body_parts(kmsg, header_size, &header,
--						body_size, &body);
--	if (r < 0)
--		return r;
-+	collect_body_parts(kmsg, size, &data);
+diff --git a/ell/gvariant-private.h b/ell/gvariant-private.h
+index f8f1313..6c0005a 100644
+--- a/ell/gvariant-private.h
++++ b/ell/gvariant-private.h
+@@ -63,3 +63,7 @@ bool _gvariant_builder_leave_variant(struct dbus_builder =
+*builder);
+ bool _gvariant_builder_enter_array(struct dbus_builder *builder,
+ 					const char *signature);
+ bool _gvariant_builder_leave_array(struct dbus_builder *builder);
 +
-+	*out_message =3D dbus_message_from_blob(data, size);
++size_t _gvariant_message_finalize(size_t header_end,
++					void *body, size_t body_size,
++					const char *signature);
+diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
+index 0baf1c6..e07bd2f 100644
+--- a/ell/gvariant-util.c
++++ b/ell/gvariant-util.c
+@@ -1292,6 +1292,8 @@ char *_gvariant_builder_finish(struct dbus_builder *b=
+uilder,
+ {
+ 	char *signature;
+ 	struct container *root;
++	uint8_t *variant_buf;
++	size_t size;
+ =
+
+ 	if (unlikely(!builder))
+ 		return NULL;
+@@ -1307,9 +1309,30 @@ char *_gvariant_builder_finish(struct dbus_builder *=
+builder,
+ 	if (_gvariant_is_fixed_size(signature)) {
+ 		int alignment =3D _gvariant_get_alignment(signature);
+ 		grow_body(builder, 0, alignment);
 +
-+	l_free(data);
++		/* Empty struct or "unit type" is encoded one zero byte */
++		if (signature[0] =3D=3D '\0')
++			grow_body(builder, 1, 1);
+ 	} else
+ 		container_append_struct_offsets(root, builder);
  =
 
--	*out_message =3D dbus_message_build(header, header_size, body, body_size,
--						NULL, 0);
- 	if (!*out_message)
- 		return -EBADMSG;
++	/*
++	 * Make sure there's enough space after the body for the variant
++	 * signature written here but not included in the body size and
++	 * one framing offset value to be written in
++	 * _gvariant_message_finalize.
++	 */
++	size =3D 3 + strlen(signature) + 8;
++	if (builder->body_pos + size > builder->body_size)
++		builder->body =3D l_realloc(builder->body,
++						builder->body_pos + size);
++
++	variant_buf =3D builder->body + builder->body_pos;
++	*variant_buf++ =3D 0;
++	*variant_buf++ =3D '(';
++	variant_buf =3D mempcpy(variant_buf, signature, strlen(signature));
++	*variant_buf++ =3D ')';
++
+ 	*body =3D builder->body;
+ 	*body_size =3D builder->body_pos;
+ 	builder->body =3D NULL;
+@@ -1317,3 +1340,24 @@ char *_gvariant_builder_finish(struct dbus_builder *=
+builder,
  =
 
+ 	return signature;
+ }
++
++/*
++ * Write the header's framing offset after the body variant which is the
++ * last piece of data in the message after the header, the padding and
++ * the builder has written the message body.
++ */
++size_t _gvariant_message_finalize(size_t header_end,
++					void *body, size_t body_size,
++					const char *signature)
++{
++	size_t offset_start;
++	size_t offset_size;
++
++	offset_start =3D body_size + 3 + strlen(signature);
++
++	offset_size =3D offset_length(align_len(header_end, 8) + offset_start, 1);
++
++	write_word_le(body + offset_start, header_end, offset_size);
++
++	return align_len(header_end, 8) + offset_start + offset_size;
++}
 -- =
 
 2.5.0
 
 
---===============6901259918064299923==--
+--===============4501940323116427515==--
 
