@@ -1,66 +1,107 @@
-Content-Type: multipart/mixed; boundary="===============4068099754091499750=="
+Content-Type: multipart/mixed; boundary="===============5979563594797452754=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/2] dbus: Handle kdbus KDBUS_ITEM_REPLY_TIMEOUT / _DEAD
-Date: Mon, 18 Apr 2016 16:31:09 +0200
-Message-ID: <1460989877-20113-2-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH] dbus: Check message->sealed before get_header_field()
+Date: Mon, 18 Apr 2016 16:31:10 +0200
+Message-ID: <1460989877-20113-3-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1460989877-20113-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4068099754091499750==
+--===============5979563594797452754==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Generate DBus1-like error messages on kernel error notifications.
+Also make sure _dbus_message_get_reply_serial on kdbus doesn't overwrite
+message->reply_serial with uninitialised value.
 ---
- ell/dbus-kernel.c | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ ell/dbus-message.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
-index b5a07a5..4fd2f29 100644
---- a/ell/dbus-kernel.c
-+++ b/ell/dbus-kernel.c
-@@ -559,6 +559,7 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
- 	struct kdbus_item *item;
- 	int r;
- 	size_t min_size;
-+	const char *error;
+diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+index 86cec96..aecf398 100644
+--- a/ell/dbus-message.c
++++ b/ell/dbus-message.c
+@@ -1336,7 +1336,7 @@ LIB_EXPORT const char *l_dbus_message_get_path(struct=
+ l_dbus_message *message)
+ 	if (unlikely(!message))
+ 		return NULL;
  =
 
- 	memset(&recv_cmd, 0, sizeof(recv_cmd));
+-	if (!message->path)
++	if (!message->path && message->sealed)
+ 		get_header_field(message, DBUS_MESSAGE_FIELD_PATH, 'o',
+ 					&message->path);
  =
 
-@@ -601,6 +602,23 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
- 						user_data);
- 			break;
+@@ -1348,7 +1348,7 @@ LIB_EXPORT const char *l_dbus_message_get_interface(s=
+truct l_dbus_message *messa
+ 	if (unlikely(!message))
+ 		return NULL;
  =
 
-+		case KDBUS_ITEM_REPLY_TIMEOUT:
-+		case KDBUS_ITEM_REPLY_DEAD:
-+			if (item->type =3D=3D KDBUS_ITEM_REPLY_TIMEOUT)
-+				error =3D "Did not receive a reply.";
-+			else
-+				error =3D "Message recipient disconnected from "
-+					"message bus without replying.";
-+
-+			dbus_msg =3D _dbus_message_new_error(
-+					2, msg->cookie_reply, NULL,
-+					"org.freedesktop.DBus.Error.NoReply",
-+					error);
-+			if (dbus_msg)
-+				message_func(dbus_msg, user_data);
-+
-+			break;
-+
- 		default:
- 			break;
- 		}
+-	if (!message->interface)
++	if (!message->interface && message->sealed)
+ 		get_header_field(message, DBUS_MESSAGE_FIELD_INTERFACE, 's',
+ 					&message->interface);
+ =
+
+@@ -1360,7 +1360,7 @@ LIB_EXPORT const char *l_dbus_message_get_member(stru=
+ct l_dbus_message *message)
+ 	if (unlikely(!message))
+ 		return NULL;
+ =
+
+-	if (!message->member)
++	if (!message->member && message->sealed)
+ 		get_header_field(message, DBUS_MESSAGE_FIELD_MEMBER, 's',
+ 					&message->member);
+ =
+
+@@ -1372,7 +1372,7 @@ LIB_EXPORT const char *l_dbus_message_get_destination=
+(struct l_dbus_message *mes
+ 	if (unlikely(!message))
+ 		return NULL;
+ =
+
+-	if (!message->destination)
++	if (!message->destination && message->sealed)
+ 		get_header_field(message, DBUS_MESSAGE_FIELD_DESTINATION, 's',
+ 							&message->destination);
+ =
+
+@@ -1384,7 +1384,7 @@ LIB_EXPORT const char *l_dbus_message_get_sender(stru=
+ct l_dbus_message *message)
+ 	if (unlikely(!message))
+ 		return NULL;
+ =
+
+-	if (!message->sender)
++	if (!message->sender && message->sealed)
+ 		get_header_field(message, DBUS_MESSAGE_FIELD_SENDER, 's',
+ 					&message->sender);
+ =
+
+@@ -1405,9 +1405,9 @@ uint32_t _dbus_message_get_reply_serial(struct l_dbus=
+_message *message)
+ 	if (unlikely(!message))
+ 		return 0;
+ =
+
+-	if (message->reply_serial =3D=3D 0) {
++	if (message->reply_serial =3D=3D 0 && message->sealed) {
+ 		if (_dbus_message_is_gvariant(message)) {
+-			uint64_t reply_serial;
++			uint64_t reply_serial =3D 0;
+ =
+
+ 			get_header_field(message,
+ 					DBUS_MESSAGE_FIELD_REPLY_SERIAL, 't',
 -- =
 
 2.5.0
 
 
---===============4068099754091499750==--
+--===============5979563594797452754==--
 
