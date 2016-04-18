@@ -1,14 +1,15 @@
-Content-Type: multipart/mixed; boundary="===============8556931452762368346=="
+Content-Type: multipart/mixed; boundary="===============1101019512027454351=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v3 1/9] dbus: Update GVariant message header format
-Date: Mon, 18 Apr 2016 11:52:28 -0500
-Message-ID: <571510CC.6040106@gmail.com>
-In-Reply-To: <1460680442-15201-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH v3 2/9] dbus: Don't rely on 1st KDBUS_ITEM_PAYLOAD_OFF
+ being the header
+Date: Mon, 18 Apr 2016 11:52:45 -0500
+Message-ID: <571510DD.8090408@gmail.com>
+In-Reply-To: <1460680442-15201-2-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8556931452762368346==
+--===============1101019512027454351==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,18 +17,15 @@ Content-Transfer-Encoding: quoted-printable
 Hi Andrew,
 
 On 04/14/2016 07:33 PM, Andrew Zaborowski wrote:
-> In the current GVariant message format since about Jan 2015 there's no
-> body size field (it is reserved and must be sent as 0) or header size
-> information or signature.  The message needs to be parsed as a single
-> GVariant blob if we want to split it into a header and a body.
+> The header of the GVariant message can't be split into multiple
+> KDBUS_ITEM_PAYLOAD_OFF items according to the docs but it doesn't have
+> to be split from the body.  We need to use dbus_message_from_blob
+> because we can't know the header/body split positions without parsing
+> the received contents.
 > ---
->   ell/dbus-kernel.c  |   3 -
->   ell/dbus-message.c | 167 ++++++++++++++++++++++++++++++++++++++--------=
+>   ell/dbus-kernel.c | 75 +++++++++++++++---------------------------------=
 -------
->   ell/dbus-private.h |  16 ++++-
->   ell/dbus-util.c    |   4 +-
->   ell/dbus.c         |   4 +-
->   5 files changed, 137 insertions(+), 57 deletions(-)
+>   1 file changed, 20 insertions(+), 55 deletions(-)
 >
 
 Applied, thanks.
@@ -36,5 +34,5 @@ Regards,
 -Denis
 
 
---===============8556931452762368346==--
+--===============1101019512027454351==--
 
