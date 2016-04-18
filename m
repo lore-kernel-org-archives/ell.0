@@ -1,155 +1,129 @@
-Content-Type: multipart/mixed; boundary="===============4757213959742956755=="
+Content-Type: multipart/mixed; boundary="===============2068947307933630537=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH RESEND] build: Add sanitizer options
-Date: Fri, 15 Apr 2016 12:18:28 -0700
-Message-ID: <1460747908-8736-1-git-send-email-mathew.j.martineau@linux.intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/2] dbus: Add private _dbus_message_new_error
+Date: Mon, 18 Apr 2016 16:31:08 +0200
+Message-ID: <1460989877-20113-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4757213959742956755==
+--===============2068947307933630537==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Build using Address Sanitizer (asan), Leak Sanitizer (lsan), or
-Undefined Behavior Sanitizer (ubsan) by using one of these options for
-the configure script:
-
-  --enable-asan
-  --enable-lsan
-  --enable-ubsan
-
-For each of these to work, the compiler must support the requested
-sanitizer and the requisite libraries must be installed (libasan,
-liblsan, libubsan).
 ---
- acinclude.m4 | 36 ++++++++++++++++++++++++++++++++++++
- configure.ac | 45 +++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 81 insertions(+)
+ ell/dbus-message.c | 47 +++++++++++++++++++++++++++++++----------------
+ ell/dbus-private.h |  5 +++++
+ 2 files changed, 36 insertions(+), 16 deletions(-)
 
-diff --git a/acinclude.m4 b/acinclude.m4
-index 0ba4287..8aab4ee 100644
---- a/acinclude.m4
-+++ b/acinclude.m4
-@@ -10,6 +10,42 @@ AC_DEFUN([AC_PROG_CC_PIE], [
- 	])
- ])
+diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+index a409e53..86cec96 100644
+--- a/ell/dbus-message.c
++++ b/ell/dbus-message.c
+@@ -328,33 +328,32 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_new_=
+method_return(
+ 	return message;
+ }
  =
 
-+AC_DEFUN([AC_PROG_CC_ASAN], [
-+	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Daddress], ac_cv_pro=
-g_cc_asan, [
-+		echo 'void f(){}' > conftest.c
-+		if test -z "`${CC-cc} -fsanitize=3Daddress -c conftest.c 2>&1`"; then
-+			ac_cv_prog_cc_asan=3Dyes
-+		else
-+			ac_cv_prog_cc_asan=3Dno
-+		fi
-+		rm -rf conftest*
-+	])
-+])
-+
-+AC_DEFUN([AC_PROG_CC_LSAN], [
-+	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Dleak], ac_cv_prog_c=
-c_lsan, [
-+		echo 'void f(){}' > conftest.c
-+		if test -z "`${CC-cc} -fsanitize=3Dleak -c conftest.c 2>&1`"; then
-+			ac_cv_prog_cc_lsan=3Dyes
-+		else
-+			ac_cv_prog_cc_lsan=3Dno
-+		fi
-+		rm -rf conftest*
-+	])
-+])
-+
-+AC_DEFUN([AC_PROG_CC_UBSAN], [
-+	AC_CACHE_CHECK([whether ${CC-cc} accepts -fsanitize=3Dundefined], ac_cv_p=
-rog_cc_ubsan, [
-+		echo 'void f(){}' > conftest.c
-+		if test -z "`${CC-cc} -fsanitize=3Dundefined -c conftest.c 2>&1`"; then
-+			ac_cv_prog_cc_ubsan=3Dyes
-+		else
-+			ac_cv_prog_cc_ubsan=3Dno
-+		fi
-+		rm -rf conftest*
-+	])
-+])
-+
- AC_DEFUN([COMPILER_FLAGS], [
- 	if (test "${CFLAGS}" =3D ""); then
- 		CFLAGS=3D"-Wall -O2 -fsigned-char"
-diff --git a/configure.ac b/configure.ac
-index 39755fe..e4ca5b2 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -20,6 +20,9 @@ AC_LANG_C
+-LIB_EXPORT struct l_dbus_message *l_dbus_message_new_error_valist(
+-					struct l_dbus_message *method_call,
+-					const char *name,
+-					const char *format, va_list args)
++struct l_dbus_message *_dbus_message_new_error(uint8_t version,
++						uint32_t reply_serial,
++						const char *destination,
++						const char *name,
++						const char *error)
+ {
+-	char str[1024];
+ 	struct l_dbus_message *reply;
+-	struct dbus_header *hdr =3D method_call->header;
+-	const char *sender;
++	bool r;
  =
 
- AC_PROG_CC
- AC_PROG_CC_PIE
-+AC_PROG_CC_ASAN
-+AC_PROG_CC_LSAN
-+AC_PROG_CC_UBSAN
- AC_PROG_INSTALL
+ 	if (!_dbus_valid_interface(name))
+ 		return NULL;
  =
 
- AC_C_CHAR_UNSIGNED
-@@ -54,6 +57,48 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
- 	fi
- ])
+-	vsnprintf(str, sizeof(str), format, args);
+ 	reply =3D message_new_common(DBUS_MESSAGE_TYPE_ERROR,
+ 					DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED,
+-					hdr->version);
+-
+-	reply->reply_serial =3D _dbus_message_get_serial(method_call);
+-
+-	sender =3D l_dbus_message_get_sender(method_call);
+-	if (sender)
+-		reply->destination =3D l_strdup(sender);
++					version);
  =
 
-+save_LIBS=3D$LIBS
-+AC_CHECK_LIB(asan, __sanitizer_cov_init)
-+LIBS=3D$save_LIBS
-+
-+AC_ARG_ENABLE(asan, AC_HELP_STRING([--enable-asan],
-+			[enable linking with address sanitizer]), [
-+	if (test "${enableval}" =3D "yes" &&
-+				test "${ac_cv_lib_asan___sanitizer_cov_init}" =3D "yes" &&
-+				test "${ac_cv_prog_cc_asan}" =3D "yes"); then
-+		CFLAGS=3D"$CFLAGS -fsanitize=3Daddress";
-+		LDFLAGS=3D"$LDFLAGS -fsanitize=3Daddress"
-+	fi
-+])
-+
-+save_LIBS=3D$LIBS
-+AC_CHECK_LIB(lsan, __sanitizer_cov_init)
-+LIBS=3D$save_LIBS
-+
-+AC_ARG_ENABLE(lsan, AC_HELP_STRING([--enable-lsan],
-+			[enable linking with leak sanitizer]), [
-+	if (test "${enableval}" =3D "yes" &&
-+				test "${ac_cv_lib_lsan___sanitizer_cov_init}" =3D "yes" &&
-+				test "${ac_cv_prog_cc_lsan}" =3D "yes"); then
-+		CFLAGS=3D"$CFLAGS -fsanitize=3Dleak";
-+		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dleak"
-+	fi
-+])
-+
-+save_LIBS=3D$LIBS
-+AC_CHECK_LIB(ubsan, __sanitizer_cov_init)
-+LIBS=3D$save_LIBS
-+
-+AC_ARG_ENABLE(ubsan, AC_HELP_STRING([--enable-ubsan],
-+			[enable linking with undefined behavior sanitizer]), [
-+	if (test "${enableval}" =3D "yes" &&
-+				test "${ac_cv_lib_ubsan___sanitizer_cov_init}" =3D "yes" &&
-+				test "${ac_cv_prog_cc_ubsan}" =3D "yes"); then
-+		CFLAGS=3D"$CFLAGS -fsanitize=3Dundefined";
-+		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dundefined"
-+	fi
-+])
-+
- AC_CHECK_FUNC(signalfd, dummy=3Dyes,
- 			AC_MSG_ERROR(signalfd support is required))
+ 	reply->error_name =3D l_strdup(name);
++	reply->destination =3D l_strdup(destination);
++	reply->reply_serial =3D reply_serial;
  =
 
+-	if (!l_dbus_message_set_arguments(reply, "s", str)) {
++	if (error)
++		r =3D l_dbus_message_set_arguments(reply, "s", error);
++	else
++		r =3D l_dbus_message_set_arguments(reply, "");
++
++	if (!r) {
+ 		l_dbus_message_unref(reply);
+ 		return NULL;
+ 	}
+@@ -362,6 +361,22 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_new_e=
+rror_valist(
+ 	return reply;
+ }
+ =
+
++LIB_EXPORT struct l_dbus_message *l_dbus_message_new_error_valist(
++					struct l_dbus_message *method_call,
++					const char *name,
++					const char *format, va_list args)
++{
++	char str[1024];
++	struct dbus_header *hdr =3D method_call->header;
++
++	vsnprintf(str, sizeof(str), format, args);
++
++	return _dbus_message_new_error(hdr->version,
++					_dbus_message_get_serial(method_call),
++					l_dbus_message_get_sender(method_call),
++					name, str);
++}
++
+ LIB_EXPORT struct l_dbus_message *l_dbus_message_new_error(
+ 					struct l_dbus_message *method_call,
+ 					const char *name,
+diff --git a/ell/dbus-private.h b/ell/dbus-private.h
+index 63c239b..030ce0b 100644
+--- a/ell/dbus-private.h
++++ b/ell/dbus-private.h
+@@ -141,6 +141,11 @@ struct l_dbus_message *_dbus_message_new_signal(uint8_=
+t version,
+ 						const char *path,
+ 						const char *interface,
+ 						const char *name);
++struct l_dbus_message *_dbus_message_new_error(uint8_t version,
++						uint32_t reply_serial,
++						const char *destination,
++						const char *name,
++						const char *error);
+ =
+
+ struct l_dbus_message *dbus_message_from_blob(const void *data, size_t siz=
+e);
+ struct l_dbus_message *dbus_message_build(void *header, size_t header_size,
 -- =
 
-2.8.1
+2.5.0
 
 
---===============4757213959742956755==--
+--===============2068947307933630537==--
 
