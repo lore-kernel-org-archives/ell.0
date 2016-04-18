@@ -1,129 +1,66 @@
-Content-Type: multipart/mixed; boundary="===============2068947307933630537=="
+Content-Type: multipart/mixed; boundary="===============4068099754091499750=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/2] dbus: Add private _dbus_message_new_error
-Date: Mon, 18 Apr 2016 16:31:08 +0200
-Message-ID: <1460989877-20113-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] dbus: Handle kdbus KDBUS_ITEM_REPLY_TIMEOUT / _DEAD
+Date: Mon, 18 Apr 2016 16:31:09 +0200
+Message-ID: <1460989877-20113-2-git-send-email-andrew.zaborowski@intel.com>
+In-Reply-To: <1460989877-20113-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2068947307933630537==
+--===============4068099754091499750==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Generate DBus1-like error messages on kernel error notifications.
 ---
- ell/dbus-message.c | 47 +++++++++++++++++++++++++++++++----------------
- ell/dbus-private.h |  5 +++++
- 2 files changed, 36 insertions(+), 16 deletions(-)
+ ell/dbus-kernel.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
 
-diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-index a409e53..86cec96 100644
---- a/ell/dbus-message.c
-+++ b/ell/dbus-message.c
-@@ -328,33 +328,32 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_new_=
-method_return(
- 	return message;
- }
+diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
+index b5a07a5..4fd2f29 100644
+--- a/ell/dbus-kernel.c
++++ b/ell/dbus-kernel.c
+@@ -559,6 +559,7 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
+ 	struct kdbus_item *item;
+ 	int r;
+ 	size_t min_size;
++	const char *error;
  =
 
--LIB_EXPORT struct l_dbus_message *l_dbus_message_new_error_valist(
--					struct l_dbus_message *method_call,
--					const char *name,
--					const char *format, va_list args)
-+struct l_dbus_message *_dbus_message_new_error(uint8_t version,
-+						uint32_t reply_serial,
-+						const char *destination,
-+						const char *name,
-+						const char *error)
- {
--	char str[1024];
- 	struct l_dbus_message *reply;
--	struct dbus_header *hdr =3D method_call->header;
--	const char *sender;
-+	bool r;
+ 	memset(&recv_cmd, 0, sizeof(recv_cmd));
  =
 
- 	if (!_dbus_valid_interface(name))
- 		return NULL;
+@@ -601,6 +602,23 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
+ 						user_data);
+ 			break;
  =
 
--	vsnprintf(str, sizeof(str), format, args);
- 	reply =3D message_new_common(DBUS_MESSAGE_TYPE_ERROR,
- 					DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED,
--					hdr->version);
--
--	reply->reply_serial =3D _dbus_message_get_serial(method_call);
--
--	sender =3D l_dbus_message_get_sender(method_call);
--	if (sender)
--		reply->destination =3D l_strdup(sender);
-+					version);
- =
-
- 	reply->error_name =3D l_strdup(name);
-+	reply->destination =3D l_strdup(destination);
-+	reply->reply_serial =3D reply_serial;
- =
-
--	if (!l_dbus_message_set_arguments(reply, "s", str)) {
-+	if (error)
-+		r =3D l_dbus_message_set_arguments(reply, "s", error);
-+	else
-+		r =3D l_dbus_message_set_arguments(reply, "");
++		case KDBUS_ITEM_REPLY_TIMEOUT:
++		case KDBUS_ITEM_REPLY_DEAD:
++			if (item->type =3D=3D KDBUS_ITEM_REPLY_TIMEOUT)
++				error =3D "Did not receive a reply.";
++			else
++				error =3D "Message recipient disconnected from "
++					"message bus without replying.";
 +
-+	if (!r) {
- 		l_dbus_message_unref(reply);
- 		return NULL;
- 	}
-@@ -362,6 +361,22 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_new_e=
-rror_valist(
- 	return reply;
- }
- =
-
-+LIB_EXPORT struct l_dbus_message *l_dbus_message_new_error_valist(
-+					struct l_dbus_message *method_call,
-+					const char *name,
-+					const char *format, va_list args)
-+{
-+	char str[1024];
-+	struct dbus_header *hdr =3D method_call->header;
++			dbus_msg =3D _dbus_message_new_error(
++					2, msg->cookie_reply, NULL,
++					"org.freedesktop.DBus.Error.NoReply",
++					error);
++			if (dbus_msg)
++				message_func(dbus_msg, user_data);
 +
-+	vsnprintf(str, sizeof(str), format, args);
++			break;
 +
-+	return _dbus_message_new_error(hdr->version,
-+					_dbus_message_get_serial(method_call),
-+					l_dbus_message_get_sender(method_call),
-+					name, str);
-+}
-+
- LIB_EXPORT struct l_dbus_message *l_dbus_message_new_error(
- 					struct l_dbus_message *method_call,
- 					const char *name,
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index 63c239b..030ce0b 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -141,6 +141,11 @@ struct l_dbus_message *_dbus_message_new_signal(uint8_=
-t version,
- 						const char *path,
- 						const char *interface,
- 						const char *name);
-+struct l_dbus_message *_dbus_message_new_error(uint8_t version,
-+						uint32_t reply_serial,
-+						const char *destination,
-+						const char *name,
-+						const char *error);
- =
-
- struct l_dbus_message *dbus_message_from_blob(const void *data, size_t siz=
-e);
- struct l_dbus_message *dbus_message_build(void *header, size_t header_size,
+ 		default:
+ 			break;
+ 		}
 -- =
 
 2.5.0
 
 
---===============2068947307933630537==--
+--===============4068099754091499750==--
 
