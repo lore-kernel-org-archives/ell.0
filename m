@@ -1,61 +1,81 @@
-Content-Type: multipart/mixed; boundary="===============6634147360807291265=="
+Content-Type: multipart/mixed; boundary="===============2442898542003787259=="
 MIME-Version: 1.0
-From: Andrzej Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH v3 4/9] gvariant: Fix empty structure/array parsing and
- error check
-Date: Fri, 22 Apr 2016 12:30:45 +0200
-Message-ID: <CAOq732+JQReatBfaZ2Xd9vszWQO88MBfpOCNGWOU+9Vo_XOPdA@mail.gmail.com>
-In-Reply-To: <57198D26.20402@gmail.com>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH 1/2] util: Add suffix check for a string
+Date: Fri, 22 Apr 2016 15:06:54 -0700
+Message-ID: <1461362815-57501-1-git-send-email-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6634147360807291265==
+--===============2442898542003787259==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+---
+ ell/util.c | 27 +++++++++++++++++++++++++++
+ ell/util.h |  1 +
+ 2 files changed, 28 insertions(+)
 
-On 22 April 2016 at 04:32, Denis Kenzior <denkenz@gmail.com> wrote:
-> Hi Andrew,
->
->>>
->>>
->>> So I have a nagging bad feeling about this one.  The code of this
->>> function
->>> was copied from _gvariant_valid_signature.  So changing this strongly
->>> implies changing _gvariant_valid_signature as well...
->>
->>
->> So _gvariant_valid_signature is used in two places in ell, one is
->> _gvariant_builder_enter_struct where we want to check for a sequence
->> of dbus types like in a message signature, so yes, it should accept an
->> empty string.  The other place is unit/test-gvariant-util.c where
->> we're trying to validate a single data type signature so the current
->> logic is ok.  I'll change the unit test to do "valid =3D
->> (_gvariant_num_children(test->signature) =3D=3D 1)" instead, and add a
->> struct unit test...
->>
->
-> This reminds me.  DBus classic does not accept empty structures.  This is=
- a
-> kdbus invention.  Refer to DBus specification:
-> "Empty structures are not allowed; there must be at least one type code
-> between the parentheses."
->
-> I have never been able to come up with a practical utility for empty
-> structures for kdbus.  Nevertheless, the signature logic in gvariant-util=
- is
-> subtly different from dbus-util.
+diff --git a/ell/util.c b/ell/util.c
+index f920895..895f95f 100644
+--- a/ell/util.c
++++ b/ell/util.c
+@@ -444,6 +444,33 @@ LIB_EXPORT bool l_str_has_prefix(const char *str, cons=
+t char *prefix)
+ }
+ =
 
-I see now.  It seems that other than the struct enclosing the gvariant
-message body we will never see empty structs, but we need to be able
-to parse and build them for this one use case and for completness.
-I'll add explicit checks for empty signature before the
-_gvariant_valid_signature and _gvariant_num_children calls used with
-structs.
+ /**
++ * l_str_has_suffix:
++ * @str: A string to be examined
++ * @suffix: Suffix string
++ *
++ * Determines if the string given by @str ends with the specified @suffix.
++ *
++ * Returns: True if @str ends with the specified @suffix.  False otherwise.
++ */
++LIB_EXPORT bool l_str_has_suffix(const char *str, const char *suffix)
++{
++	int str_len_diff;
++
++	if (unlikely(!str))
++		return false;
++
++	if (unlikely(!suffix))
++		return false;
++
++	str_len_diff =3D strlen(str) - strlen(suffix);
++
++	if (str_len_diff < 0)
++		return false;
++
++	return !strcmp(&str[str_len_diff], suffix);
++}
++
++/**
+  * l_util_hexstring:
+  * @buf: buffer pointer
+  * @len: length of buffer
+diff --git a/ell/util.h b/ell/util.h
+index f6a88a0..92e7c8a 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -208,6 +208,7 @@ char **l_strsplit_set(const char *str, const char *sepa=
+rators);
+ char *l_strjoinv(char **str_array, const char delim);
+ =
 
-Best regards
+ bool l_str_has_prefix(const char *str, const char *prefix);
++bool l_str_has_suffix(const char *str, const char *suffix);
+ =
 
---===============6634147360807291265==--
+ char *l_util_hexstring(const unsigned char *buf, size_t len);
+ unsigned char *l_util_from_hexstring(const char *str, size_t *out_len);
+-- =
+
+2.5.0
+
+
+--===============2442898542003787259==--
 
