@@ -1,65 +1,54 @@
-Content-Type: multipart/mixed; boundary="===============0771890823853368587=="
+Content-Type: multipart/mixed; boundary="===============4489568451385138563=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] dbus: Handle kdbus KDBUS_ITEM_REPLY_TIMEOUT / _DEAD
-Date: Sat, 23 Apr 2016 03:10:02 +0200
-Message-ID: <1461373807-19793-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 1/5] gvariant: _gvariant_num_children error check
+Date: Sat, 23 Apr 2016 03:10:03 +0200
+Message-ID: <1461373807-19793-2-git-send-email-andrew.zaborowski@intel.com>
+In-Reply-To: <1461373807-19793-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0771890823853368587==
+--===============4489568451385138563==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Generate DBus1-like error messages on kernel error notifications.
 ---
- ell/dbus-kernel.c | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ ell/gvariant-util.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
-index b5a07a5..4fd2f29 100644
---- a/ell/dbus-kernel.c
-+++ b/ell/dbus-kernel.c
-@@ -559,6 +559,7 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
- 	struct kdbus_item *item;
- 	int r;
- 	size_t min_size;
-+	const char *error;
+diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
+index 88bb74e..17606f8 100644
+--- a/ell/gvariant-util.c
++++ b/ell/gvariant-util.c
+@@ -374,7 +374,7 @@ static bool gvariant_iter_init_internal(struct l_dbus_m=
+essage_iter *iter,
+ 		unsigned int alignment : 4;
+ 		size_t end;		/* Index past the end of the type */
+ 	} *children;
+-	uint8_t n_children;
++	int n_children;
  =
 
- 	memset(&recv_cmd, 0, sizeof(recv_cmd));
+ 	if (sig_end) {
+ 		size_t len =3D sig_end - sig_start;
+@@ -392,6 +392,9 @@ static bool gvariant_iter_init_internal(struct l_dbus_m=
+essage_iter *iter,
+ 	iter->pos =3D 0;
  =
 
-@@ -601,6 +602,23 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
- 						user_data);
- 			break;
+ 	n_children =3D _gvariant_num_children(subsig);
++	if (n_children < 0)
++		return false;
++
+ 	children =3D l_new(struct gvariant_type_info, n_children);
  =
 
-+		case KDBUS_ITEM_REPLY_TIMEOUT:
-+		case KDBUS_ITEM_REPLY_DEAD:
-+			if (item->type =3D=3D KDBUS_ITEM_REPLY_TIMEOUT)
-+				error =3D "Did not receive a reply.";
-+			else
-+				error =3D "Message recipient disconnected from "
-+					"message bus without replying.";
-+
-+			dbus_msg =3D _dbus_message_new_error(
-+					2, msg->cookie_reply, NULL,
-+					"org.freedesktop.DBus.Error.NoReply",
-+					error);
-+			if (dbus_msg)
-+				message_func(dbus_msg, user_data);
-+
-+			break;
-+
- 		default:
- 			break;
- 		}
+ 	for (p =3D sig_start, i =3D 0; i < n_children; i++) {
 -- =
 
 2.5.0
 
 
---===============0771890823853368587==--
+--===============4489568451385138563==--
 
