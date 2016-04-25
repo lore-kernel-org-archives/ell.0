@@ -1,109 +1,78 @@
-Content-Type: multipart/mixed; boundary="===============7960251851739367874=="
+Content-Type: multipart/mixed; boundary="===============3794506853285889225=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 5/5] unit: Gvariant method call with no arguments tests
-Date: Sat, 23 Apr 2016 03:10:07 +0200
-Message-ID: <1461373807-19793-6-git-send-email-andrew.zaborowski@intel.com>
-In-Reply-To: <1461373807-19793-1-git-send-email-andrew.zaborowski@intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH 1/2] util: Add suffix check for a string
+Date: Mon, 25 Apr 2016 09:16:02 -0700
+Message-ID: <alpine.OSX.2.20.1604250914100.1671@mjmartin-mac01.local>
+In-Reply-To: <1461362815-57501-1-git-send-email-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7960251851739367874==
+--===============3794506853285889225==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-gvariant-message.c | 51 ++++++++++++++++++++++++++++++++++++++++=
-++++
- 1 file changed, 51 insertions(+)
 
-diff --git a/unit/test-gvariant-message.c b/unit/test-gvariant-message.c
-index 836ba29..85326a6 100644
---- a/unit/test-gvariant-message.c
-+++ b/unit/test-gvariant-message.c
-@@ -110,6 +110,30 @@ static const struct message_data message_data_complex_=
-1 =3D {
- 	.binary_len	=3D sizeof(message_binary_complex_1),
- };
- =
+Tim,
 
-+static const unsigned char message_binary_empty_sig[] =3D {
-+	0x6c, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x57, 0x04, 0x00, 0x00,
-+	0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+	0x2f, 0x66, 0x6f, 0x6f, 0x2f, 0x62, 0x61, 0x72, 0x00, 0x00, 0x6f, 0x00,
-+	0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+	0x46, 0x6f, 0x6f, 0x62, 0x61, 0x72, 0x00, 0x00, 0x73, 0x00, 0x00, 0x00,
-+	0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+	0x66, 0x6f, 0x6f, 0x2e, 0x62, 0x61, 0x72, 0x00, 0x00, 0x73, 0x00, 0x00,
-+	0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-+	0x66, 0x6f, 0x6f, 0x2e, 0x62, 0x61, 0x72, 0x00, 0x00, 0x73, 0x13, 0x29,
-+	0x42, 0x5a, 0x00, 0x00, 0x00, 0x00, 0x28, 0x29, 0x6e,
-+};
-+
-+static const struct message_data message_data_empty_sig =3D {
-+	.type		=3D "method_call",
-+	.path		=3D "/foo/bar",
-+	.interface	=3D "foo.bar",
-+	.member		=3D "Foobar",
-+	.destination	=3D "foo.bar",
-+	.signature	=3D "",
-+	.binary		=3D message_binary_empty_sig,
-+	.binary_len	=3D sizeof(message_binary_empty_sig),
-+};
-+
- static struct l_dbus_message *check_message(const struct message_data *msg=
-_data)
- {
- 	struct l_dbus_message *msg;
-@@ -303,6 +327,28 @@ static void build_complex_1(const void *data)
- 	compare_message(msg, data);
- }
- =
+On Fri, 22 Apr 2016, Tim Kourt wrote:
 
-+static void check_empty_sig(const void *data)
-+{
-+	struct l_dbus_message *msg =3D check_message(data);
-+
-+	assert(l_dbus_message_get_arguments(msg, ""));
-+
-+	l_dbus_message_unref(msg);
-+}
-+
-+static void build_empty_sig(const void *data)
-+{
-+	struct l_dbus_message *msg =3D build_message(data);
-+	bool result;
-+
-+	result =3D l_dbus_message_set_arguments(msg, "");
-+	assert(result);
-+
-+	_dbus_message_set_serial(msg, 1111);
-+
-+	compare_message(msg, data);
-+}
-+
- static void builder_rewind(const void *data)
- {
- 	struct l_dbus_message *msg =3D build_message(data);
-@@ -364,6 +410,11 @@ int main(int argc, char *argv[])
- 	l_test_add("Complex 1 (build)", build_complex_1,
- 						&message_data_complex_1);
- =
+> ---
+> ell/util.c | 27 +++++++++++++++++++++++++++
+> ell/util.h |  1 +
+> 2 files changed, 28 insertions(+)
+>
+> diff --git a/ell/util.c b/ell/util.c
+> index f920895..895f95f 100644
+> --- a/ell/util.c
+> +++ b/ell/util.c
+> @@ -444,6 +444,33 @@ LIB_EXPORT bool l_str_has_prefix(const char *str, co=
+nst char *prefix)
+> }
+>
+> /**
+> + * l_str_has_suffix:
+> + * @str: A string to be examined
+> + * @suffix: Suffix string
+> + *
+> + * Determines if the string given by @str ends with the specified @suffi=
+x.
+> + *
+> + * Returns: True if @str ends with the specified @suffix.  False otherwi=
+se.
+> + */
+> +LIB_EXPORT bool l_str_has_suffix(const char *str, const char *suffix)
+> +{
+> +	int str_len_diff;
+> +
+> +	if (unlikely(!str))
+> +		return false;
+> +
+> +	if (unlikely(!suffix))
+> +		return false;
+> +
+> +	str_len_diff =3D strlen(str) - strlen(suffix);
 
-+	l_test_add("Empty signature (parse)", check_empty_sig,
-+						&message_data_empty_sig);
-+	l_test_add("Empty signature (build)", build_empty_sig,
-+						&message_data_empty_sig);
-+
- 	l_test_add("Message Builder Rewind Complex 1", builder_rewind,
- 						&message_data_complex_1);
- =
+strlen returns size_t (unsigned), which is a 64-bit type on 64-bit =
 
--- =
+platforms. Hopefully no one is throwing around 4+GB null-terminated =
 
-2.5.0
+strings, but you never know. You can make sure the suffix is shorter =
+
+before calculating the difference, avoiding signed integers altogether.
+
+> +
+> +	if (str_len_diff < 0)
+> +		return false;
+> +
+> +	return !strcmp(&str[str_len_diff], suffix);
+> +}
 
 
---===============7960251851739367874==--
+Regards,
+
+Mat
+
+--===============3794506853285889225==--
 
