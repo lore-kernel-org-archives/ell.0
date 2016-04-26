@@ -1,59 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============6852214216143449070=="
+Content-Type: multipart/mixed; boundary="===============8657917904310879423=="
 MIME-Version: 1.0
-From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH v2 2/2] unit: Add tests for the suffix check for a string
-Date: Mon, 25 Apr 2016 13:51:03 -0700
-Message-ID: <1461617463-31883-2-git-send-email-tim.a.kourt@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v2 1/2] util: Add suffix check for a string
+Date: Mon, 25 Apr 2016 22:48:02 -0500
+Message-ID: <571EE4F2.609@gmail.com>
 In-Reply-To: <1461617463-31883-1-git-send-email-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6852214216143449070==
+--===============8657917904310879423==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-util.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+Hi Tim,
 
-diff --git a/unit/test-util.c b/unit/test-util.c
-index d72646f..427c74a 100644
---- a/unit/test-util.c
-+++ b/unit/test-util.c
-@@ -62,6 +62,18 @@ static void test_from_hexstring(const void *test_data)
- 	assert(!bytes);
- }
- =
+On 04/25/2016 03:51 PM, Tim Kourt wrote:
+> ---
+>   ell/util.c | 32 ++++++++++++++++++++++++++++++++
+>   ell/util.h |  1 +
+>   2 files changed, 33 insertions(+)
+>
 
-+static void test_has_suffix(const void *test_data)
-+{
-+	const char *str =3D "string";
-+	const char *suffix =3D "ing";
-+
-+	assert(l_str_has_suffix(str, suffix));
-+	assert(l_str_has_suffix(str, str));
-+	assert(!l_str_has_suffix(NULL, suffix));
-+	assert(!l_str_has_suffix(str, NULL));
-+	assert(!l_str_has_suffix(suffix, str));
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -69,5 +81,7 @@ int main(int argc, char *argv[])
- 	l_test_add("l_util_hexstring", test_hexstring, NULL);
- 	l_test_add("l_util_from_hexstring", test_from_hexstring, NULL);
- =
+Both applied, thanks.
 
-+	l_test_add("l_util_has_suffix", test_has_suffix, NULL);
-+
- 	return l_test_run();
- }
--- =
-
-2.5.0
+Regards,
+-Denis
 
 
---===============6852214216143449070==--
+--===============8657917904310879423==--
 
