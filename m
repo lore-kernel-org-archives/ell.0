@@ -1,70 +1,63 @@
-Content-Type: multipart/mixed; boundary="===============0431852412188439685=="
+Content-Type: multipart/mixed; boundary="===============5037953718566154877=="
 MIME-Version: 1.0
 From: Andrzej Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 04/11] dbus: Handle the 'y' type in append_arguments
-Date: Fri, 29 Apr 2016 23:43:52 +0200
-Message-ID: <CAOq732Jn165YoabH8Nqqy53E9XQ54te+2yawV3Kz9P_0UgT2ZA@mail.gmail.com>
-In-Reply-To: <572382C5.9010701@gmail.com>
+Subject: Re: [PATCH 08/11] dbus: Remove memcpy and fix setting of FD_CLOEXEC
+ on FDs
+Date: Fri, 29 Apr 2016 23:46:33 +0200
+Message-ID: <CAOq732JMe5qh4YVv1u0ZMDnWkS5UPwMNE5+Ed4gy0HMJPBBxGQ@mail.gmail.com>
+In-Reply-To: <572387B6.7090706@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0431852412188439685==
+--===============5037953718566154877==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Denis,
 
-On 29 April 2016 at 17:50, Denis Kenzior <denkenz@gmail.com> wrote:
+On 29 April 2016 at 18:11, Denis Kenzior <denkenz@gmail.com> wrote:
 > On 04/28/2016 10:32 PM, Andrew Zaborowski wrote:
 >>
->> FD values can't be handled same as int32 values ('i' and 'u').
+>> Make sure the size of the FD buffer passed to recvmsg is properly
+>> aligned, etc. and remove the memcpy which seems unneeded.  Also it looks
+>> like the fcntl() calls operated on one dbus socket FD instead of the
+>> message FDs.
 >> ---
->>   ell/dbus-message.c | 15 ++++++++++++++-
->>   1 file changed, 14 insertions(+), 1 deletion(-)
+>>   ell/dbus.c | 14 +++++++-------
+>>   1 file changed, 7 insertions(+), 7 deletions(-)
 >>
->> diff --git a/ell/dbus-message.c b/ell/dbus-message.c
->> index 8151c69..5f91360 100644
->> --- a/ell/dbus-message.c
->> +++ b/ell/dbus-message.c
->> @@ -1137,7 +1137,6 @@ static bool append_arguments(struct l_dbus_message
->> *message,
->>                 }
->>                 case 'i':
->>                 case 'u':
->> -               case 'h':
->>                 {
->>                         uint32_t u =3D va_arg(args, uint32_t);
->>
->> @@ -1146,6 +1145,20 @@ static bool append_arguments(struct l_dbus_message
->> *message,
->>
->>                         break;
->>                 }
->> +               case 'h':
->> +               {
->> +                       int fd =3D va_arg(args, int);
->> +
->> +                       if (!driver->append_basic(builder, *s,
->> +
->> &message->num_fds))
->> +                               goto error;
->> +
->> +                       if (message->num_fds < L_ARRAY_SIZE(message->fds=
-))
->> +                               message->fds[message->num_fds++] =3D
->> +                                       fd =3D fcntl(fd, F_DUPFD_CLOEXEC,
->> 3);
->> +
+>> diff --git a/ell/dbus.c b/ell/dbus.c
+>> index 70da849..fc0f243 100644
+>> --- a/ell/dbus.c
+>> +++ b/ell/dbus.c
+>> @@ -638,7 +638,8 @@ static struct l_dbus_message
+>> *classic_recv_message(struct l_dbus *dbus)
+>>         ssize_t len;
+>>         void *header, *body;
+>>         size_t header_size, body_size;
+>> -       int fds[16];
+>> +       uint8_t fd_buf[CMSG_SPACE(16 * sizeof(int))];
 >
 >
-> This compound assignment is a bit weird, especially given that fd is not
-> used afterward.  Can we simply assign
-> message->fds[...] =3D fcntl?
+> 'man cmsg' recommends doing:
+>            union {
+>                /* ancillary data buffer, wrapped in a union in order to
+> ensure
+>                   it is suitably aligned */
+>                char buf[CMSG_SPACE(sizeof myfds)];
+>                struct cmsghdr align;
+>            } u;
+>
+> And it looks like systemd does the same.  This is probably what we should=
+ do
+> as well.
 
-Oops sure, this was a typo I think.
+Ah yes, I didn't think about the alignment, will fix and resend.  BTW
+I my unit test (last patch) also has another issue so I need to fix
+that too.
 
 Best regards
 
---===============0431852412188439685==--
+--===============5037953718566154877==--
 
