@@ -1,131 +1,61 @@
-Content-Type: multipart/mixed; boundary="===============3935845816308952350=="
+Content-Type: multipart/mixed; boundary="===============1044347778868774082=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 3/5] dbus: Add and validate the UNIX_FDS msg header field
-Date: Sat, 30 Apr 2016 00:44:00 +0200
-Message-ID: <1461969842-11704-3-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 4/5] unit: Add UNIX_FDS header fields in FD test messages
+Date: Sat, 30 Apr 2016 00:44:01 +0200
+Message-ID: <1461969842-11704-4-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1461969842-11704-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3935845816308952350==
+--===============1044347778868774082==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/dbus-message.c | 50 +++++++++++++++++++++++++++++++++++++++-----------
- 1 file changed, 39 insertions(+), 11 deletions(-)
+ unit/test-dbus-message.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-index 038d44d..0fe76de 100644
---- a/ell/dbus-message.c
-+++ b/ell/dbus-message.c
-@@ -764,11 +764,22 @@ struct l_dbus_message *dbus_message_from_blob(const v=
-oid *data, size_t size,
- 		get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE,
- 					'g', &message->signature);
+diff --git a/unit/test-dbus-message.c b/unit/test-dbus-message.c
+index 52df9d8..0c14a7b 100644
+--- a/unit/test-dbus-message.c
++++ b/unit/test-dbus-message.c
+@@ -2608,21 +2608,22 @@ static void compare_files(int a, int b)
  =
 
--	if (num_fds > L_ARRAY_SIZE(message->fds)) {
--		for (i =3D L_ARRAY_SIZE(message->fds); i < num_fds; i++)
--			close(fds[i]);
-+	if (num_fds) {
-+		uint32_t unix_fds;
+ static const unsigned char message_binary_basic_h[] =3D {
+ 	0x6c, 0x01, 0x00, 0x01, 0x04, 0x00, 0x00, 0x00,
+-	0x00, 0x00, 0x00, 0x00, 0x6f, 0x00, 0x00, 0x00,
++	0x00, 0x00, 0x00, 0x00, 0x78, 0x00, 0x00, 0x00,
+ 	0x01, 0x01, 0x6f, 0x00, 0x13, 0x00, 0x00, 0x00,
+ 	0x2f, 0x63, 0x6f, 0x6d, 0x2f, 0x65, 0x78, 0x61,
+ 	0x6d, 0x70, 0x6c, 0x65, 0x2f, 0x6f, 0x62, 0x6a,
+ 	0x65, 0x63, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00,
+-	0x06, 0x01, 0x73, 0x00, 0x0b, 0x00, 0x00, 0x00,
+-	0x63, 0x6f, 0x6d, 0x2e, 0x65, 0x78, 0x61, 0x6d,
+-	0x70, 0x6c, 0x65, 0x00, 0x00, 0x00, 0x00, 0x00,
++	0x03, 0x01, 0x73, 0x00, 0x06, 0x00, 0x00, 0x00,
++	0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x00, 0x00,
+ 	0x02, 0x01, 0x73, 0x00, 0x15, 0x00, 0x00, 0x00,
+ 	0x63, 0x6f, 0x6d, 0x2e, 0x65, 0x78, 0x61, 0x6d,
+ 	0x70, 0x6c, 0x65, 0x2e, 0x69, 0x6e, 0x74, 0x65,
+ 	0x72, 0x66, 0x61, 0x63, 0x65, 0x00, 0x00, 0x00,
+-	0x03, 0x01, 0x73, 0x00, 0x06, 0x00, 0x00, 0x00,
+-	0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x00, 0x00,
++	0x06, 0x01, 0x73, 0x00, 0x0b, 0x00, 0x00, 0x00,
++	0x63, 0x6f, 0x6d, 0x2e, 0x65, 0x78, 0x61, 0x6d,
++	0x70, 0x6c, 0x65, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 	0x08, 0x01, 0x67, 0x00, 0x01, 0x68, 0x00, 0x00,
++	0x09, 0x01, 0x75, 0x00, 0x01, 0x00, 0x00, 0x00,
+ 	0x00, 0x00, 0x00, 0x00,
+ };
  =
 
--		num_fds =3D L_ARRAY_SIZE(message->fds);
-+		if (!get_header_field(message, DBUS_MESSAGE_FIELD_UNIX_FDS,
-+					'u', &unix_fds))
-+			goto free;
-+
-+		if (num_fds > unix_fds)
-+			num_fds =3D unix_fds;
-+
-+		if (num_fds > L_ARRAY_SIZE(message->fds)) {
-+			for (i =3D L_ARRAY_SIZE(message->fds); i < num_fds; i++)
-+				close(fds[i]);
-+
-+			num_fds =3D L_ARRAY_SIZE(message->fds);
-+		}
- 	}
- =
-
- 	message->num_fds =3D num_fds;
-@@ -777,7 +788,8 @@ struct l_dbus_message *dbus_message_from_blob(const voi=
-d *data, size_t size,
- 	return message;
- =
-
- free:
--	l_free(message);
-+	l_dbus_message_unref(message);
-+
- 	return NULL;
- }
- =
-
-@@ -809,19 +821,31 @@ struct l_dbus_message *dbus_message_build(void *heade=
-r, size_t header_size,
- 	message->header =3D header;
- 	message->body_size =3D body_size;
- 	message->body =3D body;
-+	message->sealed =3D true;
- =
-
--	if (num_fds > L_ARRAY_SIZE(message->fds)) {
--		for (i =3D L_ARRAY_SIZE(message->fds); i < num_fds; i++)
--			close(fds[i]);
-+	if (num_fds) {
-+		uint32_t unix_fds;
- =
-
--		num_fds =3D L_ARRAY_SIZE(message->fds);
-+		if (!get_header_field(message, DBUS_MESSAGE_FIELD_UNIX_FDS,
-+					'u', &unix_fds)) {
-+			l_free(message);
-+			return NULL;
-+		}
-+
-+		if (num_fds > unix_fds)
-+			num_fds =3D unix_fds;
-+
-+		if (num_fds > L_ARRAY_SIZE(message->fds)) {
-+			for (i =3D L_ARRAY_SIZE(message->fds); i < num_fds; i++)
-+				close(fds[i]);
-+
-+			num_fds =3D L_ARRAY_SIZE(message->fds);
-+		}
- 	}
- =
-
- 	message->num_fds =3D num_fds;
- 	memcpy(message->fds, fds, num_fds * sizeof(int));
- =
-
--	message->sealed =3D true;
--
- 	/* If the field is absent message->signature will remain NULL */
- 	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
- 						&message->signature);
-@@ -1013,6 +1037,10 @@ static void build_header(struct l_dbus_message *mess=
-age, const char *signature)
- 		add_field(builder, driver, DBUS_MESSAGE_FIELD_SIGNATURE,
- 				"g", signature);
- =
-
-+	if (message->num_fds)
-+		add_field(builder, driver, DBUS_MESSAGE_FIELD_UNIX_FDS,
-+					"u", &message->num_fds);
-+
- 	driver->leave_array(builder);
- =
-
- 	generated_signature =3D driver->finish(builder, &message->header,
 -- =
 
 2.5.0
 
 
---===============3935845816308952350==--
+--===============1044347778868774082==--
 
