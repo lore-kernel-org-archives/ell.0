@@ -1,14 +1,15 @@
-Content-Type: multipart/mixed; boundary="===============5513910695061968376=="
+Content-Type: multipart/mixed; boundary="===============1326853027943342569=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/5] dbus: Handle the 'h' type in append_arguments
-Date: Fri, 29 Apr 2016 18:20:19 -0500
-Message-ID: <5723EC33.8040101@gmail.com>
-In-Reply-To: <1461969842-11704-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 2/5] dbus: Remove memcpy and fix setting of FD_CLOEXEC on
+ FDs
+Date: Fri, 29 Apr 2016 18:20:35 -0500
+Message-ID: <5723EC43.9020900@gmail.com>
+In-Reply-To: <1461969842-11704-2-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5513910695061968376==
+--===============1326853027943342569==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,10 +17,13 @@ Content-Transfer-Encoding: quoted-printable
 Hi Andrew,
 
 On 04/29/2016 05:43 PM, Andrew Zaborowski wrote:
-> FD values can't be handled same as int32 values ('i' and 'u').
+> Make sure the size of the FD buffer passed to recvmsg is properly
+> aligned, etc. and remove the memcpy which seems unneeded.  Also it looks
+> like the fcntl() calls operated on one dbus socket FD instead of the
+> message FDs.
 > ---
->   ell/dbus-message.c | 15 ++++++++++++++-
->   1 file changed, 14 insertions(+), 1 deletion(-)
+>   ell/dbus.c | 17 ++++++++++-------
+>   1 file changed, 10 insertions(+), 7 deletions(-)
 >
 
 Applied, thanks.
@@ -28,5 +32,5 @@ Regards,
 -Denis
 
 
---===============5513910695061968376==--
+--===============1326853027943342569==--
 
