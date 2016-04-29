@@ -1,72 +1,88 @@
-Content-Type: multipart/mixed; boundary="===============0272840485506827334=="
+Content-Type: multipart/mixed; boundary="===============8828189685684359724=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 09/11] dbus: Attach FDs to kdbus messages being sent
-Date: Fri, 29 Apr 2016 05:32:06 +0200
-Message-ID: <1461900728-20662-14-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 10/11] dbus: Handle received KDBUS_ITEM_FDS
+Date: Fri, 29 Apr 2016 05:32:07 +0200
+Message-ID: <1461900728-20662-15-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1461900728-20662-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0272840485506827334==
+--===============8828189685684359724==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/dbus-kernel.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ ell/dbus-kernel.c | 28 ++++++++++++++++++++++++++--
+ 1 file changed, 26 insertions(+), 2 deletions(-)
 
 diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
-index 7446ece..302e3b9 100644
+index 302e3b9..2cd1d94 100644
 --- a/ell/dbus-kernel.c
 +++ b/ell/dbus-kernel.c
-@@ -325,6 +325,8 @@ int _dbus_kernel_send(int fd, size_t bloom_size, uint8_=
-t bloom_n_hash,
- 	size_t footer_size;
- 	int ret;
- 	struct kdbus_cmd_send cmd;
-+	uint32_t num_fds;
-+	int *fds;
- 	L_AUTO_FREE_VAR(struct kdbus_msg *, kmsg);
+@@ -489,6 +489,9 @@ static int _dbus_kernel_make_message(struct kdbus_msg *=
+kmsg,
+ 	struct dbus_header *hdr;
+ 	const char *destination =3D 0;
+ 	char unique_bus_name[128];
++	uint32_t num_fds =3D 0;
++	int *fds =3D NULL;
++	unsigned int i;
  =
 
- 	dest =3D l_dbus_message_get_destination(message);
-@@ -350,6 +352,11 @@ int _dbus_kernel_send(int fd, size_t bloom_size, uint8=
-_t bloom_n_hash,
- 	if (dest && !unique)
- 		kmsg_size +=3D KDBUS_ITEM_SIZE(dest_len + 1);
+ 	KDBUS_ITEM_FOREACH(item, kmsg, items) {
+ 		switch (item->type) {
+@@ -509,7 +512,28 @@ static int _dbus_kernel_make_message(struct kdbus_msg =
+*kmsg,
  =
 
-+	/* Reserve space for fds */
-+	fds =3D _dbus_message_get_fds(message, &num_fds);
-+	if (num_fds)
-+		kmsg_size +=3D KDBUS_ITEM_SIZE(num_fds * sizeof(int));
+ 			return -ENOTSUP;
+ 		case KDBUS_ITEM_FDS:
+-			return -ENOTSUP;
++			if (fds || item->size <=3D KDBUS_ITEM_HEADER_SIZE)
++				return -EBADMSG;
 +
- 	kmsg =3D aligned_alloc(8, kmsg_size);
- 	if (!kmsg)
- 		return -ENOMEM;
-@@ -433,6 +440,13 @@ int _dbus_kernel_send(int fd, size_t bloom_size, uint8=
-_t bloom_n_hash,
- 	item->vec.size =3D footer_size;
- 	item =3D KDBUS_ITEM_NEXT(item);
- =
-
-+	if (num_fds) {
-+		item->size =3D KDBUS_ITEM_HEADER_SIZE + num_fds * sizeof(int);
-+		item->type =3D KDBUS_ITEM_FDS;
-+		memcpy(item->fds, fds, num_fds * sizeof(int));
-+		item =3D KDBUS_ITEM_NEXT(item);
-+	}
++			num_fds =3D (item->size - KDBUS_ITEM_HEADER_SIZE) /
++				sizeof(int);
++			fds =3D item->fds;
 +
- 	kmsg->size =3D (void *)item - (void *)kmsg;
++			/* Set FD_CLOEXEC on all file descriptors */
++			for (i =3D 0; i < num_fds; i++) {
++				long flags;
++
++				if (fds[i] =3D=3D -1)
++					continue;
++
++				flags =3D fcntl(fds[i], F_GETFD, NULL);
++				if (flags < 0 || (flags & FD_CLOEXEC))
++					continue;
++
++				fcntl(fds[i], F_SETFD, flags | FD_CLOEXEC);
++			}
++
++			break;
+ 		case KDBUS_ITEM_DST_NAME:
+ 			if (!_dbus_valid_bus_name(item->str))
+ 				return -EBADMSG;
+@@ -530,7 +554,7 @@ static int _dbus_kernel_make_message(struct kdbus_msg *=
+kmsg,
  =
 
- 	memset(&cmd, 0, sizeof(cmd));
+ 	collect_body_parts(kmsg, size, &data);
+ =
+
+-	*out_message =3D dbus_message_from_blob(data, size, NULL, 0);
++	*out_message =3D dbus_message_from_blob(data, size, fds, num_fds);
+ =
+
+ 	l_free(data);
+ =
+
 -- =
 
 2.5.0
 
 
---===============0272840485506827334==--
+--===============8828189685684359724==--
 
