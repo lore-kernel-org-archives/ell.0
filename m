@@ -1,168 +1,131 @@
-Content-Type: multipart/mixed; boundary="===============6106230993256616422=="
+Content-Type: multipart/mixed; boundary="===============0953227143243840971=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 5/5] unit: End to end FD passing test
-Date: Sat, 30 Apr 2016 00:44:02 +0200
-Message-ID: <1461969842-11704-5-git-send-email-andrew.zaborowski@intel.com>
-In-Reply-To: <1461969842-11704-1-git-send-email-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 3/5] dbus: Add and validate the UNIX_FDS msg header field
+Date: Fri, 29 Apr 2016 18:17:37 -0500
+Message-ID: <5723EB91.7050600@gmail.com>
+In-Reply-To: <1461969842-11704-3-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6106230993256616422==
+--===============0953227143243840971==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Doesn't really belong in test-dbus-properties.c...
+Hi Andrew,
+
+On 04/29/2016 05:44 PM, Andrew Zaborowski wrote:
+> ---
+>   ell/dbus-message.c | 50 +++++++++++++++++++++++++++++++++++++++--------=
 ---
- unit/test-dbus-properties.c | 93 +++++++++++++++++++++++++++++++++++++++++=
-++++
- 1 file changed, 93 insertions(+)
+>   1 file changed, 39 insertions(+), 11 deletions(-)
+>
+> diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+> index 038d44d..0fe76de 100644
+> --- a/ell/dbus-message.c
+> +++ b/ell/dbus-message.c
+> @@ -764,11 +764,22 @@ struct l_dbus_message *dbus_message_from_blob(const=
+ void *data, size_t size,
+>   		get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE,
+>   					'g', &message->signature);
+>
+> -	if (num_fds > L_ARRAY_SIZE(message->fds)) {
+> -		for (i =3D L_ARRAY_SIZE(message->fds); i < num_fds; i++)
+> -			close(fds[i]);
+> +	if (num_fds) {
+> +		uint32_t unix_fds;
+>
+> -		num_fds =3D L_ARRAY_SIZE(message->fds);
+> +		if (!get_header_field(message, DBUS_MESSAGE_FIELD_UNIX_FDS,
+> +					'u', &unix_fds))
+> +			goto free;
+> +
+> +		if (num_fds > unix_fds)
+> +			num_fds =3D unix_fds;
 
-diff --git a/unit/test-dbus-properties.c b/unit/test-dbus-properties.c
-index 3238cf6..c5b2f6e 100644
---- a/unit/test-dbus-properties.c
-+++ b/unit/test-dbus-properties.c
-@@ -28,6 +28,9 @@
- #include <stdlib.h>
- #include <sys/wait.h>
- #include <stdio.h>
-+#include <sys/stat.h>
-+#include <fcntl.h>
-+#include <errno.h>
- =
+If num_fds > unix_fds, should all unused fds (e.g. fds[unix_fds .. =
 
- #include <ell/ell.h>
- #include <ell/dbus-private.h>
-@@ -277,6 +280,22 @@ static bool test_path_getter(struct l_dbus *dbus,
- 	return l_dbus_message_builder_append_basic(builder, 'o', "/foo/bar");
- }
- =
+num_fds-1] be closed just in case as well?
 
-+static struct l_dbus_message *get_random_callback(struct l_dbus *dbus,
-+					struct l_dbus_message *message,
-+					void *user_data)
-+{
-+	struct l_dbus_message *reply;
-+	int fd;
-+
-+	reply =3D l_dbus_message_new_method_return(message);
-+
-+	fd =3D open("/dev/random", O_RDONLY);
-+	l_dbus_message_set_arguments(reply, "h", fd);
-+	close(fd);
-+
-+	return reply;
-+}
-+
- static void setup_test_interface(struct l_dbus_interface *interface)
- {
- 	l_dbus_interface_property(interface, "String", 0, "s",
-@@ -289,6 +308,9 @@ static void setup_test_interface(struct l_dbus_interfac=
-e *interface)
- 					test_string_getter, test_error_setter);
- 	l_dbus_interface_property(interface, "Path", 0, "o",
- 					test_path_getter, NULL);
-+
-+	l_dbus_interface_method(interface, "GetRandom", 0, get_random_callback,
-+				"h", "", "randomfd");
- }
- =
+Also, what if unix_fds > num_fds?
 
- static void validate_properties(struct l_dbus_message_iter *dict)
-@@ -916,6 +938,75 @@ static void test_object_manager_signals(struct l_dbus =
-*dbus, void *test_data)
- 						NULL));
- }
- =
+> +
+> +		if (num_fds > L_ARRAY_SIZE(message->fds)) {
+> +			for (i =3D L_ARRAY_SIZE(message->fds); i < num_fds; i++)
+> +				close(fds[i]);
+> +
+> +			num_fds =3D L_ARRAY_SIZE(message->fds);
+> +		}
+>   	}
+>
+>   	message->num_fds =3D num_fds;
+> @@ -777,7 +788,8 @@ struct l_dbus_message *dbus_message_from_blob(const v=
+oid *data, size_t size,
+>   	return message;
+>
+>   free:
+> -	l_free(message);
+> +	l_dbus_message_unref(message);
+> +
+>   	return NULL;
+>   }
+>
+> @@ -809,19 +821,31 @@ struct l_dbus_message *dbus_message_build(void *hea=
+der, size_t header_size,
+>   	message->header =3D header;
+>   	message->body_size =3D body_size;
+>   	message->body =3D body;
+> +	message->sealed =3D true;
+>
+> -	if (num_fds > L_ARRAY_SIZE(message->fds)) {
+> -		for (i =3D L_ARRAY_SIZE(message->fds); i < num_fds; i++)
+> -			close(fds[i]);
+> +	if (num_fds) {
+> +		uint32_t unix_fds;
+>
+> -		num_fds =3D L_ARRAY_SIZE(message->fds);
+> +		if (!get_header_field(message, DBUS_MESSAGE_FIELD_UNIX_FDS,
+> +					'u', &unix_fds)) {
+> +			l_free(message);
+> +			return NULL;
+> +		}
+> +
+> +		if (num_fds > unix_fds)
+> +			num_fds =3D unix_fds;
+> +
+> +		if (num_fds > L_ARRAY_SIZE(message->fds)) {
+> +			for (i =3D L_ARRAY_SIZE(message->fds); i < num_fds; i++)
+> +				close(fds[i]);
+> +
+> +			num_fds =3D L_ARRAY_SIZE(message->fds);
+> +		}
+>   	}
+>
+>   	message->num_fds =3D num_fds;
+>   	memcpy(message->fds, fds, num_fds * sizeof(int));
+>
+> -	message->sealed =3D true;
+> -
+>   	/* If the field is absent message->signature will remain NULL */
+>   	get_header_field(message, DBUS_MESSAGE_FIELD_SIGNATURE, 'g',
+>   						&message->signature);
+> @@ -1013,6 +1037,10 @@ static void build_header(struct l_dbus_message *me=
+ssage, const char *signature)
+>   		add_field(builder, driver, DBUS_MESSAGE_FIELD_SIGNATURE,
+>   				"g", signature);
+>
+> +	if (message->num_fds)
+> +		add_field(builder, driver, DBUS_MESSAGE_FIELD_UNIX_FDS,
+> +					"u", &message->num_fds);
+> +
+>   	driver->leave_array(builder);
+>
+>   	generated_signature =3D driver->finish(builder, &message->header,
+>
 
-+static int count_fds(void)
-+{
-+	int fd;
-+	int count =3D 0;
-+
-+	for (fd =3D 0; fd < FD_SETSIZE; fd++)
-+		if (fcntl(fd, F_GETFL) !=3D -1 || errno !=3D EBADF)
-+			count++;
-+
-+	return count;
-+}
-+
-+static bool compare_failed;
-+
-+static void compare_files(int a, int b)
-+{
-+	struct stat sa, sb;
-+
-+	compare_failed =3D true;
-+
-+	test_assert(fstat(a, &sa) =3D=3D 0);
-+	test_assert(fstat(b, &sb) =3D=3D 0);
-+
-+	test_assert(sa.st_dev =3D=3D sb.st_dev);
-+	test_assert(sa.st_ino =3D=3D sb.st_ino);
-+	test_assert(sa.st_rdev =3D=3D sb.st_rdev);
-+
-+	compare_failed =3D false;
-+}
-+
-+static int open_fds;
-+
-+static void get_random_idle_callback(void *user_data)
-+{
-+	test_assert(count_fds() =3D=3D open_fds);
-+
-+	test_next();
-+}
-+
-+static void get_random_return_callback(struct l_dbus_message *message,
-+					void *user_data)
-+{
-+	int fd0, fd1;
-+
-+	test_assert(!l_dbus_message_get_error(message, NULL, NULL));
-+
-+	test_assert(l_dbus_message_get_arguments(message, "h", &fd1));
-+
-+	fd0 =3D open("/dev/random", O_RDONLY);
-+	test_assert(fd0 !=3D -1);
-+
-+	compare_files(fd0, fd1);
-+	if (compare_failed)
-+		return;
-+
-+	close(fd0);
-+	close(fd1);
-+
-+	test_assert(l_idle_oneshot(get_random_idle_callback, NULL, NULL));
-+}
-+
-+static void test_fd_passing(struct l_dbus *dbus, void *test_data)
-+{
-+	open_fds =3D count_fds();
-+
-+	l_dbus_method_call(dbus, "org.test", "/test", "org.test", "GetRandom",
-+				NULL, get_random_return_callback, NULL, NULL);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	struct l_signal *signal;
-@@ -1003,6 +1094,8 @@ int main(int argc, char *argv[])
- 	test_add("org.freedesktop.DBus.ObjectManager signals",
- 			test_object_manager_signals, NULL);
- =
+Regards,
+-Denis
 
-+	test_add("FD passing", test_fd_passing, NULL);
-+
- 	l_main_run();
- =
-
- 	l_queue_destroy(tests, l_free);
--- =
-
-2.5.0
-
-
---===============6106230993256616422==--
+--===============0953227143243840971==--
 
