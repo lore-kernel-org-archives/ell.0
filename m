@@ -1,88 +1,72 @@
-Content-Type: multipart/mixed; boundary="===============5377379677203741616=="
+Content-Type: multipart/mixed; boundary="===============0272840485506827334=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 08/11] dbus: Remove memcpy and fix setting of FD_CLOEXEC on FDs
-Date: Fri, 29 Apr 2016 05:32:05 +0200
-Message-ID: <1461900728-20662-13-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 09/11] dbus: Attach FDs to kdbus messages being sent
+Date: Fri, 29 Apr 2016 05:32:06 +0200
+Message-ID: <1461900728-20662-14-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1461900728-20662-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5377379677203741616==
+--===============0272840485506827334==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Make sure the size of the FD buffer passed to recvmsg is properly
-aligned, etc. and remove the memcpy which seems unneeded.  Also it looks
-like the fcntl() calls operated on one dbus socket FD instead of the
-message FDs.
 ---
- ell/dbus.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ ell/dbus-kernel.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 70da849..fc0f243 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -638,7 +638,8 @@ static struct l_dbus_message *classic_recv_message(stru=
-ct l_dbus *dbus)
- 	ssize_t len;
- 	void *header, *body;
- 	size_t header_size, body_size;
--	int fds[16];
-+	uint8_t fd_buf[CMSG_SPACE(16 * sizeof(int))];
-+	int *fds =3D NULL;
- 	uint32_t num_fds =3D 0;
+diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
+index 7446ece..302e3b9 100644
+--- a/ell/dbus-kernel.c
++++ b/ell/dbus-kernel.c
+@@ -325,6 +325,8 @@ int _dbus_kernel_send(int fd, size_t bloom_size, uint8_=
+t bloom_n_hash,
+ 	size_t footer_size;
+ 	int ret;
+ 	struct kdbus_cmd_send cmd;
++	uint32_t num_fds;
++	int *fds;
+ 	L_AUTO_FREE_VAR(struct kdbus_msg *, kmsg);
  =
 
- 	len =3D recv(fd, &hdr, DBUS_HEADER_SIZE, MSG_PEEK);
-@@ -659,8 +660,8 @@ static struct l_dbus_message *classic_recv_message(stru=
-ct l_dbus *dbus)
- 	memset(&msg, 0, sizeof(msg));
- 	msg.msg_iov =3D iov;
- 	msg.msg_iovlen =3D 2;
--	msg.msg_control =3D &fds;
--	msg.msg_controllen =3D CMSG_SPACE(16 * sizeof(int));
-+	msg.msg_control =3D &fd_buf;
-+	msg.msg_controllen =3D sizeof(fd_buf);
+ 	dest =3D l_dbus_message_get_destination(message);
+@@ -350,6 +352,11 @@ int _dbus_kernel_send(int fd, size_t bloom_size, uint8=
+_t bloom_n_hash,
+ 	if (dest && !unique)
+ 		kmsg_size +=3D KDBUS_ITEM_SIZE(dest_len + 1);
  =
 
- 	len =3D recvmsg(fd, &msg, MSG_CMSG_CLOEXEC);
- 	if (len < 0)
-@@ -675,19 +676,18 @@ static struct l_dbus_message *classic_recv_message(st=
-ruct l_dbus *dbus)
- 			continue;
++	/* Reserve space for fds */
++	fds =3D _dbus_message_get_fds(message, &num_fds);
++	if (num_fds)
++		kmsg_size +=3D KDBUS_ITEM_SIZE(num_fds * sizeof(int));
++
+ 	kmsg =3D aligned_alloc(8, kmsg_size);
+ 	if (!kmsg)
+ 		return -ENOMEM;
+@@ -433,6 +440,13 @@ int _dbus_kernel_send(int fd, size_t bloom_size, uint8=
+_t bloom_n_hash,
+ 	item->vec.size =3D footer_size;
+ 	item =3D KDBUS_ITEM_NEXT(item);
  =
 
- 		num_fds =3D (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
--
--		memcpy(fds, CMSG_DATA(cmsg), num_fds * sizeof(int));
-+		fds =3D (void *) CMSG_DATA(cmsg);
++	if (num_fds) {
++		item->size =3D KDBUS_ITEM_HEADER_SIZE + num_fds * sizeof(int);
++		item->type =3D KDBUS_ITEM_FDS;
++		memcpy(item->fds, fds, num_fds * sizeof(int));
++		item =3D KDBUS_ITEM_NEXT(item);
++	}
++
+ 	kmsg->size =3D (void *)item - (void *)kmsg;
  =
 
- 		/* Set FD_CLOEXEC on all file descriptors */
- 		for (i =3D 0; i < num_fds; i++) {
- 			long flags;
- =
-
--			flags =3D fcntl(fd, F_GETFD, NULL);
-+			flags =3D fcntl(fds[i], F_GETFD, NULL);
- 			if (flags < 0)
- 				continue;
- =
-
- 			if (!(flags & FD_CLOEXEC))
--				fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
-+				fcntl(fds[i], F_SETFD, flags | FD_CLOEXEC);
-                 }
- 	}
- =
-
+ 	memset(&cmd, 0, sizeof(cmd));
 -- =
 
 2.5.0
 
 
---===============5377379677203741616==--
+--===============0272840485506827334==--
 
