@@ -1,175 +1,161 @@
-Content-Type: multipart/mixed; boundary="===============3594291514386716441=="
+Content-Type: multipart/mixed; boundary="===============2397013780567560295=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/2] dbus: Better search for matching rules in the filter tree
-Date: Fri, 29 Apr 2016 05:31:53 +0200
-Message-ID: <1461900728-20662-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] unit: test a filter tree scenario with unordered paths
+Date: Fri, 29 Apr 2016 05:31:54 +0200
+Message-ID: <1461900728-20662-2-git-send-email-andrew.zaborowski@intel.com>
+In-Reply-To: <1461900728-20662-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3594291514386716441==
+--===============2397013780567560295==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-When adding new filter rules, perform a more complete search for
-existing rules that already cover the rule being added by removing the
-requierement that levels in the tree are ordered by the match type.
-This may add overhead to adding new rules in some situations but will
-reduce the number of server-side rules being used and the number of
-requests.  This covers a scenario where first a watch is added for:
-
-type=3Dsignal, path=3D/
-
-followed by
-
-type=3Dsignal, sender=3Dorg.test, path=3D/
-
-I believe there are some more tricky scenarios which are not covered
-specifically when more than one child of an existing node matches some
-condition of the rule being added.
+Test a scenario in which some paths in the filter tree are not ordered
+by the match type.
 ---
- ell/dbus-filter.c  | 67 +++++++++++++++++++++++++++++++++++++++++++-------=
-----
- ell/dbus-private.h |  8 +++----
- 2 files changed, 58 insertions(+), 17 deletions(-)
+ unit/test-dbus-watch.c | 43 +++++++++++++++++++++++++++++++------------
+ 1 file changed, 31 insertions(+), 12 deletions(-)
 
-diff --git a/ell/dbus-filter.c b/ell/dbus-filter.c
-index 42755a9..9e3cad5 100644
---- a/ell/dbus-filter.c
-+++ b/ell/dbus-filter.c
-@@ -234,34 +234,63 @@ static bool remove_recurse(struct _dbus_filter *filte=
-r,
+diff --git a/unit/test-dbus-watch.c b/unit/test-dbus-watch.c
+index c7e78a5..46acf06 100644
+--- a/unit/test-dbus-watch.c
++++ b/unit/test-dbus-watch.c
+@@ -289,7 +289,7 @@ struct filter_test_state {
+ 	const struct _dbus_filter_condition *expected_rule;
+ 	int expected_rule_len;
+ 	unsigned int expected_id, new_id;
+-	int calls[4];
++	int calls[5];
+ };
+ =
+
+ static void rule_compare(const struct _dbus_filter_condition *a, int len_a,
+@@ -372,6 +372,13 @@ static void test_rule4_cb(struct l_dbus_message *messa=
+ge, void *user_data)
+ 	test->calls[3]++;
  }
  =
 
- unsigned int _dbus_filter_add_rule(struct _dbus_filter *filter,
--					struct _dbus_filter_condition *rule,
--					int rule_len,
--					l_dbus_message_func_t signal_func,
--					void *user_data)
-+				const struct _dbus_filter_condition *rule,
-+				int rule_len,
-+				l_dbus_message_func_t signal_func,
-+				void *user_data)
++static void test_rule5_cb(struct l_dbus_message *message, void *user_data)
++{
++	struct filter_test_state *test =3D user_data;
++
++	test->calls[4]++;
++}
++
+ static void test_filter_tree(const void *test_data)
  {
- 	struct filter_node **node_ptr =3D &filter->root;
- 	struct filter_node *node;
- 	struct filter_node *parent =3D filter->root;
- 	bool remote_rule =3D false;
--	struct _dbus_filter_condition *condition, *end =3D rule + rule_len;
--
--	qsort(rule, rule_len, sizeof(*rule), condition_compare);
--
--	for (condition =3D rule; condition < end; condition++) {
--		/* See if this condition is already a child of the node */
-+	struct _dbus_filter_condition sorted[rule_len];
-+	struct _dbus_filter_condition *unused, *condition;
-+	struct _dbus_filter_condition *end =3D sorted + rule_len;
+ 	struct _dbus_filter *filter;
+@@ -381,7 +388,7 @@ static void test_filter_tree(const void *test_data)
+ 		.add_match =3D test_add_match,
+ 		.remove_match =3D test_remove_match,
+ 	};
+-	static struct _dbus_filter_condition rule123[] =3D {
++	static const struct _dbus_filter_condition rule123[] =3D {
+ 		{ L_DBUS_MATCH_TYPE, "signal" },
+ 		{ L_DBUS_MATCH_SENDER, DBUS_SERVICE_DBUS },
+ 		{ L_DBUS_MATCH_PATH, DBUS_PATH_DBUS },
+@@ -389,11 +396,12 @@ static void test_filter_tree(const void *test_data)
+ 		{ L_DBUS_MATCH_MEMBER, "NameOwnerChanged" },
+ 		{ L_DBUS_MATCH_ARGUMENT(0), "org.test" }
+ 	};
+-	static struct _dbus_filter_condition rule4[] =3D {
++	static const struct _dbus_filter_condition rule45[] =3D {
+ 		{ L_DBUS_MATCH_TYPE, "signal" },
+-		{ L_DBUS_MATCH_SENDER, "foo" },
++		{ L_DBUS_MATCH_PATH, "/" },
++		{ L_DBUS_MATCH_SENDER, "org.foo" },
+ 	};
+-	unsigned int id1, id2, id3, id4, internal_id1, internal_id4;
++	unsigned int id1, id2, id3, id4, id5, internal_id1, internal_id4;
+ 	struct l_dbus_message *message;
+ =
+
+ 	filter =3D _dbus_filter_new(&test.dbus, &filter_ops, NULL);
+@@ -410,15 +418,19 @@ static void test_filter_tree(const void *test_data)
+ 	id3 =3D _dbus_filter_add_rule(filter, rule123, 6, test_rule3_cb, &test);
+ 	assert(id2 && id3 && id2 !=3D id1 && id3 !=3D id1 && id3 !=3D id2);
+ =
+
+-	test.expected_rule =3D rule4;
++	test.expected_rule =3D rule45;
+ 	test.expected_rule_len =3D 2;
+-	id4 =3D _dbus_filter_add_rule(filter, rule4, 2, test_rule4_cb, &test);
++	id4 =3D _dbus_filter_add_rule(filter, rule45, 2, test_rule4_cb, &test);
+ 	assert(id4 && id4 !=3D id1 && id4 !=3D id2 && id4 !=3D id3);
+ 	assert(!test.expected_rule);
+ 	internal_id4 =3D test.new_id;
+ =
+
++	id5 =3D _dbus_filter_add_rule(filter, rule45, 3, test_rule5_cb, &test);
++	assert(id5 && id5 !=3D id1 && id5 !=3D id2 && id5 !=3D id3 && id5 !=3D id=
+4);
 +
-+	memcpy(sorted, rule, sizeof(sorted));
-+	qsort(sorted, rule_len, sizeof(*condition), condition_compare);
+ 	assert(test.calls[0] =3D=3D 0 && test.calls[1] =3D=3D 0 &&
+-			test.calls[2] =3D=3D 0 && test.calls[3] =3D=3D 0);
++			test.calls[2] =3D=3D 0 && test.calls[3] =3D=3D 0 &&
++			test.calls[4] =3D=3D 0);
+ =
+
+ 	message =3D _dbus_message_new_signal(2, DBUS_PATH_DBUS,
+ 						DBUS_INTERFACE_DBUS,
+@@ -441,22 +453,28 @@ static void test_filter_tree(const void *test_data)
+ 	l_dbus_message_set_arguments(message, "");
+ 	_dbus_message_set_sender(message, DBUS_SERVICE_DBUS);
+ 	_dbus_filter_dispatch(message, filter);
++	l_dbus_message_unref(message);
+ =
+
+-	_dbus_message_set_sender(message, "foo");
++	message =3D _dbus_message_new_signal(2, "/", "foo", "Bar");
++	l_dbus_message_set_arguments(message, "");
++	_dbus_message_set_sender(message, "org.foo");
+ 	_dbus_filter_dispatch(message, filter);
+ =
+
+-	_dbus_message_set_sender(message, "bar");
++	_dbus_message_set_sender(message, "org.bar");
+ 	_dbus_filter_dispatch(message, filter);
+ 	l_dbus_message_unref(message);
+ =
+
+ 	assert(test.calls[0] =3D=3D 3 && test.calls[1] =3D=3D 2 &&
+-			test.calls[2] =3D=3D 1 && test.calls[3] =3D=3D 1);
++			test.calls[2] =3D=3D 1 && test.calls[3] =3D=3D 2 &&
++			test.calls[4] =3D=3D 1);
+ =
+
+ 	test.expected_id =3D 0;
+ 	assert(_dbus_filter_remove_rule(filter, id2));
+ =
+
+ 	assert(_dbus_filter_remove_rule(filter, id1));
+ =
+
++	assert(_dbus_filter_remove_rule(filter, id5));
 +
-+	/*
-+	 * Find or create a path in the tree with a node for each
-+	 * condition in the rule, loop until all conditions have been
-+	 * used.
-+	 */
-+	unused =3D sorted;
-+	while (unused < end) {
-+		/*
-+		 * Find a child of the node that matches any unused
-+		 * condition.  Note there could be multiple matches, we're
-+		 * happy with the first we can find.
-+		 */
- 		while (*node_ptr) {
- 			node =3D *node_ptr;
+ 	test.expected_id =3D internal_id4;
+ 	assert(_dbus_filter_remove_rule(filter, id4));
+ 	assert(!test.expected_id);
+@@ -468,7 +486,8 @@ static void test_filter_tree(const void *test_data)
+ 	_dbus_filter_free(filter);
  =
 
--			if (node->type =3D=3D condition->type &&
--					!strcmp(node->match.value,
-+			for (condition =3D unused; condition < end; condition++) {
-+				if (condition->type > node->type) {
-+					condition =3D end;
-+					break;
-+				}
-+
-+				if (condition->type < node->type ||
-+						condition->type =3D=3D
-+						L_DBUS_MATCH_NONE)
-+					continue;
-+
-+				if (!strcmp(node->match.value,
- 						condition->value))
-+					break;
-+			}
-+
-+			if (condition < end)
- 				break;
+ 	assert(test.calls[0] =3D=3D 3 && test.calls[1] =3D=3D 2 &&
+-			test.calls[2] =3D=3D 1 && test.calls[3] =3D=3D 1);
++			test.calls[2] =3D=3D 1 && test.calls[3] =3D=3D 2 &&
++			test.calls[4] =3D=3D 1);
+ }
  =
 
- 			node_ptr =3D &node->next;
- 		}
- =
-
--		/* Add one */
-+		/* Add a node */
- 		if (!*node_ptr) {
-+			condition =3D unused;
-+
- 			node =3D l_new(struct filter_node, 1);
- 			node->type =3D condition->type;
- 			node->match.value =3D l_strdup(condition->value);
-@@ -278,6 +307,18 @@ unsigned int _dbus_filter_add_rule(struct _dbus_filter=
- *filter,
- =
-
- 		}
- =
-
-+		/*
-+		 * Mark the condition used.  We do this by setting
-+		 * condition->type to an invalid value unless it is the
-+		 * first condition left in which case we can push the
-+		 * rule start.  Another option is to always push the rule
-+		 * start and memmove the still unused conditions by one
-+		 * if necessary.
-+		 */
-+		condition->type =3D L_DBUS_MATCH_NONE;
-+		while (unused < end && unused[0].type =3D=3D L_DBUS_MATCH_NONE)
-+			unused++;
-+
- 		node_ptr =3D &node->match.children;
- =
-
- 		parent =3D node;
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index ab52895..f4209b8 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -320,10 +320,10 @@ struct _dbus_filter *_dbus_filter_new(struct l_dbus *=
-dbus,
- void _dbus_filter_free(struct _dbus_filter *filter);
- =
-
- unsigned int _dbus_filter_add_rule(struct _dbus_filter *filter,
--					struct _dbus_filter_condition *rule,
--					int rule_len,
--					l_dbus_message_func_t signal_func,
--					void *user_data);
-+				const struct _dbus_filter_condition *rule,
-+				int rule_len,
-+				l_dbus_message_func_t signal_func,
-+				void *user_data);
- bool _dbus_filter_remove_rule(struct _dbus_filter *filter, unsigned int id=
-);
- =
-
- char *_dbus_filter_rule_to_str(const struct _dbus_filter_condition *rule,
+ int main(int argc, char *argv[])
 -- =
 
 2.5.0
 
 
---===============3594291514386716441==--
+--===============2397013780567560295==--
 
