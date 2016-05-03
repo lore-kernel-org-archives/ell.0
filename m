@@ -1,64 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============5285802697573392253=="
+Content-Type: multipart/mixed; boundary="===============2406090073850538896=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 3/5] dbus: Add and validate the UNIX_FDS msg header field
-Date: Mon, 02 May 2016 22:17:13 -0500
-Message-ID: <57281839.3040609@gmail.com>
-In-Reply-To: <CAOq732JefaOUbNfy0DLLVFK+8Oaq8cFv1=ngAb6x+sxzdXUjGA@mail.gmail.com>
+Subject: Re: [PATCH 1/2] dbus: Better search for matching rules in the filter
+ tree
+Date: Tue, 03 May 2016 14:09:26 -0500
+Message-ID: <5728F766.4010008@gmail.com>
+In-Reply-To: <1461900728-20662-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5285802697573392253==
+--===============2406090073850538896==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
- > Elsewhere in the code we treat messages with too few / missing FDs as
-> valid and I think I commented on this in one of the commit messages,
-
-git show 439e259835d8b2788ca28c1dbe06badbd178dccf
-
-This one only deals with num_fds > L_ARRAY_SIZE(message->fds), which =
-
-makes sense.
-
-git show 1e1aa1aa63be7b50a4d35aa01d14c001bf591fd1
-
-Also sort of makes sense...
-
-> another thing to consider is that we currently hardcode an FD limit of
-> 16 per message and will happily generate such messages ourselves.  So
-> the code can handle the situation when unix_fds > num_fds and there's
-> nothing specific we have to do unless we decide to make it an error.
-
-Which I think we should by the way.  If the message tells us we have 3 =
-
-fds, and we only receive 1 or 0, then that should be fatal.  It would =
-
-most likely indicate an error in our transport code logic.  I'd actually =
-
-like to make this verbose and see if this ever happens.  AFAIK, =
-
-dbus-daemon does not allow this.
-
-Since kdbus uses message_from_blob and dbus-1 uses message_build, do you =
-
-want to have different constraints between those two?
-
+On 04/28/2016 10:31 PM, Andrew Zaborowski wrote:
+> When adding new filter rules, perform a more complete search for
+> existing rules that already cover the rule being added by removing the
+> requierement that levels in the tree are ordered by the match type.
+> This may add overhead to adding new rules in some situations but will
+> reduce the number of server-side rules being used and the number of
+> requests.  This covers a scenario where first a watch is added for:
 >
-> If we want to be really smart about queuing up FDs in a circular
-> buffer to assign to messages by unix_fds value then we would probably
-> want a separate function that would take a header and just return the
-> unix_fds value.
+> type=3Dsignal, path=3D/
+>
+> followed by
+>
+> type=3Dsignal, sender=3Dorg.test, path=3D/
+>
+> I believe there are some more tricky scenarios which are not covered
+> specifically when more than one child of an existing node matches some
+> condition of the rule being added.
+> ---
+>   ell/dbus-filter.c  | 67 +++++++++++++++++++++++++++++++++++++++++++----=
+-------
+>   ell/dbus-private.h |  8 +++----
+>   2 files changed, 58 insertions(+), 17 deletions(-)
+>
 
-I was hoping we could avoid that via use of MSG_WAITALL.  I suspect =
-
-you're right and we need to.
+Applied, thanks.
 
 Regards,
 -Denis
 
---===============5285802697573392253==--
+
+--===============2406090073850538896==--
 
