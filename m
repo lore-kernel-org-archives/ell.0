@@ -1,109 +1,64 @@
-Content-Type: multipart/mixed; boundary="===============1454612086126761456=="
+Content-Type: multipart/mixed; boundary="===============5285802697573392253=="
 MIME-Version: 1.0
-From: Andrzej Zaborowski <andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH 3/5] dbus: Add and validate the UNIX_FDS msg header field
-Date: Tue, 03 May 2016 00:25:23 +0200
-Message-ID: <CAOq732JefaOUbNfy0DLLVFK+8Oaq8cFv1=ngAb6x+sxzdXUjGA@mail.gmail.com>
-In-Reply-To: <57276DE0.5070902@gmail.com>
+Date: Mon, 02 May 2016 22:17:13 -0500
+Message-ID: <57281839.3040609@gmail.com>
+In-Reply-To: <CAOq732JefaOUbNfy0DLLVFK+8Oaq8cFv1=ngAb6x+sxzdXUjGA@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1454612086126761456==
+--===============5285802697573392253==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi Andrew,
 
-On 2 May 2016 at 17:10, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 04/30/2016 09:58 AM, Andrzej Zaborowski wrote:
->> On 30 April 2016 at 03:15, Denis Kenzior <denkenz@gmail.com> wrote:
->>> On 04/29/2016 06:52 PM, Andrzej Zaborowski wrote:
->>>> On 30 April 2016 at 01:17, Denis Kenzior <denkenz@gmail.com> wrote:
->>>>> Also, what if unix_fds > num_fds?
->>>>
->>>> Well, not sure if there's anything we can do.  As far as I've tried to
->>>> understand the sendmsg/recvmsg semantics the message boundaries are
->>>> not preserved and I understand FDs may also be delivered in a recvmsg
->>>> call different than that in which the message is received when there
->>>> are multiple messages in the queue.  The solution would be to keep
->>>> buffers of header/body data another buffer with FDs received and pair
->>>> them based on the UNIX_FDS headers but perhaps we don't want to
->>>> overcomplicate it.  For simplicity I take the minimum of num_fds,
->>>> unix_fds and L_ARRAY_SIZE(message->fds).
->>>
->>> Isn't this a transport detail?  This function in particular is taking t=
-he
->>> full dbus-message blob.  Same with dbus_message_build().
->>
->> Yeah, we should possibly handle that in dbus.c but we'd need to use
->> get_header_field etc., and it would get complicated.
->>
->
-> I'm not following.  So we have dbus_message_from_blob, which takes header=
-s,
-> body and the fds array.  If the number of fds specified in the header (e.=
-g.
-> unix_fds) doesn't match what the fds[] size is, then we should take some
-> action.  This is separate from the transport details inside dbus.c.
+ > Elsewhere in the code we treat messages with too few / missing FDs as
+> valid and I think I commented on this in one of the commit messages,
 
-Elsewhere in the code we treat messages with too few / missing FDs as
-valid and I think I commented on this in one of the commit messages,
-another thing to consider is that we currently hardcode an FD limit of
-16 per message and will happily generate such messages ourselves.  So
-the code can handle the situation when unix_fds > num_fds and there's
-nothing specific we have to do unless we decide to make it an error.
+git show 439e259835d8b2788ca28c1dbe06badbd178dccf
 
-If we want to be really smart about queuing up FDs in a circular
-buffer to assign to messages by unix_fds value then we would probably
-want a separate function that would take a header and just return the
-unix_fds value.
+This one only deals with num_fds > L_ARRAY_SIZE(message->fds), which =
+
+makes sense.
+
+git show 1e1aa1aa63be7b50a4d35aa01d14c001bf591fd1
+
+Also sort of makes sense...
+
+> another thing to consider is that we currently hardcode an FD limit of
+> 16 per message and will happily generate such messages ourselves.  So
+> the code can handle the situation when unix_fds > num_fds and there's
+> nothing specific we have to do unless we decide to make it an error.
+
+Which I think we should by the way.  If the message tells us we have 3 =
+
+fds, and we only receive 1 or 0, then that should be fatal.  It would =
+
+most likely indicate an error in our transport code logic.  I'd actually =
+
+like to make this verbose and see if this ever happens.  AFAIK, =
+
+dbus-daemon does not allow this.
+
+Since kdbus uses message_from_blob and dbus-1 uses message_build, do you =
+
+want to have different constraints between those two?
 
 >
->>>
->>> We probably do have a separate problem inside classic_recv_message().
->>> Since
->>> the UNIX socket is a stream, the message boundaries are not preserved, =
-as
->>> you point out.
->>>
->>> One way might be to use MSG_WAITALL flag.  Alternatively, allocate a
->>> buffer
->>> and keep reading into it until enough data is read.
->>
->>
->> Do you mean in case the read is interrupted by a signal?  I think
->> that's easy to handle but I'm not sure it can actually happen if the
->> dbus daemon always writes complete messages.
->
->
-> Regardless of whether dbus-daemon writes complete messages, the kernel is
-> free to return however many bytes to the process calling recvfrom, even if
-> more bytes are actually available in the receive buffer. MSG_WAITALL tells
-> the kernel to give us all of the data the recvfrom caller is requesting,
-> unless interrupted by a signal.
->
-> Without MSG_WAITALL we might start seeing partial reads on a heavily load=
-ed
-> system and things will start breaking.
+> If we want to be really smart about queuing up FDs in a circular
+> buffer to assign to messages by unix_fds value then we would probably
+> want a separate function that would take a header and just return the
+> unix_fds value.
 
-That's the theory, i think it depends on the transport type if this
-happens in practice (assuming no signal and the producer writes full
-messages to the transport fd).
+I was hoping we could avoid that via use of MSG_WAITALL.  I suspect =
 
->
-> The best way would be to peek at the next header, allocate space for the
-> message and keep calling recvfrom until all of the message has been read.
-> Normally this would take 1 recvfrom call, but can take as many as needed.
-> Only once the entire message has been read, we can send it in for process=
-ing
-> by dbus_message_from_blob or dbus_message_build.  We can put this
-> more-complicated scheme on the TODO list for now...
+you're right and we need to.
 
-Well, I can do the code directly, I think it's going to be a small
-change.  We'll need it for sendmsg too.
+Regards,
+-Denis
 
-Best regards
-
---===============1454612086126761456==--
+--===============5285802697573392253==--
 
