@@ -1,302 +1,443 @@
-Content-Type: multipart/mixed; boundary="===============9014990419721496756=="
+Content-Type: multipart/mixed; boundary="===============0969154830411103274=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 4/4] dbus: Handle partial reads and writes
-Date: Wed, 04 May 2016 11:38:50 -0500
-Message-ID: <572A259A.40104@gmail.com>
-In-Reply-To: <1462359793-18789-4-git-send-email-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH] unit: End to end FD passing test
+Date: Fri, 06 May 2016 12:18:51 +0200
+Message-ID: <1462529934-6714-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============9014990419721496756==
+--===============0969154830411103274==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+---
+ Makefile.am                  |   3 +
+ unit/test-dbus-message-fds.c | 384 +++++++++++++++++++++++++++++++++++++++=
+++++
+ 2 files changed, 387 insertions(+)
+ create mode 100644 unit/test-dbus-message-fds.c
 
-On 05/04/2016 06:03 AM, Andrew Zaborowski wrote:
-> Loop until we have received or sent all of the data requested.  We pass
-> MSG_WAITALL to potentially reduce the number of iterations.  Make sure
-> we free body and header in classic_recv_message when
-> dbus_message_build() returns an error.
->
-> Calling sendms and recvmsg multiple times makes it even more tricky to
-> understand what will happen with the FDs passed as oob data when a
-> partial read/write happens or when there are multiple messsages with FDs
-> attached in the queue.  What this patch does should be equivalent to
-> what systemd dbus code does.  It seems to assume that the FDs are
-> attached to the last byte of the message so on a partial write, the FDs
-> are not written and the full array can be passed to sendmsg() again.
-> I'm not sure if this is documented anywhere but I've seen an explicit
-> statement of this at ...
+diff --git a/Makefile.am b/Makefile.am
+index 3e8e3ef..aa99bdd 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -140,6 +140,7 @@ dbus_tests =3D unit/test-kdbus \
+ 			unit/test-dbus \
+ 			unit/test-dbus-util \
+ 			unit/test-dbus-message \
++			unit/test-dbus-message-fds \
+ 			unit/test-dbus-service \
+ 			unit/test-dbus-watch \
+ 			unit/test-dbus-properties \
+@@ -186,6 +187,8 @@ unit_test_dbus_LDADD =3D ell/libell-private.la
+ =
 
-I think this is a bad assumption to make.  Browsing af_unix.c makes me =
+ unit_test_dbus_message_LDADD =3D ell/libell-private.la
+ =
 
-think this is not the case.
++unit_test_dbus_message_fds_LDADD =3D ell/libell-private.la
++
+ unit_test_dbus_util_LDADD =3D ell/libell-private.la
+ =
 
-> ---
->   ell/dbus.c | 179 +++++++++++++++++++++++++++++++++++++-----------------=
--------
->   1 file changed, 110 insertions(+), 69 deletions(-)
->
-> diff --git a/ell/dbus.c b/ell/dbus.c
-> index 35378b2..3ca7b87 100644
-> --- a/ell/dbus.c
-> +++ b/ell/dbus.c
-> @@ -579,63 +579,126 @@ static void classic_free(struct l_dbus *dbus)
->   	l_free(classic);
->   }
->
-> +static bool msg_op(int fd, bool send, struct iovec iov[],
-> +			int **fds, uint32_t *num_fds)
-> +{
+ unit_test_dbus_service_LDADD =3D ell/libell-private.la
+diff --git a/unit/test-dbus-message-fds.c b/unit/test-dbus-message-fds.c
+new file mode 100644
+index 0000000..7e710cf
+--- /dev/null
++++ b/unit/test-dbus-message-fds.c
+@@ -0,0 +1,384 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2016  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <unistd.h>
++#include <stdlib.h>
++#include <sys/wait.h>
++#include <stdio.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <errno.h>
++
++#include <ell/ell.h>
++#include <ell/dbus-private.h>
++
++#define TEST_BUS_ADDRESS "unix:path=3D/tmp/ell-test-bus"
++
++static pid_t dbus_daemon_pid =3D -1;
++
++static int kdbus_fd =3D -1;
++
++static char bus_address[128];
++
++static bool start_dbus_daemon(void)
++{
++	char *prg_argv[6];
++	char *prg_envp[1];
++	pid_t pid;
++
++	prg_argv[0] =3D "/usr/bin/dbus-daemon";
++	prg_argv[1] =3D "--session";
++	prg_argv[2] =3D "--address=3D" TEST_BUS_ADDRESS;
++	prg_argv[3] =3D "--nopidfile";
++	prg_argv[4] =3D "--nofork";
++	prg_argv[5] =3D NULL;
++
++	prg_envp[0] =3D NULL;
++
++	l_info("launching dbus-daemon");
++
++	pid =3D fork();
++	if (pid < 0) {
++		l_error("failed to fork new process");
++		return false;
++	}
++
++	if (pid =3D=3D 0) {
++		execve(prg_argv[0], prg_argv, prg_envp);
++		exit(EXIT_SUCCESS);
++	}
++
++	l_info("dbus-daemon process %d created", pid);
++
++	dbus_daemon_pid =3D pid;
++
++	strcpy(bus_address, TEST_BUS_ADDRESS);
++
++	return true;
++}
++
++static bool create_kdbus(void)
++{
++	char bus_name[64];
++
++	snprintf(bus_name, sizeof(bus_name), "%u-ell-test", getuid());
++
++	kdbus_fd =3D _dbus_kernel_create_bus(bus_name);
++	if (kdbus_fd < 0) {
++		l_warn("kdbus not available");
++		return false;
++	}
++
++	snprintf(bus_address, sizeof(bus_address),
++				"kernel:path=3D/dev/kdbus/%s/bus", bus_name);
++
++	return true;
++}
++
++static void signal_handler(struct l_signal *signal, uint32_t signo,
++							void *user_data)
++{
++	switch (signo) {
++	case SIGINT:
++	case SIGTERM:
++		l_info("Terminate");
++		l_main_quit();
++		break;
++	case SIGCHLD:
++		while (1) {
++			pid_t pid;
++			int status;
++
++			pid =3D waitpid(WAIT_ANY, &status, WNOHANG);
++			if (pid < 0 || pid =3D=3D 0)
++				break;
++
++			l_info("process %d terminated with status=3D%d\n",
++								pid, status);
++
++			if (pid =3D=3D dbus_daemon_pid) {
++				dbus_daemon_pid =3D -1;
++				l_main_quit();
++			}
++		}
++		break;
++	}
++}
++
++static struct l_dbus *dbus;
++
++struct dbus_test {
++	const char *name;
++	void (*start)(struct l_dbus *dbus, void *);
++	void *data;
++};
++
++static bool success;
++static struct l_queue *tests;
++static const struct l_queue_entry *current;
++
++static void test_add(const char *name,
++			void (*start)(struct l_dbus *dbus, void *),
++			void *test_data)
++{
++	struct dbus_test *test =3D l_new(struct dbus_test, 1);
++
++	test->name =3D name;
++	test->start =3D start;
++	test->data =3D test_data;
++
++	if (!tests)
++		tests =3D l_queue_new();
++
++	l_queue_push_tail(tests, test);
++}
++
++static void test_next()
++{
++	struct dbus_test *test;
++
++	if (current)
++		current =3D current->next;
++	else
++		current =3D l_queue_get_entries(tests);
++
++	if (!current) {
++		success =3D true;
++		l_main_quit();
++		return;
++	}
++
++	test =3D current->data;
++
++	l_info("TEST: %s", test->name);
++
++	test->start(dbus, test->data);
++}
++
++#define test_assert(cond)	\
++	do {	\
++		if (!(cond)) {	\
++			l_info("TEST FAILED in %s at %s:%i: %s",	\
++				__func__, __FILE__, __LINE__,	\
++				L_STRINGIFY(cond));	\
++			l_main_quit();	\
++			return;	\
++		}	\
++	} while (0)
++
++static void request_name_callback(struct l_dbus *dbus, bool success,
++					bool queued, void *user_data)
++{
++	l_info("request name result=3D%s",
++		success ? (queued ? "queued" : "success") : "failed");
++
++	test_next();
++}
++
++static void ready_callback(void *user_data)
++{
++	l_info("ready");
++
++	l_dbus_name_acquire(dbus, "org.test", false, false, false,
++				request_name_callback, NULL);
++}
++
++static void disconnect_callback(void *user_data)
++{
++	l_info("Disconnected from DBus");
++	l_main_quit();
++}
++
++static struct l_dbus_message *get_random_callback(struct l_dbus *dbus,
++					struct l_dbus_message *message,
++					void *user_data)
++{
++	struct l_dbus_message *reply;
++	int fd;
++
++	reply =3D l_dbus_message_new_method_return(message);
++
++	fd =3D open("/dev/random", O_RDONLY);
++	l_dbus_message_set_arguments(reply, "h", fd);
++	close(fd);
++
++	return reply;
++}
++
++static void setup_test_interface(struct l_dbus_interface *interface)
++{
++	l_dbus_interface_method(interface, "GetRandom", 0, get_random_callback,
++				"h", "", "randomfd");
++}
++
++static int count_fds(void)
++{
++	int fd;
++	int count =3D 0;
++
++	for (fd =3D 0; fd < FD_SETSIZE; fd++)
++		if (fcntl(fd, F_GETFL) !=3D -1 || errno !=3D EBADF)
++			count++;
++
++	return count;
++}
++
++static bool compare_failed;
++
++static void compare_files(int a, int b)
++{
++	struct stat sa, sb;
++
++	compare_failed =3D true;
++
++	test_assert(fstat(a, &sa) =3D=3D 0);
++	test_assert(fstat(b, &sb) =3D=3D 0);
++
++	test_assert(sa.st_dev =3D=3D sb.st_dev);
++	test_assert(sa.st_ino =3D=3D sb.st_ino);
++	test_assert(sa.st_rdev =3D=3D sb.st_rdev);
++
++	compare_failed =3D false;
++}
++
++static int open_fds;
++
++static void get_random_idle_callback(void *user_data)
++{
++	test_assert(count_fds() =3D=3D open_fds);
++
++	test_next();
++}
++
++static void get_random_return_callback(struct l_dbus_message *message,
++					void *user_data)
++{
++	int fd0, fd1;
++
++	test_assert(!l_dbus_message_get_error(message, NULL, NULL));
++
++	test_assert(l_dbus_message_get_arguments(message, "h", &fd1));
++
++	fd0 =3D open("/dev/random", O_RDONLY);
++	test_assert(fd0 !=3D -1);
++
++	compare_files(fd0, fd1);
++	if (compare_failed)
++		return;
++
++	close(fd0);
++	close(fd1);
++
++	test_assert(l_idle_oneshot(get_random_idle_callback, NULL, NULL));
++}
++
++static void test_fd_passing_1(struct l_dbus *dbus, void *test_data)
++{
++	open_fds =3D count_fds();
++
++	l_dbus_method_call(dbus, "org.test", "/test", "org.test", "GetRandom",
++				NULL, get_random_return_callback, NULL, NULL);
++}
++
++static void test_run(void)
++{
++	success =3D false;
++
++	l_dbus_set_ready_handler(dbus, ready_callback, dbus, NULL);
++	l_dbus_set_disconnect_handler(dbus, disconnect_callback, NULL, NULL);
++
++	if (!l_dbus_register_interface(dbus, "org.test", setup_test_interface,
++					NULL, true)) {
++		l_info("Unable to register interface");
++		return;
++	}
++
++	if (!l_dbus_object_add_interface(dbus, "/test", "org.test", NULL)) {
++		l_info("Unable to instantiate interface");
++		return;
++	}
++
++	l_main_run();
++}
++
++int main(int argc, char *argv[])
++{
++	struct l_signal *signal;
++	sigset_t mask;
++	int i;
++
++	test_add("FD passing 1", test_fd_passing_1, NULL);
++
++	sigemptyset(&mask);
++	sigaddset(&mask, SIGINT);
++	sigaddset(&mask, SIGTERM);
++	sigaddset(&mask, SIGCHLD);
++
++	signal =3D l_signal_create(&mask, signal_handler, NULL, NULL);
++
++	l_log_set_stderr();
++
++	if (!start_dbus_daemon())
++		return -1;
++
++	for (i =3D 0; i < 10; i++) {
++		usleep(200 * 1000);
++
++		dbus =3D l_dbus_new(bus_address);
++		if (dbus)
++			break;
++	}
++
++	test_run();
++
++	l_dbus_destroy(dbus);
++
++	kill(dbus_daemon_pid, SIGKILL);
++
++	if (!success)
++		goto done;
++
++	if (!create_kdbus())
++		goto done;
++
++	dbus =3D l_dbus_new(bus_address);
++
++	test_run();
++
++	l_dbus_destroy(dbus);
++
++	close(kdbus_fd);
++
++done:
++	l_signal_remove(signal);
++
++	l_queue_destroy(tests, l_free);
++
++	if (!success)
++		abort();
++
++	return 0;
++}
+-- =
 
-Please don't do this, the code is so much easier to understand when the =
+2.7.4
 
-rx and tx paths are separate.
 
-> +	int r;
-> +	struct msghdr msg;
-> +	struct cmsghdr *cmsg;
-> +	uint8_t *fd_buf =3D NULL;
-> +	int buf_fds;
-> +	int iovlen =3D 2;
-> +
-> +	if (send)
-> +		buf_fds =3D *num_fds;
-> +	else {
-> +		buf_fds =3D 16;
-> +		*num_fds =3D 0;
-> +	}
-> +
-> +	if (buf_fds) {
-> +		fd_buf =3D alloca(CMSG_SPACE(buf_fds * sizeof(int)));
-> +
-> +		if (send) {
-> +			msg.msg_control =3D fd_buf;
-> +			msg.msg_controllen =3D CMSG_LEN(buf_fds * sizeof(int));
-> +
-> +			/* Set up fd_buf contents */
-> +			cmsg =3D CMSG_FIRSTHDR(&msg);
-> +			cmsg->cmsg_len =3D msg.msg_controllen;
-> +			cmsg->cmsg_level =3D SOL_SOCKET;
-> +			cmsg->cmsg_type =3D SCM_RIGHTS;
-> +			memcpy(CMSG_DATA(cmsg), *fds, buf_fds * sizeof(int));
-> +		}
-> +	}
-> +
-> +	while (iovlen) {
-> +		memset(&msg, 0, sizeof(msg));
-> +		msg.msg_iov =3D iov;
-> +		msg.msg_iovlen =3D iovlen;
-> +		msg.msg_control =3D fd_buf;
-> +		msg.msg_controllen =3D fd_buf ?
-> +			CMSG_LEN(buf_fds * sizeof(int)) : 0;
-> +
-> +		if (send)
-> +			r =3D sendmsg(fd, &msg, 0);
-> +		else
-> +			r =3D recvmsg(fd, &msg, MSG_CMSG_CLOEXEC | MSG_WAITALL);
-> +
-> +		if (r <=3D 0) {
-
-Strictly speaking, you can't call sendmsg in a loop.  The socket is =
-
-marked non-blocking, so EWOULDBLOCK or EAGAIN is a valid error return. =
-
-This means that you need to exit the loop and re-enter once POLLOUT is =
-
-received.
-
-> +			if (r !=3D -1 || errno !=3D EINTR)
-> +				return false;
-> +
-> +			continue;
-> +		}
-> +
-> +		while (iovlen && r >=3D (int) iov[0].iov_len) {
-> +			r -=3D iov[0].iov_len;
-> +			iov++;
-> +			iovlen--;
-> +		}
-> +
-> +		if (iovlen) {
-> +			iov[0].iov_base +=3D r;
-> +			iov[0].iov_len -=3D r;
-> +		}
-> +
-> +		if (send)
-> +			continue;
-> +
-> +		for (cmsg =3D CMSG_FIRSTHDR(&msg); cmsg;
-> +				cmsg =3D CMSG_NXTHDR(&msg, cmsg)) {
-> +			int cnt;
-> +
-> +			if (cmsg->cmsg_level !=3D SOL_SOCKET ||
-> +						cmsg->cmsg_type !=3D SCM_RIGHTS)
-> +				continue;
-> +
-> +			cnt =3D (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
-> +
-> +			*fds =3D l_realloc(*fds, (*num_fds + cnt) * sizeof(int));
-> +
-> +			memcpy(*fds + *num_fds, CMSG_DATA(cmsg),
-> +					cnt * sizeof(int));
-> +
-> +			*num_fds +=3D cnt;
-> +                }
-> +	}
-> +
-> +	return true;
-> +}
-> +
->   static bool classic_send_message(struct l_dbus *dbus,
->   					struct l_dbus_message *message)
->   {
->   	int fd =3D l_io_get_fd(dbus->io);
-> -	struct msghdr msg;
->   	struct iovec iov[2];
-> -	ssize_t len;
->   	int *fds;
->   	uint32_t num_fds =3D 0;
-> -	struct cmsghdr *cmsg;
->
->   	iov[0].iov_base =3D _dbus_message_get_header(message, &iov[0].iov_len);
->   	iov[1].iov_base =3D _dbus_message_get_body(message, &iov[1].iov_len);
->
-> -	memset(&msg, 0, sizeof(msg));
-> -	msg.msg_iov =3D iov;
-> -	msg.msg_iovlen =3D 2;
-> -
->   	if (dbus->support_unix_fd)
->   		fds =3D _dbus_message_get_fds(message, &num_fds);
->
-> -	if (num_fds) {
-> -		msg.msg_control =3D alloca(CMSG_SPACE(num_fds * sizeof(int)));
-> -		msg.msg_controllen =3D CMSG_LEN(num_fds * sizeof(int));
-> -
-> -		cmsg =3D CMSG_FIRSTHDR(&msg);
-> -		cmsg->cmsg_len =3D msg.msg_controllen;
-> -		cmsg->cmsg_level =3D SOL_SOCKET;
-> -		cmsg->cmsg_type =3D SCM_RIGHTS;
-> -		memcpy(CMSG_DATA(cmsg), fds, num_fds * sizeof(int));
-> -	}
-> -
-> -	len =3D sendmsg(fd, &msg, 0);
-> -	if (len < 0)
-> -		return false;
-> -
-> -	return true;
-> +	return msg_op(fd, true, iov, &fds, &num_fds);
->   }
->
->   static struct l_dbus_message *classic_recv_message(struct l_dbus *dbus)
->   {
->   	int fd =3D l_io_get_fd(dbus->io);
->   	struct dbus_header hdr;
-> -	struct msghdr msg;
->   	struct iovec iov[2];
-> -	struct cmsghdr *cmsg;
->   	ssize_t len;
->   	void *header, *body;
->   	size_t header_size, body_size;
-> -	union {
-> -		uint8_t bytes[CMSG_SPACE(16 * sizeof(int))];
-> -		struct cmsghdr align;
-> -	} fd_buf;
->   	int *fds =3D NULL;
->   	uint32_t num_fds =3D 0;
-> +	struct l_dbus_message *msg;
-> +	unsigned int i;
->
-> -	len =3D recv(fd, &hdr, DBUS_HEADER_SIZE, MSG_PEEK);
-> +	len =3D recv(fd, &hdr, DBUS_HEADER_SIZE, MSG_PEEK | MSG_WAITALL);
->   	if (len !=3D DBUS_HEADER_SIZE)
->   		return NULL;
->
-> @@ -650,59 +713,37 @@ static struct l_dbus_message *classic_recv_message(=
-struct l_dbus *dbus)
->   	iov[1].iov_base =3D body;
->   	iov[1].iov_len  =3D body_size;
->
-> -	memset(&msg, 0, sizeof(msg));
-> -	msg.msg_iov =3D iov;
-> -	msg.msg_iovlen =3D 2;
-> -	msg.msg_control =3D &fd_buf;
-> -	msg.msg_controllen =3D sizeof(fd_buf);
-> -
-> -	len =3D recvmsg(fd, &msg, MSG_CMSG_CLOEXEC);
-> -	if (len < 0)
-> -		goto cmsg_fail;
-> -
-> -	for (cmsg =3D CMSG_FIRSTHDR(&msg); cmsg;
-> -				cmsg =3D CMSG_NXTHDR(&msg, cmsg)) {
-> -		unsigned int i;
-> -
-> -		if (cmsg->cmsg_level !=3D SOL_SOCKET ||
-> -					cmsg->cmsg_type !=3D SCM_RIGHTS)
-> -			continue;
-> -
-> -		num_fds =3D (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
-> -		fds =3D (void *) CMSG_DATA(cmsg);
-> -
-> -		/* Set FD_CLOEXEC on all file descriptors */
-> -		for (i =3D 0; i < num_fds; i++) {
-> -			long flags;
-> -
-> -			flags =3D fcntl(fds[i], F_GETFD, NULL);
-> -			if (flags < 0)
-> -				continue;
-> -
-> -			if (!(flags & FD_CLOEXEC))
-> -				fcntl(fds[i], F_SETFD, flags | FD_CLOEXEC);
-> -                }
-> -	}
-> +	if (!msg_op(fd, false, iov, &fds, &num_fds))
-> +		goto fail;
->
->   	if (hdr.endian !=3D DBUS_NATIVE_ENDIAN) {
->   		l_util_debug(dbus->debug_handler,
->   				dbus->debug_data, "Endianness incorrect");
-> -		goto bad_msg;
-> +		goto fail;
->   	}
->
->   	if (hdr.version !=3D 1) {
->   		l_util_debug(dbus->debug_handler,
->   				dbus->debug_data, "Protocol version incorrect");
-> -		goto bad_msg;
-> +		goto fail;
->   	}
->
-> -	return dbus_message_build(header, header_size, body, body_size,
-> +	msg =3D dbus_message_build(header, header_size, body, body_size,
->   					fds, num_fds);
-> +	if (!msg)
-> +		goto fail;
->
-> -bad_msg:
-> -cmsg_fail:
-> -	l_free(header);
-> +	l_free(fds);
-> +
-> +	return msg;
-> +
-> +fail:
-> +	for (i =3D 0; i < num_fds; i++)
-> +		close(fds[i]);
-> +
-> +	l_free(fds);
->   	l_free(body);
-> +	l_free(header);
->
->   	return NULL;
->   }
->
-
-Regards,
--Denis
-
---===============9014990419721496756==--
+--===============0969154830411103274==--
 
