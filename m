@@ -1,79 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============0822526501563344329=="
+Content-Type: multipart/mixed; boundary="===============8196398865267662596=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: ell/main.c Memory leak
-Date: Fri, 03 Jun 2016 15:08:30 -0700
-Message-ID: <alpine.OSX.2.20.1606031419360.37295@mjmartin-mac01.local>
-In-Reply-To: <5751F223.6070901@gmail.com>
+Date: Fri, 03 Jun 2016 17:16:00 -0500
+Message-ID: <575201A0.5040304@gmail.com>
+In-Reply-To: <CAOq732Jy-EE95rEvK8wLNOWXfC-ZJNq8b-iQmyqzSE-ivHfA1Q@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0822526501563344329==
+--===============8196398865267662596==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, 3 Jun 2016, Denis Kenzior wrote:
+Hi Andrew,
 
-> This leak happens in create_epoll(). The sequence of events is a bit biza=
-rre:
->
-> 1. We send an invalid signal
-> 2. DBus detects that and kills our connection
-> 3. l_main_quit is called, which frees all main event loop resources
-> 4. We start tearing down the rest of the daemon
-> 	a) At some point we unregister some interfaces
-> 	b) ObjectManager schedules the transmission of a signal
-> 	c) idle_create gets called, which calls create_epoll()
-> 5. DBus is destroyed, which removes the idle source in 4c
->
-> Unfortunately at this point, nothing actually frees the resources created=
- by =
+ > I think I saw this but concluded it will go away when the Address
 
-> create_epoll().
->
-> I'm thinking l_main_run needs to be split up into l_main_new, l_main_run =
-and =
+It will, and this one is rather benign, but I want to run have clean =
 
-> l_main_destroy.
+valgrind runs...
 
-Maybe this is more of an iwd architecture problem than an ELL problem? The =
+> property format gets changed to be a proper string.  One thing that
+> could work to avoid this in the future is to exit from create_epoll if
+> epoll_terminate is true, IIRC there was something else that already
 
-cleanup code runs after l_main_run() returns, and that code should not do =
+Yes, this is another possibility.  Prevent various main event loops =
 
-anything that creates an idle or watch because those handlers will never =
+elements from being created if l_main_quit has been called...
 
-get called. The event loop is already gone.
+> prevented l_main_run from being used multiple times.  Also it's a very
+> small leak that only happens on exit...
 
-The cleanup should be done before the main loop exits. Instead of calling =
+Regards,
+-Denis
 
-l_main_quit to kill the daemon, create an iwd_quit function that will run =
 
-all the teardown code first. Once teardown is complete, then call =
-
-l_main_quit.
-
-The associated problem is how to give better feedback to all users of ELL, =
-
-so it's obvious when they're doing something they shouldn't. Changing =
-
-where create_epoll is called could be a big help here. Rather than doing =
-
-it automatically in watch_add, idle_add, and l_main_run, we could add an =
-
-explicit l_main_init() function that must be called before l_main_run and =
-
-any ELL functions that expect epoll_fd to exist. watch_add and idle_add =
-
-would return errors if epoll_fd was 0. Yes, this is a lot like =
-
-l_main_new/run/destroy, but calling it "init" doesn't create the =
-
-impression that you can have multiple main loops.
-
---
-Mat Martineau
-Intel OTC
-
---===============0822526501563344329==--
+--===============8196398865267662596==--
 
