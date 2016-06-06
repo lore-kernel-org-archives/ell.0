@@ -1,64 +1,35 @@
-Content-Type: multipart/mixed; boundary="===============2423081090642524016=="
+Content-Type: multipart/mixed; boundary="===============2514024805075325788=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: cipher, tls, and keys
-Date: Mon, 06 Jun 2016 18:35:16 -0500
-Message-ID: <575608B4.6050601@gmail.com>
-In-Reply-To: <alpine.OSX.2.20.1606061551120.3958@mjmartin-mac01.local>
+Subject: Re: [PATCH 08/11] cipher: Update for current kernel akcipher interface
+Date: Mon, 06 Jun 2016 18:55:00 -0500
+Message-ID: <57560D54.8010603@gmail.com>
+In-Reply-To: <20160606205450.23615-8-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2423081090642524016==
+--===============2514024805075325788==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Mat,
 
-On 06/06/2016 06:19 PM, Mat Martineau wrote:
->
-> So far I've updated the asymmetric cipher code to work with the current
-> version of the AF_ALG akcipher interface. This leaves the asymmetric
-> cipher & tls disconnected from the new key/keyring code, which doesn't
-> take advantage of the kernel's capabilities with akcipher and the keyring.
->
-> We have three options:
->
-> 1. The current code works, so leave it as-is. I took this approach first
-> to minimize changes while I got it working.
->
-> 2. Make use of the keyctl() crypto API that's under review. This has the
-> clearest upstream path because it was implemented by the keyring
-> maintainer. Would simplify l_asymmetric_cipher code and involve fewer
-> syscalls.
+On 06/06/2016 03:54 PM, Mat Martineau wrote:
+> There are some significant differences in the current iteration of
+> kernel AF_ALG akcipher support:
+>   * Kernel handles padding
 
-I agree that keyctl is the one to use.  I would keep the asymmetric =
+Are you sure?  Talking with Andrew a while ago, he didn't think this was =
 
-cipher classes the way they are, but remove the sign/verify operations. =
+the case.  My impression was that it was implemented as a template.
 
-  Mmake tls depend on keyctl/keyring directly for sign/verify.
+The unit test we have for L_CIPHER_RSA_PKCS1_V1_5 is not really reliable =
 
->
-> 3. Continue with AF_ALG but make use of ALG_SET_KEY_ID and
-> ALG_SET_PUB_KEY_ID to use keys already in a keyring. Would not be a big
-> change, but the kernel patch set is a work in progress and much more
-> uncertainty about upstream prospects / timing.
-
-Lets follow these patches, and if they ever get upstreamed, then we can =
-
-update the asymmetric_cipher API to support these operations, just for =
-
-completeness sake.
-
->
->
-> I like #2 because it makes for a clean API and simple userspace
-> implementation. Anyone prefer other options?
->
+either.
 
 Regards,
 -Denis
 
-
---===============2423081090642524016==--
+--===============2514024805075325788==--
 
