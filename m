@@ -1,91 +1,87 @@
-Content-Type: multipart/mixed; boundary="===============8161444784564490629=="
+Content-Type: multipart/mixed; boundary="===============1284089292831933720=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: Re: cipher, tls, and keys
-Date: Tue, 07 Jun 2016 12:30:42 -0700
-Message-ID: <alpine.OSX.2.20.1606071211150.9891@mjmartin-mac01.local>
-In-Reply-To: <575608B4.6050601@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 08/11] cipher: Update for current kernel akcipher interface
+Date: Tue, 07 Jun 2016 14:32:57 -0500
+Message-ID: <57572169.7040605@gmail.com>
+In-Reply-To: <alpine.OSX.2.20.1606071056530.9891@mjmartin-mac01.local>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8161444784564490629==
+--===============1284089292831933720==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, 6 Jun 2016, Denis Kenzior wrote:
+Hi Mat,
 
-> Hi Mat,
+ >>
+>> I'm a bit unsure that we really want to know this information.  What
+>> is it's use actually?  We should always implicitly know what type of
+>> certificate we are giving to l_asymmetric_cipher_new, so it might just
+>> need to be a parameter.
 >
-> On 06/06/2016 06:19 PM, Mat Martineau wrote:
->> =
-
->> So far I've updated the asymmetric cipher code to work with the current
->> version of the AF_ALG akcipher interface. This leaves the asymmetric
->> cipher & tls disconnected from the new key/keyring code, which doesn't
->> take advantage of the kernel's capabilities with akcipher and the keyrin=
-g.
->> =
-
->> We have three options:
->> =
-
->> 1. The current code works, so leave it as-is. I took this approach first
->> to minimize changes while I got it working.
->> =
-
->> 2. Make use of the keyctl() crypto API that's under review. This has the
->> clearest upstream path because it was implemented by the keyring
->> maintainer. Would simplify l_asymmetric_cipher code and involve fewer
->> syscalls.
+> Two pieces of information are extracted: the key size (used by tls) and
+> whether it's public or private. The public/private bit is a freebie when
+> retrieving the key size. It used to be that the key size could be
+> extracted the same way for both public and private keys.
 >
-> I agree that keyctl is the one to use.  I would keep the asymmetric ciphe=
-r =
+> After digging some more, there is a brand new way to query key
+> information (including the length) from asymmetric keys stored in the
+> kernel. If we switch to using that we wouldn't have to parse certs in
 
-> classes the way they are, but remove the sign/verify operations.  Mmake t=
-ls =
+I'd like to see akcipher (and maybe even skcipher) support obtaining of =
 
-> depend on keyctl/keyring directly for sign/verify.
+the key size via a getsockopt.  Just seems like a good idea.
 
-keyctl/keyring can do encrypt/decrypt too, I'd like to pick one way or the =
+> userspace at all, which sounds like a win to me. Still wouldn't need to
+> make the user designate public vs. private in l_asymmetric_new, since
+> the kernel would know already.
 
-other. Consistency in key handlng between sign/verify and encrypt/decrypt =
+Don't we need to know whether the sign/verify operations are available, =
 
-would make for a clearer ELL interface. Looks like we'll need to load the =
+or just the verify?
 
-keys in to the keyring for encrypt/decrypt anyway (to get the key size), =
-
-so might as well leverage the simpler interface for encrypt/decrypt too.
-
+>> I'm all for getting rid of the padding stuff, but as mentioned
+>> previously, I'm not sure the pkcs1pad template is part of the rsa
+>> akcipher by default. Is it?
 >
->> =
-
->> 3. Continue with AF_ALG but make use of ALG_SET_KEY_ID and
->> ALG_SET_PUB_KEY_ID to use keys already in a keyring. Would not be a big
->> change, but the kernel patch set is a work in progress and much more
->> uncertainty about upstream prospects / timing.
+> I thought it was, but now I'm not sure. The kernel seemed to object if
+> the data was padded out to the full length. I'm digging more to confirm
+> what's actually happening, but I probably have to pass in pkcs1pad(rsa)
+> as the alg name.
 >
-> Lets follow these patches, and if they ever get upstreamed, then we can =
 
-> update the asymmetric_cipher API to support these operations, just for =
+That is what I thought.  I think Andrew mentioned that this wasn't yet =
 
-> completeness sake.
+exposed to user space.
 
-If we build a good asymmetric API (sign/verify/encrypt/decrypt) around =
+>>> @@ -1078,11 +1068,14 @@ static bool tls_rsa_verify(struct l_tls *tls,
+>>> const uint8_t *in, size_t len,
+>>>            */
+>>>       }
+>>>
+>>> -    digest_info =3D alloca(expected_len);
+>>> +    if (expected_len > key_size)
+>>> +        goto err_free_rsa;
+>>> +
+>>> +    digest_info =3D alloca(key_size);
+>>
+>> This looks like a separate fix and belongs in a separate patch.
+>>
+>
+> What happened here is that the kernel no longer lets you read only the
+> amount of data you're expecting - you need to read the maximum size you
+> might get. And if I'm telling the kernel to read a potentially larger
+> number of bytes, there needs to be a big enough buffer for it.
+>
 
-keyctl I don't see a big benefit to supporting both AF_ALG-akcipher and =
+This still feels wrong to me.  Are you sure its not related to the =
 
-keyctl. If an l_asymmetric_cipher instance had a long lifetime and was =
+PKCS1.5 padding ?
 
-reused frequently, there would be some savings (less re-parsing of the =
+Regards,
+-Denis
 
-keys inside the kernel), but tls doesn't use the asymmetric cipher API =
-
-that way.
-
---
-Mat Martineau
-Intel OTC
-
---===============8161444784564490629==--
+--===============1284089292831933720==--
 
