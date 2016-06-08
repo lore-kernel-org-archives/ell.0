@@ -1,134 +1,255 @@
-Content-Type: multipart/mixed; boundary="===============0108217792226462540=="
+Content-Type: multipart/mixed; boundary="===============2803010424165987183=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: Re: [PATCH 08/11] cipher: Update for current kernel akcipher interface
-Date: Tue, 07 Jun 2016 17:18:59 -0700
-Message-ID: <alpine.OSX.2.20.1606071552160.9891@mjmartin-mac01.local>
-In-Reply-To: <57572169.7040605@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/3] main: Manually initialize and clean up the main loop
+Date: Wed, 08 Jun 2016 08:49:36 -0500
+Message-ID: <57582270.3020409@gmail.com>
+In-Reply-To: <20160607223015.26693-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0108217792226462540==
+--===============2803010424165987183==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Tue, 7 Jun 2016, Denis Kenzior wrote:
+Hi Mat,
 
-> Hi Mat,
+On 06/07/2016 05:30 PM, Mat Martineau wrote:
+> Automatic initialization and cleanup of the main loop created some
+> issues with orderly shutdown of an ELL program. If cleanup functions
+> were called after the l_main_run() returned, they could indirectly set
+> up the epoll file descriptor and associated resources again. Those
+> resources were not freed after the cleanup functions ran.
 >
->>>
->>> I'm a bit unsure that we really want to know this information.  What
->>> is it's use actually?  We should always implicitly know what type of
->>> certificate we are giving to l_asymmetric_cipher_new, so it might just
->>> need to be a parameter.
->> =
-
->> Two pieces of information are extracted: the key size (used by tls) and
->> whether it's public or private. The public/private bit is a freebie when
->> retrieving the key size. It used to be that the key size could be
->> extracted the same way for both public and private keys.
->> =
-
->> After digging some more, there is a brand new way to query key
->> information (including the length) from asymmetric keys stored in the
->> kernel. If we switch to using that we wouldn't have to parse certs in
+> Now, epoll resources are set up by l_main_init() and cleaned up by
+> l_main_exit(). If cleanup functions set up any idles or watches
+> (including watch-based timeouts, signals, or ios) after l_main_run()
+> returns, those will be destroyed by l_main_exit().
 >
-> I'd like to see akcipher (and maybe even skcipher) support obtaining of t=
-he =
+> l_main_init() must be called before l_main_run() or any other ELL
+> function that expects epoll to be set up. l_main_exit() should be
+> called after l_main_run() returns to ensure that all resources are
+> freed.
+> ---
+>   ell/main.c                   | 81 +++++++++++++++++++++++++++----------=
+-------
+>   ell/main.h                   |  4 ++-
+>   examples/dbus-client.c       |  5 +++
+>   examples/dbus-service.c      |  5 +++
+>   examples/https-client-test.c |  5 +++
+>   examples/https-server-test.c |  5 +++
+>   unit/test-dbus-message-fds.c |  5 +++
+>   unit/test-dbus-properties.c  |  5 +++
+>   unit/test-dbus.c             |  5 +++
+>   unit/test-genl.c             |  5 +++
+>   unit/test-io.c               |  5 +++
+>   unit/test-kdbus.c            |  5 +++
+>   unit/test-main.c             |  5 +++
+>   unit/test-netlink.c          |  5 +++
 
-> key size via a getsockopt.  Just seems like a good idea.
+Can you do me a favor and split these into three patches, according to =
 
-It helps that there's an internal API for this: crypto_akcipher_maxsize(). =
+HACKING 'Submitting Patches'.
 
-AF_ALG doesn't currently have any getsockopt handler, unfortunately. I'll =
-
-see if the AF_ALG akcipher contributors will help push for it too.
-
+>   14 files changed, 113 insertions(+), 32 deletions(-)
 >
->> userspace at all, which sounds like a win to me. Still wouldn't need to
->> make the user designate public vs. private in l_asymmetric_new, since
->> the kernel would know already.
+> diff --git a/ell/main.c b/ell/main.c
+> index f53ed9e..b4c1582 100644
+> --- a/ell/main.c
+> +++ b/ell/main.c
+> @@ -86,9 +86,6 @@ static inline bool __attribute__ ((always_inline)) crea=
+te_epoll(void)
+>   {
+>   	unsigned int i;
 >
-> Don't we need to know whether the sign/verify operations are available, o=
-r =
-
-> just the verify?
-
-Sure, but that doesn't mean the caller of l_asymmetric_new needs to tell =
-
-us whether it's a private key or not. We send the key to the kernel and =
-
-ask the kernel which of encrypt/decrypt/sign/verify are available when =
-
-using that key.
-
+> -	if (likely(epoll_fd))
+> -		return true;
+> -
+>   	epoll_fd =3D epoll_create1(EPOLL_CLOEXEC);
+>   	if (epoll_fd < 0) {
+>   		epoll_fd =3D 0;
+> @@ -127,7 +124,7 @@ int watch_add(int fd, uint32_t events, watch_event_cb=
+_t callback,
+>   	if (unlikely(fd < 0 || !callback))
+>   		return -EINVAL;
 >
->>> I'm all for getting rid of the padding stuff, but as mentioned
->>> previously, I'm not sure the pkcs1pad template is part of the rsa
->>> akcipher by default. Is it?
->> =
-
->> I thought it was, but now I'm not sure. The kernel seemed to object if
->> the data was padded out to the full length. I'm digging more to confirm
->> what's actually happening, but I probably have to pass in pkcs1pad(rsa)
->> as the alg name.
->> =
-
+> -	if (!create_epoll())
+> +	if (!epoll_fd)
+>   		return -EIO;
 >
-> That is what I thought.  I think Andrew mentioned that this wasn't yet =
-
-> exposed to user space.
+>   	if ((unsigned int) fd > watch_entries - 1)
+> @@ -260,7 +257,7 @@ int idle_add(idle_event_cb_t callback, void *user_dat=
+a,
+>   	if (unlikely(!callback))
+>   		return -EINVAL;
 >
->>>> @@ -1078,11 +1068,14 @@ static bool tls_rsa_verify(struct l_tls *tls,
->>>> const uint8_t *in, size_t len,
->>>>            */
->>>>       }
->>>> =
-
->>>> -    digest_info =3D alloca(expected_len);
->>>> +    if (expected_len > key_size)
->>>> +        goto err_free_rsa;
->>>> +
->>>> +    digest_info =3D alloca(key_size);
->>> =
-
->>> This looks like a separate fix and belongs in a separate patch.
->>> =
-
->> =
-
->> What happened here is that the kernel no longer lets you read only the
->> amount of data you're expecting - you need to read the maximum size you
->> might get. And if I'm telling the kernel to read a potentially larger
->> number of bytes, there needs to be a big enough buffer for it.
->> =
-
+> -	if (!create_epoll())
+> +	if (!epoll_fd)
+>   		return -EIO;
 >
-> This still feels wrong to me.  Are you sure its not related to the PKCS1.=
-5 =
+>   	data =3D l_new(struct idle_data, 1);
+> @@ -313,25 +310,45 @@ static void idle_dispatch(void *data, void *user_da=
+ta)
+>   }
+>
+>   /**
+> + * l_main_init:
+> + *
+> + * Initialize the main loop. This must be called before l_main_run()
+> + * and any other function that directly or indirectly sets up an idle
+> + * or watch. A safe rule-of-thumb is to call it before any function
+> + * prefixed with "l_".
+> + *
+> + * Returns: true if initialization was successful, false otherwise.
+> + **/
+> +LIB_EXPORT bool l_main_init(void)
+> +{
+> +	if (unlikely(epoll_running))
+> +		return false;
+> +
+> +	if (!create_epoll())
+> +		return false;
+> +
+> +	epoll_terminate =3D false;
+> +
+> +	return true;
+> +}
+> +
+> +/**
+>    * l_main_run:
+>    *
+>    * Run the main loop
 
-> padding ?
+Should we mention that the main loop can be restarted?
 
-Yes. akcipher_recvmsg() does this check before invoking any crypto ops:
+e.g.
+l_main_run
+l_main_quit
+l_main_run
 
-         /* ensure output buffer is sufficiently large */
-         if (usedpages < akcipher_calcsize(ctx)) {
-                 err =3D -EMSGSIZE;
-                 goto unlock;
-         }
+is possible?
 
-(where akcipher_calcsize() returns the key size in bytes when using RSA)
+>    *
+> - * Returns: #EXIT_SCUCESS after successful execution or #EXIT_FAILURE in
+> + * Returns: #EXIT_SUCCESS after successful execution or #EXIT_FAILURE in
+>    *          case of failure
+>    **/
+>   LIB_EXPORT int l_main_run(void)
+>   {
+> -	unsigned int i;
+> -
+> -	if (unlikely(epoll_running))
+> +	/* Has l_main_init() been called? */
+> +	if (unlikely(!epoll_fd))
+>   		return EXIT_FAILURE;
+>
+> -	if (!create_epoll())
+> +	if (unlikely(epoll_running))
+>   		return EXIT_FAILURE;
+>
+> -	epoll_terminate =3D false;
+> -
+>   	epoll_running =3D true;
+>
+>   	for (;;) {
+> @@ -375,6 +392,26 @@ LIB_EXPORT int l_main_run(void)
+>   		l_queue_foreach_remove(idle_list, idle_prune, NULL);
+>   	}
+>
+> +	epoll_running =3D false;
+> +
+> +	return exit_status;
 
-I'm not sure why, since the length of the destination buffer gets =
+Do we still need this global exit_status variable?  Or should we always =
 
-propagated to the crypto algorithm and it could decide what to do. I'll =
+just return 0 here?
 
-ask Stephan.
+> +}
+> +
+> +/**
+> + * l_main_exit:
+> + *
+> + * Clean up after main loop completes.
+> + *
+> + **/
+> +LIB_EXPORT bool l_main_exit(void)
+> +{
+> +	unsigned int i;
+> +
+> +	if (epoll_running) {
+> +		l_error("Cleanup attempted on running main loop");
+> +		return false;
+> +	}
+> +
+>   	for (i =3D 0; i < watch_entries; i++) {
+>   		struct watch_data *data =3D watch_list[i];
+>
+> @@ -399,12 +436,10 @@ LIB_EXPORT int l_main_run(void)
+>   	l_queue_destroy(idle_list, idle_destroy);
+>   	idle_list =3D NULL;
+>
+> -	epoll_running =3D false;
+> -
+>   	close(epoll_fd);
+>   	epoll_fd =3D 0;
+>
+> -	return exit_status;
+> +	return true;
+>   }
+>
+>   /**
+> @@ -472,19 +507,3 @@ int l_main_run_with_signal(l_main_signal_cb_t callba=
+ck, void *user_data)
+>
+>   	return result;
+>   }
+> -
+> -/**
+> - * l_main_exit:
+> - *
+> - * Teminate the running main loop with exit status
+> - *
+> - **/
+> -LIB_EXPORT
+> -void l_main_exit(int status)
+> -{
+> -	if (unlikely(!epoll_running))
+> -		return;
+> -
+> -	exit_status =3D status;
+> -	epoll_terminate =3D true;
+> -}
+> diff --git a/ell/main.h b/ell/main.h
+> index 46d2a13..c23ec55 100644
+> --- a/ell/main.h
+> +++ b/ell/main.h
+> @@ -29,13 +29,15 @@
+>   extern "C" {
+>   #endif
+>
+> +bool l_main_init(void);
+>   int l_main_run(void);
+> +bool l_main_exit(void);
+> +
 
---
-Mat Martineau
-Intel OTC
+I wonder if returning bool here is useful since you never check the =
 
---===============0108217792226462540==--
+return value in any of the actual files that use this.
+
+>   bool l_main_quit(void);
+>
+>   typedef void (*l_main_signal_cb_t) (uint32_t signo, void *user_data);
+>
+>   int l_main_run_with_signal(l_main_signal_cb_t callback, void *user_data=
+);
+> -void l_main_exit(int status);
+>
+>   #ifdef __cplusplus
+>   }
+
+Regards,
+-Denis
+
+--===============2803010424165987183==--
 
