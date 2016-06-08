@@ -1,240 +1,255 @@
-Content-Type: multipart/mixed; boundary="===============7121957065612283764=="
+Content-Type: multipart/mixed; boundary="===============6993806655758642415=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v2 3/3] unit: Update for new main loop init/exit functions
-Date: Wed, 08 Jun 2016 14:55:38 -0700
-Message-ID: <20160608215538.5590-3-mathew.j.martineau@linux.intel.com>
-In-Reply-To: <20160608215538.5590-1-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v2 1/3] main: Manually initialize and clean up the main loop
+Date: Wed, 08 Jun 2016 14:55:36 -0700
+Message-ID: <20160608215538.5590-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7121957065612283764==
+--===============6993806655758642415==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Atomatic initialization and cleanup of the main loop created some
+issues with orderly shutdown of an ELL program. If cleanup functions
+were called after the l_main_run() returned, they could indirectly set
+up the epoll file descriptor and associated resources again. Those
+resources were not freed after the cleanup functions ran.
+
+Now, epoll resources are set up by l_main_init() and cleaned up by
+l_main_exit(). If cleanup functions set up any idles or watches
+(including watch-based timeouts, signals, or ios) after l_main_run()
+returns, those will be destroyed by l_main_exit().
+
+l_main_init() must be called before l_main_run() or any other ELL
+function that expects epoll to be set up. l_main_exit() should be
+called after l_main_run() returns to ensure that all resources are
+freed.
 ---
- unit/test-dbus-message-fds.c | 5 +++++
- unit/test-dbus-properties.c  | 5 +++++
- unit/test-dbus.c             | 5 +++++
- unit/test-genl.c             | 5 +++++
- unit/test-io.c               | 5 +++++
- unit/test-kdbus.c            | 5 +++++
- unit/test-main.c             | 5 +++++
- unit/test-netlink.c          | 5 +++++
- 8 files changed, 40 insertions(+)
+ ell/main.c | 87 ++++++++++++++++++++++++++++++++++++++--------------------=
+----
+ ell/main.h |  4 ++-
+ 2 files changed, 57 insertions(+), 34 deletions(-)
 
-diff --git a/unit/test-dbus-message-fds.c b/unit/test-dbus-message-fds.c
-index 7e710cf..c93f093 100644
---- a/unit/test-dbus-message-fds.c
-+++ b/unit/test-dbus-message-fds.c
-@@ -330,6 +330,9 @@ int main(int argc, char *argv[])
- 	sigset_t mask;
- 	int i;
+diff --git a/ell/main.c b/ell/main.c
+index f53ed9e..882690c 100644
+--- a/ell/main.c
++++ b/ell/main.c
+@@ -56,7 +56,6 @@ static int epoll_fd;
+ static bool epoll_running;
+ static bool epoll_terminate;
+ static int idle_id;
+-static int exit_status =3D EXIT_FAILURE;
  =
 
-+	if (!l_main_init())
-+		return -1;
-+
- 	test_add("FD passing 1", test_fd_passing_1, NULL);
+ static struct l_queue *idle_list;
  =
 
- 	sigemptyset(&mask);
-@@ -377,6 +380,8 @@ done:
- =
-
- 	l_queue_destroy(tests, l_free);
- =
-
-+	l_main_exit();
-+
- 	if (!success)
- 		abort();
- =
-
-diff --git a/unit/test-dbus-properties.c b/unit/test-dbus-properties.c
-index 6eae592..b11d1d5 100644
---- a/unit/test-dbus-properties.c
-+++ b/unit/test-dbus-properties.c
-@@ -978,6 +978,9 @@ int main(int argc, char *argv[])
- 	sigset_t mask;
- 	int i;
- =
-
-+	if (!l_main_init())
-+		return -1;
-+
- 	test_add("Legacy properties get", test_old_get, NULL);
- 	test_add("Legacy properties set", test_old_set, NULL);
- 	test_add("Legacy optional property", test_old_optional_get, NULL);
-@@ -1034,6 +1037,8 @@ done:
- =
-
- 	l_queue_destroy(tests, l_free);
- =
-
-+	l_main_exit();
-+
- 	if (!success)
- 		abort();
- =
-
-diff --git a/unit/test-dbus.c b/unit/test-dbus.c
-index b01a530..0fed605 100644
---- a/unit/test-dbus.c
-+++ b/unit/test-dbus.c
-@@ -201,6 +201,9 @@ int main(int argc, char *argv[])
- 	sigset_t mask;
- 	int i;
- =
-
-+	if (!l_main_init())
-+		return -1;
-+
- 	sigemptyset(&mask);
- 	sigaddset(&mask, SIGINT);
- 	sigaddset(&mask, SIGTERM);
-@@ -248,5 +251,7 @@ int main(int argc, char *argv[])
- =
-
- 	l_signal_remove(signal);
- =
-
-+	l_main_exit();
-+
- 	return 0;
- }
-diff --git a/unit/test-genl.c b/unit/test-genl.c
-index 1764133..d15d92c 100644
---- a/unit/test-genl.c
-+++ b/unit/test-genl.c
-@@ -44,6 +44,9 @@ int main(int argc, char *argv[])
+@@ -86,9 +85,6 @@ static inline bool __attribute__ ((always_inline)) create=
+_epoll(void)
  {
- 	struct l_genl *genl;
+ 	unsigned int i;
  =
 
-+	if (!l_main_init())
-+		return -1;
-+
- 	l_log_set_stderr();
+-	if (likely(epoll_fd))
+-		return true;
+-
+ 	epoll_fd =3D epoll_create1(EPOLL_CLOEXEC);
+ 	if (epoll_fd < 0) {
+ 		epoll_fd =3D 0;
+@@ -127,7 +123,7 @@ int watch_add(int fd, uint32_t events, watch_event_cb_t=
+ callback,
+ 	if (unlikely(fd < 0 || !callback))
+ 		return -EINVAL;
  =
 
- 	genl =3D l_genl_new_default();
-@@ -56,5 +59,7 @@ int main(int argc, char *argv[])
+-	if (!create_epoll())
++	if (!epoll_fd)
+ 		return -EIO;
  =
 
- 	l_genl_unref(genl);
+ 	if ((unsigned int) fd > watch_entries - 1)
+@@ -260,7 +256,7 @@ int idle_add(idle_event_cb_t callback, void *user_data,
+ 	if (unlikely(!callback))
+ 		return -EINVAL;
  =
 
-+	l_main_exit();
-+
- 	return 0;
+-	if (!create_epoll())
++	if (!epoll_fd)
+ 		return -EIO;
+ =
+
+ 	data =3D l_new(struct idle_data, 1);
+@@ -313,25 +309,49 @@ static void idle_dispatch(void *data, void *user_data)
  }
-diff --git a/unit/test-io.c b/unit/test-io.c
-index 24e1681..922ecad 100644
---- a/unit/test-io.c
-+++ b/unit/test-io.c
-@@ -75,6 +75,9 @@ int main(int argc, char *argv[])
- 	struct l_io *io1, *io2;
- 	int fd[2];
  =
 
-+	if (!l_main_init())
-+		return -1;
+ /**
++ * l_main_init:
++ *
++ * Initialize the main loop. This must be called before l_main_run()
++ * and any other function that directly or indirectly sets up an idle
++ * or watch. A safe rule-of-thumb is to call it before any function
++ * prefixed with "l_".
++ *
++ * Returns: true if initialization was successful, false otherwise.
++ **/
++LIB_EXPORT bool l_main_init(void)
++{
++	if (unlikely(epoll_running))
++		return false;
 +
- 	l_log_set_stderr();
- =
-
- 	if (socketpair(PF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, fd) < 0) {
-@@ -99,5 +102,7 @@ int main(int argc, char *argv[])
- 	l_io_destroy(io2);
- 	l_io_destroy(io1);
- =
-
-+	l_main_exit();
++	if (!create_epoll())
++		return false;
 +
- 	return 0;
++	epoll_terminate =3D false;
++
++	return true;
++}
++
++/**
+  * l_main_run:
+  *
+  * Run the main loop
+  *
+- * Returns: #EXIT_SCUCESS after successful execution or #EXIT_FAILURE in
++ * The loop may be restarted by invoking this function after a
++ * previous invocation returns, provided that l_main_exit() has not
++ * been called first.
++ *
++ * Returns: #EXIT_SUCCESS after successful execution or #EXIT_FAILURE in
+  *          case of failure
+  **/
+ LIB_EXPORT int l_main_run(void)
+ {
+-	unsigned int i;
+-
+-	if (unlikely(epoll_running))
++	/* Has l_main_init() been called? */
++	if (unlikely(!epoll_fd))
+ 		return EXIT_FAILURE;
+ =
+
+-	if (!create_epoll())
++	if (unlikely(epoll_running))
+ 		return EXIT_FAILURE;
+ =
+
+-	epoll_terminate =3D false;
+-
+ 	epoll_running =3D true;
+ =
+
+ 	for (;;) {
+@@ -375,6 +395,26 @@ LIB_EXPORT int l_main_run(void)
+ 		l_queue_foreach_remove(idle_list, idle_prune, NULL);
+ 	}
+ =
+
++	epoll_running =3D false;
++
++	return EXIT_SUCCESS;
++}
++
++/**
++ * l_main_exit:
++ *
++ * Clean up after main loop completes.
++ *
++ **/
++LIB_EXPORT bool l_main_exit(void)
++{
++	unsigned int i;
++
++	if (epoll_running) {
++		l_error("Cleanup attempted on running main loop");
++		return false;
++	}
++
+ 	for (i =3D 0; i < watch_entries; i++) {
+ 		struct watch_data *data =3D watch_list[i];
+ =
+
+@@ -399,12 +439,10 @@ LIB_EXPORT int l_main_run(void)
+ 	l_queue_destroy(idle_list, idle_destroy);
+ 	idle_list =3D NULL;
+ =
+
+-	epoll_running =3D false;
+-
+ 	close(epoll_fd);
+ 	epoll_fd =3D 0;
+ =
+
+-	return exit_status;
++	return true;
  }
-diff --git a/unit/test-kdbus.c b/unit/test-kdbus.c
-index 8cac761..ad4a754 100644
---- a/unit/test-kdbus.c
-+++ b/unit/test-kdbus.c
-@@ -136,6 +136,9 @@ int main(int argc, char *argv[])
- 	struct l_signal *signal;
- 	sigset_t mask;
  =
 
-+	if (!l_main_init())
-+		return -1;
-+
- 	sigemptyset(&mask);
- 	sigaddset(&mask, SIGINT);
- 	sigaddset(&mask, SIGTERM);
-@@ -191,5 +194,7 @@ error:
+ /**
+@@ -419,7 +457,6 @@ LIB_EXPORT bool l_main_quit(void)
+ 	if (unlikely(!epoll_running))
+ 		return false;
  =
 
- 	l_signal_remove(signal);
+-	exit_status =3D EXIT_SUCCESS;
+ 	epoll_terminate =3D true;
  =
 
-+	l_main_exit();
-+
- 	return EXIT_SUCCESS;
+ 	return true;
+@@ -472,19 +509,3 @@ int l_main_run_with_signal(l_main_signal_cb_t callback=
+, void *user_data)
+ =
+
+ 	return result;
  }
-diff --git a/unit/test-main.c b/unit/test-main.c
-index ee99a4b..1f4bb31 100644
---- a/unit/test-main.c
-+++ b/unit/test-main.c
-@@ -91,6 +91,9 @@ int main(int argc, char *argv[])
- 	struct l_idle *idle;
- 	sigset_t mask;
+-
+-/**
+- * l_main_exit:
+- *
+- * Teminate the running main loop with exit status
+- *
+- **/
+-LIB_EXPORT
+-void l_main_exit(int status)
+-{
+-	if (unlikely(!epoll_running))
+-		return;
+-
+-	exit_status =3D status;
+-	epoll_terminate =3D true;
+-}
+diff --git a/ell/main.h b/ell/main.h
+index 46d2a13..c23ec55 100644
+--- a/ell/main.h
++++ b/ell/main.h
+@@ -29,13 +29,15 @@
+ extern "C" {
+ #endif
  =
 
-+	if (!l_main_init())
-+		return -1;
++bool l_main_init(void);
+ int l_main_run(void);
++bool l_main_exit(void);
 +
- 	sigemptyset(&mask);
- 	sigaddset(&mask, SIGINT);
- 	sigaddset(&mask, SIGTERM);
-@@ -129,5 +132,7 @@ int main(int argc, char *argv[])
+ bool l_main_quit(void);
  =
 
- 	l_idle_remove(idle);
+ typedef void (*l_main_signal_cb_t) (uint32_t signo, void *user_data);
  =
 
-+	l_main_exit();
-+
- 	return 0;
- }
-diff --git a/unit/test-netlink.c b/unit/test-netlink.c
-index a56e5a1..ce522a6 100644
---- a/unit/test-netlink.c
-+++ b/unit/test-netlink.c
-@@ -77,6 +77,9 @@ int main(int argc, char *argv[])
- 	struct l_netlink *netlink;
- 	struct ifinfomsg msg;
+ int l_main_run_with_signal(l_main_signal_cb_t callback, void *user_data);
+-void l_main_exit(int status);
  =
 
-+	if (!l_main_init())
-+		return -1;
-+
- 	l_log_set_stderr();
- =
-
- 	netlink =3D l_netlink_new(NETLINK_ROUTE);
-@@ -92,5 +95,7 @@ int main(int argc, char *argv[])
- =
-
- 	l_netlink_destroy(netlink);
- =
-
-+	l_main_exit();
-+
- 	return 0;
+ #ifdef __cplusplus
  }
 -- =
 
 2.8.4
 
 
---===============7121957065612283764==--
+--===============6993806655758642415==--
 
