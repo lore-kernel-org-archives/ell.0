@@ -1,59 +1,33 @@
-Content-Type: multipart/mixed; boundary="===============1909410672017931985=="
+Content-Type: multipart/mixed; boundary="===============0396540186681352623=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH v2 1/3] main: Manually initialize and clean up the main
  loop
-Date: Thu, 09 Jun 2016 08:58:33 -0700
-Message-ID: <alpine.OSX.2.20.1606090852380.21471@mjmartin-mac01.local>
-In-Reply-To: <57598740.5000900@gmail.com>
+Date: Thu, 09 Jun 2016 11:02:35 -0500
+Message-ID: <5759931B.7090108@gmail.com>
+In-Reply-To: <alpine.OSX.2.20.1606090852380.21471@mjmartin-mac01.local>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1909410672017931985==
+--===============0396540186681352623==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, 9 Jun 2016, Denis Kenzior wrote:
+Hi Mat,
 
-> Hi Mat,
+ >> All three applied, thanks.
 >
-> On 06/08/2016 04:55 PM, Mat Martineau wrote:
->> Atomatic initialization and cleanup of the main loop created some
->> issues with orderly shutdown of an ELL program. If cleanup functions
->> were called after the l_main_run() returned, they could indirectly set
->> up the epoll file descriptor and associated resources again. Those
->> resources were not freed after the cleanup functions ran.
->> =
+> Much appreciated. I don't see the commits on git.kernel.org yet -
+> intentional?
 
->> Now, epoll resources are set up by l_main_init() and cleaned up by
->> l_main_exit(). If cleanup functions set up any idles or watches
->> (including watch-based timeouts, signals, or ios) after l_main_run()
->> returns, those will be destroyed by l_main_exit().
->> =
+Whoops, a git push would help.
 
->> l_main_init() must be called before l_main_run() or any other ELL
->> function that expects epoll to be set up. l_main_exit() should be
->> called after l_main_run() returns to ensure that all resources are
->> freed.
->> ---
->>   ell/main.c | 87 =
+Should be there now.
 
->> ++++++++++++++++++++++++++++++++++++++------------------------
->>   ell/main.h |  4 ++-
->>   2 files changed, 57 insertions(+), 34 deletions(-)
->> =
+Regards,
+-Denis
 
->
-> All three applied, thanks.
 
-Much appreciated. I don't see the commits on git.kernel.org yet - =
-
-intentional?
-
---
-Mat Martineau
-Intel OTC
-
---===============1909410672017931985==--
+--===============0396540186681352623==--
 
