@@ -1,696 +1,191 @@
-Content-Type: multipart/mixed; boundary="===============5078846645248066780=="
+Content-Type: multipart/mixed; boundary="===============9160485094599437681=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v4 1/6] cipher: Update for current kernel akcipher interface
-Date: Wed, 15 Jun 2016 10:18:18 -0700
-Message-ID: <20160615171823.20699-1-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v4 2/6] unit: Update for akcipher changes
+Date: Wed, 15 Jun 2016 10:18:19 -0700
+Message-ID: <20160615171823.20699-2-mathew.j.martineau@linux.intel.com>
+In-Reply-To: <20160615171823.20699-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5078846645248066780==
+--===============9160485094599437681==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-There are some significant differences in the current iteration of
-kernel AF_ALG akcipher support:
- * Kernel handles padding
- * Kernel accepts DER-encoded certs as-is (no need to extract values)
- * Must explicitly set private or public key
+New private key, and no need to extract key elements.
 ---
- ell/cipher-private.h |   3 -
- ell/cipher.c         | 305 +++++++++++++----------------------------------=
+ unit/test-cipher.c | 130 +++++++++++++++++++++++--------------------------=
 ----
- ell/cipher.h         |   3 +-
- ell/tls.c            |  54 ++++-----
- 4 files changed, 101 insertions(+), 264 deletions(-)
+ 1 file changed, 55 insertions(+), 75 deletions(-)
 
-diff --git a/ell/cipher-private.h b/ell/cipher-private.h
-index 7d115f6..77ddd06 100644
---- a/ell/cipher-private.h
-+++ b/ell/cipher-private.h
-@@ -20,9 +20,6 @@
-  *
+diff --git a/unit/test-cipher.c b/unit/test-cipher.c
+index 3dc2fe0..78d1fcb 100644
+--- a/unit/test-cipher.c
++++ b/unit/test-cipher.c
+@@ -124,96 +124,76 @@ static void test_arc4(const void *data)
+ }
+ =
+
+ /*
+- * openssl genrsa 1024 | openssl rsa -outform DER | \
+- *	hexdump -v -e '"0x" 1/1 "%02x" ", "'
++ * openssl genrsa 1024 | openssl rsa -outform DER | xxd -i
   */
- =
-
--uint8_t *extract_rsakey(uint8_t *pkcs1_key, size_t pkcs1_key_len,
--			size_t *out_len);
--
- #define ASN1_ID(class, pc, tag)	(((class) << 6) | ((pc) << 5) | (tag))
- =
-
- #define ASN1_CLASS_UNIVERSAL	0
-diff --git a/ell/cipher.c b/ell/cipher.c
-index 671071b..04ef838 100644
---- a/ell/cipher.c
-+++ b/ell/cipher.c
-@@ -78,6 +78,17 @@ struct af_alg_iv {
- #define SOL_ALG 279
- #endif
- =
-
-+#ifndef ALG_OP_SIGN
-+#define ALG_OP_SIGN	2
-+#endif
-+#ifndef ALG_OP_VERIFY
-+#define ALG_OP_VERIFY	3
-+#endif
-+
-+#ifndef ALG_SET_PUBKEY
-+#define ALG_SET_PUBKEY	6
-+#endif
-+
- #define is_valid_type(type)  ((type) <=3D L_CIPHER_DES3_EDE_CBC)
- =
-
- struct l_cipher {
-@@ -87,10 +98,11 @@ struct l_cipher {
+ static uint8_t rsa_priv_key[] =3D {
+-	0x30, 0x82, 0x02, 0x5c, /* SEQUENCE */
+-	0x02, 0x01, /* INTEGER - version */
+-	0x00,
+-	0x02, 0x81, 0x81, /* INTEGER - n */
+-	0x00, 0xbe, 0x8c, 0xe7, 0x6c, 0x7d, 0x97, 0xbd, 0x63, 0xf6, 0x00, 0x65,
+-	0x34, 0x23, 0xd9, 0xc6, 0xce, 0x6d, 0x1b, 0x30, 0x8f, 0xfa, 0x9b, 0x8e,
+-	0xbe, 0x97, 0x01, 0x10, 0x5b, 0x49, 0x7c, 0xba, 0xd5, 0x47, 0x5e, 0xb0,
+-	0x62, 0x24, 0xd9, 0xb0, 0xe2, 0x35, 0x5b, 0x05, 0xeb, 0x0a, 0x69, 0xc9,
+-	0x5c, 0x02, 0x6d, 0xf2, 0x89, 0x6d, 0xab, 0xaa, 0x43, 0x53, 0x52, 0xaa,
+-	0xed, 0xc9, 0xb6, 0x98, 0x17, 0x8a, 0x38, 0x9a, 0x80, 0x5b, 0xd1, 0x70,
+-	0xc7, 0xc9, 0x16, 0x1f, 0x34, 0xb3, 0x27, 0x40, 0xa2, 0x39, 0xbe, 0xf8,
+-	0x01, 0xfa, 0x9e, 0x04, 0x9f, 0x58, 0xc1, 0xa1, 0x19, 0x78, 0xcf, 0xfe,
+-	0x9c, 0x76, 0x43, 0xba, 0x69, 0x05, 0x67, 0x9a, 0xfc, 0xc4, 0x56, 0xbb,
+-	0xc1, 0x7f, 0xdb, 0xf0, 0xb9, 0x31, 0x2c, 0x4f, 0xc2, 0xd9, 0x42, 0xf6,
+-	0x3d, 0x1b, 0x48, 0x31, 0x88, 0xc2, 0xb5, 0xb9, 0xa5,
+-	0x02, 0x03, /* INTEGER - e */
+-	0x01, 0x00, 0x01,
+-	0x02, 0x81, 0x80, /* INTEGER - d */
+-	0x0b, 0x34, 0xa2, 0x0f, 0x61, 0x3b, 0x61, 0x29, 0xd5, 0xb7, 0xa4, 0x3b,
+-	0xf2, 0xb7, 0xc5, 0xd7, 0x31, 0xd7, 0x5d, 0x7d, 0xba, 0x11, 0x17, 0xcd,
+-	0xe1, 0x77, 0x70, 0x8c, 0xcd, 0xbf, 0x86, 0x05, 0x30, 0xd3, 0x42, 0xb0,
+-	0x22, 0xd6, 0xa2, 0x6e, 0x4b, 0x10, 0xf5, 0x42, 0x23, 0x34, 0xa1, 0x60,
+-	0xc5, 0xcb, 0xcd, 0x6d, 0x83, 0x83, 0x8a, 0xd9, 0xb6, 0xb6, 0xaf, 0xd2,
+-	0x98, 0x00, 0x22, 0xe5, 0x75, 0x67, 0xbe, 0x0b, 0x95, 0xe7, 0x76, 0xee,
+-	0x22, 0x03, 0xdd, 0x49, 0x02, 0x86, 0xd7, 0x2b, 0x96, 0xee, 0xb1, 0x1e,
+-	0x49, 0x02, 0xdf, 0xa9, 0x2e, 0x0f, 0x71, 0x33, 0xb5, 0xc6, 0x37, 0xb5,
+-	0x6b, 0x58, 0xa1, 0xbb, 0x1c, 0xb9, 0xa2, 0x33, 0x70, 0x01, 0xca, 0xd4,
+-	0xae, 0x96, 0xc3, 0x7d, 0x36, 0xc2, 0xe7, 0x50, 0x33, 0x17, 0xcc, 0xdc,
+-	0x28, 0x7c, 0x7b, 0xdf, 0x25, 0x06, 0x57, 0xa9,
+-	0x02, 0x41, /* INTEGER - p */
+-	0x00, 0xf1, 0xec, 0x4f, 0xdf, 0xb7, 0x05, 0x2e, 0xdd, 0x1c, 0x85, 0x9d,
+-	0x99, 0xb7, 0x60, 0x8c, 0x9b, 0x47, 0x1c, 0x04, 0x2f, 0x6f, 0x8a, 0xd5,
+-	0x89, 0x1c, 0x2e, 0xe2, 0x0d, 0x68, 0x9c, 0xf6, 0xb0, 0x09, 0x32, 0x70,
+-	0x06, 0x9f, 0x52, 0x7e, 0xc5, 0x46, 0x93, 0x60, 0x57, 0x77, 0xa8, 0xd3,
+-	0x92, 0xbb, 0x24, 0x9c, 0x24, 0x35, 0x14, 0x99, 0x62, 0xe2, 0xce, 0xa2,
+-	0x9b, 0x62, 0xd3, 0xe0, 0x0f,
+-	0x02, 0x41, /* INTEGER - q */
+-	0x00, 0xc9, 0xa3, 0x58, 0x17, 0x03, 0xfb, 0x19, 0x06, 0xa4, 0x75, 0xfb,
+-	0xa2, 0xb3, 0x84, 0x2a, 0x7f, 0xf7, 0x66, 0x80, 0xb5, 0xd6, 0xda, 0xcf,
+-	0xb2, 0x9e, 0x4f, 0x0a, 0xd3, 0xcd, 0xa5, 0x94, 0xc4, 0x80, 0x53, 0xc6,
+-	0xbf, 0x7e, 0xe0, 0x2c, 0xc0, 0x71, 0xdb, 0x9c, 0xe0, 0x92, 0x66, 0x41,
+-	0x6b, 0x64, 0x9e, 0x7a, 0xf3, 0xe7, 0x45, 0x15, 0x3f, 0xe4, 0xbc, 0xc1,
+-	0x91, 0x40, 0x2a, 0x57, 0x0b,
+-	0x02, 0x41, /* INTEGER - d mod (p - 1) */
+-	0x00, 0x88, 0x9f, 0x4f, 0x00, 0x65, 0x68, 0x9c, 0xed, 0xac, 0x14, 0xdd,
+-	0x4b, 0x19, 0x1f, 0x82, 0x68, 0x92, 0xc1, 0x04, 0xb0, 0x11, 0x4b, 0x13,
+-	0x8a, 0xaa, 0x0a, 0xe4, 0x08, 0x74, 0x82, 0xe8, 0x61, 0xc3, 0xdf, 0xe3,
+-	0x1a, 0x2a, 0x51, 0xb9, 0x5c, 0x09, 0x9e, 0x63, 0x33, 0x22, 0x55, 0x8a,
+-	0x9e, 0x7b, 0xe7, 0x91, 0xf2, 0x74, 0xb3, 0x9c, 0x68, 0x16, 0xf4, 0x61,
+-	0x2a, 0x65, 0xa6, 0x88, 0x0b,
+-	0x02, 0x40, /* INTEGER - d mod (q - 1) */
+-	0x56, 0x3c, 0xab, 0x07, 0x24, 0xe7, 0xb6, 0x5b, 0x55, 0xe9, 0x33, 0xd6,
+-	0xf1, 0x09, 0xfc, 0x97, 0x40, 0x3b, 0x31, 0x9f, 0x13, 0xa5, 0xff, 0xa0,
+-	0x77, 0xfe, 0x7c, 0x35, 0xfb, 0xc4, 0xee, 0x6c, 0x60, 0x29, 0xf4, 0x5d,
+-	0xa0, 0x28, 0xc6, 0x5b, 0x04, 0x17, 0x15, 0xf0, 0x22, 0x0c, 0xe3, 0xbb,
+-	0xc7, 0x8b, 0xd4, 0x30, 0x0e, 0x60, 0x48, 0x67, 0x4c, 0x2f, 0xc2, 0x65,
+-	0x99, 0xd8, 0xc1, 0xe3,
+-	0x02, 0x40, /* INTEGER - inv q mod p */
+-	0x12, 0x89, 0x47, 0x76, 0xb6, 0xbb, 0x18, 0x64, 0xc3, 0x19, 0xe7, 0xa9,
+-	0x93, 0xce, 0xec, 0xd6, 0x4b, 0xaa, 0xad, 0x46, 0x4f, 0x24, 0x0d, 0xf3,
+-	0xbf, 0xc2, 0x7c, 0x95, 0x3e, 0xc9, 0x27, 0x8a, 0x4b, 0xbc, 0x9e, 0x56,
+-	0x2a, 0x8c, 0x07, 0x5f, 0xb6, 0x07, 0x21, 0xb7, 0xc9, 0xae, 0x8c, 0x58,
+-	0x04, 0x65, 0x02, 0xa2, 0x08, 0x03, 0x40, 0xf3, 0x71, 0x8c, 0x89, 0xf7,
+-	0xaa, 0xb0, 0x6a, 0x75,
++	0x30, 0x82, 0x02, 0x5e, 0x02, 0x01, 0x00, 0x02, 0x81, 0x81, 0x00, 0xe1,
++	0xec, 0x78, 0x3c, 0x5f, 0x62, 0x74, 0x1e, 0x6d, 0x1d, 0x44, 0xac, 0x40,
++	0xb3, 0xec, 0x01, 0x96, 0x01, 0x8a, 0xfe, 0xcf, 0x5d, 0xc5, 0xe6, 0x0c,
++	0x36, 0x03, 0x2c, 0x4e, 0x84, 0x8f, 0x51, 0xf3, 0xc5, 0x32, 0x4f, 0xc4,
++	0x73, 0x22, 0x92, 0x30, 0x7c, 0x75, 0xd7, 0x4b, 0xae, 0xc6, 0xd0, 0x59,
++	0x6b, 0xd8, 0x46, 0x79, 0xbc, 0x6a, 0x6e, 0xde, 0x27, 0x11, 0x2f, 0xde,
++	0x84, 0xe3, 0x64, 0x84, 0x07, 0x82, 0x83, 0xbf, 0x90, 0xf5, 0x80, 0x6f,
++	0x63, 0x3a, 0xd1, 0x74, 0xd5, 0x6d, 0x2f, 0xde, 0xdc, 0xea, 0xab, 0xe5,
++	0x20, 0x7d, 0x26, 0x3e, 0x20, 0x99, 0x97, 0x41, 0x47, 0x81, 0x04, 0x7e,
++	0x53, 0x5c, 0xb2, 0xa9, 0xe0, 0x3d, 0x72, 0x37, 0x85, 0xcc, 0x5c, 0xda,
++	0x04, 0x96, 0xfa, 0x02, 0xc2, 0x23, 0x8b, 0x20, 0x5d, 0xe1, 0x2a, 0x69,
++	0xec, 0xcd, 0xce, 0x85, 0xc2, 0xf5, 0x49, 0x02, 0x03, 0x01, 0x00, 0x01,
++	0x02, 0x81, 0x81, 0x00, 0xa5, 0x31, 0x72, 0xf9, 0x32, 0x05, 0x9b, 0x42,
++	0x64, 0x26, 0x72, 0x80, 0x41, 0x0f, 0x4e, 0x12, 0x1a, 0xcd, 0x26, 0x05,
++	0x0b, 0x3b, 0x55, 0xe8, 0xd0, 0x24, 0xee, 0x4d, 0x07, 0x5c, 0x86, 0x2f,
++	0x36, 0x3f, 0x8a, 0x7a, 0x28, 0xfa, 0xc6, 0xdc, 0x7d, 0xf7, 0x83, 0x72,
++	0xd9, 0x34, 0x02, 0xcb, 0x75, 0x97, 0x15, 0x9c, 0xf2, 0x86, 0x82, 0x8c,
++	0x6e, 0x83, 0xc2, 0x5d, 0x6e, 0x27, 0x5c, 0xdc, 0x52, 0xb8, 0x8d, 0xa8,
++	0x0d, 0x09, 0xcf, 0x69, 0xae, 0x61, 0x0e, 0xcb, 0x6a, 0x76, 0xac, 0xdd,
++	0x85, 0xda, 0x9c, 0xac, 0x2b, 0xf0, 0xf6, 0x2e, 0x2e, 0x4d, 0x9b, 0xc7,
++	0x67, 0xc2, 0xfa, 0x7b, 0x0e, 0x68, 0xf7, 0x1e, 0x03, 0x28, 0xea, 0x0e,
++	0x9a, 0xd6, 0xc3, 0x28, 0x3d, 0xde, 0x11, 0x26, 0xb1, 0x95, 0xf6, 0x10,
++	0x2f, 0x81, 0xa5, 0x60, 0x2c, 0x4f, 0x37, 0x5c, 0x2a, 0xd2, 0x30, 0x01,
++	0x02, 0x41, 0x00, 0xf2, 0x80, 0xa2, 0x57, 0x5c, 0xe0, 0x41, 0x82, 0x00,
++	0xac, 0x0b, 0xbd, 0xad, 0x98, 0x04, 0x33, 0x49, 0x64, 0x0b, 0x94, 0x94,
++	0xc3, 0xd7, 0xd9, 0xfe, 0x1f, 0xa3, 0xd1, 0x83, 0x42, 0x3a, 0x2d, 0xaf,
++	0xc5, 0x4c, 0xa4, 0x1b, 0xe4, 0x1c, 0x9c, 0x17, 0x8e, 0x28, 0xe9, 0xa5,
++	0xd4, 0xbd, 0x9a, 0xce, 0x6e, 0x33, 0xb4, 0xaf, 0xce, 0x13, 0xd2, 0xab,
++	0x0c, 0x4b, 0x34, 0x0d, 0x03, 0x87, 0xa1, 0x02, 0x41, 0x00, 0xee, 0x7f,
++	0x9b, 0xb4, 0x3c, 0x21, 0x76, 0xf2, 0x0c, 0xdf, 0xb6, 0xea, 0xc9, 0x31,
++	0xd4, 0xeb, 0x8f, 0x46, 0x41, 0x9b, 0xc1, 0x60, 0x4f, 0x50, 0x54, 0x32,
++	0xd2, 0xf4, 0xfd, 0xd0, 0xc8, 0x58, 0x6d, 0x17, 0x4e, 0xac, 0x5f, 0x9e,
++	0xb7, 0xd4, 0xfc, 0xce, 0xe0, 0x92, 0x0e, 0x1d, 0xd1, 0xa7, 0x54, 0xd3,
++	0x98, 0xca, 0x5b, 0x9c, 0x41, 0x68, 0xbf, 0x0d, 0x1b, 0xe2, 0xdb, 0xa6,
++	0xec, 0xa9, 0x02, 0x40, 0x0b, 0xc1, 0x72, 0x9d, 0x3b, 0x92, 0x5f, 0x7a,
++	0x96, 0xdf, 0xc0, 0x3d, 0xf4, 0xb1, 0x5e, 0xda, 0xc1, 0x9f, 0x08, 0xf4,
++	0xad, 0xf5, 0x84, 0x7c, 0x3b, 0xd6, 0x7a, 0xd1, 0x88, 0x44, 0x68, 0x9f,
++	0x98, 0x5a, 0xbf, 0x29, 0x61, 0x74, 0xc0, 0x72, 0x4c, 0xae, 0x06, 0x8b,
++	0xb5, 0x0f, 0x48, 0x15, 0xbe, 0x16, 0x17, 0x89, 0x95, 0xd0, 0x2e, 0xa3,
++	0xd2, 0xc8, 0xe8, 0xc8, 0x60, 0x2d, 0x20, 0xa1, 0x02, 0x41, 0x00, 0xdb,
++	0x39, 0xbf, 0x14, 0xf8, 0x24, 0xc6, 0xa2, 0x0d, 0xc5, 0x61, 0xed, 0x05,
++	0x0d, 0x62, 0x2b, 0x38, 0xe2, 0x9a, 0x92, 0x22, 0x39, 0x76, 0x0e, 0x5f,
++	0xa6, 0xec, 0x14, 0xb8, 0x6e, 0x3e, 0x8a, 0x51, 0x94, 0x98, 0x03, 0x88,
++	0x4d, 0x6b, 0xab, 0x42, 0xca, 0xa2, 0xd0, 0x7e, 0x5b, 0x58, 0x88, 0x98,
++	0x47, 0x7b, 0xed, 0x9e, 0x31, 0xce, 0x4a, 0x0b, 0x3b, 0x70, 0x83, 0xa1,
++	0xe6, 0x19, 0x29, 0x02, 0x41, 0x00, 0x9c, 0x88, 0xbb, 0x56, 0x6b, 0x4a,
++	0x81, 0x2c, 0xb3, 0x70, 0xdc, 0xf5, 0x65, 0x45, 0xd4, 0xed, 0xdd, 0xc3,
++	0xdc, 0xc5, 0x27, 0xa3, 0xa0, 0x66, 0x5c, 0x51, 0xeb, 0x52, 0x8c, 0x8d,
++	0x4e, 0xa6, 0x8f, 0x42, 0x5d, 0xb8, 0xa4, 0xa4, 0x26, 0xf3, 0xd6, 0xe5,
++	0x01, 0x6b, 0x51, 0x8a, 0xa4, 0xee, 0xec, 0xff, 0x71, 0x8c, 0xbb, 0xba,
++	0x05, 0x3e, 0x55, 0x14, 0xd9, 0xe4, 0xa4, 0x7f, 0xb7, 0x4f
  };
  =
 
- static int create_alg(const char *alg_type, const char *alg_name,
--				const void *key, size_t key_length)
-+			const void *key, size_t key_length, bool public)
- {
- 	struct sockaddr_alg salg;
- 	int sk;
-+	int keyopt;
- 	int ret;
- =
-
- 	sk =3D socket(PF_ALG, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
-@@ -107,7 +119,8 @@ static int create_alg(const char *alg_type, const char =
-*alg_name,
- 		return -1;
- 	}
- =
-
--	if (setsockopt(sk, SOL_ALG, ALG_SET_KEY, key, key_length) < 0) {
-+	keyopt =3D public ? ALG_SET_PUBKEY : ALG_SET_KEY;
-+	if (setsockopt(sk, SOL_ALG, keyopt, key, key_length) < 0) {
- 		close(sk);
- 		return -1;
- 	}
-@@ -149,11 +162,13 @@ LIB_EXPORT struct l_cipher *l_cipher_new(enum l_ciphe=
-r_type type,
- 		break;
- 	}
- =
-
--	cipher->encrypt_sk =3D create_alg("skcipher", alg_name, key, key_length);
-+	cipher->encrypt_sk =3D create_alg("skcipher", alg_name, key, key_length,
-+					false);
- 	if (cipher->encrypt_sk < 0)
- 		goto error_free;
- =
-
--	cipher->decrypt_sk =3D create_alg("skcipher", alg_name, key, key_length);
-+	cipher->decrypt_sk =3D create_alg("skcipher", alg_name, key, key_length,
-+					false);
- 	if (cipher->decrypt_sk < 0)
- 		goto error_close;
- =
-
-@@ -178,7 +193,8 @@ LIB_EXPORT void l_cipher_free(struct l_cipher *cipher)
- }
- =
-
- static bool operate_cipher(int sk, __u32 operation,
--				const void *in, void *out, size_t len)
-+				const void *in, void *out, size_t len_in,
-+				size_t len_out)
- {
- 	char c_msg_buf[CMSG_SPACE(sizeof(operation))];
- 	struct msghdr msg;
-@@ -198,7 +214,7 @@ static bool operate_cipher(int sk, __u32 operation,
- 	memcpy(CMSG_DATA(c_msg), &operation, sizeof(operation));
- =
-
- 	iov.iov_base =3D (void *) in;
--	iov.iov_len =3D len;
-+	iov.iov_len =3D len_in;
- =
-
- 	msg.msg_iov =3D &iov;
- 	msg.msg_iovlen =3D 1;
-@@ -206,7 +222,7 @@ static bool operate_cipher(int sk, __u32 operation,
- 	if (sendmsg(sk, &msg, 0) < 0)
- 		return false;
- =
-
--	if (read(sk, out, len) < 0)
-+	if (read(sk, out, len_out) < 0)
- 		return false;
- =
-
- 	return true;
-@@ -221,7 +237,8 @@ LIB_EXPORT bool l_cipher_encrypt(struct l_cipher *ciphe=
-r,
- 	if (unlikely(!in) || unlikely(!out))
- 		return false;
- =
-
--	return operate_cipher(cipher->encrypt_sk, ALG_OP_ENCRYPT, in, out, len);
-+	return operate_cipher(cipher->encrypt_sk, ALG_OP_ENCRYPT, in, out, len,
-+				len);
- }
- =
-
- LIB_EXPORT bool l_cipher_decrypt(struct l_cipher *cipher,
-@@ -233,7 +250,8 @@ LIB_EXPORT bool l_cipher_decrypt(struct l_cipher *ciphe=
-r,
- 	if (unlikely(!in) || unlikely(!out))
- 		return false;
- =
-
--	return operate_cipher(cipher->decrypt_sk, ALG_OP_DECRYPT, in, out, len);
-+	return operate_cipher(cipher->decrypt_sk, ALG_OP_DECRYPT, in, out, len,
-+				len);
- }
- =
-
- LIB_EXPORT bool l_cipher_set_iv(struct l_cipher *cipher, const uint8_t *iv,
-@@ -334,7 +352,9 @@ static bool parse_rsa_key(struct l_asymmetric_cipher *c=
-ipher, const void *key,
- 	 * and cache the size of the modulus n for later use.
- 	 * (RFC3279)
- 	 */
-+	size_t seq_length;
- 	size_t n_length;
-+	uint8_t *seq;
- 	uint8_t *der;
- 	uint8_t tag;
- =
-
-@@ -342,12 +362,19 @@ static bool parse_rsa_key(struct l_asymmetric_cipher =
-*cipher, const void *key,
- 		return false;
- =
-
- 	/* Unpack the outer SEQUENCE */
--	der =3D der_find_elem((uint8_t *) key, key_length, 0, &tag, &n_length);
--	if (!der || tag !=3D ASN1_ID_SEQUENCE)
-+	seq =3D der_find_elem((uint8_t *) key, key_length, 0, &tag, &seq_length);
-+	if (!seq || tag !=3D ASN1_ID_SEQUENCE)
- 		return false;
- =
-
--	/* Take first INTEGER as the modulus */
--	der =3D der_find_elem(der, n_length, 0, &tag, &n_length);
-+	/* First INTEGER may be a 1-byte version (for private key) or
-+	 * the modulus (public key)
-+	 */
-+	der =3D der_find_elem(seq, seq_length, 0, &tag, &n_length);
-+	if (der && tag =3D=3D ASN1_ID_INTEGER && n_length =3D=3D 1) {
-+		/* Found version number, implies this is a private key. */
-+		der =3D der_find_elem(seq, seq_length, 1, &tag, &n_length);
-+	}
-+
- 	if (!der || tag !=3D ASN1_ID_INTEGER || n_length < 4)
- 		return false;
- =
-
-@@ -362,94 +389,10 @@ static bool parse_rsa_key(struct l_asymmetric_cipher =
-*cipher, const void *key,
- 	return true;
- }
- =
-
--static void write_asn1_definite_length(uint8_t **buf, size_t len)
--{
--	int n;
--
--	if (len < 0x80) {
--		*(*buf)++ =3D len;
--
--		return;
--	}
--
--	for (n =3D 1; len >> (n * 8); n++);
--	*(*buf)++ =3D 0x80 | n;
--
--	while (n--)
--		*(*buf)++ =3D len >> (n * 8);
--}
--
--/*
-- * Extract a ASN1 RsaKey-formatted public+private key structure in the
-- * form used in the kernel.  It is simpler than the PKCS#1 form as it only
-- * contains the N, E and D integers and also correctly parses as a PKCS#1
-- * RSAPublicKey.
-- */
--uint8_t *extract_rsakey(uint8_t *pkcs1_key, size_t pkcs1_key_len,
--			size_t *out_len)
--{
--	uint8_t *key, *ptr, *ver, *n, *e, *d;
--	uint8_t tag;
--	size_t ver_len, n_len, e_len, d_len;
--	int pos;
--
--	/* Unpack the outer SEQUENCE */
--	pkcs1_key =3D der_find_elem(pkcs1_key, pkcs1_key_len, 0, &tag,
--					&pkcs1_key_len);
--	if (!pkcs1_key || tag !=3D ASN1_ID_SEQUENCE)
--		return NULL;
--
--	/* Check if the version element if present */
--	ver =3D der_find_elem(pkcs1_key, pkcs1_key_len, 0, &tag, &ver_len);
--	if (!ver || tag !=3D ASN1_ID_INTEGER)
--		return NULL;
--
--	pos =3D (ver_len =3D=3D 1 && ver[0] =3D=3D 0x00) ? 1 : 0;
--
--	n =3D der_find_elem(pkcs1_key, pkcs1_key_len, pos + 0, &tag, &n_len);
--	if (!n || tag !=3D ASN1_ID_INTEGER)
--		return NULL;
--
--	e =3D der_find_elem(pkcs1_key, pkcs1_key_len, pos + 1, &tag, &e_len);
--	if (!e || tag !=3D ASN1_ID_INTEGER)
--		return NULL;
--
--	d =3D der_find_elem(pkcs1_key, pkcs1_key_len, pos + 2, &tag, &d_len);
--	if (!d || tag !=3D ASN1_ID_INTEGER)
--		return NULL;
--
--	/* New SEQUENCE length including tags and lengths */
--	*out_len =3D 1 + (n_len >=3D 0x80 ? n_len >=3D 0x100 ? 3 : 2 : 1) + n_len=
- +
--		1 + (e_len >=3D 0x80 ? e_len >=3D 0x100 ? 3 : 2 : 1) + e_len +
--		1 + (d_len >=3D 0x80 ? d_len >=3D 0x100 ? 3 : 2 : 1) + d_len;
--	ptr =3D key =3D l_malloc(*out_len +
--		1 + (*out_len >=3D 0x80 ? *out_len >=3D 0x100 ? 3 : 2 : 1));
--
--	*ptr++ =3D ASN1_ID_SEQUENCE;
--	write_asn1_definite_length(&ptr, *out_len);
--
--	*ptr++ =3D ASN1_ID_INTEGER;
--	write_asn1_definite_length(&ptr, n_len);
--	memcpy(ptr, n, n_len);
--	ptr +=3D n_len;
--
--	*ptr++ =3D ASN1_ID_INTEGER;
--	write_asn1_definite_length(&ptr, e_len);
--	memcpy(ptr, e, e_len);
--	ptr +=3D e_len;
--
--	*ptr++ =3D ASN1_ID_INTEGER;
--	write_asn1_definite_length(&ptr, d_len);
--	memcpy(ptr, d, d_len);
--	ptr +=3D d_len;
--
--	*out_len =3D ptr - key;
--	return key;
--}
--
- LIB_EXPORT struct l_asymmetric_cipher *l_asymmetric_cipher_new(
- 					enum l_asymmetric_cipher_type type,
--					const void *key, size_t key_length)
-+					const void *key, size_t key_length,
-+					bool public_key)
+ static void test_rsa(const void *data)
  {
  	struct l_asymmetric_cipher *cipher;
- 	const char *alg_name;
-@@ -468,19 +411,22 @@ LIB_EXPORT struct l_asymmetric_cipher *l_asymmetric_c=
-ipher_new(
- 		if (!parse_rsa_key(cipher, key, key_length))
- 			goto error_free;
- =
-
--		alg_name =3D "rsa";
-+		alg_name =3D "pkcs1pad(rsa)";
- 		break;
- 	}
- =
-
- 	cipher->cipher.encrypt_sk =3D create_alg("akcipher", alg_name,
--						key, key_length);
-+						key, key_length, public_key);
- 	if (cipher->cipher.encrypt_sk < 0)
- 		goto error_free;
- =
-
--	cipher->cipher.decrypt_sk =3D create_alg("akcipher", alg_name,
--						key, key_length);
--	if (cipher->cipher.decrypt_sk < 0)
--		goto error_close;
-+	if (public_key) {
-+		cipher->cipher.decrypt_sk =3D create_alg("akcipher", alg_name,
-+							key, key_length,
-+							public_key);
-+		if (cipher->cipher.decrypt_sk < 0)
-+			goto error_close;
-+	}
- =
-
- 	return cipher;
- =
-
-@@ -508,151 +454,58 @@ LIB_EXPORT int l_asymmetric_cipher_get_key_size(
- 	return cipher->key_size;
- }
- =
-
--static void getrandom_nonzero(uint8_t *buf, int len)
--{
--	while (len--) {
--		l_getrandom(buf, 1);
--		while (buf[0] =3D=3D 0)
--			l_getrandom(buf, 1);
+ 	char buf[128];
+-	uint8_t *short_key;
+-	size_t short_key_len;
 -
--		buf++;
--	}
--}
--
- LIB_EXPORT bool l_asymmetric_cipher_encrypt(struct l_asymmetric_cipher *ci=
-pher,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out)
- {
--	if (cipher->cipher.type =3D=3D L_CIPHER_RSA_PKCS1_V1_5) {
--		/* PKCS#1 v1.5 RSA padding according to RFC3447 */
--		uint8_t buf[cipher->key_size];
--		int ps_len =3D cipher->key_size - len_in - 3;
--
--		if (len_in > (size_t) cipher->key_size - 11)
--			return false;
--		if (len_out !=3D (size_t) cipher->key_size)
--			return false;
--
--		buf[0] =3D 0x00;
--		buf[1] =3D 0x02;
--		getrandom_nonzero(buf + 2, ps_len);
--		buf[ps_len + 2] =3D 0x00;
--		memcpy(buf + ps_len + 3, in, len_in);
--
--		if (!l_cipher_encrypt(&cipher->cipher, buf, out,
--					cipher->key_size))
--			return false;
--	}
-+	if (unlikely(!cipher))
-+		return false;
+-	short_key =3D extract_rsakey(rsa_priv_key, sizeof(rsa_priv_key),
+-					&short_key_len);
  =
 
--	return true;
-+	if (unlikely(!in) || unlikely(!out))
-+		return false;
-+
-+	return operate_cipher(cipher->cipher.encrypt_sk, ALG_OP_ENCRYPT,
-+				in, out, len_in, len_out);
- }
- =
-
- LIB_EXPORT bool l_asymmetric_cipher_decrypt(struct l_asymmetric_cipher *ci=
-pher,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out)
- {
--	if (cipher->cipher.type =3D=3D L_CIPHER_RSA_PKCS1_V1_5) {
--		/* PKCS#1 v1.5 RSA padding according to RFC3447 */
--		uint8_t buf[cipher->key_size];
--		int pos;
+ 	cipher =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1_V1_5,
+-						short_key, short_key_len);
+-	l_free(short_key);
 -
--		if (len_in !=3D (size_t) cipher->key_size)
--			return false;
--
--		if (!l_cipher_decrypt(&cipher->cipher, in, buf,
--					cipher->key_size))
--			return false;
--
--		if (buf[0] !=3D 0x00)
--			return false;
--		if (buf[1] !=3D 0x02)
--			return false;
--
--		for (pos =3D 2; pos < cipher->key_size; pos++)
--			if (buf[pos] =3D=3D 0)
--				break;
--		if (pos < 10 || pos =3D=3D cipher->key_size)
--			return false;
--
--		pos++;
--		if (len_out !=3D (size_t) cipher->key_size - pos)
--			return false;
--
--		memcpy(out, buf + pos, cipher->key_size - pos);
--	}
-+	if (unlikely(!cipher))
-+		return false;
++						rsa_priv_key,
++						sizeof(rsa_priv_key), false);
+ 	assert(cipher);
+ 	assert(l_asymmetric_cipher_encrypt(cipher, FIXED_STR, buf, 100, 128));
  =
 
--	return true;
-+	if (unlikely(!in) || unlikely(!out))
-+		return false;
-+
-+	return operate_cipher(cipher->cipher.decrypt_sk, ALG_OP_DECRYPT,
-+				in, out, len_in, len_out);
- }
+ 	assert(memcmp(FIXED_STR, buf, 100));
  =
 
- LIB_EXPORT bool l_asymmetric_cipher_sign(struct l_asymmetric_cipher *ciphe=
-r,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out)
- {
--	if (cipher->cipher.type =3D=3D L_CIPHER_RSA_PKCS1_V1_5) {
--		/* PKCS#1 v1.5 RSA padding according to RFC3447 */
--		uint8_t buf[cipher->key_size];
--		int ps_len =3D cipher->key_size - len_in - 3;
--
--		if (len_in > (size_t) cipher->key_size - 11)
--			return false;
--		if (len_out !=3D (size_t) cipher->key_size)
--			return false;
--
--		buf[0] =3D 0x00;
--		buf[1] =3D 0x01;
--		memset(buf + 2, 0xff, ps_len);
--		buf[ps_len + 2] =3D 0x00;
--		memcpy(buf + ps_len + 3, in, len_in);
--
--		/*
--		 * The RSA signing operation uses the same primitive as
--		 * decryption so just call decrypt for now.
--		 */
--		if (!l_cipher_decrypt(&cipher->cipher, buf, out,
--					cipher->key_size))
--			return false;
--	}
-+	if (unlikely(!cipher))
-+		return false;
+-	assert(l_asymmetric_cipher_decrypt(cipher, buf, buf, 128, 100));
++	assert(l_asymmetric_cipher_decrypt(cipher, buf, buf, 128, 128));
  =
 
--	return true;
-+	if (unlikely(!in) || unlikely(!out))
-+		return false;
-+
-+	return operate_cipher(cipher->cipher.decrypt_sk, ALG_OP_SIGN,
-+				in, out, len_in, len_out);
- }
+ 	assert(!memcmp(FIXED_STR, buf, 100));
  =
 
- LIB_EXPORT bool l_asymmetric_cipher_verify(struct l_asymmetric_cipher *cip=
-her,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out)
- {
--	if (cipher->cipher.type =3D=3D L_CIPHER_RSA_PKCS1_V1_5) {
--		/* PKCS#1 v1.5 RSA padding according to RFC3447 */
--		uint8_t buf[cipher->key_size];
--		int pos;
--
--		if (len_in !=3D (size_t) cipher->key_size)
--			return false;
--
--		/*
--		 * The RSA verify operation uses the same primitive as
--		 * encryption so just call encrypt.
--		 */
--		if (!l_cipher_encrypt(&cipher->cipher, in, buf,
--					cipher->key_size))
--			return false;
--
--		if (buf[0] !=3D 0x00)
--			return false;
--		if (buf[1] !=3D 0x01)
--			return false;
--
--		for (pos =3D 2; pos < cipher->key_size; pos++)
--			if (buf[pos] !=3D 0xff)
--				break;
--		if (pos < 10 || pos =3D=3D cipher->key_size || buf[pos] !=3D 0)
--			return false;
--
--		pos++;
--		if (len_out !=3D (size_t) cipher->key_size - pos)
--			return false;
--
--		memcpy(out, buf + pos, cipher->key_size - pos);
--	}
-+	if (unlikely(!cipher))
-+		return false;
- =
-
--	return true;
-+	if (unlikely(!in) || unlikely(!out))
-+		return false;
-+
-+	return operate_cipher(cipher->cipher.encrypt_sk, ALG_OP_VERIFY,
-+				in, out, len_in, len_out);
- }
-diff --git a/ell/cipher.h b/ell/cipher.h
-index 329f667..b958804 100644
---- a/ell/cipher.h
-+++ b/ell/cipher.h
-@@ -58,7 +58,8 @@ enum l_asymmetric_cipher_type {
- =
-
- struct l_asymmetric_cipher *l_asymmetric_cipher_new(
- 					enum l_asymmetric_cipher_type type,
--					const void *key, size_t key_length);
-+					const void *key, size_t key_length,
-+					bool public_key);
- =
-
- void l_asymmetric_cipher_free(struct l_asymmetric_cipher *cipher);
- =
-
-diff --git a/ell/tls.c b/ell/tls.c
-index a20236f..0baddf7 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -876,8 +876,9 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls *=
-tls)
- 	/* Fill in the RSA Client Key Exchange body */
- =
-
- 	rsa_server_pubkey =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1_V1_5,
--						tls->peer_pubkey,
--						tls->peer_pubkey_length);
-+							tls->peer_pubkey,
-+							tls->peer_pubkey_length,
-+							true);
- 	if (!rsa_server_pubkey) {
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
- =
-
-@@ -920,8 +921,8 @@ static bool tls_rsa_sign(struct l_tls *tls, uint8_t **o=
-ut,
- 				tls_get_hash_t get_hash)
- {
- 	struct l_asymmetric_cipher *rsa_privkey;
--	uint8_t *privkey, *privkey_short;
--	size_t key_size, short_size;
-+	uint8_t *privkey;
-+	size_t key_size;
- 	bool result;
- 	const struct tls_hash_algorithm *hash_type;
- 	uint8_t hash[HANDSHAKE_HASH_MAX_SIZE];
-@@ -945,19 +946,9 @@ static bool tls_rsa_sign(struct l_tls *tls, uint8_t **=
-out,
- 		return false;
- 	}
- =
-
--	privkey_short =3D extract_rsakey(privkey, key_size, &short_size);
--	tls_free_key(privkey, key_size);
--
--	if (!privkey_short) {
--		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
--				TLS_ALERT_BAD_CERT);
--
--		return false;
--	}
--
- 	rsa_privkey =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1_V1_5,
--						privkey_short, short_size);
--	tls_free_key(privkey_short, short_size);
-+						privkey, key_size, false);
-+	tls_free_key(privkey, key_size);
- =
-
- 	if (!rsa_privkey) {
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
-@@ -1020,8 +1011,9 @@ static bool tls_rsa_verify(struct l_tls *tls, const u=
-int8_t *in, size_t len,
- 	}
- =
-
- 	rsa_client_pubkey =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1_V1_5,
--						tls->peer_pubkey,
--						tls->peer_pubkey_length);
-+							tls->peer_pubkey,
-+							tls->peer_pubkey_length,
-+							true);
- 	if (!rsa_client_pubkey) {
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
- =
-
-@@ -1080,11 +1072,14 @@ static bool tls_rsa_verify(struct l_tls *tls, const=
- uint8_t *in, size_t len,
- 		 */
- 	}
- =
-
--	digest_info =3D alloca(expected_len);
-+	if (expected_len > key_size)
-+		goto err_free_rsa;
-+
-+	digest_info =3D alloca(key_size);
- =
-
- 	result =3D l_asymmetric_cipher_verify(rsa_client_pubkey, in + 4,
- 						digest_info,
--						key_size, expected_len);
-+						key_size, key_size);
- =
-
- 	l_asymmetric_cipher_free(rsa_client_pubkey);
- =
-
-@@ -1743,8 +1738,8 @@ static void tls_handle_rsa_client_key_xchg(struct l_t=
-ls *tls,
- {
- 	uint8_t pre_master_secret[48], random_secret[46];
- 	struct l_asymmetric_cipher *rsa_server_privkey;
--	uint8_t *privkey, *privkey_short;
--	size_t key_size, short_size;
-+	uint8_t *privkey;
-+	size_t key_size;
- 	bool result;
- =
-
- 	if (!tls->priv_key_path) {
-@@ -1764,19 +1759,10 @@ static void tls_handle_rsa_client_key_xchg(struct l=
-_tls *tls,
- 		return;
- 	}
- =
-
--	privkey_short =3D extract_rsakey(privkey, key_size, &short_size);
--	tls_free_key(privkey, key_size);
--
--	if (!privkey_short) {
--		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
--				TLS_ALERT_BAD_CERT);
--
--		return;
--	}
--
- 	rsa_server_privkey =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1_V1_5,
--						privkey_short, short_size);
--	tls_free_key(privkey_short, short_size);
-+							privkey, key_size,
-+							false);
-+	tls_free_key(privkey, key_size);
- =
-
- 	if (!rsa_server_privkey) {
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
 -- =
 
 2.9.0
 
 
---===============5078846645248066780==--
+--===============9160485094599437681==--
 
