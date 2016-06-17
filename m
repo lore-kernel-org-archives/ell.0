@@ -1,129 +1,129 @@
-Content-Type: multipart/mixed; boundary="===============8425433735189817086=="
+Content-Type: multipart/mixed; boundary="===============1607125136833191346=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: Re: [PATCH v4 3/6] cipher: Return result length from asymmetric cipher
-Date: Fri, 17 Jun 2016 09:15:56 -0700
-Message-ID: <alpine.OSX.2.20.1606170837260.29616@mjmartin-mac01.local>
-In-Reply-To: <57635483.20606@gmail.com>
+Subject: [PATCH v5 1/5] tls: Check buffer bounds in tls_rsa_sign
+Date: Fri, 17 Jun 2016 13:47:39 -0700
+Message-ID: <20160617204743.6643-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8425433735189817086==
+--===============1607125136833191346==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, 16 Jun 2016, Denis Kenzior wrote:
+---
+ ell/tls-private.h |  2 +-
+ ell/tls.c         | 29 ++++++++++++++++++++++-------
+ 2 files changed, 23 insertions(+), 8 deletions(-)
 
-> Hi Andrew,
->
-> On 06/16/2016 08:30 PM, Andrzej Zaborowski wrote:
->> Hi,
->> =
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index 184f2ae..9ea1554 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -65,7 +65,7 @@ struct tls_key_exchange_algorithm {
+ 	void (*handle_client_key_exchange)(struct l_tls *tls,
+ 						const uint8_t *buf, size_t len);
+ =
 
->> On 17 June 2016 at 02:17, Mat Martineau
->> <mathew.j.martineau@linux.intel.com> wrote:
->>> On Thu, 16 Jun 2016, Denis Kenzior wrote:
->>>> On 06/15/2016 12:18 PM, Mat Martineau wrote:
->>>>> @@ -1790,9 +1813,12 @@ static void tls_handle_rsa_client_key_xchg(str=
-uct
->>>>> l_tls *tls,
->>>>>                  return;
->>>>>          }
->>>>> =
+-	bool (*sign)(struct l_tls *tls, uint8_t **out,
++	bool (*sign)(struct l_tls *tls, uint8_t **out, size_t len,
+ 			tls_get_hash_t get_hash);
+ 	bool (*verify)(struct l_tls *tls, const uint8_t *in, size_t len,
+ 			tls_get_hash_t get_hash);
+diff --git a/ell/tls.c b/ell/tls.c
+index 0baddf7..90404e4 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -274,7 +274,7 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls *=
+tls);
+ static void tls_handle_rsa_client_key_xchg(struct l_tls *tls,
+ 						const uint8_t *buf, size_t len);
+ =
 
->>>>> -       result =3D l_asymmetric_cipher_decrypt(rsa_server_privkey, bu=
-f + =
+-static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out,
++static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out, size_t len,
+ 				tls_get_hash_t get_hash);
+ static bool tls_rsa_verify(struct l_tls *tls, const uint8_t *in, size_t le=
+n,
+ 				tls_get_hash_t get_hash);
+@@ -917,7 +917,7 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls *=
+tls)
+ 	return true;
+ }
+ =
 
->>>>> 2,
->>>>> -                                               pre_master_secret,
->>>>> -                                               key_size, 48);
->>>>> +       pre_master_secret =3D l_malloc(key_size);
->>>>> +
->>>>> +       bytes_decrypted =3D =
+-static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out,
++static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out, size_t len,
+ 				tls_get_hash_t get_hash)
+ {
+ 	struct l_asymmetric_cipher *rsa_privkey;
+@@ -929,6 +929,12 @@ static bool tls_rsa_sign(struct l_tls *tls, uint8_t **=
+out,
+ 	uint8_t sign_input[HANDSHAKE_HASH_MAX_SIZE * 2 + 32];
+ 	size_t sign_input_len;
+ =
 
->>>>> l_asymmetric_cipher_decrypt(rsa_server_privkey,
->>>>> +                                                       buf + 2,
->>>>> +
->>>>> pre_master_secret,
->>>>> +                                                       key_size,
->>>>> key_size);
->>>> =
++	if (len < 2) {
++		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
++
++		return false;
++	}
++
+ 	if (!tls->priv_key_path) {
+ 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
+ 				TLS_ALERT_BAD_CERT);
+@@ -968,16 +974,24 @@ static bool tls_rsa_sign(struct l_tls *tls, uint8_t *=
+*out,
+ =
 
->>>> =
+ 		*(*out)++ =3D hash_type->tls_id;
+ 		*(*out)++ =3D 1;	/* RSA_sign */
++		len -=3D 2;
+ 	} else {
+ 		get_hash(tls, 1, sign_input + 0, NULL, NULL);	/* MD5 */
+ 		get_hash(tls, 2, sign_input + 16, NULL, NULL);	/* SHA1 */
+ 		sign_input_len =3D 36;
+ 	}
+ =
 
->>>> So what's the verdict, I thought we decided to accept short reads?
->>> =
+-	l_put_be16(key_size, *out);
+-	result =3D l_asymmetric_cipher_sign(rsa_privkey, sign_input, *out + 2,
+-						sign_input_len, key_size);
+-	*out +=3D key_size + 2;
++	if (len >=3D key_size + 2) {
++		l_put_be16(key_size, *out);
++		result =3D l_asymmetric_cipher_sign(rsa_privkey, sign_input,
++							*out + 2,
++							sign_input_len,
++							key_size);
++		*out +=3D key_size + 2;
++	} else {
++		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
++		result =3D false;
++	}
+ =
 
->>> =
+ 	l_asymmetric_cipher_free(rsa_privkey);
+ =
 
->>> Short reads work with software RSA in the kernel, but we're still =
+@@ -1143,7 +1157,8 @@ static bool tls_send_certificate_verify(struct l_tls =
+*tls)
+ 	/* Fill in the Certificate Verify body */
+ =
 
->>> sorting out expectations for crypto hardware drivers. For now, long =
+ 	if (!tls->pending.cipher_suite->key_xchg->sign(tls, &ptr,
+-						tls_get_handshake_hash_by_id))
++					2048 - TLS_HANDSHAKE_HEADER_SIZE,
++					tls_get_handshake_hash_by_id))
+ 		return false;
+ =
 
->>> reads are still the way to ensure compatibility.
->> =
+ 	/* Stop maintaining handshake message hashes other than SHA256. */
+-- =
 
->> I guess it depends on what kernel you're aiming for but your test tree
->> has only the software pkcs1pad driver.  Upstream can in theory add a
->> new driver at any time but AF_ALG is still under review there.
->> =
+2.9.0
 
->> By the way I wouldn't call these short reads as we're reading all the
->> data that the socket has to read ;)  In the commit message I think Mat
->> may be referring to the other short reads.
->
-> I think this is what Mat means.  That the AF_ALG socket is expecting the =
 
-> buffer to recvmsg to be key_size bytes.  E.g. a 'short-read'.
-
-Right, Denis. The full-length key_size buffer was "long", anything shorter =
-
-was "short". That's not the best wording, so I'll clarify the commit =
-
-message.
-
-Andrew is right. Looking back over the pkcs1pad kernel code, the =
-
-(unmerged) fix for AF_ALG that removes the top-level check requiring =
-
-maximum buffer length should allow us to read the expected data length =
-
-when using pkcs1pad, no matter the underlying RSA implementation. I'll go =
-
-back to using the expected length read buffers in ELL and confirm that =
-
-it's working.
-
-I still think it's worthwhile to make the l_asymmetric_crypto ops return =
-
-the actual read length, since the crypto user might not know how much data =
-
-to expect.
-
->> =
-
->> I don't think these kernel api changes should spill into tls.c though.
->> =
-
->
-> Anyway, the bottom line is for pkcs1pad we should be able to pass a buffe=
-r < =
-
-> key_size for recvmsg.  Nothing else makes sense.  For sendmsg, the output =
-
-> buffer should always be key_size.
-
-Agreed (for decrypt/verify).
-
-> For rsa primitive operation, the recvmsg buffer 'should' be key_size byte=
-s.
-
-Yes.
-
---
-Mat Martineau
-Intel OTC
-
---===============8425433735189817086==--
+--===============1607125136833191346==--
 
