@@ -1,373 +1,92 @@
-Content-Type: multipart/mixed; boundary="===============3146333167443337629=="
+Content-Type: multipart/mixed; boundary="===============1549050198833722784=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v5 2/5] cipher: Return number of read bytes from asymmetric ops
-Date: Fri, 17 Jun 2016 13:47:40 -0700
-Message-ID: <20160617204743.6643-2-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v5 4/5] unit: Check decryption against known ciphertext
+Date: Fri, 17 Jun 2016 13:47:42 -0700
+Message-ID: <20160617204743.6643-4-mathew.j.martineau@linux.intel.com>
 In-Reply-To: <20160617204743.6643-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3146333167443337629==
+--===============1549050198833722784==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-When using asymmetric cipher operations, the data written to the
-output buffer might be shorter than the full buffer size. The number
-of bytes read is now returned from the asymmetric
-encrypt/decrypt/sign/verify functions. A negative error code is
-returned if the call fails.
+Include known-good ciphertext and make sure it can be correctly
+decrypted. Also confirm that corrupted ciphertext triggers a
+decryption error.
 ---
- ell/cipher.c | 41 ++++++++++++++++++++---------------------
- ell/cipher.h | 16 ++++++++--------
- ell/tls.c    | 55 ++++++++++++++++++++++++++++++-------------------------
- 3 files changed, 58 insertions(+), 54 deletions(-)
+ unit/test-cipher.c | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
 
-diff --git a/ell/cipher.c b/ell/cipher.c
-index 04ef838..d1b3845 100644
---- a/ell/cipher.c
-+++ b/ell/cipher.c
-@@ -192,7 +192,7 @@ LIB_EXPORT void l_cipher_free(struct l_cipher *cipher)
- 	l_free(cipher);
- }
+diff --git a/unit/test-cipher.c b/unit/test-cipher.c
+index 8c27d03..12a922a 100644
+--- a/unit/test-cipher.c
++++ b/unit/test-cipher.c
+@@ -180,6 +180,29 @@ static uint8_t rsa_priv_key[] =3D {
+ 	0x05, 0x3e, 0x55, 0x14, 0xd9, 0xe4, 0xa4, 0x7f, 0xb7, 0x4f
+ };
  =
 
--static bool operate_cipher(int sk, __u32 operation,
-+static ssize_t operate_cipher(int sk, __u32 operation,
- 				const void *in, void *out, size_t len_in,
- 				size_t len_out)
- {
-@@ -200,6 +200,7 @@ static bool operate_cipher(int sk, __u32 operation,
- 	struct msghdr msg;
- 	struct cmsghdr *c_msg;
- 	struct iovec iov;
-+	ssize_t result;
- =
-
- 	memset(&c_msg_buf, 0, sizeof(c_msg_buf));
- 	memset(&msg, 0, sizeof(msg));
-@@ -219,13 +220,11 @@ static bool operate_cipher(int sk, __u32 operation,
- 	msg.msg_iov =3D &iov;
- 	msg.msg_iovlen =3D 1;
- =
-
--	if (sendmsg(sk, &msg, 0) < 0)
--		return false;
--
--	if (read(sk, out, len_out) < 0)
--		return false;
-+	result =3D sendmsg(sk, &msg, 0);
-+	if (result < 0)
-+		return result;
- =
-
--	return true;
-+	return read(sk, out, len_out);
- }
- =
-
- LIB_EXPORT bool l_cipher_encrypt(struct l_cipher *cipher,
-@@ -238,7 +237,7 @@ LIB_EXPORT bool l_cipher_encrypt(struct l_cipher *ciphe=
-r,
- 		return false;
- =
-
- 	return operate_cipher(cipher->encrypt_sk, ALG_OP_ENCRYPT, in, out, len,
--				len);
-+				len) >=3D 0;
- }
- =
-
- LIB_EXPORT bool l_cipher_decrypt(struct l_cipher *cipher,
-@@ -251,7 +250,7 @@ LIB_EXPORT bool l_cipher_decrypt(struct l_cipher *ciphe=
-r,
- 		return false;
- =
-
- 	return operate_cipher(cipher->decrypt_sk, ALG_OP_DECRYPT, in, out, len,
--				len);
-+				len) >=3D 0;
- }
- =
-
- LIB_EXPORT bool l_cipher_set_iv(struct l_cipher *cipher, const uint8_t *iv,
-@@ -454,9 +453,9 @@ LIB_EXPORT int l_asymmetric_cipher_get_key_size(
- 	return cipher->key_size;
- }
- =
-
--LIB_EXPORT bool l_asymmetric_cipher_encrypt(struct l_asymmetric_cipher *ci=
-pher,
--					const void *in, void *out,
--					size_t len_in, size_t len_out)
-+LIB_EXPORT ssize_t l_asymmetric_cipher_encrypt(struct l_asymmetric_cipher =
-*cipher,
-+						const void *in, void *out,
-+						size_t len_in, size_t len_out)
- {
- 	if (unlikely(!cipher))
- 		return false;
-@@ -468,9 +467,9 @@ LIB_EXPORT bool l_asymmetric_cipher_encrypt(struct l_as=
-ymmetric_cipher *cipher,
- 				in, out, len_in, len_out);
- }
- =
-
--LIB_EXPORT bool l_asymmetric_cipher_decrypt(struct l_asymmetric_cipher *ci=
-pher,
--					const void *in, void *out,
--					size_t len_in, size_t len_out)
-+LIB_EXPORT ssize_t l_asymmetric_cipher_decrypt(struct l_asymmetric_cipher =
-*cipher,
-+						const void *in, void *out,
-+						size_t len_in, size_t len_out)
- {
- 	if (unlikely(!cipher))
- 		return false;
-@@ -482,9 +481,9 @@ LIB_EXPORT bool l_asymmetric_cipher_decrypt(struct l_as=
-ymmetric_cipher *cipher,
- 				in, out, len_in, len_out);
- }
- =
-
--LIB_EXPORT bool l_asymmetric_cipher_sign(struct l_asymmetric_cipher *ciphe=
-r,
--					const void *in, void *out,
--					size_t len_in, size_t len_out)
-+LIB_EXPORT ssize_t l_asymmetric_cipher_sign(struct l_asymmetric_cipher *ci=
-pher,
-+						const void *in, void *out,
-+						size_t len_in, size_t len_out)
- {
- 	if (unlikely(!cipher))
- 		return false;
-@@ -496,9 +495,9 @@ LIB_EXPORT bool l_asymmetric_cipher_sign(struct l_asymm=
-etric_cipher *cipher,
- 				in, out, len_in, len_out);
- }
- =
-
--LIB_EXPORT bool l_asymmetric_cipher_verify(struct l_asymmetric_cipher *cip=
-her,
--					const void *in, void *out,
--					size_t len_in, size_t len_out)
-+LIB_EXPORT ssize_t l_asymmetric_cipher_verify(struct l_asymmetric_cipher *=
-cipher,
-+						const void *in, void *out,
-+						size_t len_in, size_t len_out)
- {
- 	if (unlikely(!cipher))
- 		return false;
-diff --git a/ell/cipher.h b/ell/cipher.h
-index b958804..45e51c7 100644
---- a/ell/cipher.h
-+++ b/ell/cipher.h
-@@ -65,21 +65,21 @@ void l_asymmetric_cipher_free(struct l_asymmetric_ciphe=
-r *cipher);
- =
-
- int l_asymmetric_cipher_get_key_size(struct l_asymmetric_cipher *cipher);
- =
-
--bool l_asymmetric_cipher_encrypt(struct l_asymmetric_cipher *cipher,
-+ssize_t l_asymmetric_cipher_encrypt(struct l_asymmetric_cipher *cipher,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out);
- =
-
--bool l_asymmetric_cipher_decrypt(struct l_asymmetric_cipher *cipher,
-+ssize_t l_asymmetric_cipher_decrypt(struct l_asymmetric_cipher *cipher,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out);
- =
-
--bool l_asymmetric_cipher_sign(struct l_asymmetric_cipher *cipher,
--				const void *in, void *out,
--				size_t len_in, size_t len_out);
-+ssize_t l_asymmetric_cipher_sign(struct l_asymmetric_cipher *cipher,
-+					const void *in, void *out,
-+					size_t len_in, size_t len_out);
- =
-
--bool l_asymmetric_cipher_verify(struct l_asymmetric_cipher *cipher,
--				const void *in, void *out,
--				size_t len_in, size_t len_out);
-+ssize_t l_asymmetric_cipher_verify(struct l_asymmetric_cipher *cipher,
-+					const void *in, void *out,
-+					size_t len_in, size_t len_out);
- =
-
- #ifdef __cplusplus
- }
-diff --git a/ell/tls.c b/ell/tls.c
-index 90404e4..55e2c50 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -861,7 +861,7 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls *=
-tls)
- 	uint8_t pre_master_secret[48];
- 	struct l_asymmetric_cipher *rsa_server_pubkey;
- 	int key_size;
--	bool result;
-+	ssize_t bytes_encrypted;
- =
-
- 	if (!tls->peer_pubkey) {
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
-@@ -896,14 +896,14 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls=
- *tls)
- 	}
- =
-
- 	l_put_be16(key_size, ptr);
--	result =3D l_asymmetric_cipher_encrypt(rsa_server_pubkey,
--						pre_master_secret, ptr + 2,
--						48, key_size);
-+	bytes_encrypted =3D l_asymmetric_cipher_encrypt(rsa_server_pubkey,
-+							pre_master_secret,
-+							ptr + 2, 48, key_size);
- 	ptr +=3D key_size + 2;
- =
-
- 	l_asymmetric_cipher_free(rsa_server_pubkey);
- =
-
--	if (!result) {
-+	if (bytes_encrypted !=3D key_size) {
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
- =
-
- 		return false;
-@@ -924,6 +924,7 @@ static bool tls_rsa_sign(struct l_tls *tls, uint8_t **o=
-ut, size_t len,
- 	uint8_t *privkey;
- 	size_t key_size;
- 	bool result;
-+	ssize_t sign_output_len;
- 	const struct tls_hash_algorithm *hash_type;
- 	uint8_t hash[HANDSHAKE_HASH_MAX_SIZE];
- 	uint8_t sign_input[HANDSHAKE_HASH_MAX_SIZE * 2 + 32];
-@@ -983,18 +984,23 @@ static bool tls_rsa_sign(struct l_tls *tls, uint8_t *=
-*out, size_t len,
- =
-
- 	if (len >=3D key_size + 2) {
- 		l_put_be16(key_size, *out);
--		result =3D l_asymmetric_cipher_sign(rsa_privkey, sign_input,
--							*out + 2,
--							sign_input_len,
--							key_size);
--		*out +=3D key_size + 2;
-+		sign_output_len =3D l_asymmetric_cipher_sign(rsa_privkey,
-+								sign_input,
-+								*out + 2,
-+								sign_input_len,
-+								key_size);
-+		result =3D sign_output_len =3D=3D (ssize_t)key_size;
-+		if (result)
-+			*out +=3D sign_output_len + 2;
- 	} else {
--		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
- 		result =3D false;
- 	}
- =
-
- 	l_asymmetric_cipher_free(rsa_privkey);
- =
-
-+	if (!result)
-+		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
++/* Reference ciphertext:
++ * $ openssl rsautl -in fixed_str -inkey privkey.der -keyform DER -encrypt=
+ \
++ * > -pkcs -out ciphertext
++ * $ xxd -i ciphertext
++ *
++ * where fixed_str is a file containing the first 100 characters of
++ * FIXED_STR (above) and privkey.der contains the binary data from the
++ * rsa_priv_key array.
++ */
++static uint8_t ciphertext[128] =3D {
++	0x50, 0x86, 0x87, 0x72, 0x37, 0xc1, 0xc7, 0x99, 0xa9, 0xff, 0x56, 0x92,
++	0x9b, 0x8a, 0xf6, 0x31, 0x9b, 0x11, 0x2c, 0x27, 0x1c, 0xa9, 0x07, 0x9b,
++	0xac, 0xb9, 0x31, 0xcd, 0xc1, 0x10, 0x90, 0xd7, 0x3c, 0xa1, 0x43, 0xa1,
++	0xdb, 0xb2, 0x67, 0x48, 0x28, 0xac, 0x0e, 0xbd, 0xd4, 0x62, 0x6b, 0xbd,
++	0x81, 0xf9, 0x5b, 0xd0, 0x29, 0xe5, 0xc8, 0x9a, 0x71, 0x69, 0xd1, 0x61,
++	0x72, 0x95, 0xa5, 0x10, 0x83, 0xee, 0xb4, 0x6d, 0x79, 0xf8, 0xae, 0xe1,
++	0x49, 0xdd, 0x5b, 0x1f, 0x4d, 0x2e, 0xd7, 0xa9, 0xf0, 0xf0, 0x81, 0x01,
++	0x38, 0x58, 0x78, 0x0f, 0x89, 0x3d, 0x60, 0xdb, 0x99, 0x19, 0xb0, 0x14,
++	0x9d, 0xf7, 0xc8, 0x6e, 0xc3, 0x69, 0xdd, 0xb2, 0xcc, 0x07, 0x32, 0x3b,
++	0x88, 0xd3, 0xfa, 0x72, 0xe9, 0xaa, 0x66, 0xc5, 0xd3, 0x4a, 0xff, 0x87,
++	0x6a, 0x78, 0x05, 0x2d, 0x16, 0x7c, 0x98, 0x58
++};
 +
- 	return result;
+ static void test_rsa(const void *data)
+ {
+ 	struct l_asymmetric_cipher *cipher;
+@@ -198,9 +221,22 @@ static void test_rsa(const void *data)
+ =
+
+ 	decrypted =3D l_asymmetric_cipher_decrypt(cipher, buf, buf, 128, 128);
+ 	assert(decrypted =3D=3D 100);
++	assert(!memcmp(FIXED_STR, buf, 100));
+ =
+
++	/* Decrypt reference ciphertext */
++	memset(buf, 0, 128);
++	decrypted =3D l_asymmetric_cipher_decrypt(cipher, ciphertext, buf,
++						128, 128);
++	assert(decrypted =3D=3D 100);
+ 	assert(!memcmp(FIXED_STR, buf, 100));
+ =
+
++	/* Decrypt corrupted ciphertext */
++	ciphertext[0] =3D ciphertext[0] ^ (uint8_t)0xFF;
++	memset(buf, 0, 128);
++	decrypted =3D l_asymmetric_cipher_decrypt(cipher, ciphertext, buf,
++						128, 128);
++	assert(decrypted < 0);
++
+ 	l_asymmetric_cipher_free(cipher);
  }
  =
 
-@@ -1003,7 +1009,7 @@ static bool tls_rsa_verify(struct l_tls *tls, const u=
-int8_t *in, size_t len,
- {
- 	struct l_asymmetric_cipher *rsa_client_pubkey;
- 	size_t key_size;
--	bool result;
-+	ssize_t verify_bytes;
- 	uint8_t hash[HANDSHAKE_HASH_MAX_SIZE];
- 	size_t hash_len;
- 	enum l_checksum_type hash_type;
-@@ -1086,18 +1092,16 @@ static bool tls_rsa_verify(struct l_tls *tls, const=
- uint8_t *in, size_t len,
- 		 */
- 	}
- =
-
--	if (expected_len > key_size)
--		goto err_free_rsa;
--
--	digest_info =3D alloca(key_size);
-+	digest_info =3D alloca(expected_len);
- =
-
--	result =3D l_asymmetric_cipher_verify(rsa_client_pubkey, in + 4,
--						digest_info,
--						key_size, key_size);
-+	verify_bytes =3D l_asymmetric_cipher_verify(rsa_client_pubkey, in + 4,
-+							digest_info, key_size,
-+							expected_len);
- =
-
- 	l_asymmetric_cipher_free(rsa_client_pubkey);
- =
-
--	if (!result || memcmp(digest_info, expected, expected_len)) {
-+	if (verify_bytes !=3D (ssize_t)expected_len ||
-+		memcmp(digest_info, expected, expected_len)) {
- 		tls_disconnect(tls, TLS_ALERT_DECRYPT_ERROR, 0);
- =
-
- 		return false;
-@@ -1755,7 +1759,7 @@ static void tls_handle_rsa_client_key_xchg(struct l_t=
-ls *tls,
- 	struct l_asymmetric_cipher *rsa_server_privkey;
- 	uint8_t *privkey;
- 	size_t key_size;
--	bool result;
-+	ssize_t bytes_decrypted;
- =
-
- 	if (!tls->priv_key_path) {
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
-@@ -1805,9 +1809,10 @@ static void tls_handle_rsa_client_key_xchg(struct l_=
-tls *tls,
- 		return;
- 	}
- =
-
--	result =3D l_asymmetric_cipher_decrypt(rsa_server_privkey, buf + 2,
--						pre_master_secret,
--						key_size, 48);
-+	bytes_decrypted =3D l_asymmetric_cipher_decrypt(rsa_server_privkey,
-+							buf + 2,
-+							pre_master_secret,
-+							key_size, 48);
- 	l_asymmetric_cipher_free(rsa_server_privkey);
- =
-
- 	/*
-@@ -1825,7 +1830,7 @@ static void tls_handle_rsa_client_key_xchg(struct l_t=
-ls *tls,
- 	pre_master_secret[0] =3D tls->client_version >> 8;
- 	pre_master_secret[1] =3D tls->client_version >> 0;
- =
-
--	if (!result)
-+	if (bytes_decrypted !=3D 48)
- 		memcpy(pre_master_secret + 2, random_secret, 46);
- =
-
- 	tls_generate_master_secret(tls, pre_master_secret, 48);
 -- =
 
 2.9.0
 
 
---===============3146333167443337629==--
+--===============1549050198833722784==--
 
