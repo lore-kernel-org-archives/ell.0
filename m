@@ -1,155 +1,158 @@
-Content-Type: multipart/mixed; boundary="===============7706694504051008498=="
+Content-Type: multipart/mixed; boundary="===============0811616048608545644=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v5 5/5] cipher: Use only one socket for asymmetric cipher
-Date: Fri, 17 Jun 2016 13:47:43 -0700
-Message-ID: <20160617204743.6643-5-mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v5 1/5] tls: Check buffer bounds in tls_rsa_sign
+Date: Fri, 17 Jun 2016 22:56:20 -0500
+Message-ID: <5764C664.7070507@gmail.com>
 In-Reply-To: <20160617204743.6643-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7706694504051008498==
+--===============0811616048608545644==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/cipher.c | 40 +++++++++++++++-------------------------
- 1 file changed, 15 insertions(+), 25 deletions(-)
+Hi Mat, Andrew,
 
-diff --git a/ell/cipher.c b/ell/cipher.c
-index d1b3845..b51a96d 100644
---- a/ell/cipher.c
-+++ b/ell/cipher.c
-@@ -290,7 +290,8 @@ LIB_EXPORT bool l_cipher_set_iv(struct l_cipher *cipher=
-, const uint8_t *iv,
- }
- =
+On 06/17/2016 03:47 PM, Mat Martineau wrote:
+> ---
+>   ell/tls-private.h |  2 +-
+>   ell/tls.c         | 29 ++++++++++++++++++++++-------
+>   2 files changed, 23 insertions(+), 8 deletions(-)
+>
+> diff --git a/ell/tls-private.h b/ell/tls-private.h
+> index 184f2ae..9ea1554 100644
+> --- a/ell/tls-private.h
+> +++ b/ell/tls-private.h
+> @@ -65,7 +65,7 @@ struct tls_key_exchange_algorithm {
+>   	void (*handle_client_key_exchange)(struct l_tls *tls,
+>   						const uint8_t *buf, size_t len);
+>
+> -	bool (*sign)(struct l_tls *tls, uint8_t **out,
+> +	bool (*sign)(struct l_tls *tls, uint8_t **out, size_t len,
+>   			tls_get_hash_t get_hash);
 
- struct l_asymmetric_cipher {
--	struct l_cipher cipher;
-+	int type;
-+	int sk;
- 	int key_size;
- };
- =
+So what's the purpose of out being a uint8_t **?  It seems it is being =
 
-@@ -403,7 +404,7 @@ LIB_EXPORT struct l_asymmetric_cipher *l_asymmetric_cip=
-her_new(
- 		return NULL;
- =
+rewritten inside tls_rsa_sign to return the number of bytes written to =
 
- 	cipher =3D l_new(struct l_asymmetric_cipher, 1);
--	cipher->cipher.type =3D type;
-+	cipher->type =3D type;
- =
+the caller.
 
- 	switch (type) {
- 	case L_CIPHER_RSA_PKCS1_V1_5:
-@@ -414,23 +415,13 @@ LIB_EXPORT struct l_asymmetric_cipher *l_asymmetric_c=
-ipher_new(
- 		break;
- 	}
- =
+If so, can we instead modify the signature to be:
 
--	cipher->cipher.encrypt_sk =3D create_alg("akcipher", alg_name,
--						key, key_length, public_key);
--	if (cipher->cipher.encrypt_sk < 0)
-+	cipher->sk =3D create_alg("akcipher", alg_name, key, key_length,
-+				public_key);
-+	if (cipher->sk < 0)
- 		goto error_free;
- =
+ssize_t (*sign)(struct l_tls *tls, uint8_t *dest, size_t len,
+				 tls_get_hash_t get_hash);
 
--	if (public_key) {
--		cipher->cipher.decrypt_sk =3D create_alg("akcipher", alg_name,
--							key, key_length,
--							public_key);
--		if (cipher->cipher.decrypt_sk < 0)
--			goto error_close;
--	}
--
- 	return cipher;
- =
+?
 
--error_close:
--	close(cipher->cipher.encrypt_sk);
- error_free:
- 	l_free(cipher);
- 	return NULL;
-@@ -441,8 +432,7 @@ LIB_EXPORT void l_asymmetric_cipher_free(struct l_asymm=
-etric_cipher *cipher)
- 	if (unlikely(!cipher))
- 		return;
- =
+>   	bool (*verify)(struct l_tls *tls, const uint8_t *in, size_t len,
+>   			tls_get_hash_t get_hash);
+> diff --git a/ell/tls.c b/ell/tls.c
+> index 0baddf7..90404e4 100644
+> --- a/ell/tls.c
+> +++ b/ell/tls.c
+> @@ -274,7 +274,7 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls=
+ *tls);
+>   static void tls_handle_rsa_client_key_xchg(struct l_tls *tls,
+>   						const uint8_t *buf, size_t len);
+>
+> -static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out,
+> +static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out, size_t len,
+>   				tls_get_hash_t get_hash);
+>   static bool tls_rsa_verify(struct l_tls *tls, const uint8_t *in, size_t=
+ len,
+>   				tls_get_hash_t get_hash);
+> @@ -917,7 +917,7 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls=
+ *tls)
+>   	return true;
+>   }
+>
+> -static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out,
+> +static bool tls_rsa_sign(struct l_tls *tls, uint8_t **out, size_t len,
+>   				tls_get_hash_t get_hash)
+>   {
+>   	struct l_asymmetric_cipher *rsa_privkey;
+> @@ -929,6 +929,12 @@ static bool tls_rsa_sign(struct l_tls *tls, uint8_t =
+**out,
+>   	uint8_t sign_input[HANDSHAKE_HASH_MAX_SIZE * 2 + 32];
+>   	size_t sign_input_len;
+>
+> +	if (len < 2) {
+> +		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
+> +
+> +		return false;
+> +	}
+> +
+>   	if (!tls->priv_key_path) {
+>   		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
+>   				TLS_ALERT_BAD_CERT);
+> @@ -968,16 +974,24 @@ static bool tls_rsa_sign(struct l_tls *tls, uint8_t=
+ **out,
+>
+>   		*(*out)++ =3D hash_type->tls_id;
+>   		*(*out)++ =3D 1;	/* RSA_sign */
 
--	close(cipher->cipher.encrypt_sk);
--	close(cipher->cipher.decrypt_sk);
-+	close(cipher->sk);
- =
+We should avoid what I refer to as 'side-effects'. If an operation won't =
 
- 	l_free(cipher);
- }
-@@ -463,8 +453,8 @@ LIB_EXPORT ssize_t l_asymmetric_cipher_encrypt(struct l=
-_asymmetric_cipher *ciphe
- 	if (unlikely(!in) || unlikely(!out))
- 		return false;
- =
+succeed, don't scribble in the buffer if at all possible.
 
--	return operate_cipher(cipher->cipher.encrypt_sk, ALG_OP_ENCRYPT,
--				in, out, len_in, len_out);
-+	return operate_cipher(cipher->sk, ALG_OP_ENCRYPT, in, out, len_in,
-+				len_out);
- }
- =
+> +		len -=3D 2;
 
- LIB_EXPORT ssize_t l_asymmetric_cipher_decrypt(struct l_asymmetric_cipher =
-*cipher,
-@@ -477,8 +467,8 @@ LIB_EXPORT ssize_t l_asymmetric_cipher_decrypt(struct l=
-_asymmetric_cipher *ciphe
- 	if (unlikely(!in) || unlikely(!out))
- 		return false;
- =
+This doesn't seem right.  By my reading the total bytes being written =
 
--	return operate_cipher(cipher->cipher.decrypt_sk, ALG_OP_DECRYPT,
--				in, out, len_in, len_out);
-+	return operate_cipher(cipher->sk, ALG_OP_DECRYPT, in, out, len_in,
-+				len_out);
- }
- =
+here are key_size (in cipher_sign) and 2 bytes just above.
 
- LIB_EXPORT ssize_t l_asymmetric_cipher_sign(struct l_asymmetric_cipher *ci=
-pher,
-@@ -491,8 +481,8 @@ LIB_EXPORT ssize_t l_asymmetric_cipher_sign(struct l_as=
-ymmetric_cipher *cipher,
- 	if (unlikely(!in) || unlikely(!out))
- 		return false;
- =
+Why are you checking for len >=3D key_size + 2 below?
 
--	return operate_cipher(cipher->cipher.decrypt_sk, ALG_OP_SIGN,
--				in, out, len_in, len_out);
-+	return operate_cipher(cipher->sk, ALG_OP_SIGN, in, out, len_in,
-+				len_out);
- }
- =
+>   	} else {
+>   		get_hash(tls, 1, sign_input + 0, NULL, NULL);	/* MD5 */
+>   		get_hash(tls, 2, sign_input + 16, NULL, NULL);	/* SHA1 */
+>   		sign_input_len =3D 36;
+>   	}
+>
+> -	l_put_be16(key_size, *out);
+> -	result =3D l_asymmetric_cipher_sign(rsa_privkey, sign_input, *out + 2,
+> -						sign_input_len, key_size);
+> -	*out +=3D key_size + 2;
 
- LIB_EXPORT ssize_t l_asymmetric_cipher_verify(struct l_asymmetric_cipher *=
-cipher,
-@@ -505,6 +495,6 @@ LIB_EXPORT ssize_t l_asymmetric_cipher_verify(struct l_=
-asymmetric_cipher *cipher
- 	if (unlikely(!in) || unlikely(!out))
- 		return false;
- =
+So can we check the length ahead of time, e.g. something like:
 
--	return operate_cipher(cipher->cipher.encrypt_sk, ALG_OP_VERIFY,
--				in, out, len_in, len_out);
-+	return operate_cipher(cipher->sk, ALG_OP_VERIFY, in, out, len_in,
-+				len_out);
- }
--- =
+if (len < needed) {
+	tls_disconnect();
+	l_asymmetric_cipher_free();
+	return -EMSGSIZE;
+}
 
-2.9.0
+> +	if (len >=3D key_size + 2) {
+> +		l_put_be16(key_size, *out);
+> +		result =3D l_asymmetric_cipher_sign(rsa_privkey, sign_input,
+> +							*out + 2,
+> +							sign_input_len,
+> +							key_size);
+> +		*out +=3D key_size + 2;
+> +	} else {
+> +		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
+> +		result =3D false;
+> +	}
+>
+>   	l_asymmetric_cipher_free(rsa_privkey);
+>
+> @@ -1143,7 +1157,8 @@ static bool tls_send_certificate_verify(struct l_tl=
+s *tls)
+>   	/* Fill in the Certificate Verify body */
+>
+>   	if (!tls->pending.cipher_suite->key_xchg->sign(tls, &ptr,
+> -						tls_get_handshake_hash_by_id))
+> +					2048 - TLS_HANDSHAKE_HEADER_SIZE,
+> +					tls_get_handshake_hash_by_id))
+>   		return false;
+>
+>   	/* Stop maintaining handshake message hashes other than SHA256. */
+>
 
+Regards,
+-Denis
 
---===============7706694504051008498==--
+--===============0811616048608545644==--
 
