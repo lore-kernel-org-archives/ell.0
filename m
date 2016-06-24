@@ -1,13 +1,13 @@
-Content-Type: multipart/mixed; boundary="===============2274511273173529311=="
+Content-Type: multipart/mixed; boundary="===============2738706892657800018=="
 MIME-Version: 1.0
 From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH] genl: Add unicast listener
-Date: Fri, 24 Jun 2016 12:54:56 -0700
-Message-ID: <1466798096-54201-1-git-send-email-tim.a.kourt@linux.intel.com>
+Subject: [PATCH v2] genl: Add unicast listener
+Date: Fri, 24 Jun 2016 13:13:03 -0700
+Message-ID: <1466799183-55537-1-git-send-email-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2274511273173529311==
+--===============2738706892657800018==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -19,7 +19,7 @@ Content-Transfer-Encoding: quoted-printable
  2 files changed, 78 insertions(+), 45 deletions(-)
 
 diff --git a/ell/genl.c b/ell/genl.c
-index 15f4782..f0d65bd 100644
+index 15f4782..767bd2f 100644
 --- a/ell/genl.c
 +++ b/ell/genl.c
 @@ -25,7 +25,6 @@
@@ -221,7 +221,7 @@ t l_genl_family *family,
 +		family_add_mcast(family, unicast_group, 0);
 +
 +	return l_genl_family_register(family, unicast_group, ucast_listener,
-+								NULL, NULL);
++							user_data, destroy);
 +}
 +
  static bool match_notify_id(const void *a, const void *b)
@@ -297,5 +297,5 @@ d);
 2.5.5
 
 
---===============2274511273173529311==--
+--===============2738706892657800018==--
 
