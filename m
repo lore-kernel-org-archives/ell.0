@@ -1,29 +1,31 @@
-Content-Type: multipart/mixed; boundary="===============5042634837251832058=="
+Content-Type: multipart/mixed; boundary="===============1562598218024189592=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/3] examples: Update dbus-service example use of setter api
-Date: Fri, 08 Jul 2016 17:55:17 +0200
-Message-ID: <1467993318-11918-2-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/3] unit: Update the uses of dbus property setter api
+Date: Fri, 08 Jul 2016 17:55:18 +0200
+Message-ID: <1467993318-11918-3-git-send-email-andrew.zaborowski@intel.com>
 In-Reply-To: <1467993318-11918-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5042634837251832058==
+--===============1562598218024189592==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- examples/dbus-service.c | 36 ++++++++++++++++++------------------
- 1 file changed, 18 insertions(+), 18 deletions(-)
+ unit/test-dbus-properties.c | 53 +++++++++++++++++++++++++++--------------=
+----
+ unit/test-dbus-service.c    |  3 ++-
+ 2 files changed, 34 insertions(+), 22 deletions(-)
 
-diff --git a/examples/dbus-service.c b/examples/dbus-service.c
-index 19b17a0..2a53ab8 100644
---- a/examples/dbus-service.c
-+++ b/examples/dbus-service.c
-@@ -106,27 +106,27 @@ static bool test_string_getter(struct l_dbus *dbus,
- 	return true;
- }
+diff --git a/unit/test-dbus-properties.c b/unit/test-dbus-properties.c
+index b11d1d5..08916b3 100644
+--- a/unit/test-dbus-properties.c
++++ b/unit/test-dbus-properties.c
+@@ -220,20 +220,26 @@ static bool test_string_getter(struct l_dbus *dbus,
+ static bool setter_called;
+ static bool int_optional;
  =
 
 -static void test_string_setter(struct l_dbus *dbus,
@@ -38,26 +40,21 @@ index 19b17a0..2a53ab8 100644
 +					void *user_data)
  {
  	const char *strvalue;
- 	struct test_data *test =3D user_data;
  =
 
--	if (!l_dbus_message_iter_get_variant(new_value, "s", &strvalue)) {
--		complete(dbus, message, l_dbus_message_new_error(message,
--					"org.test.InvalidArguments",
--					"String value expected"));
--		return;
--	}
+-	test_assert(l_dbus_message_iter_get_variant(new_value, "s", &strvalue));
+-	test_assert(!strcmp(strvalue, "bar"));
 +	if (!l_dbus_message_iter_get_variant(new_value, "s", &strvalue))
-+		return l_dbus_message_new_error(message,
-+						"org.test.InvalidArguments",
-+						"String value expected");
++		goto done;
++
++	if (strcmp(strvalue, "bar"))
++		goto done;
  =
 
- 	l_info("New String value: %s", strvalue);
- 	l_free(test->string);
- 	test->string =3D l_strdup(strvalue);
+ 	setter_called =3D true;
  =
 
++done:
  	complete(dbus, message, NULL);
 +
 +	return NULL;
@@ -65,48 +62,90 @@ index 19b17a0..2a53ab8 100644
  =
 
  static bool test_int_getter(struct l_dbus *dbus,
-@@ -141,7 +141,7 @@ static bool test_int_getter(struct l_dbus *dbus,
- 	return true;
+@@ -251,32 +257,37 @@ static bool test_int_getter(struct l_dbus *dbus,
+ 	return l_dbus_message_builder_append_basic(builder, 'u', &u);
  }
  =
 
 -static void test_int_setter(struct l_dbus *dbus,
+-				struct l_dbus_message *message,
+-				struct l_dbus_message_iter *new_value,
+-				l_dbus_property_complete_cb_t complete,
+-				void *user_data)
 +static struct l_dbus_message *test_int_setter(struct l_dbus *dbus,
- 				struct l_dbus_message *message,
- 				struct l_dbus_message_iter *new_value,
- 				l_dbus_property_complete_cb_t complete,
-@@ -150,17 +150,17 @@ static void test_int_setter(struct l_dbus *dbus,
++					struct l_dbus_message *message,
++					struct l_dbus_message_iter *new_value,
++					l_dbus_property_complete_cb_t complete,
++					void *user_data)
+ {
  	uint32_t u;
- 	struct test_data *test =3D user_data;
  =
 
--	if (!l_dbus_message_iter_get_variant(new_value, "u", &u)) {
--		complete(dbus, message, l_dbus_message_new_error(message,
--					"org.test.InvalidArguments",
--					"Integer value expected"));
--		return;
--	}
+-	test_assert(l_dbus_message_iter_get_variant(new_value, "u", &u));
+-	test_assert(u =3D=3D 42);
 +	if (!l_dbus_message_iter_get_variant(new_value, "u", &u))
-+		return l_dbus_message_new_error(message,
-+						"org.test.InvalidArguments",
-+						"Integer value expected");
++		goto done;
++
++	if (u !=3D 42)
++		goto done;
  =
 
- 	l_info("New Integer value: %u", u);
- 	test->integer =3D u;
+ 	setter_called =3D true;
  =
 
++done:
  	complete(dbus, message, NULL);
 +
 +	return NULL;
  }
  =
 
- static void setup_test_interface(struct l_dbus_interface *interface)
+-static void test_error_setter(struct l_dbus *dbus,
+-				struct l_dbus_message *message,
+-				struct l_dbus_message_iter *new_value,
+-				l_dbus_property_complete_cb_t complete,
+-				void *user_data)
++static struct l_dbus_message *test_error_setter(struct l_dbus *dbus,
++					struct l_dbus_message *message,
++					struct l_dbus_message_iter *new_value,
++					l_dbus_property_complete_cb_t complete,
++					void *user_data)
+ {
+ 	setter_called =3D true;
+ =
+
+-	complete(dbus, message, l_dbus_message_new_error(message,
+-						"org.test.Error", "Error"));
++	return l_dbus_message_new_error(message, "org.test.Error", "Error");
+ }
+ =
+
+ static bool test_path_getter(struct l_dbus *dbus,
+diff --git a/unit/test-dbus-service.c b/unit/test-dbus-service.c
+index 8a395b1..c27869b 100644
+--- a/unit/test-dbus-service.c
++++ b/unit/test-dbus-service.c
+@@ -399,12 +399,13 @@ static bool test_property_getter(struct l_dbus *dbus,
+ 	return true;
+ }
+ =
+
+-static void test_property_setter(struct l_dbus *dbus,
++static struct l_dbus_message *test_property_setter(struct l_dbus *dbus,
+ 					struct l_dbus_message *message,
+ 					struct l_dbus_message_iter *new_value,
+ 					l_dbus_property_complete_cb_t complete,
+ 					void *user_data)
+ {
++	return NULL;
+ }
+ =
+
+ int main(int argc, char *argv[])
 -- =
 
 2.7.4
 
 
---===============5042634837251832058==--
+--===============1562598218024189592==--
 
