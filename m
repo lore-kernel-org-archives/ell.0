@@ -1,113 +1,112 @@
-Content-Type: multipart/mixed; boundary="===============4222359114137417246=="
+Content-Type: multipart/mixed; boundary="===============5042634837251832058=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/3] dbus-service: Allow property setters to return errors
-Date: Fri, 08 Jul 2016 17:55:16 +0200
-Message-ID: <1467993318-11918-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/3] examples: Update dbus-service example use of setter api
+Date: Fri, 08 Jul 2016 17:55:17 +0200
+Message-ID: <1467993318-11918-2-git-send-email-andrew.zaborowski@intel.com>
+In-Reply-To: <1467993318-11918-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4222359114137417246==
+--===============5042634837251832058==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Allow the property setter functions to synchronously return a message
-pointer if they need to return an error.  On success complete still
-needs to be called because the NULL return value couls also mean that
-the setter will complete asynchronously.
 ---
- ell/dbus-service.c | 21 +++++++++++++++------
- ell/dbus-service.h |  2 +-
- 2 files changed, 16 insertions(+), 7 deletions(-)
+ examples/dbus-service.c | 36 ++++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
 
-diff --git a/ell/dbus-service.c b/ell/dbus-service.c
-index 44baaaf..deffc07 100644
---- a/ell/dbus-service.c
-+++ b/ell/dbus-service.c
-@@ -1180,6 +1180,7 @@ static struct l_dbus_message *old_set_property(struct=
- l_dbus *dbus,
- 	const struct _dbus_property *property;
- 	struct l_dbus_message_iter variant;
- 	struct _dbus_object_tree *tree =3D _dbus_get_tree(dbus);
-+	struct l_dbus_message *reply;
- =
-
- 	interface =3D l_hashmap_lookup(tree->interfaces,
- 					l_dbus_message_get_interface(message));
-@@ -1207,10 +1208,13 @@ static struct l_dbus_message *old_set_property(stru=
-ct l_dbus *dbus,
- 						"Property %s is read-only",
- 						property_name);
- =
-
--	property->setter(dbus, l_dbus_message_ref(message), &variant,
--				set_property_complete, user_data);
-+	reply =3D property->setter(dbus, l_dbus_message_ref(message), &variant,
-+					set_property_complete, user_data);
- =
-
--	return NULL;
-+	if (reply)
-+		l_dbus_message_unref(message);
-+
-+	return reply;
+diff --git a/examples/dbus-service.c b/examples/dbus-service.c
+index 19b17a0..2a53ab8 100644
+--- a/examples/dbus-service.c
++++ b/examples/dbus-service.c
+@@ -106,27 +106,27 @@ static bool test_string_getter(struct l_dbus *dbus,
+ 	return true;
  }
  =
 
- static struct l_dbus_message *old_get_properties(struct l_dbus *dbus,
-@@ -1729,6 +1733,7 @@ static struct l_dbus_message *properties_set(struct l=
-_dbus *dbus,
- 	struct l_dbus_message_iter variant;
- 	struct _dbus_object_tree *tree =3D _dbus_get_tree(dbus);
- 	const struct object_node *object;
-+	struct l_dbus_message *reply;
+-static void test_string_setter(struct l_dbus *dbus,
+-				struct l_dbus_message *message,
+-				struct l_dbus_message_iter *new_value,
+-				l_dbus_property_complete_cb_t complete,
+-				void *user_data)
++static struct l_dbus_message *test_string_setter(struct l_dbus *dbus,
++					struct l_dbus_message *message,
++					struct l_dbus_message_iter *new_value,
++					l_dbus_property_complete_cb_t complete,
++					void *user_data)
+ {
+ 	const char *strvalue;
+ 	struct test_data *test =3D user_data;
  =
 
- 	if (!l_dbus_message_get_arguments(message, "ssv", &interface_name,
- 						&property_name, &variant))
-@@ -1774,10 +1779,14 @@ static struct l_dbus_message *properties_set(struct=
- l_dbus *dbus,
- 						"Object has no interface %s",
- 						interface_name);
+-	if (!l_dbus_message_iter_get_variant(new_value, "s", &strvalue)) {
+-		complete(dbus, message, l_dbus_message_new_error(message,
+-					"org.test.InvalidArguments",
+-					"String value expected"));
+-		return;
+-	}
++	if (!l_dbus_message_iter_get_variant(new_value, "s", &strvalue))
++		return l_dbus_message_new_error(message,
++						"org.test.InvalidArguments",
++						"String value expected");
  =
 
--	property->setter(dbus, l_dbus_message_ref(message), &variant,
--				properties_set_complete, instance->user_data);
-+	reply =3D property->setter(dbus, l_dbus_message_ref(message), &variant,
-+					properties_set_complete,
-+					instance->user_data);
+ 	l_info("New String value: %s", strvalue);
+ 	l_free(test->string);
+ 	test->string =3D l_strdup(strvalue);
  =
 
--	return NULL;
-+	if (reply)
-+		l_dbus_message_unref(message);
+ 	complete(dbus, message, NULL);
 +
-+	return reply;
++	return NULL;
  }
  =
 
- static struct l_dbus_message *properties_get_all(struct l_dbus *dbus,
-diff --git a/ell/dbus-service.h b/ell/dbus-service.h
-index 2243b99..153bb3a 100644
---- a/ell/dbus-service.h
-+++ b/ell/dbus-service.h
-@@ -56,7 +56,7 @@ typedef void (*l_dbus_property_complete_cb_t) (struct l_d=
-bus *,
- 						struct l_dbus_message *,
- 						struct l_dbus_message *error);
+ static bool test_int_getter(struct l_dbus *dbus,
+@@ -141,7 +141,7 @@ static bool test_int_getter(struct l_dbus *dbus,
+ 	return true;
+ }
  =
 
--typedef void (*l_dbus_property_set_cb_t) (struct l_dbus *,
-+typedef struct l_dbus_message *(*l_dbus_property_set_cb_t) (struct l_dbus =
-*,
- 					struct l_dbus_message *message,
- 					struct l_dbus_message_iter *new_value,
- 					l_dbus_property_complete_cb_t complete,
+-static void test_int_setter(struct l_dbus *dbus,
++static struct l_dbus_message *test_int_setter(struct l_dbus *dbus,
+ 				struct l_dbus_message *message,
+ 				struct l_dbus_message_iter *new_value,
+ 				l_dbus_property_complete_cb_t complete,
+@@ -150,17 +150,17 @@ static void test_int_setter(struct l_dbus *dbus,
+ 	uint32_t u;
+ 	struct test_data *test =3D user_data;
+ =
+
+-	if (!l_dbus_message_iter_get_variant(new_value, "u", &u)) {
+-		complete(dbus, message, l_dbus_message_new_error(message,
+-					"org.test.InvalidArguments",
+-					"Integer value expected"));
+-		return;
+-	}
++	if (!l_dbus_message_iter_get_variant(new_value, "u", &u))
++		return l_dbus_message_new_error(message,
++						"org.test.InvalidArguments",
++						"Integer value expected");
+ =
+
+ 	l_info("New Integer value: %u", u);
+ 	test->integer =3D u;
+ =
+
+ 	complete(dbus, message, NULL);
++
++	return NULL;
+ }
+ =
+
+ static void setup_test_interface(struct l_dbus_interface *interface)
 -- =
 
 2.7.4
 
 
---===============4222359114137417246==--
+--===============5042634837251832058==--
 
