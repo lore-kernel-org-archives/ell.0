@@ -1,128 +1,80 @@
-Content-Type: multipart/mixed; boundary="===============1828075448958467045=="
+Content-Type: multipart/mixed; boundary="===============7273265167727335520=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v2 1/7] key: Consistently return errno from syscall wrappers
-Date: Fri, 29 Jul 2016 11:11:55 -0700
-Message-ID: <20160729181201.16446-1-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v2 2/7] checksum: Add L_CHECKSUM_NONE, needed for key crypto
+Date: Fri, 29 Jul 2016 11:11:56 -0700
+Message-ID: <20160729181201.16446-2-mathew.j.martineau@linux.intel.com>
+In-Reply-To: <20160729181201.16446-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1828075448958467045==
+--===============7273265167727335520==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/key.c | 44 +++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 37 insertions(+), 7 deletions(-)
+ ell/checksum.c | 8 ++++++--
+ ell/checksum.h | 1 +
+ 2 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/ell/key.c b/ell/key.c
-index 6117e31..a8d011a 100644
---- a/ell/key.c
-+++ b/ell/key.c
-@@ -29,6 +29,7 @@
- #include <stdint.h>
- #include <sys/syscall.h>
- #include <linux/keyctl.h>
-+#include <errno.h>
+diff --git a/ell/checksum.c b/ell/checksum.c
+index 7b0e3ee..68be73f 100644
+--- a/ell/checksum.c
++++ b/ell/checksum.c
+@@ -124,9 +124,9 @@ LIB_EXPORT struct l_checksum *l_checksum_new(enum l_che=
+cksum_type type)
+ 	if (!is_valid_type(type))
+ 		return NULL;
  =
 
- #include "private.h"
- #include "util.h"
-@@ -64,43 +65,72 @@ static const char * const key_type_names[] =3D {
- static long kernel_add_key(const char *type, const char *description,
- 				const void *payload, size_t len, int32_t keyring)
- {
--	return syscall(__NR_add_key, type, description, payload, len, keyring);
-+	long result;
-+
-+	result =3D syscall(__NR_add_key, type, description, payload, len,
-+				keyring);
-+
-+	return result >=3D 0 ? result : -errno;
- }
+-	checksum =3D l_new(struct l_checksum, 1);
+-
+ 	switch (type) {
++	case L_CHECKSUM_NONE:
++		return NULL;
+ 	case L_CHECKSUM_MD5:
+ 		name =3D "md5";
+ 		break;
+@@ -144,6 +144,8 @@ LIB_EXPORT struct l_checksum *l_checksum_new(enum l_che=
+cksum_type type)
+ 		break;
+ 	}
  =
 
- static long kernel_read_key(int32_t serial, const void *payload, size_t le=
-n)
- {
--	return syscall(__NR_keyctl, KEYCTL_READ, serial, payload, len);
-+	long result;
++	checksum =3D l_new(struct l_checksum, 1);
 +
-+	result =3D syscall(__NR_keyctl, KEYCTL_READ, serial, payload, len);
-+
-+	return result >=3D 0 ? result : -errno;
- }
+ 	fd =3D create_alg(name);
+ 	if (fd < 0)
+ 		goto error;
+@@ -202,6 +204,8 @@ struct l_checksum *l_checksum_new_hmac(enum l_checksum_=
+type type,
+ 		return NULL;
  =
 
- static long kernel_update_key(int32_t serial, const void *payload, size_t =
-len)
- {
--	return syscall(__NR_keyctl, KEYCTL_UPDATE, serial, payload, len);
-+	long result;
-+
-+	result =3D syscall(__NR_keyctl, KEYCTL_UPDATE, serial, payload, len);
-+
-+	return result >=3D 0 ? result : -errno;
- }
+ 	switch (type) {
++	case L_CHECKSUM_NONE:
++		return NULL;
+ 	case L_CHECKSUM_MD5:
+ 		name =3D "hmac(md5)";
+ 		break;
+diff --git a/ell/checksum.h b/ell/checksum.h
+index 34401a6..e6eceb9 100644
+--- a/ell/checksum.h
++++ b/ell/checksum.h
+@@ -32,6 +32,7 @@ extern "C" {
+ struct l_checksum;
  =
 
- static long kernel_revoke_key(int32_t serial)
- {
--	return syscall(__NR_keyctl, KEYCTL_REVOKE, serial);
-+	long result;
-+
-+	result =3D syscall(__NR_keyctl, KEYCTL_REVOKE, serial);
-+
-+	return result >=3D 0 ? result : -errno;
- }
- =
-
- static long kernel_link_key(int32_t key_serial, int32_t ring_serial)
- {
--	return syscall(__NR_keyctl, KEYCTL_LINK, key_serial, ring_serial);
-+	long result;
-+
-+	result =3D syscall(__NR_keyctl, KEYCTL_LINK, key_serial, ring_serial);
-+
-+	return result >=3D 0 ? result : -errno;
- }
- =
-
- static long kernel_unlink_key(int32_t key_serial, int32_t ring_serial)
- {
--	return syscall(__NR_keyctl, KEYCTL_UNLINK, key_serial, ring_serial);
-+	long result;
-+
-+	result =3D syscall(__NR_keyctl, KEYCTL_UNLINK, key_serial, ring_serial);
-+
-+	return result >=3D 0 ? result : -errno;
- }
- =
-
- static long kernel_dh_compute(int32_t private, int32_t prime, int32_t base,
- 			      void *payload, size_t len)
- {
-+	long result;
-+
- 	struct keyctl_dh_params params =3D { .private =3D private,
- 					   .prime =3D prime,
- 					   .base =3D base };
- =
-
--	return syscall(__NR_keyctl, KEYCTL_DH_COMPUTE, &params, payload, len,
-+	result =3D syscall(__NR_keyctl, KEYCTL_DH_COMPUTE, &params, payload, len,
- 			NULL);
-+
-+	return result >=3D 0 ? result : -errno;
- }
- =
-
- static bool setup_internal_keyring(void)
+ enum l_checksum_type {
++	L_CHECKSUM_NONE,
+ 	L_CHECKSUM_MD5,
+ 	L_CHECKSUM_SHA1,
+ 	L_CHECKSUM_SHA256,
 -- =
 
 2.9.2
 
 
---===============1828075448958467045==--
+--===============7273265167727335520==--
 
