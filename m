@@ -1,80 +1,62 @@
-Content-Type: multipart/mixed; boundary="===============7273265167727335520=="
+Content-Type: multipart/mixed; boundary="===============2019819095471429824=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v2 2/7] checksum: Add L_CHECKSUM_NONE, needed for key crypto
-Date: Fri, 29 Jul 2016 11:11:56 -0700
-Message-ID: <20160729181201.16446-2-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v2 3/7] key: Rename l_key_get_payload_size to clarify its
+ purpose
+Date: Fri, 29 Jul 2016 11:11:57 -0700
+Message-ID: <20160729181201.16446-3-mathew.j.martineau@linux.intel.com>
 In-Reply-To: <20160729181201.16446-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7273265167727335520==
+--===============2019819095471429824==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+The size returned is the number of bytes needed to store the payload.
 ---
- ell/checksum.c | 8 ++++++--
- ell/checksum.h | 1 +
- 2 files changed, 7 insertions(+), 2 deletions(-)
+ ell/key.c | 2 +-
+ ell/key.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/ell/checksum.c b/ell/checksum.c
-index 7b0e3ee..68be73f 100644
---- a/ell/checksum.c
-+++ b/ell/checksum.c
-@@ -124,9 +124,9 @@ LIB_EXPORT struct l_checksum *l_checksum_new(enum l_che=
-cksum_type type)
- 	if (!is_valid_type(type))
- 		return NULL;
+diff --git a/ell/key.c b/ell/key.c
+index a8d011a..8e7b398 100644
+--- a/ell/key.c
++++ b/ell/key.c
+@@ -216,7 +216,7 @@ LIB_EXPORT bool l_key_extract(struct l_key *key, void *=
+payload, size_t *len)
+ 	return true;
+ }
  =
 
--	checksum =3D l_new(struct l_checksum, 1);
--
- 	switch (type) {
-+	case L_CHECKSUM_NONE:
-+		return NULL;
- 	case L_CHECKSUM_MD5:
- 		name =3D "md5";
- 		break;
-@@ -144,6 +144,8 @@ LIB_EXPORT struct l_checksum *l_checksum_new(enum l_che=
-cksum_type type)
- 		break;
- 	}
+-LIB_EXPORT ssize_t l_key_get_size(struct l_key *key)
++LIB_EXPORT ssize_t l_key_get_payload_size(struct l_key *key)
+ {
+ 	return kernel_read_key(key->serial, NULL, 0);
+ }
+diff --git a/ell/key.h b/ell/key.h
+index 5d981f1..4ec32a6 100644
+--- a/ell/key.h
++++ b/ell/key.h
+@@ -52,7 +52,7 @@ bool l_key_update(struct l_key *key, const void *payload,=
+ size_t len);
  =
 
-+	checksum =3D l_new(struct l_checksum, 1);
-+
- 	fd =3D create_alg(name);
- 	if (fd < 0)
- 		goto error;
-@@ -202,6 +204,8 @@ struct l_checksum *l_checksum_new_hmac(enum l_checksum_=
-type type,
- 		return NULL;
+ bool l_key_extract(struct l_key *key, void *payload, size_t *len);
  =
 
- 	switch (type) {
-+	case L_CHECKSUM_NONE:
-+		return NULL;
- 	case L_CHECKSUM_MD5:
- 		name =3D "hmac(md5)";
- 		break;
-diff --git a/ell/checksum.h b/ell/checksum.h
-index 34401a6..e6eceb9 100644
---- a/ell/checksum.h
-+++ b/ell/checksum.h
-@@ -32,6 +32,7 @@ extern "C" {
- struct l_checksum;
+-ssize_t l_key_get_size(struct l_key *key);
++ssize_t l_key_get_payload_size(struct l_key *key);
  =
 
- enum l_checksum_type {
-+	L_CHECKSUM_NONE,
- 	L_CHECKSUM_MD5,
- 	L_CHECKSUM_SHA1,
- 	L_CHECKSUM_SHA256,
+ bool l_key_compute_dh_public(struct l_key *generator, struct l_key *privat=
+e,
+ 			     struct l_key *prime, void *payload, size_t *len);
 -- =
 
 2.9.2
 
 
---===============7273265167727335520==--
+--===============2019819095471429824==--
 
