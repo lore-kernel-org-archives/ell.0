@@ -1,32 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============0880597944264769213=="
+Content-Type: multipart/mixed; boundary="===============9116003083470984919=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2 1/7] key: Consistently return errno from syscall
- wrappers
-Date: Mon, 01 Aug 2016 16:16:00 -0500
-Message-ID: <579FBC10.2090002@gmail.com>
-In-Reply-To: <20160729181201.16446-1-mathew.j.martineau@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v3 1/4] unit: Rename asymmetric key type to L_KEY_RSA
+Date: Mon, 01 Aug 2016 14:25:46 -0700
+Message-ID: <20160801212549.6526-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0880597944264769213==
+--===============9116003083470984919==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+---
+ unit/test-key.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-On 07/29/2016 01:11 PM, Mat Martineau wrote:
-> ---
->   ell/key.c | 44 +++++++++++++++++++++++++++++++++++++-------
->   1 file changed, 37 insertions(+), 7 deletions(-)
->
+diff --git a/unit/test-key.c b/unit/test-key.c
+index d52ae1b..7f5124f 100644
+--- a/unit/test-key.c
++++ b/unit/test-key.c
+@@ -375,9 +375,9 @@ static void test_trusted_keyring(const void *data)
+ 					&certlen);
+ 	assert(cert);
+ =
 
-Applied, thanks.
+-	cakey =3D l_key_new(L_KEY_ASYMMETRIC, cacert, cacertlen);
++	cakey =3D l_key_new(L_KEY_RSA, cacert, cacertlen);
+ 	assert(cakey);
+-	key =3D l_key_new(L_KEY_ASYMMETRIC, cert, certlen);
++	key =3D l_key_new(L_KEY_RSA, cert, certlen);
+ 	assert(key);
+ =
 
-Regards,
--Denis
+ 	trust =3D l_keyring_new(L_KEYRING_SIMPLE, NULL);
+-- =
+
+2.9.2
 
 
---===============0880597944264769213==--
+--===============9116003083470984919==--
 
