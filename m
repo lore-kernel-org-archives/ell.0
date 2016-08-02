@@ -1,96 +1,74 @@
-Content-Type: multipart/mixed; boundary="===============1767127013632778245=="
+Content-Type: multipart/mixed; boundary="===============6855234965474212898=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 1/2] hwdb: Remove unutilized return value
-Date: Tue, 02 Aug 2016 12:21:19 -0700
-Message-ID: <20160802192120.14887-1-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 2/2] hwdb: Optimize lookup execution
+Date: Tue, 02 Aug 2016 12:21:20 -0700
+Message-ID: <20160802192120.14887-2-mathew.j.martineau@linux.intel.com>
+In-Reply-To: <20160802192120.14887-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1767127013632778245==
+--===============6855234965474212898==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-trie_fnmatch always returned 0. Make it return void instead.
+Decide whether to descend into child nodes based on fnmatch() results,
+rather than performing a depth-first search of all nodes.
+
+Using test-hwdb as an example, it now takes an average of ~50 calls to
+trie_fnmatch to perform a lookup instead of ~100000.
 ---
- ell/hwdb.c | 18 +++++++-----------
- 1 file changed, 7 insertions(+), 11 deletions(-)
+ ell/hwdb.c | 19 ++++++++++++-------
+ 1 file changed, 12 insertions(+), 7 deletions(-)
 
 diff --git a/ell/hwdb.c b/ell/hwdb.c
-index caa8eb3..b251f27 100644
+index b251f27..0addaa2 100644
 --- a/ell/hwdb.c
 +++ b/ell/hwdb.c
-@@ -198,8 +198,9 @@ LIB_EXPORT void l_hwdb_unref(struct l_hwdb *hwdb)
- 	l_free(hwdb);
- }
- =
-
--static int trie_fnmatch(const void *addr, uint64_t offset, const char *pre=
-fix,
--			const char *string, struct l_hwdb_entry **entries)
-+static void trie_fnmatch(const void *addr, uint64_t offset, const char *pr=
-efix,
-+				const char *string,
-+				struct l_hwdb_entry **entries)
- {
- 	const struct trie_node *node =3D addr + offset;
- 	const void *addr_ptr =3D addr + offset + sizeof(*node);
-@@ -217,25 +218,22 @@ static int trie_fnmatch(const void *addr, uint64_t of=
+@@ -216,6 +216,18 @@ static void trie_fnmatch(const void *addr, uint64_t of=
 fset, const char *prefix,
+ 	sprintf(scratch_buf, "%s%s", prefix, prefix_str);
+ 	scratch_buf[scratch_len + 1] =3D '\0';
  =
 
++	/*
++	 * Only incur the cost of this fnmatch() if there are children
++	 * to visit.  In practice, nodes have either entries or children
++	 * so fnmatch() will only be called once per node.
++	 */
++	if (child_count) {
++		scratch_buf[scratch_len] =3D '*';
++
++		if (fnmatch(scratch_buf, string, 0) =3D=3D FNM_NOMATCH)
++			child_count =3D 0;
++	}
++
  	for (i =3D 0; i < child_count; i++) {
  		const struct trie_child *child =3D addr_ptr;
--		int err;
  =
 
- 		scratch_buf[scratch_len] =3D child->c;
+@@ -281,13 +293,6 @@ LIB_EXPORT struct l_hwdb_entry *l_hwdb_lookup_valist(s=
+truct l_hwdb *hwdb,
+ 	if (len < 0)
+ 		return NULL;
  =
 
--		err =3D trie_fnmatch(addr, le64_to_cpu(child->child_offset),
--						scratch_buf, string, entries);
--		if (err)
--			return err;
-+		trie_fnmatch(addr, le64_to_cpu(child->child_offset),
-+				scratch_buf, string, entries);
+-	/*
+-	 * This search operation is not optimized for the Patricia Trie
+-	 * and will compare every single entry in the database.
+-	 *
+-	 * An optimized version should allow using the Patricia Trie data
+-	 * structure and follow the shortest path to the matching entry.
+-	 */
+ 	trie_fnmatch(hwdb->addr, hwdb->root, "", modalias, &entries);
  =
 
- 		addr_ptr +=3D sizeof(*child);
- 	}
- =
-
- 	if (!entry_count)
--		return 0;
-+		return;
- =
-
- 	scratch_buf[scratch_len] =3D '\0';
- =
-
- 	if (fnmatch(scratch_buf, string, 0))
--		return 0;
-+		return;
- =
-
- 	for (i =3D 0; i < entry_count; i++) {
- 		const struct trie_entry *entry =3D addr_ptr;
-@@ -254,8 +252,6 @@ static int trie_fnmatch(const void *addr, uint64_t offs=
-et, const char *prefix,
- =
-
- 		addr_ptr +=3D sizeof(*entry);
- 	}
--
--	return 0;
- }
- =
-
- LIB_EXPORT struct l_hwdb_entry *l_hwdb_lookup(struct l_hwdb *hwdb,
+ 	free(modalias);
 -- =
 
 2.9.2
 
 
---===============1767127013632778245==--
+--===============6855234965474212898==--
 
