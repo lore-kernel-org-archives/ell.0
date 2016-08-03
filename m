@@ -1,74 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============6855234965474212898=="
+Content-Type: multipart/mixed; boundary="===============2681264263209574357=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 2/2] hwdb: Optimize lookup execution
-Date: Tue, 02 Aug 2016 12:21:20 -0700
-Message-ID: <20160802192120.14887-2-mathew.j.martineau@linux.intel.com>
-In-Reply-To: <20160802192120.14887-1-mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH 2/2] hwdb: Optimize lookup execution
+Date: Wed, 03 Aug 2016 11:20:29 -0700
+Message-ID: <alpine.OSX.2.20.1608031051090.37847@mjmartin-mac01.local>
+In-Reply-To: <20160802192120.14887-2-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6855234965474212898==
+--===============2681264263209574357==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Decide whether to descend into child nodes based on fnmatch() results,
-rather than performing a depth-first search of all nodes.
+On Tue, 2 Aug 2016, Mat Martineau wrote:
 
-Using test-hwdb as an example, it now takes an average of ~50 calls to
-trie_fnmatch to perform a lookup instead of ~100000.
----
- ell/hwdb.c | 19 ++++++++++++-------
- 1 file changed, 12 insertions(+), 7 deletions(-)
+> Decide whether to descend into child nodes based on fnmatch() results,
+> rather than performing a depth-first search of all nodes.
+>
+> Using test-hwdb as an example, it now takes an average of ~50 calls to
+> trie_fnmatch to perform a lookup instead of ~100000.
 
-diff --git a/ell/hwdb.c b/ell/hwdb.c
-index b251f27..0addaa2 100644
---- a/ell/hwdb.c
-+++ b/ell/hwdb.c
-@@ -216,6 +216,18 @@ static void trie_fnmatch(const void *addr, uint64_t of=
-fset, const char *prefix,
- 	sprintf(scratch_buf, "%s%s", prefix, prefix_str);
- 	scratch_buf[scratch_len + 1] =3D '\0';
- =
+Before I forget, the other potential trie_fnmatch optimization I spotted =
 
-+	/*
-+	 * Only incur the cost of this fnmatch() if there are children
-+	 * to visit.  In practice, nodes have either entries or children
-+	 * so fnmatch() will only be called once per node.
-+	 */
-+	if (child_count) {
-+		scratch_buf[scratch_len] =3D '*';
-+
-+		if (fnmatch(scratch_buf, string, 0) =3D=3D FNM_NOMATCH)
-+			child_count =3D 0;
-+	}
-+
- 	for (i =3D 0; i < child_count; i++) {
- 		const struct trie_child *child =3D addr_ptr;
- =
+was to reduce stack usage. alloca isn't expensive in terms of runtime, but =
 
-@@ -281,13 +293,6 @@ LIB_EXPORT struct l_hwdb_entry *l_hwdb_lookup_valist(s=
-truct l_hwdb *hwdb,
- 	if (len < 0)
- 		return NULL;
- =
+there's no reason to have so many copies of pattern prefixes sitting =
 
--	/*
--	 * This search operation is not optimized for the Patricia Trie
--	 * and will compare every single entry in the database.
--	 *
--	 * An optimized version should allow using the Patricia Trie data
--	 * structure and follow the shortest path to the matching entry.
--	 */
- 	trie_fnmatch(hwdb->addr, hwdb->root, "", modalias, &entries);
- =
+around. It would work to allocate a pattern buffer at the beginning. The =
 
- 	free(modalias);
--- =
+matching pattern will not typically be longer than the string being =
 
-2.9.2
+matched, but '*' may match nothing so reallocs would be a possibility.
 
+--
+Mat Martineau
+Intel OTC
 
---===============6855234965474212898==--
+--===============2681264263209574357==--
 
