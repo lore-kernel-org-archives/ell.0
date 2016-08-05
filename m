@@ -1,32 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============6141727447591282083=="
+Content-Type: multipart/mixed; boundary="===============1405724190636512308=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] hwdb: Remove unutilized return value
-Date: Wed, 03 Aug 2016 17:05:33 -0500
-Message-ID: <57A26AAD.9060600@gmail.com>
-In-Reply-To: <20160802192120.14887-1-mathew.j.martineau@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 1/6] key: Add NULL check to l_key_get_info
+Date: Fri, 05 Aug 2016 13:53:16 -0700
+Message-ID: <20160805205321.1427-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6141727447591282083==
+--===============1405724190636512308==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+---
+ ell/key.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-On 08/02/2016 02:21 PM, Mat Martineau wrote:
-> trie_fnmatch always returned 0. Make it return void instead.
-> ---
->   ell/hwdb.c | 18 +++++++-----------
->   1 file changed, 7 insertions(+), 11 deletions(-)
->
+diff --git a/ell/key.c b/ell/key.c
+index 669d257..01489bb 100644
+--- a/ell/key.c
++++ b/ell/key.c
+@@ -378,6 +378,9 @@ bool l_key_get_info(struct l_key *key, enum l_asymmetri=
+c_cipher_type cipher,
+ 			enum l_checksum_type hash, size_t *bits,
+ 			bool *public)
+ {
++	if (unlikely(!key))
++		return false;
++
+ 	return !kernel_query_key(key->serial, lookup_cipher(cipher),
+ 					lookup_checksum(hash), bits, public);
+ }
+-- =
 
-Both applied, thanks.
-
-Regards,
--Denis
+2.9.2
 
 
---===============6141727447591282083==--
+--===============1405724190636512308==--
 
