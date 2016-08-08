@@ -1,55 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============8162154153859294744=="
+Content-Type: multipart/mixed; boundary="===============5935825878696462366=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: Re: [PATCH 2/6] tls: Convert encrypt and verify to l_key crypto
-Date: Mon, 08 Aug 2016 08:48:16 -0700
-Message-ID: <alpine.OSX.2.20.1608080824150.4540@mjmartin-mac01.local>
-In-Reply-To: <CAOq732Lt9rgt5tX7=McnTpa8cqNoNCD0xZVk-cm3rM_3KKhD=w@mail.gmail.com>
+Subject: [PATCH v2 1/6] key: Add NULL check to l_key_get_info
+Date: Mon, 08 Aug 2016 10:25:40 -0700
+Message-ID: <20160808172545.6648-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8162154153859294744==
+--===============5935825878696462366==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, 8 Aug 2016, Andrzej Zaborowski wrote:
+---
+ ell/key.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-> Hi Mat,
->
-> Just a minor comment,
->
-> On 5 August 2016 at 22:53, Mat Martineau
-> <mathew.j.martineau@linux.intel.com> wrote:
->> diff --git a/ell/tls.c b/ell/tls.c
->> index 18e5fae..627b57d 100644
->> @@ -1029,23 +1022,18 @@ static bool tls_rsa_verify(struct l_tls *tls, co=
-nst uint8_t *in, size_t len,
->>                 return false;
->>         }
->>
->> -       rsa_client_pubkey =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1=
-_V1_5,
->> -                                                       tls->peer_pubkey,
->> -                                                       tls->peer_pubkey=
-_length,
->> -                                                       true);
->> -       if (!rsa_client_pubkey) {
->> +       if (!l_key_get_info(tls->peer_pubkey, L_CIPHER_RSA_PKCS1_V1_5,
->> +                                       L_CHECKSUM_NONE, &key_size,
->> +                                       &is_public)) {
->>                 tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
->> -
->> -               return false;
->>         }
->
-> It looks like this return should stay.
+diff --git a/ell/key.c b/ell/key.c
+index 669d257..01489bb 100644
+--- a/ell/key.c
++++ b/ell/key.c
+@@ -378,6 +378,9 @@ bool l_key_get_info(struct l_key *key, enum l_asymmetri=
+c_cipher_type cipher,
+ 			enum l_checksum_type hash, size_t *bits,
+ 			bool *public)
+ {
++	if (unlikely(!key))
++		return false;
++
+ 	return !kernel_query_key(key->serial, lookup_cipher(cipher),
+ 					lookup_checksum(hash), bits, public);
+ }
+-- =
 
-Yes, it should. Thanks.
+2.9.2
 
---
-Mat Martineau
-Intel OTC
 
---===============8162154153859294744==--
+--===============5935825878696462366==--
 
