@@ -1,14 +1,15 @@
-Content-Type: multipart/mixed; boundary="===============4304109527249087758=="
+Content-Type: multipart/mixed; boundary="===============9162538319765640426=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2 1/6] key: Add NULL check to l_key_get_info
-Date: Mon, 08 Aug 2016 12:39:41 -0500
-Message-ID: <57A8C3DD.8090103@gmail.com>
-In-Reply-To: <20160808172545.6648-1-mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH v2 4/6] unit: Generate and use PKCS8 version of server key
+ for TLS tests
+Date: Mon, 08 Aug 2016 12:42:45 -0500
+Message-ID: <57A8C495.7030204@gmail.com>
+In-Reply-To: <20160808172545.6648-4-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4304109527249087758==
+--===============9162538319765640426==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -17,15 +18,18 @@ Hi Mat,
 
 On 08/08/2016 12:25 PM, Mat Martineau wrote:
 > ---
->   ell/key.c | 3 +++
->   1 file changed, 3 insertions(+)
+>   unit/cert-server-key-pkcs8.pem | 28 ++++++++++++++++++++++++++++
+>   unit/gencerts.sh               |  1 +
+>   unit/test-tls.c                | 16 ++++++++--------
+>   3 files changed, 37 insertions(+), 8 deletions(-)
+>   create mode 100644 unit/cert-server-key-pkcs8.pem
 >
 
-Applied, thanks.
+I wonder, what's the reasoning behind this change?
 
 Regards,
 -Denis
 
 
---===============4304109527249087758==--
+--===============9162538319765640426==--
 
