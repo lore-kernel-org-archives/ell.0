@@ -1,326 +1,157 @@
-Content-Type: multipart/mixed; boundary="===============9167738513115598083=="
+Content-Type: multipart/mixed; boundary="===============1132308547431386707=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v3 2/5] tls: Use l_key crypto for decrypt and sign
-Date: Tue, 09 Aug 2016 16:11:56 -0700
-Message-ID: <20160809231159.25177-2-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v3 3/5] unit: Generate and use PKCS8 version of server key for
+ TLS tests
+Date: Tue, 09 Aug 2016 16:11:57 -0700
+Message-ID: <20160809231159.25177-3-mathew.j.martineau@linux.intel.com>
 In-Reply-To: <20160809231159.25177-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============9167738513115598083==
+--===============1132308547431386707==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Store the private key in a struct l_key when auth is configured so the
-key doesn't need to be reloaded for each use. The key path and password
-are no longer needed in memory once the key is configured.
-
-l_asymmetric_cipher is no longer used by TLS.
 ---
- ell/tls-private.h |   4 +-
- ell/tls.c         | 142 +++++++++++++++++++-------------------------------=
-----
- ell/tls.h         |   2 +-
- 3 files changed, 53 insertions(+), 95 deletions(-)
+ unit/cert-server-key-pkcs8.pem | 28 ++++++++++++++++++++++++++++
+ unit/gencerts.sh               |  1 +
+ unit/test-tls.c                | 16 ++++++++--------
+ 3 files changed, 37 insertions(+), 8 deletions(-)
+ create mode 100644 unit/cert-server-key-pkcs8.pem
 
-diff --git a/ell/tls-private.h b/ell/tls-private.h
-index f4335eb..d501651 100644
---- a/ell/tls-private.h
-+++ b/ell/tls-private.h
-@@ -139,8 +139,8 @@ struct l_tls {
+diff --git a/unit/cert-server-key-pkcs8.pem b/unit/cert-server-key-pkcs8.pem
+new file mode 100644
+index 0000000..85dd370
+--- /dev/null
++++ b/unit/cert-server-key-pkcs8.pem
+@@ -0,0 +1,28 @@
++-----BEGIN PRIVATE KEY-----
++MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDTAJBeptooxomx
++q/SJ606rbzgSbcPj0dlzbQVhpGx2gYHGc5DHYK/4uXprSKzO6WrjK53BwF03J4/Z
++RibDkUahBaddXN7MBjvAO+CpsT7+fIZqj7Oxgv9ZTsoDk14gIf2xJs48I+FY30ay
++kwxEwtF+I/42N3i3n2OpAnOXye7qsLjwYcG8kxgMGZHuf7xissqhb5nEuqTBmvVk
++e5cI/uuo34ZX2qH5KA4VT+zUzSMl4l5bbq7zeRS7HnYeXj3eNhwqf0T4ru7ZaFZJ
++aY0OgAhT71nMttUov6AkvjaREb1aquuUHJ4em+J6RpQ8S1YkHhJkIJXg8qqyD33a
++lytfLuu1AgMBAAECggEBAMxMjHyI80xtx16XTyPHCRnmixUU4ImSYwhms8Ix8K7h
++gCUFOlZBoMCj3gtIh8GjsdGZJps1xUuk65wFV30eCZPZJI66YCKNmobrswC61HKV
++YZSF5Qfn/ZOcPO8vXgCgyMEhAKisWQGy1gILbOKa+zo2YWpfVWv9UQKQlBmQ9NqY
++VbZZIZvq3BSdyAnXd7OMqvAN27sLrxdgvdRzCf0E/dSMtkxOkI3G1Z0hNzDFXKxa
++CS75Xb9WaiS8m6gynqPio5PjVe9mps1FMUZuVyJdUgsZS/LtfRabtsc8Da44uEVv
++Z6UvL4Ax5iv8UToGM05+gTLZPHz3kk83EYANnTUJ8TUCgYEA6StzqgpFiL4sa1gU
++AhPcyaL5CmOlojmY+rqVtH+EHDnfHi2p1BkJxkOsWUbuW+3lvkG7pTVQ5TXM5R/d
++yyTF07HyQgI7VJZrelQupYGl6ItwZmEzoJoUUXTsXKySUXUSvLmBeJuOIDWtMyXu
++n0xetWRl8ZuYHCqIT5qmEOt8/CMCgYEA56l4BO65Pqr2k42RQM4ibspDcAZMoYh0
++ysJLVL7PWMXhFbPX6GJCz1+Vm6//pwFqTyzbNpob/vNYNJFfD3syCQATx6ije0MS
++jcP9AdO//fMLfMfhoBKNk589POoqFbXWSqX0UKuAJcFwtkurn/gdq+3/Dxd8pmS6
++7zyXw/kP6kcCgYEA1nzQEzULrbQyrDQDg729tgYizPnJHaeaH9qPZ9B9OHHL2rjq
++pl657RXHbwCetxXp5tAUyu52kcKhzos3vW0ARbJFRY9EAJW2HHtfxYOzmGzcYnE7
++ypqx4hSKcN2WYzQsnkqO3OFLJjn6LzjPft4DqRzH4i7dB9vgNEnwRVQ6Tr0CgYA9
++UnrWs2qN0CudO2grw2UR9rCLQt+eEsT3tx7BvBCe6yJ94DFS7k/JHQA5SgleZ92A
++P9t3RKwMfNXodGK5cl74SvDxdQ5xXnvW0v5yMV8tFd0Alth+yup3HTvUmBezz4J+
++GBfoEr3FQMNZPgacPc186W8Oy6TPVvK0yVFTKuavmQKBgEH5359VsH6c/KHq8r4Z
++0lYaAp+tQz2iramOkCytvlSj8jyPnVS4u/rVgq7oLxxz210wF28Mm3LonrdTOtI7
++uoC4tpuTq46ie6XlhYNW9G1ph+kR+WdXRlKZ2+iGe1Al1tgjvghlFyPdn+Ggj4qO
++ebDb59kVMg21BvxJuAggvwLp
++-----END PRIVATE KEY-----
+diff --git a/unit/gencerts.sh b/unit/gencerts.sh
+index cfa6486..be186f1 100755
+--- a/unit/gencerts.sh
++++ b/unit/gencerts.sh
+@@ -6,6 +6,7 @@ openssl req -x509 -new -nodes -extensions ca_ext -config ./=
+gencerts.cnf -subj '/
  =
 
- 	char *ca_cert_path;
- 	char *cert_path;
--	char *priv_key_path;
--	char *priv_key_passphrase;
-+	struct l_key *priv_key;
-+	size_t priv_key_size;
+ echo -e "\n*** Server Certificate ***"
+ openssl genrsa -out cert-server-key.pem
++openssl pkcs8 -topk8 -nocrypt -in cert-server-key.pem -out cert-server-key=
+-pkcs8.pem
+ openssl req -new -extensions cert_ext -config ./gencerts.cnf -subj '/O=3DF=
+oo Example Organization/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)=
+mail.example' -key cert-server-key.pem -out cert-server.csr
+ openssl x509 -req -extensions cert_ext -extfile ./gencerts.cnf -in cert-se=
+rver.csr -CA cert-ca.pem -CAkey cert-ca-key.pem -CAcreateserial -sha256 -da=
+ys 10000 -out cert-server.pem
+ openssl verify -CAfile cert-ca.pem cert-server.pem
+diff --git a/unit/test-tls.c b/unit/test-tls.c
+index 1b896aa..9ddb80c 100644
+--- a/unit/test-tls.c
++++ b/unit/test-tls.c
+@@ -242,14 +242,14 @@ struct tls_conn_test {
  =
 
- 	/* Record layer */
+ static const struct tls_conn_test tls_conn_test_no_auth =3D {
+ 	.server_cert_path =3D TESTDATADIR "/cert-server.pem",
+-	.server_key_path =3D TESTDATADIR "/cert-server-key.pem",
++	.server_key_path =3D TESTDATADIR "/cert-server-key-pkcs8.pem",
+ 	.server_expect_identity =3D NULL,
+ 	.client_expect_identity =3D NULL,
+ };
  =
 
-diff --git a/ell/tls.c b/ell/tls.c
-index fca6902..dc14b34 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -119,12 +119,6 @@ static void tls_write_random(uint8_t *buf)
- 	l_getrandom(buf + 4, 28);
- }
+ static const struct tls_conn_test tls_conn_test_server_auth =3D {
+ 	.server_cert_path =3D TESTDATADIR "/cert-server.pem",
+-	.server_key_path =3D TESTDATADIR "/cert-server-key.pem",
++	.server_key_path =3D TESTDATADIR "/cert-server-key-pkcs8.pem",
+ 	.server_expect_identity =3D NULL,
+ 	.client_ca_cert_path =3D TESTDATADIR "/cert-ca.pem",
+ 	.client_expect_identity =3D "Foo Example Organization",
+@@ -257,7 +257,7 @@ static const struct tls_conn_test tls_conn_test_server_=
+auth =3D {
  =
 
--static void tls_free_key(uint8_t *key, size_t size)
--{
--	memset(key, 0, size);
--	l_free(key);
--}
--
- static void tls_drop_handshake_hash(struct l_tls *tls,
- 					enum handshake_hash_type hash)
- {
-@@ -903,9 +897,6 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls *=
-tls)
- static ssize_t tls_rsa_sign(struct l_tls *tls, uint8_t *out, size_t len,
- 				tls_get_hash_t get_hash)
- {
--	struct l_asymmetric_cipher *rsa_privkey;
--	uint8_t *privkey;
--	size_t key_size;
- 	ssize_t result;
- 	const struct tls_hash_algorithm *hash_type;
- 	uint8_t hash[HANDSHAKE_HASH_MAX_SIZE];
-@@ -914,35 +905,14 @@ static ssize_t tls_rsa_sign(struct l_tls *tls, uint8_=
-t *out, size_t len,
- 	bool prepend_hash_type =3D false;
- 	size_t expected_bytes;
+ static const struct tls_conn_test tls_conn_test_client_auth_attempt =3D {
+ 	.server_cert_path =3D TESTDATADIR "/cert-server.pem",
+-	.server_key_path =3D TESTDATADIR "/cert-server-key.pem",
++	.server_key_path =3D TESTDATADIR "/cert-server-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D TESTDATADIR "/cert-ca.pem",
+ 	.server_expect_identity =3D NULL,
+ 	.client_expect_identity =3D NULL,
+@@ -265,17 +265,17 @@ static const struct tls_conn_test tls_conn_test_clien=
+t_auth_attempt =3D {
  =
 
--	if (!tls->priv_key_path) {
-+	if (!tls->priv_key || !tls->priv_key_size) {
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
- 				TLS_ALERT_BAD_CERT);
+ static const struct tls_conn_test tls_conn_test_client_auth =3D {
+ 	.server_cert_path =3D TESTDATADIR "/cert-server.pem",
+-	.server_key_path =3D TESTDATADIR "/cert-server-key.pem",
++	.server_key_path =3D TESTDATADIR "/cert-server-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D TESTDATADIR "/cert-ca.pem",
+ 	.server_expect_identity =3D "Bar Example Organization",
+ 	.client_cert_path =3D TESTDATADIR "/cert-client.pem",
+-	.client_key_path =3D TESTDATADIR "/cert-client-key.pem",
++	.client_key_path =3D TESTDATADIR "/cert-client-key-pkcs8.pem",
+ 	.client_expect_identity =3D NULL,
+ };
  =
 
- 		return -ENOKEY;
- 	}
+ static const struct tls_conn_test tls_conn_test_full_auth_attempt =3D {
+ 	.server_cert_path =3D TESTDATADIR "/cert-server.pem",
+-	.server_key_path =3D TESTDATADIR "/cert-server-key.pem",
++	.server_key_path =3D TESTDATADIR "/cert-server-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D TESTDATADIR "/cert-ca.pem",
+ 	.server_expect_identity =3D NULL,
+ 	.client_ca_cert_path =3D TESTDATADIR "/cert-ca.pem",
+@@ -284,11 +284,11 @@ static const struct tls_conn_test tls_conn_test_full_=
+auth_attempt =3D {
  =
 
--	privkey =3D l_pem_load_private_key(tls->priv_key_path,
--						tls->priv_key_passphrase,
--						&key_size);
--	if (!privkey) {
--		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
--				TLS_ALERT_BAD_CERT);
--
--		return -ENOKEY;
--	}
--
--	rsa_privkey =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1_V1_5,
--						privkey, key_size, false);
--	tls_free_key(privkey, key_size);
--
--	if (!rsa_privkey) {
--		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
--
--		return -ENOKEY;
--	}
--
--	key_size =3D l_asymmetric_cipher_get_key_size(rsa_privkey);
--	expected_bytes =3D key_size + 2;
-+	expected_bytes =3D tls->priv_key_size + 2;
- =
-
- 	if (tls->negotiated_version >=3D TLS_V12) {
- 		hash_type =3D &tls_handshake_hash_data[tls->signature_hash];
-@@ -968,17 +938,15 @@ static ssize_t tls_rsa_sign(struct l_tls *tls, uint8_=
-t *out, size_t len,
- 			*out++ =3D 1;	/* RSA_sign */
- 		}
- =
-
--		l_put_be16(key_size, out);
--		result =3D l_asymmetric_cipher_sign(rsa_privkey, sign_input,
--							out + 2, sign_input_len,
--							key_size);
-+		l_put_be16(tls->priv_key_size, out);
-+		result =3D l_key_sign(tls->priv_key, L_CIPHER_RSA_PKCS1_V1_5,
-+					L_CHECKSUM_NONE, sign_input, out + 2,
-+					sign_input_len, tls->priv_key_size);
- =
-
--		if (result =3D=3D (ssize_t) key_size)
-+		if (result =3D=3D (ssize_t) tls->priv_key_size)
- 			result =3D expected_bytes;
- 	}
- =
-
--	l_asymmetric_cipher_free(rsa_privkey);
--
- 	if (result < 0)
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
- =
-
-@@ -1716,44 +1684,16 @@ static void tls_handle_rsa_client_key_xchg(struct l=
-_tls *tls,
- 						const uint8_t *buf, size_t len)
- {
- 	uint8_t pre_master_secret[48], random_secret[46];
--	struct l_asymmetric_cipher *rsa_server_privkey;
--	uint8_t *privkey;
--	size_t key_size;
- 	ssize_t bytes_decrypted;
- =
-
--	if (!tls->priv_key_path) {
--		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
--				TLS_ALERT_BAD_CERT);
--
--		return;
--	}
--
--	privkey =3D l_pem_load_private_key(tls->priv_key_path,
--						tls->priv_key_passphrase,
--						&key_size);
--	if (!privkey) {
-+	if (!tls->priv_key || !tls->priv_key_size) {
- 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
- 				TLS_ALERT_BAD_CERT);
- =
-
- 		return;
- 	}
- =
-
--	rsa_server_privkey =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1_V1_5,
--							privkey, key_size,
--							false);
--	tls_free_key(privkey, key_size);
--
--	if (!rsa_server_privkey) {
--		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
--
--		return;
--	}
--
--	key_size =3D l_asymmetric_cipher_get_key_size(rsa_server_privkey);
--
--	if (len !=3D key_size + 2) {
--		l_asymmetric_cipher_free(rsa_server_privkey);
--
-+	if (len !=3D tls->priv_key_size + 2) {
- 		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
- =
-
- 		return;
-@@ -1761,19 +1701,16 @@ static void tls_handle_rsa_client_key_xchg(struct l=
-_tls *tls,
- =
-
- 	len =3D l_get_be16(buf);
- =
-
--	if (len !=3D key_size) {
--		l_asymmetric_cipher_free(rsa_server_privkey);
--
-+	if (len !=3D tls->priv_key_size) {
- 		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
- =
-
- 		return;
- 	}
- =
-
--	bytes_decrypted =3D l_asymmetric_cipher_decrypt(rsa_server_privkey,
--							buf + 2,
--							pre_master_secret,
--							key_size, 48);
--	l_asymmetric_cipher_free(rsa_server_privkey);
-+	bytes_decrypted =3D l_key_decrypt(tls->priv_key, L_CIPHER_RSA_PKCS1_V1_5,
-+					L_CHECKSUM_NONE, buf + 2,
-+					pre_master_secret, tls->priv_key_size,
-+					48);
- =
-
- 	/*
- 	 * Assume correct premaster secret client version which according
-@@ -2265,31 +2202,52 @@ LIB_EXPORT void l_tls_set_cacert(struct l_tls *tls,=
- const char *ca_cert_path)
- 		tls->ca_cert_path =3D l_strdup(ca_cert_path);
- }
- =
-
--LIB_EXPORT void l_tls_set_auth_data(struct l_tls *tls, const char *cert_pa=
-th,
--				const char *priv_key_path,
--				const char *priv_key_passphrase)
-+LIB_EXPORT bool l_tls_set_auth_data(struct l_tls *tls, const char *cert_pa=
-th,
-+					const char *priv_key_path,
-+					const char *priv_key_passphrase)
- {
- 	if (tls->cert_path) {
- 		l_free(tls->cert_path);
--		l_free(tls->priv_key_path);
- 		tls->cert_path =3D NULL;
--		tls->priv_key_path =3D NULL;
- 	}
- =
-
--	if (cert_path) {
--		tls->cert_path =3D l_strdup(cert_path);
--		tls->priv_key_path =3D l_strdup(priv_key_path);
-+	if (tls->priv_key) {
-+		l_key_free(tls->priv_key);
-+		tls->priv_key =3D NULL;
-+		tls->priv_key_size =3D 0;
- 	}
- =
-
--	if (tls->priv_key_passphrase) {
--		memset(tls->priv_key_passphrase, 0,
--				strlen(tls->priv_key_passphrase));
--		l_free(tls->priv_key_passphrase);
--		tls->priv_key_passphrase =3D NULL;
-+	if (priv_key_path) {
-+		uint8_t *priv_key =3D NULL;
-+		bool is_public =3D true;
-+
-+		priv_key =3D l_pem_load_private_key(priv_key_path,
-+							priv_key_passphrase,
-+							&tls->priv_key_size);
-+
-+		tls->priv_key =3D l_key_new(L_KEY_RSA, priv_key,
-+						tls->priv_key_size);
-+		if (priv_key) {
-+			memset(priv_key, 0, tls->priv_key_size);
-+			l_free(priv_key);
-+		}
-+
-+		if (!l_key_get_info(tls->priv_key, L_CIPHER_RSA_PKCS1_V1_5,
-+					L_CHECKSUM_NONE, &tls->priv_key_size,
-+					&is_public) || is_public) {
-+			l_key_free(tls->priv_key);
-+			tls->priv_key =3D NULL;
-+			tls->priv_key_size =3D 0;
-+			return false;
-+		}
-+
-+		tls->priv_key_size /=3D 8;
- 	}
- =
-
--	if (priv_key_passphrase)
--		tls->priv_key_passphrase =3D l_strdup(priv_key_passphrase);
-+	if (cert_path)
-+		tls->cert_path =3D l_strdup(cert_path);
-+
-+	return true;
- }
- =
-
- LIB_EXPORT const char *l_tls_alert_to_str(enum l_tls_alert_desc desc)
-diff --git a/ell/tls.h b/ell/tls.h
-index a3f3a28..0a7c920 100644
---- a/ell/tls.h
-+++ b/ell/tls.h
-@@ -97,7 +97,7 @@ void l_tls_set_cacert(struct l_tls *tls, const char *ca_c=
-ert_path);
-  * one certificate of each type so they can be used depending on which
-  * is compatible with the negotiated parameters.
-  */
--void l_tls_set_auth_data(struct l_tls *tls, const char *cert_path,
-+bool l_tls_set_auth_data(struct l_tls *tls, const char *cert_path,
- 				const char *priv_key_path,
- 				const char *priv_key_passphrase);
- =
-
+ static const struct tls_conn_test tls_conn_test_full_auth =3D {
+ 	.server_cert_path =3D TESTDATADIR "/cert-server.pem",
+-	.server_key_path =3D TESTDATADIR "/cert-server-key.pem",
++	.server_key_path =3D TESTDATADIR "/cert-server-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D TESTDATADIR "/cert-ca.pem",
+ 	.server_expect_identity =3D "Bar Example Organization",
+ 	.client_cert_path =3D TESTDATADIR "/cert-client.pem",
+-	.client_key_path =3D TESTDATADIR "/cert-client-key.pem",
++	.client_key_path =3D TESTDATADIR "/cert-client-key-pkcs8.pem",
+ 	.client_ca_cert_path =3D TESTDATADIR "/cert-ca.pem",
+ 	.client_expect_identity =3D "Foo Example Organization",
+ };
 -- =
 
 2.9.2
 
 
---===============9167738513115598083==--
+--===============1132308547431386707==--
 
