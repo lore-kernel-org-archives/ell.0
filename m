@@ -1,129 +1,363 @@
-Content-Type: multipart/mixed; boundary="===============6710122640822158579=="
+Content-Type: multipart/mixed; boundary="===============4146377399999773420=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: Re: [PATCH v2 3/6] tls: Use l_key crypto for decrypt and sign
-Date: Tue, 09 Aug 2016 11:40:11 -0700
-Message-ID: <alpine.OSX.2.20.1608091136450.24354@mjmartin-mac01.local>
-In-Reply-To: <57AA0431.4050601@gmail.com>
+Subject: [PATCH v3 1/5] tls: Convert encrypt and verify to l_key crypto
+Date: Tue, 09 Aug 2016 16:11:55 -0700
+Message-ID: <20160809231159.25177-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6710122640822158579==
+--===============4146377399999773420==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Keep track of the peer public key as a struct l_key (loaded in the
+kernel), and use that key in encrypt and verify crypto operations.
+---
+ ell/tls-private.h |   6 +--
+ ell/tls.c         | 151 ++++++++++++++++----------------------------------=
+----
+ 2 files changed, 45 insertions(+), 112 deletions(-)
 
-On Tue, 9 Aug 2016, Denis Kenzior wrote:
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index 1a47970..f4335eb 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -164,8 +164,8 @@ struct l_tls {
+ 	bool cert_requested, cert_sent;
+ 	bool peer_authenticated;
+ 	struct tls_cert *peer_cert;
+-	uint8_t *peer_pubkey;
+-	size_t peer_pubkey_length;
++	struct l_key *peer_pubkey;
++	size_t peer_pubkey_size;
+ 	enum handshake_hash_type signature_hash;
+ =
 
-> Hi Mat,
->
->>
->> -LIB_EXPORT void l_tls_set_auth_data(struct l_tls *tls, const char =
+ 	/* SecurityParameters current and pending */
+@@ -243,8 +243,6 @@ bool tls_cert_verify_certchain(struct tls_cert *certcha=
+in,
+ =
 
->> *cert_path,
->> -				const char *priv_key_path,
->> -				const char *priv_key_passphrase)
->> +LIB_EXPORT bool l_tls_set_auth_data(struct l_tls *tls, const char =
+ void tls_cert_free_certchain(struct tls_cert *cert);
+ =
 
->> *cert_path,
->> +					const char *priv_key_path,
->> +					const char *priv_key_passphrase)
->>   {
->> +	uint8_t *priv_key =3D NULL;
->> +	bool is_public =3D true;
->> +
->
-> Just a quick nitpick.  Can you move these into the if (priv_key_path) blo=
-ck?
+-uint8_t *tls_cert_find_pubkey(struct tls_cert *cert, int *pubkey_len);
+-
+ enum tls_cert_key_type tls_cert_get_pubkey_type(struct tls_cert *cert);
+ =
 
-Sure. Good to know that fits with the style guidelines, I'd prefer to have =
+ void tls_prf_get_bytes(struct l_tls *tls,
+diff --git a/ell/tls.c b/ell/tls.c
+index 18e5fae..fca6902 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -36,6 +36,7 @@
+ #include "pem.h"
+ #include "tls-private.h"
+ #include "cipher-private.h"
++#include "key.h"
+ =
 
-them in the smaller scope.
+ void tls10_prf(const uint8_t *secret, size_t secret_len,
+ 		const char *label,
+@@ -140,12 +141,12 @@ static void tls_reset_handshake(struct l_tls *tls)
+ =
 
->>   	if (tls->cert_path) {
->>   		l_free(tls->cert_path);
->> -		l_free(tls->priv_key_path);
->>   		tls->cert_path =3D NULL;
->> -		tls->priv_key_path =3D NULL;
->>   	}
->> =
+ 	memset(tls->pending.key_block, 0, sizeof(tls->pending.key_block));
+ =
 
->> -	if (cert_path) {
->> -		tls->cert_path =3D l_strdup(cert_path);
->> -		tls->priv_key_path =3D l_strdup(priv_key_path);
->> +	if (tls->priv_key) {
->> +		l_key_free(tls->priv_key);
->> +		tls->priv_key =3D NULL;
->> +		tls->priv_key_size =3D 0;
->>   	}
->> =
+-	if (tls->peer_cert) {
+-		l_free(tls->peer_cert);
++	l_free(tls->peer_cert);
++	l_key_free(tls->peer_pubkey);
+ =
 
->> -	if (tls->priv_key_passphrase) {
->> -		memset(tls->priv_key_passphrase, 0,
->> -				strlen(tls->priv_key_passphrase));
->> -		l_free(tls->priv_key_passphrase);
->> -		tls->priv_key_passphrase =3D NULL;
->> +	if (priv_key_path) {
->> +		priv_key =3D l_pem_load_private_key(priv_key_path,
->> +							priv_key_passphrase,
->> +							&tls->priv_key_size);
->> +
->> +		tls->priv_key =3D l_key_new(L_KEY_RSA, priv_key,
->> +						tls->priv_key_size);
->> +		if (priv_key) {
->> +			memset(priv_key, 0, tls->priv_key_size);
->> +			l_free(priv_key);
->> +		}
->> +
->> +		if (!l_key_get_info(tls->priv_key, L_CIPHER_RSA_PKCS1_V1_5,
->> +					L_CHECKSUM_NONE, &tls->priv_key_size,
->> +					&is_public) || is_public) {
->> +			l_key_free(tls->priv_key);
->> +			tls->priv_key =3D NULL;
->> +			tls->priv_key_size =3D 0;
->> +			return false;
->> +		}
->> +
->> +		tls->priv_key_size /=3D 8;
->>   	}
->> =
+-		tls->peer_cert =3D NULL;
+-		tls->peer_pubkey =3D NULL;
+-	}
++	tls->peer_cert =3D NULL;
++	tls->peer_pubkey =3D NULL;
++	tls->peer_pubkey_size =3D 0;
+ =
 
->> -	if (priv_key_passphrase)
->> -		tls->priv_key_passphrase =3D l_strdup(priv_key_passphrase);
->> +	if (cert_path)
->> +		tls->cert_path =3D l_strdup(cert_path);
->> +
->> +	return true;
->>   }
->>
->>   LIB_EXPORT const char *l_tls_alert_to_str(enum l_tls_alert_desc desc)
->> diff --git a/ell/tls.h b/ell/tls.h
->> index a3f3a28..0a7c920 100644
->> --- a/ell/tls.h
->> +++ b/ell/tls.h
->> @@ -97,7 +97,7 @@ void l_tls_set_cacert(struct l_tls *tls, const char =
+ 	for (hash =3D 0; hash < __HANDSHAKE_HASH_COUNT; hash++)
+ 		tls_drop_handshake_hash(tls, hash);
+@@ -860,8 +861,6 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls *=
+tls)
+ 	uint8_t buf[1024 + 32];
+ 	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
+ 	uint8_t pre_master_secret[48];
+-	struct l_asymmetric_cipher *rsa_server_pubkey;
+-	int key_size;
+ 	ssize_t bytes_encrypted;
+ =
 
->> *ca_cert_path);
->>    * one certificate of each type so they can be used depending on which
->>    * is compatible with the negotiated parameters.
->>    */
->> -void l_tls_set_auth_data(struct l_tls *tls, const char *cert_path,
->> +bool l_tls_set_auth_data(struct l_tls *tls, const char *cert_path,
->>   				const char *priv_key_path,
->>   				const char *priv_key_passphrase);
->> =
+ 	if (!tls->peer_pubkey) {
+@@ -874,37 +873,20 @@ static bool tls_send_rsa_client_key_xchg(struct l_tls=
+ *tls)
+ 	pre_master_secret[1] =3D (uint8_t) (TLS_VERSION >> 0);
+ 	l_getrandom(pre_master_secret + 2, 46);
+ =
 
->> =
+-	/* Fill in the RSA Client Key Exchange body */
+-
+-	rsa_server_pubkey =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1_V1_5,
+-							tls->peer_pubkey,
+-							tls->peer_pubkey_length,
+-							true);
+-	if (!rsa_server_pubkey) {
+-		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
+-
+-		return false;
+-	}
+-
+-	key_size =3D l_asymmetric_cipher_get_key_size(rsa_server_pubkey);
+-
+-	if (key_size + 32 > (int) sizeof(buf)) {
+-		l_asymmetric_cipher_free(rsa_server_pubkey);
+-
++	if (tls->peer_pubkey_size + 32 > (int) sizeof(buf)) {
+ 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
+ =
 
->
-> Regards,
-> -Denis
->
+ 		return false;
+ 	}
+ =
 
---
-Mat Martineau
-Intel OTC
+-	l_put_be16(key_size, ptr);
+-	bytes_encrypted =3D l_asymmetric_cipher_encrypt(rsa_server_pubkey,
+-							pre_master_secret,
+-							ptr + 2, 48, key_size);
+-	ptr +=3D key_size + 2;
+-
+-	l_asymmetric_cipher_free(rsa_server_pubkey);
++	l_put_be16(tls->peer_pubkey_size, ptr);
++	bytes_encrypted =3D l_key_encrypt(tls->peer_pubkey,
++					L_CIPHER_RSA_PKCS1_V1_5,
++					L_CHECKSUM_NONE, pre_master_secret,
++					ptr + 2, 48, tls->peer_pubkey_size);
++	ptr +=3D tls->peer_pubkey_size + 2;
+ =
 
---===============6710122640822158579==--
+-	if (bytes_encrypted !=3D key_size) {
++	if (bytes_encrypted !=3D (ssize_t) tls->peer_pubkey_size) {
+ 		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
+ =
+
+ 		return false;
+@@ -1006,16 +988,13 @@ static ssize_t tls_rsa_sign(struct l_tls *tls, uint8=
+_t *out, size_t len,
+ static bool tls_rsa_verify(struct l_tls *tls, const uint8_t *in, size_t le=
+n,
+ 				tls_get_hash_t get_hash)
+ {
+-	struct l_asymmetric_cipher *rsa_client_pubkey;
+-	size_t key_size;
+-	ssize_t verify_bytes;
+ 	uint8_t hash[HANDSHAKE_HASH_MAX_SIZE];
+ 	size_t hash_len;
+ 	enum l_checksum_type hash_type;
+ 	uint8_t expected[HANDSHAKE_HASH_MAX_SIZE * 2 + 32];
+ 	size_t expected_len;
+-	uint8_t *digest_info;
+ 	unsigned int offset;
++	bool success;
+ =
+
+ 	/* 2 bytes for SignatureAndHashAlgorithm if version >=3D 1.2 */
+ 	offset =3D 2;
+@@ -1029,23 +1008,11 @@ static bool tls_rsa_verify(struct l_tls *tls, const=
+ uint8_t *in, size_t len,
+ 		return false;
+ 	}
+ =
+
+-	rsa_client_pubkey =3D l_asymmetric_cipher_new(L_CIPHER_RSA_PKCS1_V1_5,
+-							tls->peer_pubkey,
+-							tls->peer_pubkey_length,
+-							true);
+-	if (!rsa_client_pubkey) {
+-		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
+-
+-		return false;
+-	}
+-
+-	key_size =3D l_asymmetric_cipher_get_key_size(rsa_client_pubkey);
+-
+ 	/* Only the default hash type supported */
+-	if (len !=3D offset + 2 + key_size) {
++	if (len !=3D offset + 2 + tls->peer_pubkey_size) {
+ 		tls_disconnect(tls, TLS_ALERT_DECODE_ERROR, 0);
+ =
+
+-		goto err_free_rsa;
++		return false;
+ 	}
+ =
+
+ 	if (tls->negotiated_version >=3D TLS_V12) {
+@@ -1053,13 +1020,13 @@ static bool tls_rsa_verify(struct l_tls *tls, const=
+ uint8_t *in, size_t len,
+ 		if (in[1] !=3D 1 /* RSA_sign */) {
+ 			tls_disconnect(tls, TLS_ALERT_DECRYPT_ERROR, 0);
+ =
+
+-			goto err_free_rsa;
++			return false;
+ 		}
+ =
+
+ 		if (!get_hash(tls, in[0], hash, &hash_len, &hash_type)) {
+ 			tls_disconnect(tls, TLS_ALERT_DECRYPT_ERROR, 0);
+ =
+
+-			goto err_free_rsa;
++			return false;
+ 		}
+ =
+
+ 		/*
+@@ -1091,27 +1058,14 @@ static bool tls_rsa_verify(struct l_tls *tls, const=
+ uint8_t *in, size_t len,
+ 		 */
+ 	}
+ =
+
+-	digest_info =3D alloca(expected_len);
+-
+-	verify_bytes =3D l_asymmetric_cipher_verify(rsa_client_pubkey, in + 4,
+-							digest_info, key_size,
+-							expected_len);
+-
+-	l_asymmetric_cipher_free(rsa_client_pubkey);
++	success =3D l_key_verify(tls->peer_pubkey, L_CIPHER_RSA_PKCS1_V1_5,
++				L_CHECKSUM_NONE, expected, in + 4,
++				expected_len, tls->peer_pubkey_size);
+ =
+
+-	if (verify_bytes !=3D (ssize_t)expected_len ||
+-		memcmp(digest_info, expected, expected_len)) {
++	if (!success)
+ 		tls_disconnect(tls, TLS_ALERT_DECRYPT_ERROR, 0);
+ =
+
+-		return false;
+-	}
+-
+-	return true;
+-
+-err_free_rsa:
+-	l_asymmetric_cipher_free(rsa_client_pubkey);
+-
+-	return false;
++	return success;
+ }
+ =
+
+ static void tls_get_handshake_hash(struct l_tls *tls,
+@@ -1496,10 +1450,10 @@ decode_error:
+ static void tls_handle_certificate(struct l_tls *tls,
+ 					const uint8_t *buf, size_t len)
+ {
+-	int total, cert_len, pubkey_len;
++	int total, cert_len;
+ 	struct tls_cert *certchain =3D NULL, **tail =3D &certchain;
+ 	struct tls_cert *ca_cert =3D NULL;
+-	uint8_t *pubkey;
++	bool dummy;
+ =
+
+ 	/* Length checks */
+ =
+
+@@ -1582,28 +1536,31 @@ static void tls_handle_certificate(struct l_tls *tl=
+s,
+ 		goto done;
+ 	}
+ =
+
+-	/*
+-	 * Save the public key from the certificate for use in premaster
+-	 * secret encryption.
+-	 */
+-	pubkey =3D tls_cert_find_pubkey(certchain, &pubkey_len);
+-	if (!pubkey) {
++	/* Save the end-entity cert and free the rest of the chain */
++	tls->peer_cert =3D certchain;
++	tls_cert_free_certchain(certchain->issuer);
++	certchain->issuer =3D NULL;
++	certchain =3D NULL;
++
++	tls->peer_pubkey =3D l_key_new(L_KEY_RSA, tls->peer_cert->asn1,
++					tls->peer_cert->size);
++
++	if (!tls->peer_pubkey) {
+ 		tls_disconnect(tls, TLS_ALERT_UNSUPPORTED_CERT, 0);
+ =
+
+ 		goto done;
+ 	}
+ =
+
+-	if (pubkey) {
+-		/* Save the end-entity cert and free the rest of the chain */
+-		tls->peer_cert =3D certchain;
+-		tls_cert_free_certchain(certchain->issuer);
+-		certchain->issuer =3D NULL;
+-		certchain =3D NULL;
++	if (!l_key_get_info(tls->peer_pubkey, L_CIPHER_RSA_PKCS1_V1_5,
++					L_CHECKSUM_NONE, &tls->peer_pubkey_size,
++					&dummy)) {
++		tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR, 0);
+ =
+
+-		tls->peer_pubkey =3D pubkey;
+-		tls->peer_pubkey_length =3D pubkey_len;
++		goto done;
+ 	}
+ =
+
++	tls->peer_pubkey_size /=3D 8;
++
+ 	if (tls->server)
+ 		tls->state =3D TLS_HANDSHAKE_WAIT_KEY_EXCHANGE;
+ 	else
+@@ -2505,28 +2462,6 @@ void tls_cert_free_certchain(struct tls_cert *cert)
+ 	}
+ }
+ =
+
+-uint8_t *tls_cert_find_pubkey(struct tls_cert *cert, int *pubkey_len)
+-{
+-	uint8_t *key;
+-	size_t len;
+-
+-	key =3D der_find_elem_by_path(cert->asn1, cert->size, ASN1_ID_BIT_STRING,
+-					&len,
+-					X509_CERTIFICATE_POS,
+-					X509_TBSCERTIFICATE_POS,
+-					X509_TBSCERT_SUBJECT_KEY_POS,
+-					X509_SUBJECT_KEY_VALUE_POS, -1);
+-	if (!key || len < 10)
+-		return NULL;
+-
+-	/* Skip the BIT STRING metadata byte */
+-	key +=3D 1;
+-	len -=3D 1;
+-
+-	*pubkey_len =3D len;
+-	return key;
+-}
+-
+ enum tls_cert_key_type tls_cert_get_pubkey_type(struct tls_cert *cert)
+ {
+ 	uint8_t *key_type;
+-- =
+
+2.9.2
+
+
+--===============4146377399999773420==--
 
