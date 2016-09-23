@@ -1,332 +1,171 @@
-Content-Type: multipart/mixed; boundary="===============2567617038704351977=="
+Content-Type: multipart/mixed; boundary="===============6002303860561498313=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 6/9] key: Do RSA PKCS1 v1.5 padding in userspace instead of
- the kernel
-Date: Fri, 23 Sep 2016 16:02:19 -0700
-Message-ID: <20160923230222.27401-6-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 7/9] unit: Update key crypto unit test to remove hash usage
+Date: Fri, 23 Sep 2016 16:02:20 -0700
+Message-ID: <20160923230222.27401-7-mathew.j.martineau@linux.intel.com>
 In-Reply-To: <20160923230222.27401-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2567617038704351977==
+--===============6002303860561498313==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Kernel v4.8 removed the ability to perform RSA signing or verification
-without also generating or verifying an additional hash, which breaks a
-major use case for ELL crypto. Instead, rely on RSA raw operations.
-
-Using raw RSA means the keyctl RSA verify operation no longer functions
-for padded signatures, since it attempts to compare the results before
-they are unpadded. Since the math for the "encrypt" op is the same, that
-can be used instead.
 ---
- ell/key.c | 202 ++++++++++++++++++++++++++++++++++++++++++++++++++++------=
+ unit/test-key.c | 87 ++++++++++++++++++++++++++---------------------------=
 ----
- ell/key.h |   1 +
- 2 files changed, 173 insertions(+), 30 deletions(-)
+ 1 file changed, 40 insertions(+), 47 deletions(-)
 
-diff --git a/ell/key.c b/ell/key.c
-index a0cfcd4..24c42a2 100644
---- a/ell/key.c
-+++ b/ell/key.c
-@@ -35,6 +35,7 @@
- #include "util.h"
- #include "key.h"
- #include "string.h"
-+#include "random.h"
- =
-
- #ifndef KEYCTL_DH_COMPUTE
- #define KEYCTL_DH_COMPUTE 23
-@@ -223,24 +224,6 @@ static long kernel_key_eds(int op, int32_t serial, con=
-st char *encoding,
- 	return result >=3D 0 ? result : -errno;
- }
- =
-
--static long kernel_key_verify(int32_t serial, const char *encoding,
--				const char *hash, const void *data,
--				const void *sig, size_t len_data,
--				size_t len_sig)
--{
--	long result;
--	struct keyctl_pkey_params params =3D { .key_id =3D serial,
--					     .in_len =3D len_data,
--					     .in2_len =3D len_sig };
--	char *info =3D format_key_info(encoding, hash);
--
--	result =3D syscall(__NR_keyctl, KEYCTL_PKEY_VERIFY, &params, info ?: "",
--				data, sig);
--	l_free(info);
--
--	return result >=3D 0 ? result : -errno;
--}
--
- static bool setup_internal_keyring(void)
- {
- 	internal_keyring =3D kernel_add_key("keyring", "ell-internal", NULL, 0,
-@@ -342,7 +325,13 @@ static const char *lookup_cipher(enum l_key_cipher_typ=
-e cipher)
- =
-
- 	switch (cipher) {
- 	case L_KEY_RSA_PKCS1_V1_5:
--		ret =3D "pkcs1";
-+		/* Padding is handled in userspace, so the kernel only sees
-+		 * raw RSA operations
-+		 */
-+		ret =3D "raw";
-+		break;
-+	case L_KEY_RSA_RAW:
-+		ret =3D "raw";
- 		break;
- 	}
- =
-
-@@ -437,14 +426,99 @@ static ssize_t eds_common(struct l_key *key,
- 				len_out);
- }
- =
-
-+static void getrandom_nonzero(uint8_t *buf, int len)
-+{
-+	l_getrandom(buf, len);
-+
-+	while (len--) {
-+		while (buf[0] =3D=3D 0)
-+			l_getrandom(buf, 1);
-+
-+		buf++;
-+	}
-+}
-+
-+/* PKCS#1 v1.5 RSA padding according to RFC3447 */
-+static uint8_t *pad(const uint8_t *in, size_t len_in, size_t len_out,
-+			uint8_t flag, bool randfill)
-+{
-+	size_t fill_len;
-+	uint8_t *padded;
-+
-+	if (len_in > len_out - 11)
-+		return NULL;
-+
-+	padded =3D l_malloc(len_out);
-+	fill_len =3D len_out - len_in - 3;
-+
-+	padded[0] =3D 0x00;
-+	padded[1] =3D flag;
-+
-+	if (randfill)
-+		getrandom_nonzero(padded + 2, fill_len);
-+	else
-+		memset(padded + 2, 0xff, fill_len);
-+
-+	padded[fill_len + 2] =3D 0x00;
-+	memcpy(padded + fill_len + 3, in, len_in);
-+
-+	return padded;
-+}
-+
-+static ssize_t unpad(uint8_t *in, uint8_t *out, size_t len_in, size_t len_=
-out,
-+			uint8_t flag, bool randfill)
-+{
-+	size_t pos;
-+	ssize_t unpad_len;
-+
-+	if (in[0] !=3D 0x00 || in[1] !=3D flag)
-+		return -EINVAL;
-+
-+	if (randfill)
-+		for (pos =3D 2; pos < len_in && in[pos] !=3D 0x00; pos++);
-+	else
-+		for (pos =3D 2; pos < len_in && in[pos] =3D=3D 0xff; pos++);
-+
-+	if (pos < 10 || pos =3D=3D len_in)
-+		return -EINVAL;
-+
-+	pos++;
-+	unpad_len =3D len_in - pos;
-+
-+	if (out) {
-+		if ((size_t)unpad_len > len_out)
-+			return -EINVAL;
-+
-+		memcpy(out, in + pos, unpad_len);
-+	}
-+
-+	return unpad_len;
-+}
-+
- LIB_EXPORT ssize_t l_key_encrypt(struct l_key *key,
- 					enum l_key_cipher_type cipher,
- 					enum l_checksum_type checksum,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out)
- {
--	return eds_common(key, cipher, checksum, in, out, len_in, len_out,
-+	uint8_t *padded =3D NULL;
-+	ssize_t ret_len;
-+
-+	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5) {
-+		padded =3D pad(in, len_in, len_out, 0x02, true);
-+		if (!padded)
-+			return -EOVERFLOW;
-+
-+		cipher =3D L_KEY_RSA_RAW;
-+	}
-+
-+	ret_len =3D eds_common(key, cipher, checksum, padded ?: in, out,
-+				padded ? len_out : len_in, len_out,
- 				KEYCTL_PKEY_ENCRYPT);
-+
-+	l_free(padded);
-+
-+	return ret_len;
- }
- =
-
- LIB_EXPORT ssize_t l_key_decrypt(struct l_key *key,
-@@ -453,8 +527,25 @@ LIB_EXPORT ssize_t l_key_decrypt(struct l_key *key,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out)
- {
--	return eds_common(key, cipher, checksum, in, out, len_in, len_out,
--				KEYCTL_PKEY_DECRYPT);
-+	uint8_t *padded =3D NULL;
-+	ssize_t ret_len;
-+
-+	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5)
-+		padded =3D l_malloc(len_in);
-+
-+	ret_len =3D eds_common(key, cipher, checksum, in, padded ?: out, len_in,
-+				padded ? len_in : len_out, KEYCTL_PKEY_DECRYPT);
-+
-+	if (ret_len < 0)
-+		goto done;
-+
-+	if (padded)
-+		ret_len =3D unpad(padded, out, ret_len, len_out, 0x02, true);
-+
-+done:
-+	l_free(padded);
-+
-+	return ret_len;
- }
- =
-
- LIB_EXPORT ssize_t l_key_sign(struct l_key *key,
-@@ -462,8 +553,24 @@ LIB_EXPORT ssize_t l_key_sign(struct l_key *key,
- 				enum l_checksum_type checksum, const void *in,
- 				void *out, size_t len_in, size_t len_out)
- {
--	return eds_common(key, cipher, checksum, in, out, len_in, len_out,
-+	uint8_t *padded =3D NULL;
-+	ssize_t ret_len;
-+
-+	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5) {
-+		padded =3D pad(in, len_in, len_out, 0x01, false);
-+		if (!padded)
-+			return -EOVERFLOW;
-+
-+		cipher =3D L_KEY_RSA_RAW;
-+	}
-+
-+	ret_len =3D eds_common(key, cipher, checksum, padded ?: in, out,
-+				padded ? len_out : len_in, len_out,
- 				KEYCTL_PKEY_SIGN);
-+
-+	l_free(padded);
-+
-+	return ret_len;
- }
- =
-
- LIB_EXPORT bool l_key_verify(struct l_key *key,
-@@ -472,16 +579,51 @@ LIB_EXPORT bool l_key_verify(struct l_key *key,
- 				const void *sig, size_t len_data,
- 				size_t len_sig)
- {
--	long result;
-+	enum l_key_cipher_type kernel_cipher;
-+	ssize_t hash_len;
-+	uint8_t *compare_hash;
-+	bool success =3D false;
-+	uint8_t *sig_hash =3D l_malloc(len_sig);
- =
-
--	if (unlikely(!key))
--		return false;
-+	/* The keyctl verify implementation compares the verify results
-+	 * before we get a chance to unpad it. Instead, use the *encrypt*
-+	 * operation (which uses the same math as verify) to get the hash
-+	 * returned to us so it can be unpadded before comparing
-+	 */
-+	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5)
-+		kernel_cipher =3D L_KEY_RSA_RAW;
-+	else
-+		kernel_cipher =3D cipher;
-+
-+	hash_len =3D eds_common(key, kernel_cipher, checksum, sig, sig_hash,
-+				len_sig, len_sig, KEYCTL_PKEY_ENCRYPT);
-+
-+	if (hash_len < 0) {
-+		success =3D false;
-+		goto done;
-+	}
-+
-+	compare_hash =3D sig_hash;
-+
-+	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5) {
-+		ssize_t unpad_len;
-+
-+		unpad_len =3D unpad(sig_hash, NULL, hash_len, 0, 0x01, false);
-+		if (unpad_len < 0) {
-+			success =3D false;
-+			goto done;
-+		}
-+
-+		compare_hash +=3D hash_len - unpad_len;
-+		hash_len =3D unpad_len;
-+	}
- =
-
--	result =3D kernel_key_verify(key->serial, lookup_cipher(cipher),
--					lookup_checksum(checksum), data, sig,
--					len_data, len_sig);
-+	success =3D (len_data =3D=3D (size_t)hash_len) &&
-+		(memcmp(data, compare_hash, hash_len) =3D=3D 0);
-+done:
-+	l_free(sig_hash);
- =
-
--	return result =3D=3D 0;
-+	return success;
- }
- =
-
- LIB_EXPORT struct l_keyring *l_keyring_new(enum l_keyring_type type,
-diff --git a/ell/key.h b/ell/key.h
-index 4cd6cfe..ff4b543 100644
---- a/ell/key.h
-+++ b/ell/key.h
-@@ -47,6 +47,7 @@ enum l_keyring_type {
- =
-
- enum l_key_cipher_type {
- 	L_KEY_RSA_PKCS1_V1_5,
-+	L_KEY_RSA_RAW,
+diff --git a/unit/test-key.c b/unit/test-key.c
+index bd3e72f..80a1916 100644
+--- a/unit/test-key.c
++++ b/unit/test-key.c
+@@ -442,37 +442,37 @@ static uint8_t reference_ciphertext[256] =3D {
  };
  =
 
- struct l_key *l_key_new(enum l_key_type type, const void *payload,
+ /* Reference signature:
+- * $ openssl dgst -sha256 -sign cert-client-key.pem -out reference_signatu=
+re \
+- * > good_plaintext
++ * $ openssl rsautl -sign -pkcs -in good_plaintext -inkey cert-client-key.=
+pem \
++ * -out reference_signature
+  * $ xxd -i reference_signature
+  *
+- * where reference_plaintext is a file containing the 183 characters of
++ * where good_plaintext is a file containing the 183 characters of
+  * plaintext[] (above).
+  */
+ =
+
+ uint8_t reference_signature[256] =3D {
+-	0x39, 0xaf, 0x0d, 0x23, 0x33, 0xcc, 0x48, 0xed, 0xc3, 0x15, 0x9e, 0xb9,
+-	0xd3, 0x53, 0xe0, 0x0c, 0xea, 0x45, 0x65, 0xa7, 0x82, 0x8f, 0x4b, 0xfc,
+-	0x5e, 0xd3, 0xc9, 0x10, 0xf5, 0xc6, 0x56, 0x3a, 0x0e, 0x60, 0xde, 0x01,
+-	0xac, 0xb6, 0xf8, 0xc7, 0xe3, 0x60, 0xd1, 0xec, 0x4f, 0x38, 0x36, 0x42,
+-	0xab, 0xf5, 0x90, 0xd6, 0xd8, 0x8b, 0x8a, 0x1c, 0x1a, 0xda, 0xec, 0x10,
+-	0xd2, 0xec, 0x8a, 0x77, 0x9f, 0xcf, 0x25, 0x48, 0x13, 0xdf, 0xd0, 0xb1,
+-	0xaf, 0x12, 0x55, 0xa0, 0x1a, 0xda, 0x8a, 0x60, 0xbf, 0x10, 0xcf, 0x02,
+-	0xae, 0x3e, 0x7c, 0x01, 0x3f, 0x9d, 0xf4, 0xfb, 0x4b, 0x2c, 0x99, 0x7d,
+-	0x0e, 0x06, 0xd5, 0x1e, 0x94, 0x38, 0x08, 0x18, 0x62, 0xb1, 0x73, 0x49,
+-	0xae, 0x9f, 0x0e, 0x3b, 0x40, 0x48, 0x7f, 0x73, 0x73, 0xe0, 0x5c, 0xdf,
+-	0xed, 0xb0, 0xf5, 0x9a, 0xbe, 0xa0, 0xff, 0x3f, 0x70, 0xe6, 0xe4, 0xf4,
+-	0x99, 0x1a, 0x79, 0x1d, 0x76, 0x38, 0x8a, 0xae, 0x04, 0xba, 0x9a, 0xf7,
+-	0x5e, 0x58, 0x5f, 0x4f, 0x86, 0x4b, 0x89, 0x2f, 0x6c, 0xf7, 0xf0, 0x42,
+-	0x5e, 0x2f, 0x01, 0x6f, 0xb4, 0x7e, 0x7e, 0xa8, 0xeb, 0xa4, 0x7b, 0x03,
+-	0x63, 0x61, 0x26, 0x1d, 0xc1, 0xba, 0xfa, 0xf3, 0xa9, 0xa4, 0xb1, 0x7e,
+-	0x0a, 0x2f, 0x22, 0x30, 0x48, 0x16, 0xfb, 0x25, 0x13, 0x67, 0x86, 0x98,
+-	0x39, 0x88, 0x31, 0x78, 0xb4, 0xfb, 0xe3, 0xa0, 0x2e, 0x5c, 0x97, 0xdd,
+-	0xfa, 0xe1, 0xd8, 0x3e, 0xd2, 0x9f, 0x33, 0xa4, 0x65, 0xc8, 0x34, 0xa5,
+-	0xe7, 0x57, 0x9a, 0xae, 0x97, 0x93, 0x17, 0xa4, 0x72, 0x85, 0x83, 0xc9,
+-	0x64, 0x62, 0x58, 0xbf, 0x3b, 0xb4, 0xb8, 0x1f, 0x5c, 0xd5, 0x9a, 0x3f,
+-	0x3a, 0xf8, 0xe1, 0x2d, 0x6a, 0xf3, 0x0c, 0x20, 0x6e, 0x87, 0xa6, 0xc8,
+-	0xf4, 0x8e, 0x18, 0x07
++	0xd9, 0x4b, 0x60, 0x5c, 0x20, 0x0d, 0xe1, 0x21, 0x1b, 0x97, 0xcf, 0x7c,
++	0xb6, 0x19, 0xf7, 0xbc, 0x5e, 0xf9, 0x0b, 0xaf, 0x71, 0xa3, 0x52, 0x30,
++	0xbf, 0xf9, 0xb6, 0x71, 0x20, 0xfb, 0x26, 0x9e, 0xb2, 0x1c, 0x98, 0x79,
++	0x8e, 0xee, 0xd7, 0xbf, 0x9b, 0x4b, 0xd2, 0xd0, 0xc7, 0xd1, 0xb2, 0x9e,
++	0xf2, 0x7c, 0xa9, 0xb2, 0x1d, 0x57, 0x96, 0xcc, 0xb2, 0x12, 0x47, 0x3b,
++	0xaf, 0xca, 0xa4, 0x96, 0xdd, 0xbf, 0x58, 0xd0, 0x9e, 0xdf, 0x27, 0x73,
++	0x53, 0x78, 0xc5, 0xa0, 0x9e, 0x73, 0xd7, 0x7b, 0x78, 0x1b, 0xbe, 0x17,
++	0x5b, 0x34, 0x1d, 0x05, 0x26, 0xbd, 0x15, 0x82, 0x7f, 0x4a, 0xe1, 0xe1,
++	0xc4, 0x19, 0xeb, 0x08, 0xdb, 0xca, 0x2b, 0x66, 0x6a, 0x6d, 0xd6, 0x77,
++	0x06, 0x55, 0xb0, 0x6d, 0xe2, 0x44, 0xdf, 0x9f, 0x6f, 0xd6, 0x15, 0xe0,
++	0xe5, 0xa9, 0xd1, 0x8a, 0xc4, 0xdd, 0x03, 0xb3, 0xfa, 0x61, 0xeb, 0xed,
++	0xc8, 0xb8, 0x65, 0x32, 0x72, 0x38, 0x4b, 0xc8, 0x52, 0x79, 0xd4, 0x4b,
++	0x48, 0xc9, 0xc5, 0x90, 0x14, 0x27, 0xef, 0x87, 0x6b, 0x07, 0x48, 0xa9,
++	0x26, 0x44, 0x5b, 0xd9, 0x93, 0xd8, 0x00, 0x55, 0xc0, 0xa3, 0x0d, 0xf7,
++	0x42, 0x12, 0x7b, 0x3c, 0x79, 0xc2, 0x3c, 0x2b, 0xf4, 0x66, 0xb0, 0x84,
++	0xb0, 0x2f, 0x69, 0xd5, 0x32, 0xad, 0x78, 0xee, 0xcc, 0xc7, 0xdf, 0x0b,
++	0xdd, 0x31, 0xa8, 0xc0, 0x93, 0x34, 0xe6, 0x47, 0xa9, 0x0f, 0x71, 0x2d,
++	0x0e, 0x58, 0x51, 0x64, 0x40, 0x5b, 0x02, 0x4c, 0x15, 0xc9, 0x93, 0x3b,
++	0x2f, 0x3f, 0x28, 0x2c, 0xaf, 0x70, 0x20, 0x9e, 0xc3, 0x50, 0xca, 0x28,
++	0x6a, 0xce, 0x29, 0x39, 0x50, 0x99, 0xda, 0x97, 0xc3, 0x9e, 0x00, 0x3f,
++	0xbb, 0x60, 0x4d, 0xf0, 0x6a, 0x5c, 0xc8, 0x81, 0x95, 0x32, 0x5f, 0x02,
++	0xfe, 0x1a, 0x1a, 0x6e
+ };
+ =
+
+ static void test_key_crypto(const void *data)
+@@ -488,10 +488,8 @@ static void test_key_crypto(const void *data)
+ 	bool success;
+ 	uint8_t ciphertext[256];
+ 	uint8_t decrypted[256];
+-	uint8_t msghash[32];
+ 	ssize_t len;
+-	struct l_checksum *checksum;
+-	int hash =3D L_CHECKSUM_SHA256;
++	int hash =3D L_CHECKSUM_NONE;
+ 	int rsa =3D L_KEY_RSA_PKCS1_V1_5;
+ =
+
+ 	cert =3D l_pem_load_private_key(TESTDATADIR "/cert-client-key-pkcs8.pem",
+@@ -555,37 +553,32 @@ static void test_key_crypto(const void *data)
+ 				sizeof(decrypted));
+ 	assert(len < 0);
+ =
+
+-	checksum =3D l_checksum_new(L_CHECKSUM_SHA256);
+-	assert(checksum);
+-	l_checksum_update(checksum, plaintext, strlen(plaintext));
+-	l_checksum_get_digest(checksum, msghash, sizeof(msghash));
+-	l_checksum_free(checksum);
+-
+ 	/* Can't sign with public key */
+-	len =3D l_key_sign(pubkey, rsa, hash, msghash, ciphertext,
+-				sizeof(msghash), sizeof(ciphertext));
++	len =3D l_key_sign(pubkey, rsa, hash, plaintext, ciphertext,
++				strlen(plaintext), sizeof(ciphertext));
+ 	assert(len < 0);
+ =
+
+-	len =3D l_key_sign(key, rsa, hash, msghash, ciphertext, sizeof(msghash),
+-				sizeof(ciphertext));
++	len =3D l_key_sign(key, rsa, hash, plaintext, ciphertext,
++				strlen(plaintext), sizeof(ciphertext));
+ 	assert(len =3D=3D sizeof(ciphertext));
+ =
+
+-	success =3D l_key_verify(pubkey, rsa, hash, msghash, ciphertext,
+-				sizeof(msghash), sizeof(ciphertext));
++	success =3D l_key_verify(pubkey, rsa, hash, plaintext, ciphertext,
++				strlen(plaintext), sizeof(ciphertext));
+ 	assert(success);
+ =
+
+-	success =3D l_key_verify(key, rsa, hash, msghash, ciphertext,
+-				sizeof(msghash), sizeof(ciphertext));
++	success =3D l_key_verify(key, rsa, hash, plaintext, ciphertext,
++				strlen(plaintext), sizeof(ciphertext));
+ 	assert(success);
+ =
+
+-	success =3D l_key_verify(pubkey, rsa, hash, msghash, reference_signature,
+-				sizeof(msghash), sizeof(reference_signature));
++	success =3D l_key_verify(pubkey, rsa, hash, plaintext,
++				reference_signature, strlen(plaintext),
++				sizeof(reference_signature));
+ 	assert(success);
+ =
+
+ 	/* Corrupt signature */
+-	msghash[10] =3D msghash[10] ^ (uint8_t)0xFF;
+-	success =3D l_key_verify(key, rsa, hash, msghash, ciphertext,
+-				sizeof(msghash), sizeof(ciphertext));
++	ciphertext[42] =3D ciphertext[52] ^ (uint8_t)0xFF;
++	success =3D l_key_verify(key, rsa, hash, plaintext, ciphertext,
++				strlen(plaintext), sizeof(ciphertext));
+ 	assert(!success);
+ =
+
+ 	l_key_free(key);
 -- =
 
 2.10.0
 
 
---===============2567617038704351977==--
+--===============6002303860561498313==--
 
