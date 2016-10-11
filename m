@@ -1,35 +1,46 @@
-Content-Type: multipart/mixed; boundary="===============8612008344807497049=="
+Content-Type: multipart/mixed; boundary="===============5342201556181222891=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] genl: Add l_genl_msg_append_attrv
-Date: Mon, 10 Oct 2016 10:04:23 -0500
-Message-ID: <57FBADF7.4020602@gmail.com>
-In-Reply-To: <1475745502-4866-1-git-send-email-andrew.zaborowski@intel.com>
+From: Thomas Hindoe Paaboel Andersen <phomes@gmail.com>
+Subject: [PATCH] key: return proper value and avoid leak
+Date: Tue, 11 Oct 2016 23:38:04 +0200
+Message-ID: <20161011213804.25873-1-phomes@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8612008344807497049==
+--===============5342201556181222891==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+The return value was incorrect for bool. The code should also go to
+'done' to free sig_hash.
+---
+ ell/key.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-On 10/06/2016 04:18 AM, Andrew Zaborowski wrote:
-> Try to minimise the amount of buffers allocated and copied by clients
-> when building a message attribute that is a concatenation of other
-> buffers, such as an IE sequence.
-> ---
->   ell/genl.c | 32 ++++++++++++++++++++++++++++++++
->   ell/genl.h |  2 ++
->   2 files changed, 34 insertions(+)
->
+diff --git a/ell/key.c b/ell/key.c
+index ad88d81..a71bdc8 100644
+--- a/ell/key.c
++++ b/ell/key.c
+@@ -603,8 +603,10 @@ LIB_EXPORT bool l_key_verify(struct l_key *key,
+ 	uint8_t *sig_hash =3D l_malloc(len_sig);
+ =
 
-Applied, thanks.
+ 	/* Other checksum types are not yet supported */
+-	if (checksum !=3D L_CHECKSUM_NONE)
+-		return -EINVAL;
++	if (checksum !=3D L_CHECKSUM_NONE) {
++		success =3D false;
++		goto done;
++	}
+ =
 
-Regards,
--Denis
+ 	/* The keyctl verify implementation compares the verify results
+ 	 * before we get a chance to unpad it. Instead, use the *encrypt*
+-- =
+
+2.9.3
 
 
---===============8612008344807497049==--
+--===============5342201556181222891==--
 
