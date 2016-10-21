@@ -1,35 +1,100 @@
-Content-Type: multipart/mixed; boundary="===============4139700717477963621=="
+Content-Type: multipart/mixed; boundary="===============2451728139622763409=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] key: Fix Valgrind warnings
-Date: Wed, 12 Oct 2016 20:18:32 -0500
-Message-ID: <57FEE0E8.6030801@gmail.com>
-In-Reply-To: <20161012205118.9152-1-mathew.j.martineau@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 1/4] key: Add cert chain validation capability to keyring
+Date: Fri, 21 Oct 2016 13:52:23 -0700
+Message-ID: <20161021205226.419-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4139700717477963621==
+--===============2451728139622763409==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Verifying certificate chains was a little awkward using the
+L_KEYRING_TRUSTED_ASYM keyring type, which required verifying the
+signature and then separately adding the verified certificate to the
+"trusted" keyring.
 
-On 10/12/2016 03:51 PM, Mat Martineau wrote:
-> Valgrind doesn't understand all of the keyctl syscalls and how they
-> set memory, so clear the encrypt/decrypt/sign output buffer to prevent
-> false positives.
->
-> ---
->   ell/key.c | 2 ++
->   1 file changed, 2 insertions(+)
->
+With L_KEYRING_TRUSTED_ASYM_CHAIN, the destination keyring is also
+searched for signing keys.
 
-Applied, thanks.
+One use model is to have two keyrings:
 
-Regards,
--Denis
+ 1. trust_keyring: contains long-lived root and intermediate CA certs.
+ 2. verify_keyring: an L_KEYRING_TRUSTED_ASYM_CHAIN keyring that
+                    is created with "trust_keyring" referenced for
+		    trusted certificates.
+
+In order to validate new certificates, they are added to verify_keyring
+in series, starting with certs that are signed by those in
+trust_keyring. Once an intermediate CA cert is added to verify_keyring,
+certs signed by that intermediate CA can also be added to verify_keyring.
+---
+ ell/key.c | 22 ++++++++++++++++------
+ ell/key.h |  3 ++-
+ 2 files changed, 18 insertions(+), 7 deletions(-)
+
+diff --git a/ell/key.c b/ell/key.c
+index fc20d29..4cf2307 100644
+--- a/ell/key.c
++++ b/ell/key.c
+@@ -653,15 +653,25 @@ LIB_EXPORT struct l_keyring *l_keyring_new(enum l_key=
+ring_type type,
+ 	if (!internal_keyring && !setup_internal_keyring())
+ 		return NULL;
+ =
+
+-	if (type =3D=3D L_KEYRING_TRUSTED_ASYM) {
+-		if (!trusted)
+-			return NULL;
++	switch (type) {
++	case L_KEYRING_SIMPLE:
++		break;
++	case L_KEYRING_TRUSTED_ASYM:
++	case L_KEYRING_TRUSTED_ASYM_CHAIN:
++	{
++		char *option =3D "";
++
++		if (type =3D=3D L_KEYRING_TRUSTED_ASYM_CHAIN)
++			option =3D ":chain";
+ =
+
+ 		payload =3D l_strdup_printf(
+-			"restrict=3Dasymmetric:key_or_keyring:%d",
+-			trusted->serial);
++			"restrict=3Dasymmetric:key_or_keyring:%d%s",
++			trusted ? trusted->serial : 0, option);
+ 		payload_length =3D strlen(payload);
+-	} else if (type !=3D L_KEYRING_SIMPLE) {
++
++		break;
++	}
++	default:
+ 		/* Unsupported type */
+ 		return NULL;
+ 	}
+diff --git a/ell/key.h b/ell/key.h
+index ff4b543..e7036c6 100644
+--- a/ell/key.h
++++ b/ell/key.h
+@@ -42,7 +42,8 @@ enum l_key_type {
+ =
+
+ enum l_keyring_type {
+ 	L_KEYRING_SIMPLE =3D 0,
+-	L_KEYRING_TRUSTED_ASYM
++	L_KEYRING_TRUSTED_ASYM,
++	L_KEYRING_TRUSTED_ASYM_CHAIN,
+ };
+ =
+
+ enum l_key_cipher_type {
+-- =
+
+2.10.1
 
 
---===============4139700717477963621==--
+--===============2451728139622763409==--
 
