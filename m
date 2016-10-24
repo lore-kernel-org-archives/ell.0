@@ -1,39 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============1188714213434356956=="
+Content-Type: multipart/mixed; boundary="===============0274378261753853959=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 2/5] key: Make key/keychain revocation optional when
- freeing
-Date: Mon, 24 Oct 2016 15:45:28 -0500
-Message-ID: <580E72E8.9080303@gmail.com>
-In-Reply-To: <alpine.OSX.2.20.1610241325170.1909@mjmartin-mac01.wa.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v2 1/3] unit: Fix memory leak in trust chain test
+Date: Mon, 24 Oct 2016 14:36:31 -0700
+Message-ID: <20161024213633.10668-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1188714213434356956==
+--===============0274378261753853959==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+---
+ unit/test-key.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
- >> +1.  Although we do have precedent for this in l_string_free, but that
->> is mostly how GLib API was done.
->
-> Ok, I'll go with l_key_revoke_and_free(). It was l_string_free that sent
-> me in the original add-a-flag direction, but that's also a function that
-> has been a source of confusion.
->
+diff --git a/unit/test-key.c b/unit/test-key.c
+index 1195da4..455ebb4 100644
+--- a/unit/test-key.c
++++ b/unit/test-key.c
+@@ -460,8 +460,10 @@ static void test_trust_chain(const void *data)
+ 	l_keyring_free(trust);
+ 	l_keyring_free(ring);
+ 	l_key_free(cakey);
++	l_key_free(intkey);
+ 	l_key_free(key);
+ 	l_free(cacert);
++	l_free(intcert);
+ 	l_free(cert);
+ }
+ =
 
-Yeah, blame GLib for that.  The point of ell was to make it easy to port =
+-- =
 
-GLib based projects, so I'm not sure if changing l_string_free is better =
+2.10.1
 
-or worse.
 
-I would personally vote for l_key_free and l_key_free_norevoke.
-
-Regards,
--Denis
-
---===============1188714213434356956==--
+--===============0274378261753853959==--
 
