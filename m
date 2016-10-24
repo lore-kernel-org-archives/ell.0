@@ -1,148 +1,115 @@
-Content-Type: multipart/mixed; boundary="===============2736795672751228135=="
+Content-Type: multipart/mixed; boundary="===============4474975412583807397=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 2/5] key: Make key/keychain revocation optional when freeing
-Date: Mon, 24 Oct 2016 11:44:53 -0700
-Message-ID: <20161024184456.25743-2-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 3/5] unit: Update for new l_key_free/l_keyring_free revoke
+ parameter
+Date: Mon, 24 Oct 2016 11:44:54 -0700
+Message-ID: <20161024184456.25743-3-mathew.j.martineau@linux.intel.com>
 In-Reply-To: <20161024184456.25743-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2736795672751228135==
+--===============4474975412583807397==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Revoking keys (or keyrings) unlinks them any keyring. Sometimes it is
-useful to let the kernel keep a key linked even if ELL isn't directly
-keeping track of that key anymore - for example, a keyring of trusted
-keys can be used for validation without keeping l_key objects around for
-every single key in that keyring. The kernel will clean up the kernel
-key objects when there are no more references to them whether or not we
-explicitly revoke from userspace.
 ---
- ell/key.c | 14 ++++++++++----
- ell/key.h |  4 ++--
- ell/tls.c |  6 +++---
- 3 files changed, 15 insertions(+), 9 deletions(-)
+ unit/test-key.c | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
 
-diff --git a/ell/key.c b/ell/key.c
-index 4cf2307..4225271 100644
---- a/ell/key.c
-+++ b/ell/key.c
-@@ -276,12 +276,15 @@ LIB_EXPORT struct l_key *l_key_new(enum l_key_type ty=
-pe, const void *payload,
- 	return key;
+diff --git a/unit/test-key.c b/unit/test-key.c
+index 1195da4..124e2ce 100644
+--- a/unit/test-key.c
++++ b/unit/test-key.c
+@@ -83,7 +83,7 @@ static void test_user(const void *data)
+ 	assert(len =3D=3D KEY2_LEN);
+ 	assert(!strcmp(buf, KEY2_STR));
+ =
+
+-	l_key_free(key);
++	l_key_free(key, true);
  }
  =
 
--LIB_EXPORT void l_key_free(struct l_key *key)
-+LIB_EXPORT void l_key_free(struct l_key *key, bool revoke)
+ struct dh_test_vector {
+@@ -231,7 +231,7 @@ static void testkey_from_string(const char *keystr, str=
+uct testkey *tk)
+ =
+
+ static void testkey_free_contents(struct testkey *tk)
  {
- 	if (unlikely(!key))
- 		return;
- =
-
--	kernel_revoke_key(key->serial);
-+	if (revoke)
-+		kernel_revoke_key(key->serial);
-+	else
-+		kernel_unlink_key(key->serial, internal_keyring);
- =
-
- 	l_free(key);
- }
-@@ -693,12 +696,15 @@ LIB_EXPORT struct l_keyring *l_keyring_new(enum l_key=
-ring_type type,
- 	return keyring;
+-	l_key_free(tk->key);
++	l_key_free(tk->key, true);
+ 	l_free(tk->bytes);
  }
  =
 
--LIB_EXPORT void l_keyring_free(struct l_keyring *keyring)
-+LIB_EXPORT void l_keyring_free(struct l_keyring *keyring, bool revoke)
- {
- 	if (unlikely(!keyring))
- 		return;
+@@ -358,11 +358,11 @@ static void test_simple_keyring(const void *data)
+ 	success =3D l_keyring_link(ring, key2);
+ 	assert(success);
  =
 
--	kernel_revoke_key(keyring->serial);
-+	if (revoke)
-+		kernel_revoke_key(keyring->serial);
-+	else
-+		kernel_unlink_key(keyring->serial, internal_keyring);
- =
-
- 	l_free(keyring);
+-	l_key_free(key1);
++	l_key_free(key1, true);
+ 	success =3D l_keyring_unlink(ring, key2);
+ 	assert(success);
+-	l_keyring_free(ring);
+-	l_key_free(key2);
++	l_keyring_free(ring, true);
++	l_key_free(key2, true);
  }
-diff --git a/ell/key.h b/ell/key.h
-index e7036c6..0c84000 100644
---- a/ell/key.h
-+++ b/ell/key.h
-@@ -54,7 +54,7 @@ enum l_key_cipher_type {
- struct l_key *l_key_new(enum l_key_type type, const void *payload,
- 			size_t payload_length);
  =
 
--void l_key_free(struct l_key *key);
-+void l_key_free(struct l_key *key, bool revoke);
+ static void test_trusted_keyring(const void *data)
+@@ -400,10 +400,10 @@ static void test_trusted_keyring(const void *data)
+ 	success =3D l_keyring_link(ring, key);
+ 	assert(success);
  =
 
- bool l_key_update(struct l_key *key, const void *payload, size_t len);
+-	l_keyring_free(trust);
+-	l_keyring_free(ring);
+-	l_key_free(cakey);
+-	l_key_free(key);
++	l_keyring_free(trust, true);
++	l_keyring_free(ring, true);
++	l_key_free(cakey, true);
++	l_key_free(key, true);
+ 	l_free(cacert);
+ 	l_free(cert);
+ }
+@@ -457,10 +457,10 @@ static void test_trust_chain(const void *data)
+ 	success =3D l_keyring_link(ring, key);
+ 	assert(success);
  =
 
-@@ -91,7 +91,7 @@ bool l_key_verify(struct l_key *key, enum l_key_cipher_ty=
-pe cipher,
- struct l_keyring *l_keyring_new(enum l_keyring_type type,
- 				const struct l_keyring *trust);
+-	l_keyring_free(trust);
+-	l_keyring_free(ring);
+-	l_key_free(cakey);
+-	l_key_free(key);
++	l_keyring_free(trust, true);
++	l_keyring_free(ring, true);
++	l_key_free(cakey, true);
++	l_key_free(key, true);
+ 	l_free(cacert);
+ 	l_free(cert);
+ }
+@@ -638,8 +638,8 @@ static void test_key_crypto(const void *data)
+ 				strlen(plaintext), sizeof(ciphertext));
+ 	assert(!success);
  =
 
--void l_keyring_free(struct l_keyring *keyring);
-+void l_keyring_free(struct l_keyring *keyring, bool revoke);
- =
-
- bool l_keyring_link(struct l_keyring *keyring, const struct l_key *key);
- =
-
-diff --git a/ell/tls.c b/ell/tls.c
-index bc4c210..a89b2db 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -135,7 +135,7 @@ static void tls_reset_handshake(struct l_tls *tls)
- 	memset(tls->pending.key_block, 0, sizeof(tls->pending.key_block));
- =
-
- 	l_free(tls->peer_cert);
--	l_key_free(tls->peer_pubkey);
-+	l_key_free(tls->peer_pubkey, true);
- =
-
- 	tls->peer_cert =3D NULL;
- 	tls->peer_pubkey =3D NULL;
-@@ -2211,7 +2211,7 @@ LIB_EXPORT bool l_tls_set_auth_data(struct l_tls *tls=
-, const char *cert_path,
- 	}
- =
-
- 	if (tls->priv_key) {
--		l_key_free(tls->priv_key);
-+		l_key_free(tls->priv_key, true);
- 		tls->priv_key =3D NULL;
- 		tls->priv_key_size =3D 0;
- 	}
-@@ -2234,7 +2234,7 @@ LIB_EXPORT bool l_tls_set_auth_data(struct l_tls *tls=
-, const char *cert_path,
- 		if (!l_key_get_info(tls->priv_key, L_KEY_RSA_PKCS1_V1_5,
- 					L_CHECKSUM_NONE, &tls->priv_key_size,
- 					&is_public) || is_public) {
--			l_key_free(tls->priv_key);
-+			l_key_free(tls->priv_key, true);
- 			tls->priv_key =3D NULL;
- 			tls->priv_key_size =3D 0;
- 			return false;
+-	l_key_free(key);
+-	l_key_free(pubkey);
++	l_key_free(key, true);
++	l_key_free(pubkey, true);
+ 	l_free(cert);
+ 	l_free(pubcert);
+ }
 -- =
 
 2.10.1
 
 
---===============2736795672751228135==--
+--===============4474975412583807397==--
 
