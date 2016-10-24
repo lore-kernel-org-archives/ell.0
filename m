@@ -1,115 +1,97 @@
-Content-Type: multipart/mixed; boundary="===============4474975412583807397=="
+Content-Type: multipart/mixed; boundary="===============2833412000265533893=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 3/5] unit: Update for new l_key_free/l_keyring_free revoke
- parameter
-Date: Mon, 24 Oct 2016 11:44:54 -0700
-Message-ID: <20161024184456.25743-3-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 4/5] tls: Validate cert chain using l_keyring
+Date: Mon, 24 Oct 2016 11:44:55 -0700
+Message-ID: <20161024184456.25743-4-mathew.j.martineau@linux.intel.com>
 In-Reply-To: <20161024184456.25743-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4474975412583807397==
+--===============2833412000265533893==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-key.c | 30 +++++++++++++++---------------
- 1 file changed, 15 insertions(+), 15 deletions(-)
+ ell/tls.c | 55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 54 insertions(+), 1 deletion(-)
 
-diff --git a/unit/test-key.c b/unit/test-key.c
-index 1195da4..124e2ce 100644
---- a/unit/test-key.c
-+++ b/unit/test-key.c
-@@ -83,7 +83,7 @@ static void test_user(const void *data)
- 	assert(len =3D=3D KEY2_LEN);
- 	assert(!strcmp(buf, KEY2_STR));
+diff --git a/ell/tls.c b/ell/tls.c
+index a89b2db..55b3b1a 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -2464,10 +2464,63 @@ static const struct pkcs1_encryption_oid {
+ 	},
+ };
  =
 
--	l_key_free(key);
-+	l_key_free(key, true);
- }
- =
-
- struct dh_test_vector {
-@@ -231,7 +231,7 @@ static void testkey_from_string(const char *keystr, str=
-uct testkey *tk)
- =
-
- static void testkey_free_contents(struct testkey *tk)
++static void tls_key_cleanup(struct l_key **p)
++{
++	l_key_free(*p, false);
++}
++
++static bool tls_cert_verify_with_keyring(struct tls_cert *cert,
++						struct l_keyring *ring)
++{
++	if (!cert)
++		return true;
++
++	if (tls_cert_verify_with_keyring(cert->issuer, ring)) {
++		L_AUTO_CLEANUP_VAR(struct l_key *, key, tls_key_cleanup);
++
++		key =3D l_key_new(L_KEY_RSA, cert->asn1, cert->size);
++		if (!key)
++			return false;
++
++		return l_keyring_link(ring, key);
++	}
++
++	return false;
++}
++
++static void tls_keyring_cleanup(struct l_keyring **p)
++{
++	l_keyring_free(*p, true);
++}
++
+ bool tls_cert_verify_certchain(struct tls_cert *certchain,
+ 				struct tls_cert *ca_cert)
  {
--	l_key_free(tk->key);
-+	l_key_free(tk->key, true);
- 	l_free(tk->bytes);
+-	return true;
++	L_AUTO_CLEANUP_VAR(struct l_keyring *, ca_ring, tls_keyring_cleanup);
++	L_AUTO_CLEANUP_VAR(struct l_keyring *, verify_ring,
++				tls_keyring_cleanup);
++
++	ca_ring =3D NULL;
++	verify_ring =3D NULL;
++
++	if (ca_cert) {
++		L_AUTO_CLEANUP_VAR(struct l_key *, ca_key, tls_key_cleanup);
++		ca_key =3D NULL;
++
++		ca_ring =3D l_keyring_new(L_KEYRING_SIMPLE, NULL);
++		if (!ca_ring)
++			return false;
++
++		ca_key =3D l_key_new(L_KEY_RSA, ca_cert->asn1, ca_cert->size);
++		if (!ca_key || !l_keyring_link(ca_ring, ca_key))
++			return false;
++	}
++
++	verify_ring =3D l_keyring_new(L_KEYRING_TRUSTED_ASYM_CHAIN, ca_ring);
++	if (!verify_ring)
++		return false;
++
++	return tls_cert_verify_with_keyring(certchain, verify_ring);
  }
  =
 
-@@ -358,11 +358,11 @@ static void test_simple_keyring(const void *data)
- 	success =3D l_keyring_link(ring, key2);
- 	assert(success);
- =
-
--	l_key_free(key1);
-+	l_key_free(key1, true);
- 	success =3D l_keyring_unlink(ring, key2);
- 	assert(success);
--	l_keyring_free(ring);
--	l_key_free(key2);
-+	l_keyring_free(ring, true);
-+	l_key_free(key2, true);
- }
- =
-
- static void test_trusted_keyring(const void *data)
-@@ -400,10 +400,10 @@ static void test_trusted_keyring(const void *data)
- 	success =3D l_keyring_link(ring, key);
- 	assert(success);
- =
-
--	l_keyring_free(trust);
--	l_keyring_free(ring);
--	l_key_free(cakey);
--	l_key_free(key);
-+	l_keyring_free(trust, true);
-+	l_keyring_free(ring, true);
-+	l_key_free(cakey, true);
-+	l_key_free(key, true);
- 	l_free(cacert);
- 	l_free(cert);
- }
-@@ -457,10 +457,10 @@ static void test_trust_chain(const void *data)
- 	success =3D l_keyring_link(ring, key);
- 	assert(success);
- =
-
--	l_keyring_free(trust);
--	l_keyring_free(ring);
--	l_key_free(cakey);
--	l_key_free(key);
-+	l_keyring_free(trust, true);
-+	l_keyring_free(ring, true);
-+	l_key_free(cakey, true);
-+	l_key_free(key, true);
- 	l_free(cacert);
- 	l_free(cert);
- }
-@@ -638,8 +638,8 @@ static void test_key_crypto(const void *data)
- 				strlen(plaintext), sizeof(ciphertext));
- 	assert(!success);
- =
-
--	l_key_free(key);
--	l_key_free(pubkey);
-+	l_key_free(key, true);
-+	l_key_free(pubkey, true);
- 	l_free(cert);
- 	l_free(pubcert);
- }
+ void tls_cert_free_certchain(struct tls_cert *cert)
 -- =
 
 2.10.1
 
 
---===============4474975412583807397==--
+--===============2833412000265533893==--
 
