@@ -1,42 +1,45 @@
-Content-Type: multipart/mixed; boundary="===============7834099743482844866=="
+Content-Type: multipart/mixed; boundary="===============1405988073680725376=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 5/5] unit: Fix memory leak in trust chain test
-Date: Mon, 24 Oct 2016 11:44:56 -0700
-Message-ID: <20161024184456.25743-5-mathew.j.martineau@linux.intel.com>
-In-Reply-To: <20161024184456.25743-1-mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH 2/5] key: Make key/keychain revocation optional when
+ freeing
+Date: Mon, 24 Oct 2016 11:47:43 -0700
+Message-ID: <alpine.OSX.2.20.1610241146030.1909@mjmartin-mac01.wa.intel.com>
+In-Reply-To: <20161024184456.25743-2-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7834099743482844866==
+--===============1405988073680725376==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-key.c | 2 ++
- 1 file changed, 2 insertions(+)
 
-diff --git a/unit/test-key.c b/unit/test-key.c
-index 124e2ce..e4d0ba4 100644
---- a/unit/test-key.c
-+++ b/unit/test-key.c
-@@ -460,8 +460,10 @@ static void test_trust_chain(const void *data)
- 	l_keyring_free(trust, true);
- 	l_keyring_free(ring, true);
- 	l_key_free(cakey, true);
-+	l_key_free(intkey, true);
- 	l_key_free(key, true);
- 	l_free(cacert);
-+	l_free(intcert);
- 	l_free(cert);
- }
- =
+Denis -
 
--- =
+On Mon, 24 Oct 2016, Mat Martineau wrote:
 
-2.10.1
+> Revoking keys (or keyrings) unlinks them any keyring. Sometimes it is
 
+"unlinks them from any keyring" is what I meant. Can you fix that up =
 
---===============7834099743482844866==--
+before committing?
+
+> useful to let the kernel keep a key linked even if ELL isn't directly
+> keeping track of that key anymore - for example, a keyring of trusted
+> keys can be used for validation without keeping l_key objects around for
+> every single key in that keyring. The kernel will clean up the kernel
+> key objects when there are no more references to them whether or not we
+> explicitly revoke from userspace.
+> ---
+> ell/key.c | 14 ++++++++++----
+> ell/key.h |  4 ++--
+> ell/tls.c |  6 +++---
+> 3 files changed, 15 insertions(+), 9 deletions(-)
+
+--
+Mat Martineau
+Intel OTC
+
+--===============1405988073680725376==--
 
