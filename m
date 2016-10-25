@@ -1,97 +1,31 @@
-Content-Type: multipart/mixed; boundary="===============6204252521375673193=="
+Content-Type: multipart/mixed; boundary="===============8576444513265176628=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v2 3/3] tls: Validate cert chain using l_keyring
-Date: Mon, 24 Oct 2016 14:36:33 -0700
-Message-ID: <20161024213633.10668-3-mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v2 1/3] unit: Fix memory leak in trust chain test
+Date: Mon, 24 Oct 2016 20:59:22 -0500
+Message-ID: <580EBC7A.9090408@gmail.com>
 In-Reply-To: <20161024213633.10668-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6204252521375673193==
+--===============8576444513265176628==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/tls.c | 55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 54 insertions(+), 1 deletion(-)
+Hi Mat,
 
-diff --git a/ell/tls.c b/ell/tls.c
-index bc4c210..3879b50 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -2464,10 +2464,63 @@ static const struct pkcs1_encryption_oid {
- 	},
- };
- =
+On 10/24/2016 04:36 PM, Mat Martineau wrote:
+> ---
+>   unit/test-key.c | 2 ++
+>   1 file changed, 2 insertions(+)
+>
 
-+static void tls_key_cleanup(struct l_key **p)
-+{
-+	l_key_free_norevoke(*p);
-+}
-+
-+static bool tls_cert_verify_with_keyring(struct tls_cert *cert,
-+						struct l_keyring *ring)
-+{
-+	if (!cert)
-+		return true;
-+
-+	if (tls_cert_verify_with_keyring(cert->issuer, ring)) {
-+		L_AUTO_CLEANUP_VAR(struct l_key *, key, tls_key_cleanup);
-+
-+		key =3D l_key_new(L_KEY_RSA, cert->asn1, cert->size);
-+		if (!key)
-+			return false;
-+
-+		return l_keyring_link(ring, key);
-+	}
-+
-+	return false;
-+}
-+
-+static void tls_keyring_cleanup(struct l_keyring **p)
-+{
-+	l_keyring_free(*p);
-+}
-+
- bool tls_cert_verify_certchain(struct tls_cert *certchain,
- 				struct tls_cert *ca_cert)
- {
--	return true;
-+	L_AUTO_CLEANUP_VAR(struct l_keyring *, ca_ring, tls_keyring_cleanup);
-+	L_AUTO_CLEANUP_VAR(struct l_keyring *, verify_ring,
-+				tls_keyring_cleanup);
-+
-+	ca_ring =3D NULL;
-+	verify_ring =3D NULL;
-+
-+	if (ca_cert) {
-+		L_AUTO_CLEANUP_VAR(struct l_key *, ca_key, tls_key_cleanup);
-+		ca_key =3D NULL;
-+
-+		ca_ring =3D l_keyring_new(L_KEYRING_SIMPLE, NULL);
-+		if (!ca_ring)
-+			return false;
-+
-+		ca_key =3D l_key_new(L_KEY_RSA, ca_cert->asn1, ca_cert->size);
-+		if (!ca_key || !l_keyring_link(ca_ring, ca_key))
-+			return false;
-+	}
-+
-+	verify_ring =3D l_keyring_new(L_KEYRING_TRUSTED_ASYM_CHAIN, ca_ring);
-+	if (!verify_ring)
-+		return false;
-+
-+	return tls_cert_verify_with_keyring(certchain, verify_ring);
- }
- =
+Applied, thanks.
 
- void tls_cert_free_certchain(struct tls_cert *cert)
--- =
-
-2.10.1
+Regards,
+-Denis
 
 
---===============6204252521375673193==--
+--===============8576444513265176628==--
 
