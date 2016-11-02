@@ -1,14 +1,15 @@
-Content-Type: multipart/mixed; boundary="===============3156730358072789558=="
+Content-Type: multipart/mixed; boundary="===============1266401662780423249=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 2/5] unit: Update for l_string_free changes
-Date: Wed, 02 Nov 2016 16:59:23 -0500
-Message-ID: <581A61BB.9080605@gmail.com>
-In-Reply-To: <20161102215048.19166-2-mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH 3/5] timeout: Add millisecond timeout functions,
+ remove nanosecond functions
+Date: Wed, 02 Nov 2016 17:23:58 -0500
+Message-ID: <581A677E.5050008@gmail.com>
+In-Reply-To: <20161102215048.19166-3-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3156730358072789558==
+--===============1266401662780423249==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,17 +17,20 @@ Content-Transfer-Encoding: quoted-printable
 Hi Mat,
 
 On 11/02/2016 04:50 PM, Mat Martineau wrote:
+> Nanosecond resolution was overkill, but there are still common use cases
+> for millisecond timer resolution.
 > ---
->   unit/test-dbus-service.c | 10 +++++-----
->   unit/test-string.c       | 10 +++++-----
->   2 files changed, 10 insertions(+), 10 deletions(-)
+>   ell/timeout.c | 109 +++++++++++++++++++++++++++++++++++++++++----------=
+-------
+>   ell/timeout.h |   8 ++---
+>   2 files changed, 82 insertions(+), 35 deletions(-)
 >
 
-Applied, thanks.
+Patches 3-5 applied, thanks.
 
 Regards,
 -Denis
 
 
---===============3156730358072789558==--
+--===============1266401662780423249==--
 
