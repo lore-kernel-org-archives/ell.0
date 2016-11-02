@@ -1,237 +1,148 @@
-Content-Type: multipart/mixed; boundary="===============2064688046030050568=="
+Content-Type: multipart/mixed; boundary="===============8670831210148794691=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 1/5] string: Add l_string_unwrap and simplify l_string_free
-Date: Wed, 02 Nov 2016 14:50:44 -0700
-Message-ID: <20161102215048.19166-1-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 2/5] unit: Update for l_string_free changes
+Date: Wed, 02 Nov 2016 14:50:45 -0700
+Message-ID: <20161102215048.19166-2-mathew.j.martineau@linux.intel.com>
+In-Reply-To: <20161102215048.19166-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2064688046030050568==
+--===============8670831210148794691==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This removes the "free a string object but return the internal data"
-functionality of l_string_free. The option to not free everything was a
-source of confusion.
-
-l_string_unwrap is the same as the old l_string_free(ptr, false).
 ---
- ell/dbus-filter.c   |  4 ++--
- ell/dbus-service.c  |  2 +-
- ell/dbus-util.c     |  4 ++--
- ell/gvariant-util.c |  4 ++--
- ell/key.c           |  2 +-
- ell/settings.c      |  2 +-
- ell/string.c        | 32 +++++++++++++++++++++-----------
- ell/string.h        |  3 ++-
- 8 files changed, 32 insertions(+), 21 deletions(-)
+ unit/test-dbus-service.c | 10 +++++-----
+ unit/test-string.c       | 10 +++++-----
+ 2 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/ell/dbus-filter.c b/ell/dbus-filter.c
-index 9e3cad5..0af1b67 100644
---- a/ell/dbus-filter.c
-+++ b/ell/dbus-filter.c
-@@ -393,7 +393,7 @@ char *_dbus_filter_rule_to_str(const struct _dbus_filte=
-r_condition *rule,
- 					rule->type - L_DBUS_MATCH_ARG0);
- 			break;
- 		default:
--			l_string_free(str, true);
-+			l_string_free(str);
- 			return NULL;
- 		}
+diff --git a/unit/test-dbus-service.c b/unit/test-dbus-service.c
+index c27869b..269e0e6 100644
+--- a/unit/test-dbus-service.c
++++ b/unit/test-dbus-service.c
+@@ -116,7 +116,7 @@ static void test_introspect_method(const void *test_dat=
+a)
  =
 
-@@ -417,5 +417,5 @@ char *_dbus_filter_rule_to_str(const struct _dbus_filte=
-r_condition *rule,
- 			l_string_append_c(str, ',');
- 	}
+ 	buf =3D l_string_new(0);
+ 	_dbus_method_introspection(method, buf);
+-	xml =3D l_string_free(buf, false);
++	xml =3D l_string_unwrap(buf);
  =
 
--	return l_string_free(str, false);
-+	return l_string_unwrap(str);
- }
-diff --git a/ell/dbus-service.c b/ell/dbus-service.c
-index 98f6e7a..8bc9244 100644
---- a/ell/dbus-service.c
-+++ b/ell/dbus-service.c
-@@ -1600,7 +1600,7 @@ bool _dbus_object_tree_dispatch(struct _dbus_object_t=
-ree *tree,
+ 	assert(!strcmp(test->expected_xml, xml));
+ 	l_free(xml);
+@@ -134,7 +134,7 @@ static void test_introspect_signal(const void *test_dat=
+a)
  =
 
- 		buf =3D l_string_new(0);
- 		_dbus_object_tree_introspect(tree, path, buf);
--		xml =3D l_string_free(buf, false);
-+		xml =3D l_string_unwrap(buf);
+ 	buf =3D l_string_new(0);
+ 	_dbus_signal_introspection(signal, buf);
+-	xml =3D l_string_free(buf, false);
++	xml =3D l_string_unwrap(buf);
  =
 
- 		reply =3D l_dbus_message_new_method_return(message);
- 		l_dbus_message_set_arguments(reply, "s", xml);
-diff --git a/ell/dbus-util.c b/ell/dbus-util.c
-index 1298228..c4e8419 100644
---- a/ell/dbus-util.c
-+++ b/ell/dbus-util.c
-@@ -901,7 +901,7 @@ void _dbus1_builder_free(struct dbus_builder *builder)
- 	if (unlikely(!builder))
- 		return;
+ 	assert(!strcmp(test->expected_xml, xml));
+ 	l_free(xml);
+@@ -152,7 +152,7 @@ static void test_introspect_property(const void *test_d=
+ata)
  =
 
--	l_string_free(builder->signature, true);
-+	l_string_free(builder->signature);
- 	l_queue_destroy(builder->containers,
- 				(l_queue_destroy_func_t) container_free);
- 	l_free(builder->body);
-@@ -1265,7 +1265,7 @@ char *_dbus1_builder_finish(struct dbus_builder *buil=
-der,
- 	if (unlikely(l_queue_length(builder->containers) !=3D 1))
- 		return NULL;
+ 	buf =3D l_string_new(0);
+ 	_dbus_property_introspection(property, buf);
+-	xml =3D l_string_free(buf, false);
++	xml =3D l_string_unwrap(buf);
  =
 
--	signature =3D l_string_free(builder->signature, false);
-+	signature =3D l_string_unwrap(builder->signature);
- 	builder->signature =3D NULL;
+ 	assert(!strcmp(test->expected_xml, xml));
+ 	l_free(xml);
+@@ -166,7 +166,7 @@ static void test_introspect_interface(const void *test_=
+data)
  =
 
- 	*body =3D builder->body;
-diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
-index 2172ad9..e6f70ad 100644
---- a/ell/gvariant-util.c
-+++ b/ell/gvariant-util.c
-@@ -918,7 +918,7 @@ void _gvariant_builder_free(struct dbus_builder *builde=
-r)
- 	if (unlikely(!builder))
- 		return;
+ 	buf =3D l_string_new(0);
+ 	_dbus_interface_introspection(interface, buf);
+-	xml =3D l_string_free(buf, false);
++	xml =3D l_string_unwrap(buf);
  =
 
--	l_string_free(builder->signature, true);
-+	l_string_free(builder->signature);
- 	l_queue_destroy(builder->containers,
- 				(l_queue_destroy_func_t) container_free);
- 	l_free(builder->body);
-@@ -1319,7 +1319,7 @@ char *_gvariant_builder_finish(struct dbus_builder *b=
-uilder,
+ 	assert(!strcmp(test->expected_xml, xml));
+ 	l_free(xml);
+@@ -358,7 +358,7 @@ static void test_dbus_object_tree_introspection(const v=
+oid *test_data)
  =
 
- 	root =3D l_queue_peek_head(builder->containers);
+ 	buf =3D l_string_new(1024);
+ 	_dbus_object_tree_introspect(tree, "/", buf);
+-	xml =3D l_string_free(buf, false);
++	xml =3D l_string_unwrap(buf);
+ 	assert(!strcmp(ofono_manager_introspection, xml));
+ 	l_free(xml);
  =
 
--	signature =3D l_string_free(builder->signature, false);
-+	signature =3D l_string_unwrap(builder->signature);
- 	builder->signature =3D NULL;
+diff --git a/unit/test-string.c b/unit/test-string.c
+index 4c6a38c..d5b0d9d 100644
+--- a/unit/test-string.c
++++ b/unit/test-string.c
+@@ -40,7 +40,7 @@ static void test_grow(const void *test_data)
+ 	assert(l_string_append(str, "BarFoo"));
+ 	assert(l_string_length(str) =3D=3D strlen("Foobar7BarFoo"));
  =
 
- 	if (_gvariant_is_fixed_size(signature)) {
-diff --git a/ell/key.c b/ell/key.c
-index 370b3c8..11700e8 100644
---- a/ell/key.c
-+++ b/ell/key.c
-@@ -169,7 +169,7 @@ static char *format_key_info(const char *encoding, cons=
-t char *hash)
- 	if (hash)
- 		l_string_append_printf(info, "hash=3D%s", hash);
+-	a =3D l_string_free(str, false);
++	a =3D l_string_unwrap(str);
+ 	assert(a);
+ 	assert(!strcmp(a, "Foobar7BarFoo"));
  =
 
--	return l_string_free(info, false);
-+	return l_string_unwrap(info);
- }
+@@ -60,7 +60,7 @@ static void test_printf(const void *test_data)
  =
 
- static long kernel_query_key(int32_t key_serial, const char *encoding,
-diff --git a/ell/settings.c b/ell/settings.c
-index c6eec35..08ba967 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -427,7 +427,7 @@ LIB_EXPORT char *l_settings_to_data(struct l_settings *=
-settings, size_t *len)
- 		group_entry =3D group_entry->next;
- 	}
+ 	assert(l_string_length(str) =3D=3D strlen("Foobar7100BarFoo"));
  =
 
--	ret =3D l_string_free(buf, false);
-+	ret =3D l_string_unwrap(buf);
+-	a =3D l_string_free(str, false);
++	a =3D l_string_unwrap(str);
+ 	assert(a);
+ 	assert(!strcmp(a, "Foobar7100BarFoo"));
  =
 
- 	if (len)
- 		*len =3D strlen(ret);
-diff --git a/ell/string.c b/ell/string.c
-index 98e1c46..e6e7140 100644
---- a/ell/string.c
-+++ b/ell/string.c
-@@ -117,27 +117,37 @@ LIB_EXPORT struct l_string *l_string_new(size_t initi=
-al_length)
- /**
-  * l_string_free:
-  * @string: growable string object
-+ *
-+ * Free the growable string object and all associated data
-+ **/
-+LIB_EXPORT void l_string_free(struct l_string *string)
-+{
-+	if (unlikely(!string))
-+		return;
-+
-+	l_free(string->str);
-+	l_free(string);
-+}
-+
-+/**
-+ * l_string_unwrap:
-+ * @string: growable string object
-  * @free_data: internal string array
-  *
-- * Free the growable string object.  If @free_data #true, then the internal
-- * string data will be freed and NULL will be returned.  Otherwise the
-- * internal string data will be returned to the caller.  The caller is
-- * responsible for freeing it using l_free().
-+ * Free the growable string object and return the internal string data.
-+ * The caller is responsible for freeing the string data using l_free(),
-+ * and the string object is no longer usable.
-  *
-- * Returns: @string's internal buffer or NULL
-+ * Returns: @string's internal buffer
-  **/
--LIB_EXPORT char *l_string_free(struct l_string *string, bool free_data)
-+LIB_EXPORT char *l_string_unwrap(struct l_string *string)
- {
- 	char *result;
+@@ -107,7 +107,7 @@ static void test_fixed(const void *test_data)
+ 	l_string_append_fixed(str, test->input, test->input_len);
+ 	assert(l_string_length(str) =3D=3D strlen(test->expected));
  =
 
- 	if (unlikely(!string))
- 		return NULL;
+-	a =3D l_string_free(str, false);
++	a =3D l_string_unwrap(str);
+ 	assert(a);
+ 	assert(!strcmp(a, test->expected));
  =
 
--	if (free_data) {
--		l_free(string->str);
--		result =3D NULL;
--	} else
--		result =3D string->str;
-+	result =3D string->str;
+@@ -125,7 +125,7 @@ static void test_truncate(const void *test_data)
+ 	assert(!l_string_truncate(NULL, 8));
  =
 
- 	l_free(string);
- =
-
-diff --git a/ell/string.h b/ell/string.h
-index a778b31..6549a05 100644
---- a/ell/string.h
-+++ b/ell/string.h
-@@ -100,7 +100,8 @@ static inline bool __attribute__ ((always_inline))
- }
- =
-
- struct l_string *l_string_new(size_t initial_length);
--char *l_string_free(struct l_string *string, bool free_data);
-+void l_string_free(struct l_string *string);
-+char *l_string_unwrap(struct l_string *string);
- =
-
- struct l_string *l_string_append(struct l_string *dest, const char *src);
- struct l_string *l_string_append_c(struct l_string *dest, const char c);
+ 	assert(l_string_truncate(str, 7));
+-	a =3D l_string_free(str, false);
++	a =3D l_string_unwrap(str);
+ 	assert(a);
+ 	assert(!strcmp(a, "Foobar7"));
+ 	l_free(a);
+@@ -134,7 +134,7 @@ static void test_truncate(const void *test_data)
+ 	l_string_append(str, "Foobar7");
+ 	assert(l_string_truncate(str, 3));
+ 	l_string_append_c(str, '4');
+-	a =3D l_string_free(str, false);
++	a =3D l_string_unwrap(str);
+ 	assert(a);
+ 	assert(!strcmp(a, "Foo4"));
+ 	l_free(a);
 -- =
 
 2.10.2
 
 
---===============2064688046030050568==--
+--===============8670831210148794691==--
 
