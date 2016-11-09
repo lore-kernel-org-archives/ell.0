@@ -1,36 +1,45 @@
-Content-Type: multipart/mixed; boundary="===============1266401662780423249=="
+Content-Type: multipart/mixed; boundary="===============8650917098153573335=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 3/5] timeout: Add millisecond timeout functions,
- remove nanosecond functions
-Date: Wed, 02 Nov 2016 17:23:58 -0500
-Message-ID: <581A677E.5050008@gmail.com>
-In-Reply-To: <20161102215048.19166-3-mathew.j.martineau@linux.intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/2] dbus: Fix disconnect watch with unique bus names
+Date: Wed, 09 Nov 2016 03:51:33 +0100
+Message-ID: <1478659894-7142-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1266401662780423249==
+--===============8650917098153573335==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Make the dbus-name-cache, service watches and disconnect watches work
+with unique bus names.  Problem spotted by Daniel Wagner and culprit
+pointed out by Denis Kenzior.
+---
+ ell/dbus-name-cache.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-On 11/02/2016 04:50 PM, Mat Martineau wrote:
-> Nanosecond resolution was overkill, but there are still common use cases
-> for millisecond timer resolution.
-> ---
->   ell/timeout.c | 109 +++++++++++++++++++++++++++++++++++++++++----------=
--------
->   ell/timeout.h |   8 ++---
->   2 files changed, 82 insertions(+), 35 deletions(-)
->
+diff --git a/ell/dbus-name-cache.c b/ell/dbus-name-cache.c
+index 0c2e08e..cb6a516 100644
+--- a/ell/dbus-name-cache.c
++++ b/ell/dbus-name-cache.c
+@@ -178,9 +178,6 @@ void _dbus_name_cache_notify(struct _dbus_name_cache *c=
+ache,
+ 	if (!cache)
+ 		return;
+ =
 
-Patches 3-5 applied, thanks.
+-	if (_dbus_parse_unique_name(name, NULL))
+-		return;
+-
+ 	entry =3D l_hashmap_lookup(cache->names, name);
+ =
 
-Regards,
--Denis
+ 	if (!entry)
+-- =
+
+2.7.4
 
 
---===============1266401662780423249==--
+--===============8650917098153573335==--
 
