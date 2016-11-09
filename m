@@ -1,146 +1,95 @@
-Content-Type: multipart/mixed; boundary="===============5683097048663241331=="
+Content-Type: multipart/mixed; boundary="===============2082467829928637904=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/2] kdbus: Notifications and get_name_owner for unique names
-Date: Wed, 09 Nov 2016 03:51:34 +0100
-Message-ID: <1478659894-7142-2-git-send-email-andrew.zaborowski@intel.com>
-In-Reply-To: <1478659894-7142-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: [PATCH] dbus: Don't send replies to messages with no reply flag
+Date: Wed, 09 Nov 2016 11:22:46 +0100
+Message-ID: <1478686966-15117-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5683097048663241331==
+--===============2082467829928637904==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This is untested and may be of little value anyway.
+Kdbus doesn't store the cookies for messages that have the no reply flag
+and throws error when a reply is sent with reply_cookie that it doesn't
+know.  It's not fatal, but we save some cycles by not sending the message
+with both dbus versions.
+
+We mark those replies with reply_serial =3D=3D 0, rather than setting a
+"discard" flag on the message, because the method call's serial is
+effectively an invalid reply_serial value.
 ---
- ell/dbus-kernel.c | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++=
-++--
- 1 file changed, 57 insertions(+), 2 deletions(-)
+ ell/dbus-message.c | 10 +++++++---
+ ell/dbus.c         | 10 ++++++++++
+ 2 files changed, 17 insertions(+), 3 deletions(-)
 
-diff --git a/ell/dbus-kernel.c b/ell/dbus-kernel.c
-index 2cd1d94..6544a87 100644
---- a/ell/dbus-kernel.c
-+++ b/ell/dbus-kernel.c
-@@ -596,6 +596,7 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
- 	int r;
- 	size_t min_size;
- 	const char *error;
-+	char unique_bus_name[128];
+diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+index 072a902..3b44fb8 100644
+--- a/ell/dbus-message.c
++++ b/ell/dbus-message.c
+@@ -326,7 +326,8 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_new_me=
+thod_return(
+ 					DBUS_MESSAGE_FLAG_NO_REPLY_EXPECTED,
+ 					hdr->version);
  =
 
- 	memset(&recv_cmd, 0, sizeof(recv_cmd));
+-	message->reply_serial =3D _dbus_message_get_serial(method_call);
++	if (!l_dbus_message_get_no_reply(method_call))
++		message->reply_serial =3D _dbus_message_get_serial(method_call);
  =
 
-@@ -638,6 +639,27 @@ int _dbus_kernel_recv(int fd, void *kdbus_pool,
- 						user_data);
- 			break;
+ 	sender =3D l_dbus_message_get_sender(method_call);
+ 	if (sender)
+@@ -369,11 +370,14 @@ LIB_EXPORT struct l_dbus_message *l_dbus_message_new_=
+error_valist(
+ {
+ 	char str[1024];
+ 	struct dbus_header *hdr =3D method_call->header;
++	uint32_t reply_serial =3D 0;
  =
 
-+		case KDBUS_ITEM_ID_ADD:
-+		case KDBUS_ITEM_ID_REMOVE:
-+			min_size =3D KDBUS_ITEM_SIZE(sizeof(item->id_change));
-+			if (msg->size < sizeof(*msg) + min_size ||
-+					item->size < min_size) {
-+				r =3D -EPROTONOSUPPORT;
-+				break;
-+			}
-+
-+			sprintf(unique_bus_name, ":1.%llu", item->id_change.id);
-+
-+			if (item->type =3D=3D KDBUS_ITEM_ID_ADD)
-+				name_owner_change_func(unique_bus_name,
-+							0, item->id_change.id,
-+							user_data);
-+			else
-+				name_owner_change_func(unique_bus_name,
-+							item->id_change.id, 0,
-+							user_data);
-+			break;
-+
- 		case KDBUS_ITEM_REPLY_TIMEOUT:
- 		case KDBUS_ITEM_REPLY_DEAD:
- 			if (item->type =3D=3D KDBUS_ITEM_REPLY_TIMEOUT)
-@@ -828,7 +850,9 @@ int _dbus_kernel_enable_name_owner_notify(int fd)
- 	struct {
- 		struct kdbus_cmd_match cmd;
- 		uint8_t param[KDBUS_ITEM_SIZE(
--				sizeof(struct kdbus_notify_name_change))];
-+				sizeof(struct kdbus_notify_name_change)) +
-+				KDBUS_ITEM_SIZE(
-+				sizeof(struct kdbus_notify_id_change))];
- 	} cmd_match;
- 	struct kdbus_item *item;
- 	int r;
-@@ -869,6 +893,28 @@ int _dbus_kernel_enable_name_owner_notify(int fd)
- 	if (r < 0)
- 		return -errno;
+ 	vsnprintf(str, sizeof(str), format, args);
  =
 
-+	memset(&cmd_match, 0, sizeof(cmd_match));
-+	item =3D cmd_match.cmd.items;
-+	item->type =3D KDBUS_ITEM_ID_ADD;
-+	item->size =3D KDBUS_ITEM_HEADER_SIZE + sizeof(item->id_change);
-+	item->id_change.id =3D KDBUS_MATCH_ID_ANY;
-+	cmd_match.cmd.size =3D sizeof(cmd_match.cmd) + item->size;
+-	return _dbus_message_new_error(hdr->version,
+-					_dbus_message_get_serial(method_call),
++	if (!l_dbus_message_get_no_reply(method_call))
++		reply_serial =3D _dbus_message_get_serial(method_call);
 +
-+	r =3D ioctl(fd, KDBUS_CMD_MATCH_ADD, &cmd_match);
-+	if (r < 0)
-+		return -errno;
-+
-+	memset(&cmd_match, 0, sizeof(cmd_match));
-+	item =3D cmd_match.cmd.items;
-+	item->type =3D KDBUS_ITEM_ID_REMOVE;
-+	item->size =3D KDBUS_ITEM_HEADER_SIZE + sizeof(item->id_change);
-+	item->id_change.id =3D KDBUS_MATCH_ID_ANY;
-+	cmd_match.cmd.size =3D sizeof(cmd_match.cmd) + item->size;
-+
-+	r =3D ioctl(fd, KDBUS_CMD_MATCH_ADD, &cmd_match);
-+	if (r < 0)
-+		return -errno;
-+
- 	return 0;
++	return _dbus_message_new_error(hdr->version, reply_serial,
+ 					l_dbus_message_get_sender(method_call),
+ 					name, str);
  }
- =
-
-@@ -881,10 +927,14 @@ uint64_t _dbus_kernel_get_name_owner(int fd, void *kd=
-bus_pool,
- 	struct kdbus_item *item;
- 	const char *entry_name;
- 	uint64_t owner_id =3D 0;
-+	bool is_unique;
-+	uint64_t uninitialized_var(id);
+diff --git a/ell/dbus.c b/ell/dbus.c
+index 236c35a..2c04ec9 100644
+--- a/ell/dbus.c
++++ b/ell/dbus.c
+@@ -313,6 +313,16 @@ static uint32_t send_message(struct l_dbus *dbus, bool=
+ priority,
+ 				void *user_data, l_dbus_destroy_func_t destroy)
+ {
+ 	struct message_callback *callback;
++	enum dbus_message_type type;
 +
-+	is_unique =3D _dbus_parse_unique_name(name, &id);
- =
-
- 	memset(&cmd, 0, sizeof(cmd));
- 	cmd.size =3D sizeof(cmd);
--	cmd.flags =3D KDBUS_LIST_NAMES;
-+	cmd.flags =3D is_unique ? KDBUS_LIST_UNIQUE : KDBUS_LIST_NAMES;
- =
-
- 	if (ioctl(fd, KDBUS_CMD_LIST, &cmd) < 0)
- 		return 0;
-@@ -906,6 +956,11 @@ uint64_t _dbus_kernel_get_name_owner(int fd, void *kdb=
-us_pool,
- 			owner_id =3D entry->id;
- 			break;
- 		}
++	type =3D _dbus_message_get_type(message);
 +
-+		if (is_unique && id =3D=3D entry->id) {
-+			owner_id =3D id;
-+			break;
-+		}
- 	}
++	if ((type =3D=3D DBUS_MESSAGE_TYPE_METHOD_RETURN ||
++				type =3D=3D DBUS_MESSAGE_TYPE_ERROR) &&
++			_dbus_message_get_reply_serial(message) =3D=3D 0) {
++		l_dbus_message_unref(message);
++		return 0;
++	}
  =
 
- 	memset(&cmd_free, 0, sizeof(cmd_free));
+ 	callback =3D l_new(struct message_callback, 1);
+ =
+
 -- =
 
 2.7.4
 
 
---===============5683097048663241331==--
+--===============2082467829928637904==--
 
