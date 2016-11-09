@@ -1,34 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============8093086647871763501=="
+Content-Type: multipart/mixed; boundary="===============6441843236386532629=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] dbus: Fix disconnect watch with unique bus names
-Date: Wed, 09 Nov 2016 14:14:25 -0600
-Message-ID: <582383A1.5020103@gmail.com>
-In-Reply-To: <1478659894-7142-1-git-send-email-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH] dbus: Don't send replies to messages with no reply flag
+Date: Wed, 09 Nov 2016 14:16:09 -0600
+Message-ID: <58238409.4060507@gmail.com>
+In-Reply-To: <1478686966-15117-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8093086647871763501==
+--===============6441843236386532629==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
-On 11/08/2016 08:51 PM, Andrew Zaborowski wrote:
-> Make the dbus-name-cache, service watches and disconnect watches work
-> with unique bus names.  Problem spotted by Daniel Wagner and culprit
-> pointed out by Denis Kenzior.
+On 11/09/2016 04:22 AM, Andrew Zaborowski wrote:
+> Kdbus doesn't store the cookies for messages that have the no reply flag
+> and throws error when a reply is sent with reply_cookie that it doesn't
+> know.  It's not fatal, but we save some cycles by not sending the message
+> with both dbus versions.
+>
+> We mark those replies with reply_serial =3D=3D 0, rather than setting a
+> "discard" flag on the message, because the method call's serial is
+> effectively an invalid reply_serial value.
 > ---
->   ell/dbus-name-cache.c | 3 ---
->   1 file changed, 3 deletions(-)
+>   ell/dbus-message.c | 10 +++++++---
+>   ell/dbus.c         | 10 ++++++++++
+>   2 files changed, 17 insertions(+), 3 deletions(-)
 >
 
-Both applied, thanks.
+Applied, thanks.
 
 Regards,
 -Denis
 
 
---===============8093086647871763501==--
+--===============6441843236386532629==--
 
