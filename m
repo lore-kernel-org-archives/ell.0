@@ -1,40 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============6441843236386532629=="
+Content-Type: multipart/mixed; boundary="===============1958245250725280287=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dbus: Don't send replies to messages with no reply flag
-Date: Wed, 09 Nov 2016 14:16:09 -0600
-Message-ID: <58238409.4060507@gmail.com>
-In-Reply-To: <1478686966-15117-1-git-send-email-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/2] tls: Fix CA certificate presence check
+Date: Mon, 14 Nov 2016 21:16:31 +0100
+Message-ID: <1479154592-8116-1-git-send-email-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6441843236386532629==
+--===============1958245250725280287==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+---
+ ell/tls.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 11/09/2016 04:22 AM, Andrew Zaborowski wrote:
-> Kdbus doesn't store the cookies for messages that have the no reply flag
-> and throws error when a reply is sent with reply_cookie that it doesn't
-> know.  It's not fatal, but we save some cycles by not sending the message
-> with both dbus versions.
->
-> We mark those replies with reply_serial =3D=3D 0, rather than setting a
-> "discard" flag on the message, because the method call's serial is
-> effectively an invalid reply_serial value.
-> ---
->   ell/dbus-message.c | 10 +++++++---
->   ell/dbus.c         | 10 ++++++++++
->   2 files changed, 17 insertions(+), 3 deletions(-)
->
+diff --git a/ell/tls.c b/ell/tls.c
+index 3879b50..388efa7 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -1474,7 +1474,7 @@ static void tls_handle_certificate(struct l_tls *tls,
+ 	 * against our CA if we have any.
+ 	 */
+ =
 
-Applied, thanks.
+-	if (ca_cert) {
++	if (tls->ca_cert_path) {
+ 		ca_cert =3D tls_cert_load_file(tls->ca_cert_path);
+ 		if (!ca_cert) {
+ 			tls_disconnect(tls, TLS_ALERT_INTERNAL_ERROR,
+-- =
 
-Regards,
--Denis
+2.7.4
 
 
---===============6441843236386532629==--
+--===============1958245250725280287==--
 
