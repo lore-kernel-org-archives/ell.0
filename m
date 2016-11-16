@@ -1,41 +1,47 @@
-Content-Type: multipart/mixed; boundary="===============6988877248981964091=="
+Content-Type: multipart/mixed; boundary="===============4676829650790382726=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 2/2] tls: Don't fail if root CA present in received chain
-Date: Mon, 14 Nov 2016 15:08:18 -0600
-Message-ID: <582A27C2.2000609@gmail.com>
-In-Reply-To: <1479154592-8116-2-git-send-email-andrew.zaborowski@intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: ell-key-crypto kernel branch updated for v4.9
+Date: Wed, 16 Nov 2016 15:11:24 -0800
+Message-ID: <alpine.OSX.2.20.1611161458340.67352@mjmartin-mac01.local>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6988877248981964091==
+--===============4676829650790382726==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
 
-On 11/14/2016 02:16 PM, Andrew Zaborowski wrote:
-> The certificate chain from the Server Certificate message may be a
-> complete chain from server's certificate to root CA.  l_keyring_link
-> would fail if we tried to add the self-signed root CA to the ring,
-> this seems to be unrelated to that certificate being the same as the
-> one in the trusted ring.
->
-> In the early userspace tls_cert_verify_certchain implementation the
-> verification would succeed if any of the certificates in the chain
-> was trusted by the supplied CA + the trust chain was correct, but the
-> RFC implies this must be the root CA (see the comment in the code).
-> ---
->   ell/tls.c | 21 +++++++++++++++++----
->   1 file changed, 17 insertions(+), 4 deletions(-)
->
+Hello -
 
-Applied, thanks.
+There's an updated ell-key-crypto branch on git.kernel.org:
 
-Regards,
--Denis
+https://git.kernel.org/cgit/linux/kernel/git/martineau/linux.git/
 
+This is based on v4.9-rc5 of the kernel and includes:
 
---===============6988877248981964091==--
+    * My keyctl restricted keyring patch set
+    * linux-fs/keys-blacklist (as a basis for upstreaming)
+    * linux-fs/keys-next (for keyctl crypto ops)
+    * A revert commit for an AF_ALG hash commit that caused a kernel crash =
+
+when ELL's unit/test-checksum was run
+
+The nl80211 patches I had been carrying for iwd are part of v4.9.
+
+The previous v4.8 key crypto kernel is tagged as ell-key-crypto-48
+
+Relative to my Fedora 24 kernel 4.8 config, the following commands will
+enable the required config options:
+
+$ cp /boot/config-<recent kernel-version> .config
+$ scripts/config --enable CONFIG_PKCS8_PRIVATE_KEY_PARSER
+$ make olddefconfig
+
+--
+Mat Martineau
+Intel OTC
+
+--===============4676829650790382726==--
 
