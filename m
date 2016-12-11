@@ -1,174 +1,67 @@
-Content-Type: multipart/mixed; boundary="===============2604917585352978305=="
+Content-Type: multipart/mixed; boundary="===============3274465405723231607=="
 MIME-Version: 1.0
 From: Markus Ongyerth <ongy@ongy.net>
-Subject: [PATCH v2 1/2] string: Add l_utf8_get_codepoint to string
-Date: Sun, 11 Dec 2016 19:21:29 +0100
-Message-ID: <20161211182130.5799-1-ongy@ongy.net>
+Subject: [PATCH v2 2/2] unit: Add tests for l_utf8_get_codepoint
+Date: Sun, 11 Dec 2016 19:21:30 +0100
+Message-ID: <20161211182130.5799-2-ongy@ongy.net>
+In-Reply-To: <20161211182130.5799-1-ongy@ongy.net>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2604917585352978305==
+--===============3274465405723231607==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 From: Markus Ongyerth <ell@ongy.net>
 
-Add a function to get an unicode codepoint from a utf-8 string.
-This can be used to convert strings to other representations.
-Also rewrite the l_utf8_validdate to use the new function.
 ---
- ell/string.c | 85 +++++++++++++++++++++++++++++++++++++++-----------------=
-----
- ell/string.h |  2 ++
- 2 files changed, 57 insertions(+), 30 deletions(-)
+ unit/test-utf8.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
 
-diff --git a/ell/string.c b/ell/string.c
-index 6c443d0..ce165aa 100644
---- a/ell/string.c
-+++ b/ell/string.c
-@@ -345,6 +345,57 @@ static inline bool __attribute__ ((always_inline))
+diff --git a/unit/test-utf8.c b/unit/test-utf8.c
+index 55b0d72..7c641bc 100644
+--- a/unit/test-utf8.c
++++ b/unit/test-utf8.c
+@@ -815,6 +815,20 @@ static struct utf8_validate_test utf8_validate_test79 =
+=3D {
+ 	.ucs4_len =3D 5,
+ };
+ =
+
++static void test_utf8_codepoint(const struct utf8_validate_test *test)
++{
++	unsigned int i, pos;
++	int ret;
++	wchar_t val;
++
++	for (i =3D 0, pos =3D 0; i < test->ucs4_len; ++i) {
++		ret =3D l_utf8_get_codepoint(test->utf8 + pos,
++						test->utf8_len - pos, &val);
++		assert(ret > 0 && val =3D=3D test->ucs4[i]);
++		pos +=3D ret;
++	}
++}
++
+ static void test_utf8_validate(const void *test_data)
+ {
+ 	const struct utf8_validate_test *test =3D test_data;
+@@ -827,6 +841,10 @@ static void test_utf8_validate(const void *test_data)
+ 		assert(res =3D=3D true);
+ 	else
+ 		assert(res =3D=3D false);
++
++	if (test->type =3D=3D UTF8_VALIDATE_TYPE_VALID && test->ucs4_len) {
++		test_utf8_codepoint(test);
++	}
  }
  =
 
- /**
-+ * l_utf8_get_codepoint
-+ * @str: a pointer to codepoint data
-+ * @len: maximum bytes to read
-+ * @cp: destination for codepoint
-+ *
-+ * Returns: number of bytes read, or -1 for invalid coddepoint
-+ **/
-+LIB_EXPORT int l_utf8_get_codepoint(const char *str, size_t len, wchar_t *=
-cp)
-+{
-+	static const int mins[3] =3D { 1 << 7, 1 << 11, 1 << 16 };
-+	unsigned int expect_bytes;
-+	wchar_t val;
-+	size_t i;
-+
-+	if (str[0] > 0) {
-+		*cp =3D str[0];
-+		return 1;
-+	}
-+
-+	expect_bytes =3D __builtin_clz(~(str[0] << 24));
-+
-+	if (expect_bytes < 2 || expect_bytes > 4)
-+		goto error;
-+
-+	if (expect_bytes > len)
-+		goto error;
-+
-+	val =3D str[0] & (0xff >> (expect_bytes + 1));
-+
-+	for (i =3D 1; i < expect_bytes; i++) {
-+		if ((str[i] & 0xc0) =3D=3D 0)
-+			goto error;
-+
-+		val <<=3D 6;
-+		val |=3D str[i] & 0x3f;
-+	}
-+
-+	if (val < mins[expect_bytes - 2])
-+		goto error;
-+
-+	if (valid_unicode(val) =3D=3D false)
-+		goto error;
-+
-+	*cp =3D val;
-+	return expect_bytes;
-+
-+error:
-+	return -1;
-+}
-+
-+/**
-  * l_utf8_validate:
-  * @str: a pointer to character data
-  * @len: max bytes to validate
-@@ -359,43 +410,17 @@ static inline bool __attribute__ ((always_inline))
-  **/
- LIB_EXPORT bool l_utf8_validate(const char *str, size_t len, const char **=
-end)
- {
--	static const int mins[3] =3D { 1 << 7, 1 << 11, 1 << 16 };
- 	size_t pos =3D 0;
--	unsigned int expect_bytes;
-+	int ret;
- 	wchar_t val;
--	size_t i;
- =
-
- 	while (pos < len && str[pos]) {
--		if (str[pos] > 0) {
--			pos +=3D 1;
--			continue;
--		}
--
--		expect_bytes =3D __builtin_clz(~(str[pos] << 24));
--
--		if (expect_bytes < 2 || expect_bytes > 4)
--			goto error;
--
--		if (pos + expect_bytes > len)
--			goto error;
--
--		val =3D str[pos] & (0xff >> (expect_bytes + 1));
--
--		for (i =3D pos + 1; i < pos + expect_bytes; i++) {
--			if ((str[i] & 0xc0) =3D=3D 0)
--				goto error;
--
--			val <<=3D 6;
--			val |=3D str[i] & 0x3f;
--		}
--
--		if (val < mins[expect_bytes - 2])
--			goto error;
-+		ret =3D l_utf8_get_codepoint(str + pos, len - pos, &val);
- =
-
--		if (valid_unicode(val) =3D=3D false)
-+		if (ret < 0)
- 			goto error;
- =
-
--		pos +=3D expect_bytes;
-+		pos +=3D ret;
- 	}
- =
-
- error:
-diff --git a/ell/string.h b/ell/string.h
-index 6549a05..09e6f2d 100644
---- a/ell/string.h
-+++ b/ell/string.h
-@@ -25,6 +25,7 @@
- =
-
- #include <stdbool.h>
- #include <stdarg.h>
-+#include <wchar.h>
- =
-
- #ifdef __cplusplus
- extern "C" {
-@@ -117,6 +118,7 @@ struct l_string *l_string_truncate(struct l_string *str=
-ing, size_t new_size);
- unsigned int l_string_length(struct l_string *string);
- =
-
- bool l_utf8_validate(const char *src, size_t len, const char **end);
-+int l_utf8_get_codepoint(const char *str, size_t len, wchar_t *cp);
- size_t l_utf8_strlen(const char *src);
- =
-
- #ifdef __cplusplus
+ struct utf8_strlen_test {
 -- =
 
 2.10.2
 
 
---===============2604917585352978305==--
+--===============3274465405723231607==--
 
