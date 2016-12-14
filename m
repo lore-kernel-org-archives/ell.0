@@ -1,33 +1,45 @@
-Content-Type: multipart/mixed; boundary="===============1183155647472395394=="
+Content-Type: multipart/mixed; boundary="===============3228244433367175073=="
 MIME-Version: 1.0
 From: ell@ongy.net
-Subject: Build ell with clang
-Date: Wed, 14 Dec 2016 23:51:17 +0100
-Message-ID: <20161214225121.9439-1-ell@ongy.net>
+Subject: [PATCH 1/4] autotools: Only used -Wcast-align with gcc
+Date: Wed, 14 Dec 2016 23:51:18 +0100
+Message-ID: <20161214225121.9439-2-ell@ongy.net>
+In-Reply-To: <20161214225121.9439-1-ell@ongy.net>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1183155647472395394==
+--===============3228244433367175073==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hello,
+From: Markus Ongyerth <ongy@ongy.net>
 
-the following patchseries allows ell to be build with clang.
-For clang -Wcast-align has to be removed. I asked about this on
-#llvm(a)irc.oftc.net and was told, this is the best option.
-They also told me that gcc only actually produces a warning, if the
-compilation target does not support unaligned access at all, so for x86
-the option does nothing.
-It may well be, that gcc will error out as well, if such an architecture
-were to be targeted.
-It may be better to remove -Wcast-align completely instead of making it
-gcc specific, as this patch does.
+clang can currently not compile NLMSG_NEXT with -Wcast-align.
+I asked about this in #llvm on irc.oftc.net, where I was told the best
+solution is to disable -Wcast-align for now.
+---
+ acinclude.m4 | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Regards,
-Markus
+diff --git a/acinclude.m4 b/acinclude.m4
+index 8aab4ee..b1dbabe 100644
+--- a/acinclude.m4
++++ b/acinclude.m4
+@@ -58,6 +58,8 @@ AC_DEFUN([COMPILER_FLAGS], [
+ 		CFLAGS+=3D" -Wdeclaration-after-statement"
+ 		CFLAGS+=3D" -Wmissing-declarations"
+ 		CFLAGS+=3D" -Wredundant-decls"
+-		CFLAGS+=3D" -Wcast-align"
++		if ( $CC -v 2>/dev/null | grep "gcc version" ); then
++			CFLAGS+=3D" -Wcast-align"
++		fi
+ 	fi
+ ])
+-- =
+
+2.10.2
 
 
---===============1183155647472395394==--
+--===============3228244433367175073==--
 
