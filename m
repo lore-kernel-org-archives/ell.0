@@ -1,45 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============4920291259261631238=="
+Content-Type: multipart/mixed; boundary="===============8437231221460943893=="
 MIME-Version: 1.0
-From: ell@ongy.net
-Subject: [PATCH 3/4] dbus: Add missing dereference on assign
-Date: Wed, 14 Dec 2016 23:51:20 +0100
-Message-ID: <20161214225121.9439-4-ell@ongy.net>
-In-Reply-To: <20161214225121.9439-1-ell@ongy.net>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/4] autotools: Only used -Wcast-align with gcc
+Date: Wed, 14 Dec 2016 23:21:13 -0600
+Message-ID: <3a09ba78-a483-fb2d-9b01-0d0f7162c57b@gmail.com>
+In-Reply-To: <20161214225121.9439-2-ell@ongy.net>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4920291259261631238==
+--===============8437231221460943893==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-From: Markus Ongyerth <ongy@ongy.net>
+Hi Markus,
 
----
- ell/dbus.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On 12/14/2016 04:51 PM, ell(a)ongy.net wrote:
+> From: Markus Ongyerth <ongy@ongy.net>
+>
+> clang can currently not compile NLMSG_NEXT with -Wcast-align.
+> I asked about this in #llvm on irc.oftc.net, where I was told the best
+> solution is to disable -Wcast-align for now.
+> ---
+>  acinclude.m4 | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 2c04ec9..5318794 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -480,7 +480,7 @@ static bool auth_read_handler(struct l_io *io, void *us=
-er_data)
- =
+All four applied. Thanks!
 
- 	l_util_hexdump(true, ptr, len, dbus->debug_handler, dbus->debug_data);
- =
+Regards,
+-Denis
 
--	end =3D '\0';
-+	*end =3D '\0';
- =
-
- 	switch (classic->auth_state) {
- 	case WAITING_FOR_OK:
--- =
-
-2.10.2
-
-
---===============4920291259261631238==--
+--===============8437231221460943893==--
 
