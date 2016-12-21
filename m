@@ -1,63 +1,97 @@
-Content-Type: multipart/mixed; boundary="===============4876060134762110202=="
+Content-Type: multipart/mixed; boundary="===============8662108541777182205=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] genl: Add a genl_family getter for genl
-Date: Tue, 20 Dec 2016 17:37:06 -0500
-Message-ID: <20161220223706.30876-1-andrew.zaborowski@intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 1/3] cipher: Remove more public key vestiges from cipher
+ internals
+Date: Tue, 20 Dec 2016 17:40:33 -0800
+Message-ID: <20161221014035.22874-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4876060134762110202==
+--===============8662108541777182205==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add l_genl_family_get_genl function (redundant but accurate name)
 ---
- ell/genl.c | 8 ++++++++
- ell/genl.h | 1 +
- 2 files changed, 9 insertions(+)
+ ell/cipher.c | 23 ++++-------------------
+ 1 file changed, 4 insertions(+), 19 deletions(-)
 
-diff --git a/ell/genl.c b/ell/genl.c
-index c522ae7..cff3a9a 100644
---- a/ell/genl.c
-+++ b/ell/genl.c
-@@ -1173,6 +1173,14 @@ LIB_EXPORT uint32_t l_genl_family_get_version(struct=
- l_genl_family *family)
- 	return family->version;
- }
+diff --git a/ell/cipher.c b/ell/cipher.c
+index 139331e..ac5248a 100644
+--- a/ell/cipher.c
++++ b/ell/cipher.c
+@@ -77,17 +77,6 @@ struct af_alg_iv {
+ #define SOL_ALG 279
+ #endif
  =
 
-+LIB_EXPORT struct l_genl *l_genl_family_get_genl(struct l_genl_family *fam=
-ily)
-+{
-+	if (unlikely(!family))
-+		return 0;
-+
-+	return family->genl;
-+}
-+
- static bool match_op_id(const void *a, const void *b)
+-#ifndef ALG_OP_SIGN
+-#define ALG_OP_SIGN	2
+-#endif
+-#ifndef ALG_OP_VERIFY
+-#define ALG_OP_VERIFY	3
+-#endif
+-
+-#ifndef ALG_SET_PUBKEY
+-#define ALG_SET_PUBKEY	6
+-#endif
+-
+ #define is_valid_type(type)  ((type) <=3D L_CIPHER_DES3_EDE_CBC)
+ =
+
+ struct l_cipher {
+@@ -97,11 +86,10 @@ struct l_cipher {
+ };
+ =
+
+ static int create_alg(const char *alg_type, const char *alg_name,
+-			const void *key, size_t key_length, bool public)
++			const void *key, size_t key_length)
  {
- 	const struct genl_op *op =3D a;
-diff --git a/ell/genl.h b/ell/genl.h
-index fe188d9..8597c8f 100644
---- a/ell/genl.h
-+++ b/ell/genl.h
-@@ -104,6 +104,7 @@ bool l_genl_set_unicast_handler(struct l_genl *genl,
- 						l_genl_destroy_func_t destroy);
+ 	struct sockaddr_alg salg;
+ 	int sk;
+-	int keyopt;
+ 	int ret;
  =
 
- uint32_t l_genl_family_get_version(struct l_genl_family *family);
-+struct l_genl *l_genl_family_get_genl(struct l_genl_family *family);
+ 	sk =3D socket(PF_ALG, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+@@ -118,8 +106,7 @@ static int create_alg(const char *alg_type, const char =
+*alg_name,
+ 		return -1;
+ 	}
  =
 
- bool l_genl_family_can_send(struct l_genl_family *family, uint8_t cmd);
- bool l_genl_family_can_dump(struct l_genl_family *family, uint8_t cmd);
+-	keyopt =3D public ? ALG_SET_PUBKEY : ALG_SET_KEY;
+-	if (setsockopt(sk, SOL_ALG, keyopt, key, key_length) < 0) {
++	if (setsockopt(sk, SOL_ALG, ALG_SET_KEY, key, key_length) < 0) {
+ 		close(sk);
+ 		return -1;
+ 	}
+@@ -164,13 +151,11 @@ LIB_EXPORT struct l_cipher *l_cipher_new(enum l_ciphe=
+r_type type,
+ 		break;
+ 	}
+ =
+
+-	cipher->encrypt_sk =3D create_alg("skcipher", alg_name, key, key_length,
+-					false);
++	cipher->encrypt_sk =3D create_alg("skcipher", alg_name, key, key_length);
+ 	if (cipher->encrypt_sk < 0)
+ 		goto error_free;
+ =
+
+-	cipher->decrypt_sk =3D create_alg("skcipher", alg_name, key, key_length,
+-					false);
++	cipher->decrypt_sk =3D create_alg("skcipher", alg_name, key, key_length);
+ 	if (cipher->decrypt_sk < 0)
+ 		goto error_close;
+ =
+
 -- =
 
-2.9.3
+2.11.0
 
 
---===============4876060134762110202==--
+--===============8662108541777182205==--
 
