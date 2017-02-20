@@ -1,29 +1,56 @@
-Content-Type: multipart/mixed; boundary="===============2159287913589793139=="
+Content-Type: multipart/mixed; boundary="===============5695887494834871123=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: AEAD ciphers work with kernel v4.9
-Date: Tue, 17 Jan 2017 16:22:20 -0800
-Message-ID: <alpine.OSX.2.20.1701171614020.3252@mjmartin-mac01.local>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/3] dbus: Default empty signature for method return messages
+Date: Tue, 21 Feb 2017 00:30:34 +0100
+Message-ID: <20170220233036.8741-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2159287913589793139==
+--===============5695887494834871123==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Allow Dbus method or setter handlers to return the result of a
+l_dbus_message_new_method_return call directly without calling
+l_dbus_message_set_arguments on the result.  This will result in an
+empty signature message being built inside l_dbus_send.
 
-In the commit message for the AEAD cipher API, I noted that kernel v4.10 =
+Note l_dbus_send now modifies the message being passed to it.
 
-or later were needed. The required kernel patches made it in to v4.9, so =
+Instead of checking if the signature returned by
+l_dbus_message_get_signature is NULL we could also just call
+l_dbus_message_builder_new and write an empty message.
+l_dbus_message_builder_new would return NULL if message->sealed was
+true.
+---
+ ell/dbus.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-test-cipher is passing. I checked using Fedora's v4.9.3 kernel which =
+diff --git a/ell/dbus.c b/ell/dbus.c
+index 5318794..ddc51aa 100644
+--- a/ell/dbus.c
++++ b/ell/dbus.c
+@@ -324,6 +324,11 @@ static uint32_t send_message(struct l_dbus *dbus, bool=
+ priority,
+ 		return 0;
+ 	}
+ =
 
-doesn't have any AEAD-related changes relative to v4.9.
++	/* Default empty signature for method return messages */
++	if (type =3D=3D DBUS_MESSAGE_TYPE_METHOD_RETURN &&
++			!l_dbus_message_get_signature(message))
++		l_dbus_message_set_arguments(message, "");
++
+ 	callback =3D l_new(struct message_callback, 1);
+ =
 
---
-Mat Martineau
-Intel OTC
+ 	callback->serial =3D dbus->next_serial++;
+-- =
 
---===============2159287913589793139==--
+2.9.3
+
+
+--===============5695887494834871123==--
 
