@@ -1,44 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============5779207295662424746=="
+Content-Type: multipart/mixed; boundary="===============7310631032847227089=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/3] dbus: Default empty signature for method return
- messages
-Date: Tue, 21 Feb 2017 10:55:31 -0600
-Message-ID: <325ac145-48e2-c23a-5874-2d8afc1d8486@gmail.com>
-In-Reply-To: <20170220233036.8741-1-andrew.zaborowski@intel.com>
+From: Ossama Othman <ossama.othman@intel.com>
+Subject: [PATCH 0/2] Make some ELL headers completely self-contained.
+Date: Wed, 08 Mar 2017 12:29:23 -0800
+Message-ID: <1489004965-19931-1-git-send-email-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5779207295662424746==
+--===============7310631032847227089==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+These patches address some compile-time errors encountered when
+attempting to use functions and macros declared in installed ELL
+headers.  The headers in question were not completely self-contained.
 
-On 02/20/2017 05:30 PM, Andrew Zaborowski wrote:
-> Allow Dbus method or setter handlers to return the result of a
-> l_dbus_message_new_method_return call directly without calling
-> l_dbus_message_set_arguments on the result.  This will result in an
-> empty signature message being built inside l_dbus_send.
->
-> Note l_dbus_send now modifies the message being passed to it.
->
-> Instead of checking if the signature returned by
-> l_dbus_message_get_signature is NULL we could also just call
-> l_dbus_message_builder_new and write an empty message.
-> l_dbus_message_builder_new would return NULL if message->sealed was
-> true.
-> ---
->  ell/dbus.c | 5 +++++
->  1 file changed, 5 insertions(+)
->
+Ossama Othman (2):
+  main: Fixed missing uint32_t typedef error
+  log: Fixed missing L_STRINGIFY macro definition
 
-All three applied, thanks.
+ ell/log.c  | 1 -
+ ell/log.h  | 2 ++
+ ell/main.h | 1 +
+ 3 files changed, 3 insertions(+), 1 deletion(-)
 
-Regards,
--Denis
+-- =
+
+2.7.4
 
 
---===============5779207295662424746==--
+--===============7310631032847227089==--
 
