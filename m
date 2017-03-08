@@ -1,59 +1,74 @@
-Content-Type: multipart/mixed; boundary="===============1649256229360255843=="
+Content-Type: multipart/mixed; boundary="===============9125582522128900235=="
 MIME-Version: 1.0
-From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH 2/2] log: Fixed missing L_STRINGIFY macro definition
-Date: Wed, 08 Mar 2017 12:29:25 -0800
-Message-ID: <1489004965-19931-3-git-send-email-ossama.othman@intel.com>
-In-Reply-To: <1489004965-19931-1-git-send-email-ossama.othman@intel.com>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH] dbus: Add message variable argument setter
+Date: Wed, 08 Mar 2017 16:20:45 -0500
+Message-ID: <20170308212045.15402-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1649256229360255843==
+--===============9125582522128900235==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The l_log() macro in the <ell/log.h> header uses the L_STRINGIFY
-macro defined in <ell/util.h> but doesn't include that header.  That
-triggered a compile-time error in some cases where <ell/util.h> was
-not indirectly pulled in before <ell/log.h>.
 ---
- ell/log.c | 1 -
- ell/log.h | 2 ++
- 2 files changed, 2 insertions(+), 1 deletion(-)
+ ell/dbus-message.c | 17 +++++++++++++++++
+ ell/dbus.h         |  2 ++
+ 2 files changed, 19 insertions(+)
 
-diff --git a/ell/log.c b/ell/log.c
-index 8891d0a..e6682cf 100644
---- a/ell/log.c
-+++ b/ell/log.c
-@@ -34,7 +34,6 @@
- #include <sys/socket.h>
- #include <sys/un.h>
+diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+index ef5dd22..d86daef 100644
+--- a/ell/dbus-message.c
++++ b/ell/dbus-message.c
+@@ -1414,6 +1414,23 @@ LIB_EXPORT bool l_dbus_message_set_arguments(struct =
+l_dbus_message *message,
+ 	return result;
+ }
  =
 
--#include "util.h"
- #include "log.h"
- #include "private.h"
- =
-
-diff --git a/ell/log.h b/ell/log.h
-index 670cef2..916f08b 100644
---- a/ell/log.h
-+++ b/ell/log.h
-@@ -26,6 +26,8 @@
- #include <stdarg.h>
- #include <stdbool.h>
- =
-
-+#include <ell/util.h>
++LIB_EXPORT bool l_dbus_message_set_varguments(struct l_dbus_message *messa=
+ge,
++						const char *signature,
++						va_list args)
++{
++	bool result;
 +
- #ifdef __cplusplus
- extern "C" {
- #endif
++	if (unlikely(!message))
++		return false;
++
++	if (!signature)
++		return true;
++
++	result =3D append_arguments(message, signature, args);
++
++	return result;
++}
++
+ LIB_EXPORT const char *l_dbus_message_get_path(struct l_dbus_message *mess=
+age)
+ {
+ 	if (unlikely(!message))
+diff --git a/ell/dbus.h b/ell/dbus.h
+index b096ed3..08e6e80 100644
+--- a/ell/dbus.h
++++ b/ell/dbus.h
+@@ -174,6 +174,8 @@ bool l_dbus_message_iter_get_variant(struct l_dbus_mess=
+age_iter *iter,
+ =
+
+ bool l_dbus_message_set_arguments(struct l_dbus_message *message,
+ 						const char *signature, ...);
++bool l_dbus_message_set_varguments(struct l_dbus_message *message,
++					const char *signature, va_list args);
+ =
+
+ struct l_dbus_message_builder *l_dbus_message_builder_new(
+ 						struct l_dbus_message *message);
 -- =
 
-2.7.4
+2.9.3
 
 
---===============1649256229360255843==--
+--===============9125582522128900235==--
 
