@@ -1,74 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============9125582522128900235=="
+Content-Type: multipart/mixed; boundary="===============1484670661435711572=="
 MIME-Version: 1.0
-From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH] dbus: Add message variable argument setter
-Date: Wed, 08 Mar 2017 16:20:45 -0500
-Message-ID: <20170308212045.15402-1-tim.a.kourt@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 0/2] Make some ELL headers completely self-contained.
+Date: Wed, 08 Mar 2017 15:34:57 -0600
+Message-ID: <6a4f0746-d693-0495-bc51-70e07529dab8@gmail.com>
+In-Reply-To: <1489004965-19931-1-git-send-email-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============9125582522128900235==
+--===============1484670661435711572==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/dbus-message.c | 17 +++++++++++++++++
- ell/dbus.h         |  2 ++
- 2 files changed, 19 insertions(+)
+Hi Ossama,
 
-diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-index ef5dd22..d86daef 100644
---- a/ell/dbus-message.c
-+++ b/ell/dbus-message.c
-@@ -1414,6 +1414,23 @@ LIB_EXPORT bool l_dbus_message_set_arguments(struct =
-l_dbus_message *message,
- 	return result;
- }
- =
+On 03/08/2017 02:29 PM, Ossama Othman wrote:
+> These patches address some compile-time errors encountered when
+> attempting to use functions and macros declared in installed ELL
+> headers.  The headers in question were not completely self-contained.
+>
+> Ossama Othman (2):
+>   main: Fixed missing uint32_t typedef error
+>   log: Fixed missing L_STRINGIFY macro definition
+>
 
-+LIB_EXPORT bool l_dbus_message_set_varguments(struct l_dbus_message *messa=
-ge,
-+						const char *signature,
-+						va_list args)
-+{
-+	bool result;
-+
-+	if (unlikely(!message))
-+		return false;
-+
-+	if (!signature)
-+		return true;
-+
-+	result =3D append_arguments(message, signature, args);
-+
-+	return result;
-+}
-+
- LIB_EXPORT const char *l_dbus_message_get_path(struct l_dbus_message *mess=
-age)
- {
- 	if (unlikely(!message))
-diff --git a/ell/dbus.h b/ell/dbus.h
-index b096ed3..08e6e80 100644
---- a/ell/dbus.h
-+++ b/ell/dbus.h
-@@ -174,6 +174,8 @@ bool l_dbus_message_iter_get_variant(struct l_dbus_mess=
-age_iter *iter,
- =
+Both applied.  Though I wonder why you're not including ell/ell.h and =
 
- bool l_dbus_message_set_arguments(struct l_dbus_message *message,
- 						const char *signature, ...);
-+bool l_dbus_message_set_varguments(struct l_dbus_message *message,
-+					const char *signature, va_list args);
- =
+including these headers individually.
 
- struct l_dbus_message_builder *l_dbus_message_builder_new(
- 						struct l_dbus_message *message);
--- =
-
-2.9.3
+Regards,
+-Denis
 
 
---===============9125582522128900235==--
+--===============1484670661435711572==--
 
