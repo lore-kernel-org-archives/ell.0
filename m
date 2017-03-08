@@ -1,37 +1,49 @@
-Content-Type: multipart/mixed; boundary="===============1484670661435711572=="
+Content-Type: multipart/mixed; boundary="===============3336299535363964931=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 0/2] Make some ELL headers completely self-contained.
-Date: Wed, 08 Mar 2017 15:34:57 -0600
-Message-ID: <6a4f0746-d693-0495-bc51-70e07529dab8@gmail.com>
-In-Reply-To: <1489004965-19931-1-git-send-email-ossama.othman@intel.com>
+Subject: Re: [PATCH] dbus: Add message variable argument setter
+Date: Wed, 08 Mar 2017 15:45:20 -0600
+Message-ID: <0818566b-4c9b-2f1e-991c-19f800634bd7@gmail.com>
+In-Reply-To: <20170308212045.15402-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1484670661435711572==
+--===============3336299535363964931==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+Hi Tim,
 
-On 03/08/2017 02:29 PM, Ossama Othman wrote:
-> These patches address some compile-time errors encountered when
-> attempting to use functions and macros declared in installed ELL
-> headers.  The headers in question were not completely self-contained.
+On 03/08/2017 03:20 PM, Tim Kourt wrote:
+> ---
+>  ell/dbus-message.c | 17 +++++++++++++++++
+>  ell/dbus.h         |  2 ++
+>  2 files changed, 19 insertions(+)
+
+<snip>
+
+> @@ -174,6 +174,8 @@ bool l_dbus_message_iter_get_variant(struct l_dbus_me=
+ssage_iter *iter,
 >
-> Ossama Othman (2):
->   main: Fixed missing uint32_t typedef error
->   log: Fixed missing L_STRINGIFY macro definition
+>  bool l_dbus_message_set_arguments(struct l_dbus_message *message,
+>  						const char *signature, ...);
+> +bool l_dbus_message_set_varguments(struct l_dbus_message *message,
+> +					const char *signature, va_list args);
 >
 
-Both applied.  Though I wonder why you're not including ell/ell.h and =
+ell generally uses _valist suffix for this.  e.g.
+l_dbus_message_new_error_valist
+l_hwdb_lookup_valist
 
-including these headers individually.
+The v prefix is only used for vprintf versions.
+
+>  struct l_dbus_message_builder *l_dbus_message_builder_new(
+>  						struct l_dbus_message *message);
+>
 
 Regards,
 -Denis
 
-
---===============1484670661435711572==--
+--===============3336299535363964931==--
 
