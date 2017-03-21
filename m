@@ -1,174 +1,109 @@
-Content-Type: multipart/mixed; boundary="===============5469447870126103990=="
+Content-Type: multipart/mixed; boundary="===============8225203611825011084=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: Othman, Ossama <ossama.othman@intel.com>
 Subject: Re: [PATCH v3] unit: Added generic netlink family unit test
-Date: Tue, 21 Mar 2017 15:42:05 -0500
-Message-ID: <76176f19-79d0-3a54-c723-feae1a6c4565@gmail.com>
-In-Reply-To: <1490126229-10894-1-git-send-email-ossama.othman@intel.com>
+Date: Tue, 21 Mar 2017 13:46:56 -0700
+Message-ID: <CAPyD+=DgS-45GB1vR0qkbm8jBo7Y3UBV2Vi_30Mn9S11+uea2w@mail.gmail.com>
+In-Reply-To: <76176f19-79d0-3a54-c723-feae1a6c4565@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5469447870126103990==
+--===============8225203611825011084==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+Hi Denis,
 
-On 03/21/2017 02:57 PM, Ossama Othman wrote:
-> ---
->  Makefile.am             |  3 ++
->  unit/test-genl-family.c | 99 +++++++++++++++++++++++++++++++++++++++++++=
-++++++
+On Tue, Mar 21, 2017 at 1:42 PM, Denis Kenzior <denkenz@gmail.com> wrote:
+>
+> On 03/21/2017 02:57 PM, Ossama Othman wrote:
+>
+>> ---
+>>  Makefile.am             |  3 ++
+>>  unit/test-genl-family.c | 99 ++++++++++++++++++++++++++++++
+>> +++++++++++++++++++
+>>
+>
+> Do you want to add this test to unit/test-genl instead?  That test is a
+> no-op at this point anyway.
 
-Do you want to add this test to unit/test-genl instead?  That test is a =
 
-no-op at this point anyway.
+Okay, that's fine with me.
 
->  2 files changed, 102 insertions(+)
->  create mode 100644 unit/test-genl-family.c
->
-> diff --git a/Makefile.am b/Makefile.am
-> index d2e33de..39ebe66 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -119,6 +119,7 @@ unit_tests =3D unit/test-unit \
->  			unit/test-settings \
->  			unit/test-netlink \
->  			unit/test-genl \
-> +			unit/test-genl-family \
->  			unit/test-genl-msg \
->  			unit/test-siphash \
->  			unit/test-hwdb \
-> @@ -174,6 +175,8 @@ unit_test_netlink_LDADD =3D ell/libell-private.la
->
->  unit_test_genl_LDADD =3D ell/libell-private.la
->
-> +unit_test_genl_family_LDADD =3D ell/libell-private.la
-> +
->  unit_test_genl_msg_LDADD =3D ell/libell-private.la
->
->  unit_test_dbus_LDADD =3D ell/libell-private.la
-> diff --git a/unit/test-genl-family.c b/unit/test-genl-family.c
-> new file mode 100644
-> index 0000000..5109fad
-> --- /dev/null
-> +++ b/unit/test-genl-family.c
-> @@ -0,0 +1,99 @@
-> +/*
-> + *
-> + *  Embedded Linux library
-> + *
-> + *  Copyright (C) 2011-2017  Intel Corporation. All rights reserved.
-> + *
-> + *  This library is free software; you can redistribute it and/or
-> + *  modify it under the terms of the GNU Lesser General Public
-> + *  License as published by the Free Software Foundation; either
-> + *  version 2.1 of the License, or (at your option) any later version.
-> + *
-> + *  This library is distributed in the hope that it will be useful,
-> + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-> + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-> + *  Lesser General Public License for more details.
-> + *
-> + *  You should have received a copy of the GNU Lesser General Public
-> + *  License along with this library; if not, write to the Free Software
-> + *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-130=
-1  USA
-> + *
-> + */
-> +
-> +#ifdef HAVE_CONFIG_H
-> +#include <config.h>
-> +#endif
-> +
-> +#include <sys/socket.h>
-> +
-> +#include <ell/ell.h>
-> +
+
 > +static void do_debug(const char *str, void *user_data)
-> +{
-> +	const char *prefix =3D user_data;
-> +
-> +	l_info("%s%s", prefix, str);
-> +}
-> +
+>> +{
+>> +       const char *prefix =3D user_data;
+>> +
+>> +       l_info("%s%s", prefix, str);
+>> +}
+>> +
+>>
+>
+> I know test-genl does this, but...  generally our unit tests don't print
+> anything.  Do you really need this?
 
-I know test-genl does this, but...  generally our unit tests don't print =
 
-anything.  Do you really need this?
+Not at all.  I was just trying to be consistent with test-genl.
 
-> +static void family_vanished(void *user_data)
-> +{
-> +	bool *vanished_called =3D user_data;
-> +
-> +	*vanished_called =3D true;
-> +}
-> +
-> +static void idle_handler(struct l_idle *idle, void *user_data)
-> +{
-> +	static int count =3D 0;
-> +
-> +	/*
-> +	 * Allow the main loop to iterate at least once.  Otherwise
-> +	 * the generic netlink watches won't be called.
-> +	 */
-> +	if (count++ =3D=3D 1)
-> +		l_main_quit();
-> +}
-> +
-> +int main(int argc, char *argv[])
-> +{
-> +	struct l_genl *genl;
-> +	struct l_genl_family *family;
-> +	struct l_idle *idle;
-> +
-> +	/*
-> +	 * Use a bogus family name to trigger the vanished watch to
-> +	 * be called.
-> +	 */
-> +	static const char BOGUS_GENL_NAME[] =3D "bogus_genl_family";
-> +
-> +	bool vanished_called =3D false;
-> +
-> +	if (!l_main_init())
-> +		return -1;
-> +
-> +	l_log_set_stderr();
-> +
-> +	genl =3D l_genl_new_default();
-> +
-> +	l_genl_set_debug(genl, do_debug, "[GENL] ", NULL);
-> +
-> +	family =3D l_genl_family_new(genl, BOGUS_GENL_NAME);
-> +	l_genl_family_set_watches(family,
-> +				  NULL,
-> +				  family_vanished,
-> +				  &vanished_called,
-> +				  NULL);
-> +
-> +	idle =3D l_idle_create(idle_handler, NULL, NULL);
-> +
-> +	l_main_run();
-> +
-> +	l_idle_remove(idle);
-> +
-> +	l_genl_family_unref(family);
-> +	l_genl_unref(genl);
-> +
-> +	l_main_exit();
-> +
-> +	return vanished_called ? 0 : -1;
-
-This is probably okay, but it might be better to use asserts, especially =
-
-if more tests are added to this unit file in the future.
-
-> +}
++       return vanished_called ? 0 : -1;
+>>
+>
+> This is probably okay, but it might be better to use asserts, especially
+> if more tests are added to this unit file in the future.
 >
 
-Regards,
--Denis
+Okay, I'll go back to returning 0 and rely on an assert() instead.
 
---===============5469447870126103990==--
+Thanks Denis!
+-Ossama
+
+--===============8225203611825011084==
+Content-Type: text/html
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="attachment.html"
+
+PGRpdiBkaXI9Imx0ciI+SGkgRGVuaXMsPGRpdiBjbGFzcz0iZ21haWxfZXh0cmEiPjxicj48ZGl2
+IGNsYXNzPSJnbWFpbF9xdW90ZSI+T24gVHVlLCBNYXIgMjEsIDIwMTcgYXQgMTo0MiBQTSwgRGVu
+aXMgS2VuemlvciA8c3BhbiBkaXI9Imx0ciI+Jmx0OzxhIGhyZWY9Im1haWx0bzpkZW5rZW56QGdt
+YWlsLmNvbSIgdGFyZ2V0PSJfYmxhbmsiPmRlbmtlbnpAZ21haWwuY29tPC9hPiZndDs8L3NwYW4+
+IHdyb3RlOjxibG9ja3F1b3RlIGNsYXNzPSJnbWFpbF9xdW90ZSIgc3R5bGU9Im1hcmdpbjowIDAg
+MCAuOGV4O2JvcmRlci1sZWZ0OjFweCAjY2NjIHNvbGlkO3BhZGRpbmctbGVmdDoxZXgiPjxzcGFu
+IGNsYXNzPSIiPgpPbiAwMy8yMS8yMDE3IDAyOjU3IFBNLCBPc3NhbWEgT3RobWFuIHdyb3RlOjxi
+cj4KPGJsb2NrcXVvdGUgY2xhc3M9ImdtYWlsX3F1b3RlIiBzdHlsZT0ibWFyZ2luOjAgMCAwIC44
+ZXg7Ym9yZGVyLWxlZnQ6MXB4ICNjY2Mgc29saWQ7cGFkZGluZy1sZWZ0OjFleCI+Ci0tLTxicj4K
+wqBNYWtlZmlsZS5hbcKgIMKgIMKgIMKgIMKgIMKgIMKgfMKgIDMgKys8YnI+CsKgdW5pdC90ZXN0
+LWdlbmwtZmFtaWx5LmMgfCA5OSArKysrKysrKysrKysrKysrKysrKysrKysrKysrKys8d2JyPisr
+KysrKysrKysrKysrKysrKys8YnI+CjwvYmxvY2txdW90ZT4KPGJyPjwvc3Bhbj4KRG8geW91IHdh
+bnQgdG8gYWRkIHRoaXMgdGVzdCB0byB1bml0L3Rlc3QtZ2VubCBpbnN0ZWFkP8KgIFRoYXQgdGVz
+dCBpcyBhIG5vLW9wIGF0IHRoaXMgcG9pbnQgYW55d2F5LjwvYmxvY2txdW90ZT48ZGl2Pjxicj48
+L2Rpdj48ZGl2Pk9rYXksIHRoYXQmIzM5O3MgZmluZSB3aXRoIG1lLjwvZGl2PjxkaXY+wqA8L2Rp
+dj48YmxvY2txdW90ZSBjbGFzcz0iZ21haWxfcXVvdGUiIHN0eWxlPSJtYXJnaW46MCAwIDAgLjhl
+eDtib3JkZXItbGVmdDoxcHggI2NjYyBzb2xpZDtwYWRkaW5nLWxlZnQ6MWV4Ij48ZGl2PjxkaXYg
+Y2xhc3M9Img1Ij48YmxvY2txdW90ZSBjbGFzcz0iZ21haWxfcXVvdGUiIHN0eWxlPSJtYXJnaW46
+MCAwIDAgLjhleDtib3JkZXItbGVmdDoxcHggI2NjYyBzb2xpZDtwYWRkaW5nLWxlZnQ6MWV4Ij4K
+K3N0YXRpYyB2b2lkIGRvX2RlYnVnKGNvbnN0IGNoYXIgKnN0ciwgdm9pZCAqdXNlcl9kYXRhKTxi
+cj4KK3s8YnI+CivCoCDCoCDCoCDCoGNvbnN0IGNoYXIgKnByZWZpeCA9IHVzZXJfZGF0YTs8YnI+
+Cis8YnI+CivCoCDCoCDCoCDCoGxfaW5mbygmcXVvdDslcyVzJnF1b3Q7LCBwcmVmaXgsIHN0cik7
+PGJyPgorfTxicj4KKzxicj4KPC9ibG9ja3F1b3RlPgo8YnI+PC9kaXY+PC9kaXY+Ckkga25vdyB0
+ZXN0LWdlbmwgZG9lcyB0aGlzLCBidXQuLi7CoCBnZW5lcmFsbHkgb3VyIHVuaXQgdGVzdHMgZG9u
+JiMzOTt0IHByaW50IGFueXRoaW5nLsKgIERvIHlvdSByZWFsbHkgbmVlZCB0aGlzPzwvYmxvY2tx
+dW90ZT48ZGl2Pjxicj48L2Rpdj48ZGl2Pk5vdCBhdCBhbGwuwqAgSSB3YXMganVzdCB0cnlpbmcg
+dG8gYmUgY29uc2lzdGVudCB3aXRoIHRlc3QtZ2VubC48L2Rpdj48ZGl2Pjxicj48L2Rpdj48Ymxv
+Y2txdW90ZSBjbGFzcz0iZ21haWxfcXVvdGUiIHN0eWxlPSJtYXJnaW46MCAwIDAgLjhleDtib3Jk
+ZXItbGVmdDoxcHggI2NjYyBzb2xpZDtwYWRkaW5nLWxlZnQ6MWV4Ij48ZGl2PjxkaXYgY2xhc3M9
+Img1Ij48YmxvY2txdW90ZSBjbGFzcz0iZ21haWxfcXVvdGUiIHN0eWxlPSJtYXJnaW46MCAwIDAg
+LjhleDtib3JkZXItbGVmdDoxcHggI2NjYyBzb2xpZDtwYWRkaW5nLWxlZnQ6MWV4Ij4KK8KgIMKg
+IMKgIMKgcmV0dXJuIHZhbmlzaGVkX2NhbGxlZCA/IDAgOiAtMTs8YnI+CjwvYmxvY2txdW90ZT4K
+PGJyPjwvZGl2PjwvZGl2PgpUaGlzIGlzIHByb2JhYmx5IG9rYXksIGJ1dCBpdCBtaWdodCBiZSBi
+ZXR0ZXIgdG8gdXNlIGFzc2VydHMsIGVzcGVjaWFsbHkgaWYgbW9yZSB0ZXN0cyBhcmUgYWRkZWQg
+dG8gdGhpcyB1bml0IGZpbGUgaW4gdGhlIGZ1dHVyZS48YnI+PC9ibG9ja3F1b3RlPjxkaXY+PGJy
+PjwvZGl2PjxkaXY+T2theSwgSSYjMzk7bGwgZ28gYmFjayB0byByZXR1cm5pbmcgMCBhbmQgcmVs
+eSBvbiBhbiBhc3NlcnQoKSBpbnN0ZWFkLjwvZGl2PjxkaXY+PGJyPjwvZGl2PjxkaXY+VGhhbmtz
+IERlbmlzITwvZGl2PjxkaXY+LU9zc2FtYTwvZGl2PjxkaXY+PGJyPjwvZGl2PjwvZGl2PjwvZGl2
+PjwvZGl2Pgo=
+
+--===============8225203611825011084==--
 
