@@ -1,13 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============3798184631935047095=="
+Content-Type: multipart/mixed; boundary="===============3486194382401305615=="
 MIME-Version: 1.0
 From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH] unit: Test generic netlink family registration
-Date: Wed, 12 Apr 2017 13:04:17 -0700
-Message-ID: <1492027457-28188-1-git-send-email-ossama.othman@intel.com>
+Subject: [PATCH v2] unit: Test generic netlink family registration
+Date: Wed, 12 Apr 2017 13:09:30 -0700
+Message-ID: <1492027770-28419-1-git-send-email-ossama.othman@intel.com>
+In-Reply-To: <1492027457-28188-1-git-send-email-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3798184631935047095==
+--===============3486194382401305615==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -23,7 +24,7 @@ family_appeared watch and related family registration operations.
  1 file changed, 93 insertions(+), 21 deletions(-)
 
 diff --git a/unit/test-genl.c b/unit/test-genl.c
-index 44fbbb0..632eceb 100644
+index 44fbbb0..7faaa2d 100644
 --- a/unit/test-genl.c
 +++ b/unit/test-genl.c
 @@ -29,6 +29,15 @@
@@ -49,7 +50,7 @@ index 44fbbb0..632eceb 100644
  }
  =
 
-+static void notify_callback(struct l_genl_msg * msg, void * user_data)
++static void notify_callback(struct l_genl_msg *msg, void *user_data)
 +{
 +}
 +
@@ -124,7 +125,7 @@ index 44fbbb0..632eceb 100644
 -	 * generic netlink watches to be called.
 +	 * Exit the event loop if the desired results have been
 +	 * obtained, but limit the number of iterations to prevent the
-+	 * loop from running indefinetely if the conditions for
++	 * loop from running indefinitely if the conditions for
 +	 * success are never reached.
 +	 *
 +	 * Allow the main loop to iterate at least four times to allow
@@ -209,5 +210,5 @@ index 44fbbb0..632eceb 100644
 2.7.4
 
 
---===============3798184631935047095==--
+--===============3486194382401305615==--
 
