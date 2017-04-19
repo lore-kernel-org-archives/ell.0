@@ -1,63 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============7358824813293263988=="
+Content-Type: multipart/mixed; boundary="===============1647103220289892362=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH v2 3/3] unit: More test coverage for TLS chain validation
-Date: Tue, 18 Apr 2017 17:24:19 -0700
-Message-ID: <20170419002419.9762-3-mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v2 1/3] key: Use keyring restriction keyctl
+Date: Wed, 19 Apr 2017 11:47:19 -0500
+Message-ID: <8550caae-d316-ad68-e350-b359de51769b@gmail.com>
 In-Reply-To: <20170419002419.9762-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7358824813293263988==
+--===============1647103220289892362==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Confirm that cert validation fails when the wrong root cert is supplied,
-and to confirm behavior when no trusted root is supplied.
----
- unit/test-tls.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Hi Mat,
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index 0d23f16..0082c36 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -214,6 +214,7 @@ static void test_certificates(const void *data)
- {
- 	struct tls_cert *cert;
- 	struct tls_cert *cacert;
-+	struct tls_cert *wrongca;
- =
+On 04/18/2017 07:24 PM, Mat Martineau wrote:
+> Now that the restricted keyring patches have been applied to keys-next
+> and are on track for the v4.12 merge window, ELL needs to be updated for
+> the final API.
+>
+> There are two significant changes from the previous API:
+>
+> 1. Key restrictions are now applied in a separate step after a keyring
+> is created, not at creation time.
+>
+> 2. The first key added to an empty, "chain" restricted keyring no longer
+> bypasses the signature check.
+>
+> The latter required a change to l_keyring_new() so that the root key
+> could be added to a keyring after it is created but before it is
+> restricted. There's a new l_keyring_restrict() function to restrict an
+> existing keyring.
+> ---
+>  ell/key.c | 76 ++++++++++++++++++++++++++++++++++++++++-----------------=
+------
+>  ell/key.h | 13 ++++++-----
+>  ell/tls.c | 48 ++++++++++++++++++++++++++++++++++------
+>  3 files changed, 96 insertions(+), 41 deletions(-)
+>
 
- 	cert =3D tls_cert_load_file(TESTDATADIR "/cert-server.pem");
- 	assert(cert);
-@@ -221,10 +222,18 @@ static void test_certificates(const void *data)
- 	cacert =3D tls_cert_load_file(TESTDATADIR "/cert-ca.pem");
- 	assert(cacert);
- =
+All applied, thanks.
 
-+	wrongca =3D tls_cert_load_file(TESTDATADIR "/cert-intca.pem");
-+	assert(wrongca);
-+
-+	assert(!tls_cert_verify_certchain(cert, wrongca));
-+
- 	assert(tls_cert_verify_certchain(cert, cacert));
- =
-
-+	assert(tls_cert_verify_certchain(cert, NULL));
-+
- 	l_free(cert);
- 	l_free(cacert);
-+	l_free(wrongca);
- }
- =
-
- struct tls_conn_test {
--- =
-
-2.12.2
+Regards,
+-Denis
 
 
---===============7358824813293263988==--
+--===============1647103220289892362==--
 
