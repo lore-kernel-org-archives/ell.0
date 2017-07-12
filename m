@@ -1,63 +1,70 @@
-Content-Type: multipart/mixed; boundary="===============6304979338494762464=="
+Content-Type: multipart/mixed; boundary="===============2802962405526535012=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel@holtmann.org>
-Subject: Re: [PATCH 0/5] Bug fixes, new compiler warnings,
- and test enhancements
-Date: Wed, 12 Jul 2017 01:34:45 +0200
-Message-ID: <DB2E6DB8-6B30-468C-8AB7-CC7C88306A0A@holtmann.org>
-In-Reply-To: <20170711230501.5419-1-mathew.j.martineau@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH] unit: Clean up leaks in test-dbus-watch
+Date: Wed, 12 Jul 2017 12:49:34 -0700
+Message-ID: <20170712194934.23933-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6304979338494762464==
+--===============2802962405526535012==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Use of the internal _dbus_message_set_sender() function in
+test-dbus-watch resulted in message structures that were not completely
+freed, which caused error reports when ELL was configured with
+--enable-asan. Manually clearing the message sender resolves the
+problem.
+---
+ unit/test-dbus-watch.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-> When I tried to build ELL using gcc 7.1.1 it failed due to some switch ca=
-se
-> fall-throughs. One of those was an actual bug.
-> =
+diff --git a/unit/test-dbus-watch.c b/unit/test-dbus-watch.c
+index 6b7bcda..c6e4a92 100644
+--- a/unit/test-dbus-watch.c
++++ b/unit/test-dbus-watch.c
+@@ -228,6 +228,7 @@ static void test_filter_tree(const void *test_data)
+ 					"", ":1.101");
+ 	_dbus_message_set_sender(message, DBUS_SERVICE_DBUS);
+ 	_dbus_filter_dispatch(message, filter);
++	_dbus_message_set_sender(message, NULL);
+ 	l_dbus_message_unref(message);
+ =
 
-> Patches 1 and 2 are the most critical. They fix the settings bug and add =
-test
-> code to trigger the bug and verify the fix.
-> =
+ 	message =3D _dbus_message_new_signal(2, DBUS_PATH_DBUS,
+@@ -236,12 +237,14 @@ static void test_filter_tree(const void *test_data)
+ 	l_dbus_message_set_arguments(message, "");
+ 	_dbus_message_set_sender(message, DBUS_SERVICE_DBUS);
+ 	_dbus_filter_dispatch(message, filter);
++	_dbus_message_set_sender(message, NULL);
+ 	l_dbus_message_unref(message);
+ =
 
-> Patch 3 does not change run-time behavior, but does fix siphash compilati=
-on
-> under gcc 7.
-> =
+ 	message =3D _dbus_message_new_signal(2, DBUS_PATH_DBUS, "foo", "Bar");
+ 	l_dbus_message_set_arguments(message, "");
+ 	_dbus_message_set_sender(message, DBUS_SERVICE_DBUS);
+ 	_dbus_filter_dispatch(message, filter);
++	_dbus_message_set_sender(message, NULL);
+ 	l_dbus_message_unref(message);
+ =
 
-> The last two patches are test enhancements that I sent previously but wer=
-e not
-> applied.
-> =
+ 	message =3D _dbus_message_new_signal(2, "/", "foo", "Bar");
+@@ -251,6 +254,7 @@ static void test_filter_tree(const void *test_data)
+ =
 
-> Mat Martineau (5):
->  settings: Fix string escaping bug
->  unit: Better coverage of escaped characters in settings strings
->  siphash: Fix fallthrough compiler warnings
->  unit: Add DH test case where results have leading zeros
->  unit: Make checksum unit tests verify checksum results
-> =
+ 	_dbus_message_set_sender(message, "org.bar");
+ 	_dbus_filter_dispatch(message, filter);
++	_dbus_message_set_sender(message, NULL);
+ 	l_dbus_message_unref(message);
+ =
 
-> ell/settings.c       |  1 +
-> ell/siphash.c        |  6 +++++
-> unit/test-checksum.c | 66 +++++++++++++++++++++++++++--------------------=
------
-> unit/test-key.c      | 19 +++++++++++++++
-> unit/test-settings.c | 10 ++++++++
-> 5 files changed, 70 insertions(+), 32 deletions(-)
+ 	assert(test.calls[0] =3D=3D 3 && test.calls[1] =3D=3D 2 &&
+-- =
 
-all 5 patches have been applied.
-
-Regards
-
-Marcel
+2.13.2
 
 
---===============6304979338494762464==--
+--===============2802962405526535012==--
 
