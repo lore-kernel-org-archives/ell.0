@@ -1,36 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============8537585008857135464=="
+Content-Type: multipart/mixed; boundary="===============6519326013956754797=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel@holtmann.org>
-Subject: Re: [PATCH] dbus: Fix use-after-free in property changed signals
-Date: Thu, 13 Jul 2017 06:24:28 +0200
-Message-ID: <81A25577-7C06-4163-89BD-A17E37C6A0C0@holtmann.org>
-In-Reply-To: <20170712202302.6373-1-mathew.j.martineau@linux.intel.com>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH] genl: Fix casting error
+Date: Fri, 14 Jul 2017 10:14:28 -0700
+Message-ID: <20170714171428.1714-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8537585008857135464==
+--===============6519326013956754797==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Fix for the cros-compilation with Chromium OS=E2=80=99s toolchain that
+uses GCC 4.9
+---
+ ell/genl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> Configuring with --enable-asan and running test-dbus-properties revealed
-> that properties_set_complete() was accessing a reply message after it
-> was sent, but l_dbus_send() had already unref'd and freed the message.
-> =
+diff --git a/ell/genl.c b/ell/genl.c
+index cff3a9a..d9cfddb 100644
+--- a/ell/genl.c
++++ b/ell/genl.c
+@@ -498,7 +498,7 @@ static bool received_data(struct l_io *io, void *user_d=
+ata)
+ 		group =3D pktinfo.group;
+ 	}
+ =
 
-> Grabbing a reference to the reply before sending fixes the problem.
-> ---
-> ell/dbus-service.c | 3 ++-
-> 1 file changed, 2 insertions(+), 1 deletion(-)
+-	for (nlmsg =3D iov.iov_base; NLMSG_OK(nlmsg, bytes_read);
++	for (nlmsg =3D iov.iov_base; NLMSG_OK(nlmsg, (uint32_t) bytes_read);
+ 				nlmsg =3D NLMSG_NEXT(nlmsg, bytes_read)) {
+ 		if (group > 0)
+ 			process_multicast(genl, group, nlmsg);
+-- =
 
-patch has been applied.
-
-Regards
-
-Marcel
+2.9.4
 
 
---===============8537585008857135464==--
+--===============6519326013956754797==--
 
