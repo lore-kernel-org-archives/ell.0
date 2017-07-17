@@ -1,92 +1,75 @@
-Content-Type: multipart/mixed; boundary="===============4926296392756230055=="
+Content-Type: multipart/mixed; boundary="===============4446421078613345079=="
 MIME-Version: 1.0
-From: Kourt, Tim A <tim.a.kourt@intel.com>
-Subject: RE: [PATCH] genl: Fix casting error
-Date: Fri, 14 Jul 2017 20:57:31 +0000
-Message-ID: <0734F1C385189A4F8523BB7BB31464D78E2709E3@fmsmsx111.amr.corp.intel.com>
-In-Reply-To: <CAPyD+=CC-2OHWNce2rsftcoeziOD3=Y6Vdq9TUJ8+RkCab7fbg@mail.gmail.com>
+From: Othman, Ossama <ossama.othman@intel.com>
+Subject: Re: [PATCH] genl: Fix casting error
+Date: Mon, 17 Jul 2017 13:09:54 -0700
+Message-ID: <CAPyD+=Cnze=NJA=PE9tMjgoqvvygukgVt6POh+Sdx=BjrBwBdQ@mail.gmail.com>
+In-Reply-To: <0734F1C385189A4F8523BB7BB31464D78E2709E3@fmsmsx111.amr.corp.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4926296392756230055==
+--===============4446421078613345079==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+Hi Tim,
 
-> NLMSG_OK() expects an int for the second argument.  Assuming truncation i=
-sn't an issue here, wouldn't it be better to cast to an int instead?
+On Fri, Jul 14, 2017 at 1:57 PM, Kourt, Tim A <tim.a.kourt@intel.com> wro=
+te:
+>
+> > NLMSG_OK() expects an int for the second argument.  Assuming truncation
+> isn't an issue here, wouldn't it be better to cast to an int instead?
+>
+>
+>
+> The uint32_t was used to keep the consistency with the other usages of
+> NLMSG_OK() within ELL and thereafter IWD. Maybe it is time to fix all of
+> them.
+>
 
-The uint32_t was used to keep the consistency with the other usages of NLMS=
-G_OK() within ELL and thereafter IWD. Maybe it is time to fix all of them.
+I did some digging into the NLMSG_OK() macro and found several patches and
+discussions related to this very same issue.  It looks like everyone does
+indeed cast to an unsigned integer, even though the documentation states
+that the type is int.  Patches to "fix" the issue with the macro have all
+been rejected, too. Consistency wins.  :)
 
-Best regards,
-Tim
+-Ossama
 
---===============4926296392756230055==
+--===============4446421078613345079==
 Content-Type: text/html
 MIME-Version: 1.0
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="attachment.html"
 
-PGh0bWwgeG1sbnM6dj0idXJuOnNjaGVtYXMtbWljcm9zb2Z0LWNvbTp2bWwiIHhtbG5zOm89InVy
-bjpzY2hlbWFzLW1pY3Jvc29mdC1jb206b2ZmaWNlOm9mZmljZSIgeG1sbnM6dz0idXJuOnNjaGVt
-YXMtbWljcm9zb2Z0LWNvbTpvZmZpY2U6d29yZCIgeG1sbnM6bT0iaHR0cDovL3NjaGVtYXMubWlj
-cm9zb2Z0LmNvbS9vZmZpY2UvMjAwNC8xMi9vbW1sIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcv
-VFIvUkVDLWh0bWw0MCI+DQo8aGVhZD4NCjxtZXRhIGh0dHAtZXF1aXY9IkNvbnRlbnQtVHlwZSIg
-Y29udGVudD0idGV4dC9odG1sOyBjaGFyc2V0PXV0Zi04Ij4NCjxtZXRhIG5hbWU9IkdlbmVyYXRv
-ciIgY29udGVudD0iTWljcm9zb2Z0IFdvcmQgMTUgKGZpbHRlcmVkIG1lZGl1bSkiPg0KPHN0eWxl
-PjwhLS0NCi8qIEZvbnQgRGVmaW5pdGlvbnMgKi8NCkBmb250LWZhY2UNCgl7Zm9udC1mYW1pbHk6
-IkNhbWJyaWEgTWF0aCI7DQoJcGFub3NlLTE6MiA0IDUgMyA1IDQgNiAzIDIgNDt9DQpAZm9udC1m
-YWNlDQoJe2ZvbnQtZmFtaWx5OkNhbGlicmk7DQoJcGFub3NlLTE6MiAxNSA1IDIgMiAyIDQgMyAy
-IDQ7fQ0KLyogU3R5bGUgRGVmaW5pdGlvbnMgKi8NCnAuTXNvTm9ybWFsLCBsaS5Nc29Ob3JtYWws
-IGRpdi5Nc29Ob3JtYWwNCgl7bWFyZ2luOjBpbjsNCgltYXJnaW4tYm90dG9tOi4wMDAxcHQ7DQoJ
-Zm9udC1zaXplOjEyLjBwdDsNCglmb250LWZhbWlseToiVGltZXMgTmV3IFJvbWFuIixzZXJpZjt9
-DQphOmxpbmssIHNwYW4uTXNvSHlwZXJsaW5rDQoJe21zby1zdHlsZS1wcmlvcml0eTo5OTsNCglj
-b2xvcjpibHVlOw0KCXRleHQtZGVjb3JhdGlvbjp1bmRlcmxpbmU7fQ0KYTp2aXNpdGVkLCBzcGFu
-Lk1zb0h5cGVybGlua0ZvbGxvd2VkDQoJe21zby1zdHlsZS1wcmlvcml0eTo5OTsNCgljb2xvcjpw
-dXJwbGU7DQoJdGV4dC1kZWNvcmF0aW9uOnVuZGVybGluZTt9DQpwLk1zb0xpc3RQYXJhZ3JhcGgs
-IGxpLk1zb0xpc3RQYXJhZ3JhcGgsIGRpdi5Nc29MaXN0UGFyYWdyYXBoDQoJe21zby1zdHlsZS1w
-cmlvcml0eTozNDsNCgltYXJnaW4tdG9wOjBpbjsNCgltYXJnaW4tcmlnaHQ6MGluOw0KCW1hcmdp
-bi1ib3R0b206MGluOw0KCW1hcmdpbi1sZWZ0Oi41aW47DQoJbWFyZ2luLWJvdHRvbTouMDAwMXB0
-Ow0KCWZvbnQtc2l6ZToxMi4wcHQ7DQoJZm9udC1mYW1pbHk6IlRpbWVzIE5ldyBSb21hbiIsc2Vy
-aWY7fQ0Kc3Bhbi5FbWFpbFN0eWxlMTcNCgl7bXNvLXN0eWxlLXR5cGU6cGVyc29uYWwtcmVwbHk7
-DQoJZm9udC1mYW1pbHk6IkNhbGlicmkiLHNhbnMtc2VyaWY7DQoJY29sb3I6IzFGNDk3RDt9DQou
-TXNvQ2hwRGVmYXVsdA0KCXttc28tc3R5bGUtdHlwZTpleHBvcnQtb25seTsNCglmb250LWZhbWls
-eToiQ2FsaWJyaSIsc2Fucy1zZXJpZjt9DQpAcGFnZSBXb3JkU2VjdGlvbjENCgl7c2l6ZTo4LjVp
-biAxMS4waW47DQoJbWFyZ2luOjEuMGluIDEuMGluIDEuMGluIDEuMGluO30NCmRpdi5Xb3JkU2Vj
-dGlvbjENCgl7cGFnZTpXb3JkU2VjdGlvbjE7fQ0KLS0+PC9zdHlsZT48IS0tW2lmIGd0ZSBtc28g
-OV0+PHhtbD4NCjxvOnNoYXBlZGVmYXVsdHMgdjpleHQ9ImVkaXQiIHNwaWRtYXg9IjEwMjYiIC8+
-DQo8L3htbD48IVtlbmRpZl0tLT48IS0tW2lmIGd0ZSBtc28gOV0+PHhtbD4NCjxvOnNoYXBlbGF5
-b3V0IHY6ZXh0PSJlZGl0Ij4NCjxvOmlkbWFwIHY6ZXh0PSJlZGl0IiBkYXRhPSIxIiAvPg0KPC9v
-OnNoYXBlbGF5b3V0PjwveG1sPjwhW2VuZGlmXS0tPg0KPC9oZWFkPg0KPGJvZHkgbGFuZz0iRU4t
-VVMiIGxpbms9ImJsdWUiIHZsaW5rPSJwdXJwbGUiPg0KPGRpdiBjbGFzcz0iV29yZFNlY3Rpb24x
-Ij4NCjxwIGNsYXNzPSJNc29Ob3JtYWwiPjxzcGFuIHN0eWxlPSJmb250LXNpemU6MTEuMHB0O2Zv
-bnQtZmFtaWx5OiZxdW90O0NhbGlicmkmcXVvdDssc2Fucy1zZXJpZjtjb2xvcjojMUY0OTdEIj5I
-aSBPc3NhbWEsPGEgbmFtZT0iX19fX19yZXBseXNlcGFyYXRvciI+PC9hPjxvOnA+PC9vOnA+PC9z
-cGFuPjwvcD4NCjxwIGNsYXNzPSJNc29Ob3JtYWwiPjxzcGFuIHN0eWxlPSJmb250LXNpemU6MTEu
-MHB0O2ZvbnQtZmFtaWx5OiZxdW90O0NhbGlicmkmcXVvdDssc2Fucy1zZXJpZjtjb2xvcjojMUY0
-OTdEIj48bzpwPiZuYnNwOzwvbzpwPjwvc3Bhbj48L3A+DQo8cCBjbGFzcz0iTXNvTm9ybWFsIj4m
-Z3Q7IE5MTVNHX09LKCkgZXhwZWN0cyBhbiBpbnQgZm9yIHRoZSBzZWNvbmQgYXJndW1lbnQuJm5i
-c3A7IEFzc3VtaW5nIHRydW5jYXRpb24gaXNuJ3QgYW4gaXNzdWUgaGVyZSwgd291bGRuJ3QgaXQg
-YmUgYmV0dGVyIHRvIGNhc3QgdG8gYW4gaW50IGluc3RlYWQ/PHNwYW4gc3R5bGU9ImNvbG9yOiMx
-RjQ5N0QiPjxvOnA+PC9vOnA+PC9zcGFuPjwvcD4NCjxwIGNsYXNzPSJNc29Ob3JtYWwiPjxzcGFu
-IHN0eWxlPSJmb250LXNpemU6MTEuMHB0O2ZvbnQtZmFtaWx5OiZxdW90O0NhbGlicmkmcXVvdDss
-c2Fucy1zZXJpZjtjb2xvcjojMUY0OTdEIj48bzpwPiZuYnNwOzwvbzpwPjwvc3Bhbj48L3A+DQo8
-cCBjbGFzcz0iTXNvTm9ybWFsIj48c3BhbiBzdHlsZT0iZm9udC1zaXplOjExLjBwdDtmb250LWZh
-bWlseTomcXVvdDtDYWxpYnJpJnF1b3Q7LHNhbnMtc2VyaWY7Y29sb3I6IzFGNDk3RCI+VGhlIHVp
-bnQzMl90IHdhcyB1c2VkIHRvIGtlZXAgdGhlIGNvbnNpc3RlbmN5IHdpdGggdGhlIG90aGVyIHVz
-YWdlcyBvZiBOTE1TR19PSygpIHdpdGhpbiBFTEwgYW5kIHRoZXJlYWZ0ZXIgSVdELiBNYXliZSBp
-dCBpcyB0aW1lIHRvIGZpeCBhbGwgb2YgdGhlbS48bzpwPjwvbzpwPjwvc3Bhbj48L3A+DQo8cCBj
+PGRpdiBkaXI9Imx0ciI+SGkgVGltLDxkaXYgY2xhc3M9ImdtYWlsX2V4dHJhIj48YnI+PGRpdiBj
+bGFzcz0iZ21haWxfcXVvdGUiPk9uIEZyaSwgSnVsIDE0LCAyMDE3IGF0IDE6NTcgUE0sIEtvdXJ0
+LCBUaW0gQSA8c3BhbiBkaXI9Imx0ciI+Jmx0OzxhIGhyZWY9Im1haWx0bzp0aW0uYS5rb3VydEBp
+bnRlbC5jb20iIHRhcmdldD0iX2JsYW5rIj50aW0uYS5rb3VydEBpbnRlbC5jb208L2E+Jmd0Ozwv
+c3Bhbj4gd3JvdGU6PGJsb2NrcXVvdGUgY2xhc3M9ImdtYWlsX3F1b3RlIiBzdHlsZT0ibWFyZ2lu
+OjAgMCAwIC44ZXg7Ym9yZGVyLWxlZnQ6MXB4ICNjY2Mgc29saWQ7cGFkZGluZy1sZWZ0OjFleCI+
+PGRpdiBsYW5nPSJFTi1VUyIgbGluaz0iYmx1ZSIgdmxpbms9InB1cnBsZSI+PGRpdiBjbGFzcz0i
+bV8tMjA4MjM4NjQ2OTIwNjc3NTU2V29yZFNlY3Rpb24xIj48c3BhbiBjbGFzcz0iIj4KPHAgY2xh
+c3M9Ik1zb05vcm1hbCI+Jmd0OyBOTE1TR19PSygpIGV4cGVjdHMgYW4gaW50IGZvciB0aGUgc2Vj
+b25kIGFyZ3VtZW50LsKgIEFzc3VtaW5nIHRydW5jYXRpb24gaXNuJiMzOTt0IGFuIGlzc3VlIGhl
+cmUsIHdvdWxkbiYjMzk7dCBpdCBiZSBiZXR0ZXIgdG8gY2FzdCB0byBhbiBpbnQgaW5zdGVhZD88
+c3BhbiBzdHlsZT0iY29sb3I6IzFmNDk3ZCI+PHU+PC91Pjx1PjwvdT48L3NwYW4+PC9wPgo8cCBj
 bGFzcz0iTXNvTm9ybWFsIj48c3BhbiBzdHlsZT0iZm9udC1zaXplOjExLjBwdDtmb250LWZhbWls
-eTomcXVvdDtDYWxpYnJpJnF1b3Q7LHNhbnMtc2VyaWY7Y29sb3I6IzFGNDk3RCI+PG86cD4mbmJz
-cDs8L286cD48L3NwYW4+PC9wPg0KPHAgY2xhc3M9Ik1zb05vcm1hbCI+PHNwYW4gc3R5bGU9ImZv
-bnQtc2l6ZToxMS4wcHQ7Zm9udC1mYW1pbHk6JnF1b3Q7Q2FsaWJyaSZxdW90OyxzYW5zLXNlcmlm
-O2NvbG9yOiMxRjQ5N0QiPkJlc3QgcmVnYXJkcyw8bzpwPjwvbzpwPjwvc3Bhbj48L3A+DQo8cCBj
-bGFzcz0iTXNvTm9ybWFsIj48c3BhbiBzdHlsZT0iZm9udC1zaXplOjExLjBwdDtmb250LWZhbWls
-eTomcXVvdDtDYWxpYnJpJnF1b3Q7LHNhbnMtc2VyaWY7Y29sb3I6IzFGNDk3RCI+VGltPG86cD48
-L286cD48L3NwYW4+PC9wPg0KPC9kaXY+DQo8L2JvZHk+DQo8L2h0bWw+DQo=
+eTomcXVvdDtDYWxpYnJpJnF1b3Q7LHNhbnMtc2VyaWY7Y29sb3I6IzFmNDk3ZCI+PHU+PC91PsKg
+PHU+PC91Pjwvc3Bhbj48L3A+Cjwvc3Bhbj48cCBjbGFzcz0iTXNvTm9ybWFsIj48c3BhbiBzdHls
+ZT0iZm9udC1zaXplOjExLjBwdDtmb250LWZhbWlseTomcXVvdDtDYWxpYnJpJnF1b3Q7LHNhbnMt
+c2VyaWY7Y29sb3I6IzFmNDk3ZCI+VGhlIHVpbnQzMl90IHdhcyB1c2VkIHRvIGtlZXAgdGhlIGNv
+bnNpc3RlbmN5IHdpdGggdGhlIG90aGVyIHVzYWdlcyBvZiBOTE1TR19PSygpIHdpdGhpbiBFTEwg
+YW5kIHRoZXJlYWZ0ZXIgSVdELiBNYXliZSBpdCBpcyB0aW1lIHRvIGZpeCBhbGwgb2YgdGhlbS48
+YnI+PC9zcGFuPjwvcD48L2Rpdj48L2Rpdj48L2Jsb2NrcXVvdGU+PGRpdj48YnI+PC9kaXY+PGRp
+dj5JIGRpZCBzb21lIGRpZ2dpbmcgaW50byB0aGUgTkxNU0dfT0soKSBtYWNybyBhbmQgZm91bmQg
+c2V2ZXJhbCBwYXRjaGVzIGFuZCBkaXNjdXNzaW9ucyByZWxhdGVkIHRvIHRoaXMgdmVyeSBzYW1l
+IGlzc3VlLsKgIEl0IGxvb2tzIGxpa2UgZXZlcnlvbmUgZG9lcyBpbmRlZWQgY2FzdCB0byBhbiB1
+bnNpZ25lZCBpbnRlZ2VyLCBldmVuIHRob3VnaCB0aGUgZG9jdW1lbnRhdGlvbiBzdGF0ZXMgdGhh
+dCB0aGUgdHlwZSBpcyBpbnQuwqAgUGF0Y2hlcyB0byAmcXVvdDtmaXgmcXVvdDsgdGhlIGlzc3Vl
+IHdpdGggdGhlIG1hY3JvIGhhdmUgYWxsIGJlZW4gcmVqZWN0ZWQsIHRvby4gQ29uc2lzdGVuY3kg
+d2lucy4gwqA6KTwvZGl2PjxkaXY+PGJyPjwvZGl2PjxkaXY+LU9zc2FtYTwvZGl2PjxkaXY+PGJy
+PjwvZGl2PjxkaXY+PGJyPjwvZGl2PjwvZGl2PjwvZGl2PjwvZGl2Pgo=
 
---===============4926296392756230055==--
+--===============4446421078613345079==--
 
