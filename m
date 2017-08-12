@@ -1,72 +1,52 @@
-Content-Type: multipart/mixed; boundary="===============0756346471815359915=="
+Content-Type: multipart/mixed; boundary="===============1354739271225956668=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 08/10] pem: Support encrypted keys in
- l_pem_load_private_key
-Date: Sat, 12 Aug 2017 02:30:24 +0200
-Message-ID: <CAOq732JUrZg=3-HMnCEtT3fNPOV3furYtnvsgA=OWyNKx1=d4Q@mail.gmail.com>
-In-Reply-To: <757437fc-6fa1-6cbf-97a5-be2597ef847b@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 07/10] cipher: Add l_cipher_from_pkcs5_id
+Date: Fri, 11 Aug 2017 19:30:39 -0500
+Message-ID: <33cf2bba-84ec-5624-f59b-521ca5694f5f@gmail.com>
+In-Reply-To: <CAOq732+HP0MSRPUAibeEbdKJBuGFBXdb5OPgku6NjZxJQ5zTLA@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0756346471815359915==
+--===============1354739271225956668==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+>> Another reason to move this is that I don't really want to expose it in
+>> l_cipher.  The right way for us to enable encrypted certificates is via =
+the
+>> keyctl API.  Until then, we should stuff this into some private file.  C=
+an
+>> we put this into asn1-private.[ch]?
+> =
 
-On 11 August 2017 at 22:23, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 08/10/2017 06:10 PM, Andrew Zaborowski wrote:
->> Add support for loading PKCS#8 encrypted private key files (those
->> generated with "openssl pkcs8 ..." or "openssl pkey ..." commands, not
->> "openssl rsa ..." commands).  The 'encrypted' parameter can be used to
->> check if a password is required to decode the key if the caller knows
->> nothing about the key other than the file path.
->> ---
->>   ell/pem.c | 90
->> ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
->>   ell/pem.h |  4 +--
->>   ell/tls.c |  1 +
->>   3 files changed, 86 insertions(+), 9 deletions(-)
->>
->> diff --git a/ell/pem.c b/ell/pem.c
->> index d1f180e..058b8b8 100644
->> --- a/ell/pem.c
->> +++ b/ell/pem.c
->> @@ -36,6 +36,8 @@
->>   #include "pem.h"
->>   #include "base64.h"
->>   #include "string.h"
->> +#include "asn1-private.h"
->> +#include "cipher.h"
->>     #define PEM_START_BOUNDARY  "-----BEGIN "
->>   #define PEM_END_BOUNDARY      "-----END "
->> @@ -232,11 +234,15 @@ LIB_EXPORT uint8_t *l_pem_load_certificate(const
->> char *filename, size_t *len)
->>     LIB_EXPORT uint8_t *l_pem_load_private_key(const char *filename,
->>                                                 const char *passphrase,
->> +                                               bool *encrypted,
->>                                                 size_t *len)
->>   {
->>         uint8_t *content;
->>         char *label;
->>   +     if (encrypted)
->> +               *encrypted =3D false;
->> +
->
->
-> So we set encrypted even if we fail?  Right now you're not even using this
-> parameter, so I wonder if we should maybe introduce a new function, like
-> l_pem_is_encrypted() instead?
+> If we're going to have pkcs5.c, perhaps let's put it there since all
+> of this is basically PKCS#5?  We would then also need pkcs5-private.h,
+> is that too many files?
+> =
 
-I could do either thing, but the idea here was that whoever is setting
-up TLS checks if a passphrase is required.  If it isn't, they get
-feedback on whether the PEM file loads Ok in the same call.  If it is
-they validate the passphrase and the encrypted PEM in one call.  With
-a separate l_pem_is_encrypted the file will be loaded twice.
 
-Best regards
+I'm not to worried about the number of files.  I am mostly worried about =
 
---===============0756346471815359915==--
+introducing something into the public API and then taking it out later. =
+
+So if we want iwd to use whatever is inside pkcs5.[ch], then it probably =
+
+should be public/exported API, which means it isn't a good candidate for =
+
+l_cipher_from_pkcs5_id either.  That one should be private and hence I =
+
+was thinking of having it in asn1-private.  If you think it belongs =
+
+logically with pkcs5, then we could introduce pkcs5-private.h =
+
+specifically for that purpose.
+
+Hope that made sense.
+
+Regards,
+-Denis
+
+--===============1354739271225956668==--
 
