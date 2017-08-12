@@ -1,41 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============7618164284805522528=="
+Content-Type: multipart/mixed; boundary="===============6195518083939800007=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH 08/10] pem: Support encrypted keys in
  l_pem_load_private_key
-Date: Sat, 12 Aug 2017 02:45:06 +0200
-Message-ID: <CAOq732Jz8w13BnW024LyWt0cWZqrjHm89PhyvSnniQ8Z-SmU6Q@mail.gmail.com>
-In-Reply-To: <9ee80b29-2926-ab09-8859-74944820d03d@gmail.com>
+Date: Fri, 11 Aug 2017 19:49:27 -0500
+Message-ID: <b8dc69ac-0d8d-93ab-03b4-e3781f526e65@gmail.com>
+In-Reply-To: <CAOq732Jz8w13BnW024LyWt0cWZqrjHm89PhyvSnniQ8Z-SmU6Q@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7618164284805522528==
+--===============6195518083939800007==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On 12 August 2017 at 02:40, Denis Kenzior <denkenz@gmail.com> wrote:
->>> So we set encrypted even if we fail?  Right now you're not even using
->>> this
->>> parameter, so I wonder if we should maybe introduce a new function, like
->>> l_pem_is_encrypted() instead?
->>
->>
->> I could do either thing, but the idea here was that whoever is setting
->> up TLS checks if a passphrase is required.  If it isn't, they get
->> feedback on whether the PEM file loads Ok in the same call.  If it is
->> they validate the passphrase and the encrypted PEM in one call.  With
->> a separate l_pem_is_encrypted the file will be loaded twice.
->>
->
-> Do you have a need for this?  If we don't have any immediate need, I would
-> just punt on this for now.
+Hi Andrew,
 
-I have iwd code to actually enable encrypted EAP-TLS or EAP-TTLS
-private keys.  But it could use a "l_pem_is_encrypted" too, only the
-files would be loaded more times.
+> =
 
-Best regards
+> I have iwd code to actually enable encrypted EAP-TLS or EAP-TTLS
+> private keys.  But it could use a "l_pem_is_encrypted" too, only the
+> files would be loaded more times.
+> =
 
---===============7618164284805522528==--
+
+Ah I see, because you're asking the agent for the passphrase.
+
+Go with the current proposal, but do me a favor and put in a doc block =
+
+above that function and explain that 'encrypted' doesn't follow our =
+
+typical out-argument semantics.  E.g. it is actually touched even if the =
+
+function fails.
+
+Regards,
+-Denis
+
+--===============6195518083939800007==--
 
