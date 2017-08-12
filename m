@@ -1,32 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============0477250080624576247=="
+Content-Type: multipart/mixed; boundary="===============7618164284805522528=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 07/10] cipher: Add l_cipher_from_pkcs5_id
-Date: Fri, 11 Aug 2017 19:42:36 -0500
-Message-ID: <da2ee151-1695-84c9-a7b6-51e49f00707b@gmail.com>
-In-Reply-To: <CAOq732JXq1DS4_T==gF62=W+NcvPDcDi+jR87LH9jrp56K-Wmg@mail.gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 08/10] pem: Support encrypted keys in
+ l_pem_load_private_key
+Date: Sat, 12 Aug 2017 02:45:06 +0200
+Message-ID: <CAOq732Jz8w13BnW024LyWt0cWZqrjHm89PhyvSnniQ8Z-SmU6Q@mail.gmail.com>
+In-Reply-To: <9ee80b29-2926-ab09-8859-74944820d03d@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0477250080624576247==
+--===============7618164284805522528==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+On 12 August 2017 at 02:40, Denis Kenzior <denkenz@gmail.com> wrote:
+>>> So we set encrypted even if we fail?  Right now you're not even using
+>>> this
+>>> parameter, so I wonder if we should maybe introduce a new function, like
+>>> l_pem_is_encrypted() instead?
+>>
+>>
+>> I could do either thing, but the idea here was that whoever is setting
+>> up TLS checks if a passphrase is required.  If it isn't, they get
+>> feedback on whether the PEM file loads Ok in the same call.  If it is
+>> they validate the passphrase and the encrypted PEM in one call.  With
+>> a separate l_pem_is_encrypted the file will be loaded twice.
+>>
+>
+> Do you have a need for this?  If we don't have any immediate need, I would
+> just punt on this for now.
 
-> Since you want l_cipher_from_pkcs5_if private I was thinking of all of
-> the implementation being in pkcs5.c since it's really all just the
-> text of the PKCS#5 RFC.  But the PBKDF functions would be exported in
-> pkcs5.h while the PBES function would only be declared in
-> pkcs5-private.h as something potentially useless after the kernel
-> implements this (unless we gain another use case for it in the
-> meantime)
+I have iwd code to actually enable encrypted EAP-TLS or EAP-TTLS
+private keys.  But it could use a "l_pem_is_encrypted" too, only the
+files would be loaded more times.
 
-That sounds good to me.
+Best regards
 
-Regards,
--Denis
-
---===============0477250080624576247==--
+--===============7618164284805522528==--
 
