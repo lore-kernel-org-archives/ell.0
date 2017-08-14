@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============8901926068351214368=="
+Content-Type: multipart/mixed; boundary="===============6997535116347460976=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 4/7] pkcs5: Add pkcs5_cipher_from_alg_id
-Date: Mon, 14 Aug 2017 15:28:12 -0500
-Message-ID: <5bc8d0bb-b4b3-147c-2fc6-16d8ad59b0be@gmail.com>
-In-Reply-To: <20170814145750.6683-4-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 5/7] pem: Support encrypted keys in l_pem_load_private_key
+Date: Mon, 14 Aug 2017 15:29:47 -0500
+Message-ID: <6ac3860d-ae86-ebf7-d721-248ac8c6fe81@gmail.com>
+In-Reply-To: <20170814145750.6683-5-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8901926068351214368==
+--===============6997535116347460976==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,29 +16,17 @@ Content-Transfer-Encoding: quoted-printable
 Hi Andrew,
 
 On 08/14/2017 09:57 AM, Andrew Zaborowski wrote:
-> Add a utility to parse all of the PKCS#5 DER-encoded encryption scheme
-> information, use the right PBKDF function to calculate the key,
-> create the appropriate l_cipher object type (if we support that PKCS#5
-> cipher type) with that key and set the IV on the l_cipher object.
-> =
-
-> We don't support any of the RC2 or RC5 based encryption schemes or
-> those that use MD2, SHA512-224 or SHA512-256 for the hash, because
-> there's no kernel support for those algorithms.  OpenSSL can create
-> RSA private keys encrypted with some of these algorithms but MD5+DES
-> and DES3-EDE are the default and the popular algorithms.  OpenSSL also
-> supports camellia ciphers in those scenarios which we could add.
-> =
-
-> Note that the caller still needs to add or remove the padding from the
-> data encrypted or decrypted with the l_cipher object.
+> Add support for loading PKCS#8 encrypted private key files (those
+> generated with "openssl pkcs8 ..." or "openssl pkey ..." commands, not
+> "openssl rsa ..." commands).  The 'encrypted' parameter can be used to
+> check if a password is required to decode the key if the caller knows
+> nothing about the key other than the file path.
 > ---
->   Makefile.am         |   1 +
->   ell/pkcs5-private.h |  25 +++++
->   ell/pkcs5.c         | 311 +++++++++++++++++++++++++++++++++++++++++++++=
-+++++++
->   3 files changed, 337 insertions(+)
->   create mode 100644 ell/pkcs5-private.h
+>   ell/pem.c | 112 +++++++++++++++++++++++++++++++++++++++++++++++++++++++=
+++-----
+>   ell/pem.h |   4 +--
+>   ell/tls.c |   1 +
+>   3 files changed, 107 insertions(+), 10 deletions(-)
 > =
 
 
@@ -47,6 +35,5 @@ Applied, thanks.
 Regards,
 -Denis
 
-
---===============8901926068351214368==--
+--===============6997535116347460976==--
 
