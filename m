@@ -1,92 +1,54 @@
-Content-Type: multipart/mixed; boundary="===============7800968136671964148=="
+Content-Type: multipart/mixed; boundary="===============5742970274548198716=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH 7/7] unit: Test loading encrypted private key PEM files
-Date: Mon, 14 Aug 2017 17:10:57 -0700
-Message-ID: <alpine.OSX.2.21.1708141656310.2825@gzuniga-mobl2.amr.corp.intel.com>
-In-Reply-To: <2686b309-ffe2-9f06-fefc-a234fcebb1ea@gmail.com>
+Date: Tue, 15 Aug 2017 12:48:41 -0500
+Message-ID: <d54c25f3-c9a7-132e-61f9-221a7e185b3c@gmail.com>
+In-Reply-To: <alpine.OSX.2.21.1708141656310.2825@gzuniga-mobl2.amr.corp.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7800968136671964148==
+--===============5742970274548198716==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Hi Mat,
 
-On Mon, 14 Aug 2017, Denis Kenzior wrote:
+>> bash: unit/gencerts.sh: /usr/bin/sh: bad interpreter: No such file or =
 
-> Hi Andrew/Mat,
->
-> On 08/14/2017 11:44 AM, Mat Martineau wrote:
->> =
+>> directory
+> =
 
->> Andrew,
->> =
+> Whoops. /bin/sh would be more likely to work everywhere.
 
->> On Mon, 14 Aug 2017, Andrew Zaborowski wrote:
->> =
+yep
 
->>> New test cert files are encrytped versions of cert-client-key-pkcs8.pem
->>> generated with:
->>> =
+> =
 
->>> openssl pkcs8 -in cert-client-key-pkcs8.pem -out =
+>> Should we drop the .pem files from the tree and simply use gencerts.sh =
 
->>> cert-client-key-md5-des.pem -topk8
->>> =
+>> when running configure?
+> =
 
->>> openssl pkcs8 -in cert-client-key-pkcs8.pem -out =
+> That would add openssl to our build time dependencies for unit tests. =
 
->>> cert-client-key-v2-des.pem -topk8 -v2 des-cbc
->>> =
+> How about regenerating the .pem files before tagging a release?
+> =
 
->>> openssl pkcs8 -in cert-client-key-pkcs8.pem -out =
 
->>> cert-client-key-v2-des-ede3.pem -topk8 -v2 des-ede3-cbc
->>> =
+I was thinking we simply generate the pem files for maintainer builds. =
 
->>> openssl pkcs8 -in cert-client-key-pkcs8.pem -out =
+I would assume that introducing an openssl dependency for such builds =
 
->>> cert-client-key-v2-aes128.pem -topk8 -v2 aes128
->>> =
+shouldn't be an issue.  Then have 'make dist' package the generated =
 
->>> openssl pkcs8 -in cert-client-key-pkcs8.pem -out =
+files into the tarball so that official 'released' versions build =
 
->>> cert-client-key-v2-aes256.pem -topk8 -v2 aes256
->> =
+without openssl.
 
->> Please update unit/gencerts.sh to create these files too. This makes it =
+Regards,
+-Denis
 
->> easy to regenerate them when the certs expire and ensures that the comma=
-nds =
-
->> are documented for developers who don't have the git history handy.
->> =
-
->
-> Yes, please do this.  I've applied this patch in the meantime.
->
-> By the way, on my Gentoo box I get:
->
-> bash: unit/gencerts.sh: /usr/bin/sh: bad interpreter: No such file or =
-
-> directory
-
-Whoops. /bin/sh would be more likely to work everywhere.
-
-> Should we drop the .pem files from the tree and simply use gencerts.sh wh=
-en =
-
-> running configure?
-
-That would add openssl to our build time dependencies for unit tests. How =
-
-about regenerating the .pem files before tagging a release?
-
---
-Mat Martineau
-Intel OTC
-
---===============7800968136671964148==--
+--===============5742970274548198716==--
 
