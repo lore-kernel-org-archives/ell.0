@@ -1,55 +1,72 @@
-Content-Type: multipart/mixed; boundary="===============8352540512550471845=="
+Content-Type: multipart/mixed; boundary="===============6402024513344001548=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 3/3] unit: Generate encrypted test keys in gencerts.sh
-Date: Thu, 17 Aug 2017 11:06:31 +0200
-Message-ID: <20170817090631.27630-3-andrew.zaborowski@intel.com>
-In-Reply-To: <20170817090631.27630-1-andrew.zaborowski@intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH 7/7] unit: Test loading encrypted private key PEM files
+Date: Thu, 17 Aug 2017 08:16:49 -0700
+Message-ID: <alpine.OSX.2.21.1708170754330.27223@cgguymon-mobl2.amr.corp.intel.com>
+In-Reply-To: <2911f3fc-6821-685c-ac83-cb5d86f941f9@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8352540512550471845==
+--===============6402024513344001548==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/gencerts.sh | 6 ++++++
- 1 file changed, 6 insertions(+)
 
-diff --git a/unit/gencerts.sh b/unit/gencerts.sh
-index b0249fb..d4c29a7 100755
---- a/unit/gencerts.sh
-+++ b/unit/gencerts.sh
-@@ -17,6 +17,12 @@ openssl pkcs8 -topk8 -nocrypt -in cert-client-key.pem -o=
-ut cert-client-key-pkcs8
- openssl req -new -extensions cert_ext -config ./gencerts.cnf -subj '/O=3DB=
-ar Example Organization/CN=3DBar Example Organization/emailAddress=3Dbar(a)=
-mail.example' -key cert-client-key.pem -out cert-client.csr
- openssl x509 -req -extensions cert_ext -extfile ./gencerts.cnf -in cert-cl=
-ient.csr -CA cert-ca.pem -CAkey cert-ca-key.pem -CAcreateserial -sha256 -da=
-ys 10000 -out cert-client.pem
- openssl verify -CAfile cert-ca.pem cert-client.pem
-+openssl pkcs8 -in cert-client-key-pkcs8.pem -out cert-client-key-md5-des.p=
-em -topk8 -v1 PBE-MD5-DES -passout pass:abc
-+openssl pkcs8 -in cert-client-key-pkcs8.pem -out cert-client-key-sha1-des.=
-pem -topk8 -v1 PBE-SHA1-DES -passout pass:abc
-+openssl pkcs8 -in cert-client-key-pkcs8.pem -out cert-client-key-v2-des.pe=
-m -topk8 -v2 des-cbc -v2prf hmacWithSHA1 -passout pass:abc
-+openssl pkcs8 -in cert-client-key-pkcs8.pem -out cert-client-key-v2-des-ed=
-e3.pem -topk8 -v2 des-ede3-cbc -v2prf hmacWithSHA224 -passout pass:abc
-+openssl pkcs8 -in cert-client-key-pkcs8.pem -out cert-client-key-v2-aes128=
-.pem -topk8 -v2 aes128 -v2prf hmacWithSHA256 -passout pass:abc
-+openssl pkcs8 -in cert-client-key-pkcs8.pem -out cert-client-key-v2-aes256=
-.pem -topk8 -v2 aes256 -v2prf hmacWithSHA512 -passout pass:abc
- =
+On Wed, 16 Aug 2017, Denis Kenzior wrote:
 
- echo -e "\n*** Intermediate Certificate ***"
- openssl genrsa -out cert-intca-key.pem
--- =
+> Hi Mat,
+>
+>>> I was thinking we simply generate the pem files for maintainer builds. =
+ >> =
 
-2.11.0
+>>> I would assume that introducing an openssl dependency for such builds
+>>> shouldn't be an issue.  Then have 'make dist' package the generated fil=
+es =
 
+>>> into the tarball so that official 'released' versions build without =
 
---===============8352540512550471845==--
+>>> openssl.
+>> =
+
+>> One catch with that approach: test-key has reference ciphertext and a =
+
+>> reference signature that were generated with one of those certs.
+>> =
+
+>
+> So every X months we'd need to regenerate all the pem files, recommit the=
+m to =
+
+> the tree and fix up some unit test?  That sounds awful :)
+
+More like "every X decades". The certs don't expire for 27+ years (10000 =
+
+days).
+
+>> Some options:
+>> =
+
+>> * Keep one cert around for this test (which seems to defeat the whole =
+
+>> purpose)
+>> * Dynamically generate the ciphertext & signature along with the certs
+>> =
+
+>
+> We could just generate a .h file with the above and include it into the u=
+nit =
+
+> test.  That really sounds like a winner to me.
+
+If you skip the conversion to C array, the unit test could read the binary =
+
+data from a couple of files instead of compiling it in.
+
+--
+Mat Martineau
+Intel OTC
+
+--===============6402024513344001548==--
 
