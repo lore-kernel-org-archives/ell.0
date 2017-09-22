@@ -1,87 +1,87 @@
-Content-Type: multipart/mixed; boundary="===============3588370504018464554=="
+Content-Type: multipart/mixed; boundary="===============4833634411653018251=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 2/4] util: Add l_strlcpy
-Date: Fri, 22 Sep 2017 15:12:42 -0700
-Message-ID: <20170922221244.12670-3-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 3/4] unit: Add l_strlcpy tests
+Date: Fri, 22 Sep 2017 15:12:43 -0700
+Message-ID: <20170922221244.12670-4-mathew.j.martineau@linux.intel.com>
 In-Reply-To: <20170922221244.12670-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3588370504018464554==
+--===============4833634411653018251==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/util.c | 32 ++++++++++++++++++++++++++++++++
- ell/util.h |  2 ++
- 2 files changed, 34 insertions(+)
+ unit/test-util.c | 41 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
 
-diff --git a/ell/util.c b/ell/util.c
-index 98916e5..2879f9f 100644
---- a/ell/util.c
-+++ b/ell/util.c
-@@ -443,6 +443,38 @@ LIB_EXPORT bool l_str_has_prefix(const char *str, cons=
-t char *prefix)
- 	return !strncmp(str, prefix, prefix_len);
+diff --git a/unit/test-util.c b/unit/test-util.c
+index 427c74a..d2b5496 100644
+--- a/unit/test-util.c
++++ b/unit/test-util.c
+@@ -74,6 +74,45 @@ static void test_has_suffix(const void *test_data)
+ 	assert(!l_str_has_suffix(suffix, str));
  }
  =
 
-+/**
-+ * l_strlcpy:
-+ * @dst: Destination buffer for string
-+ * @src: Source buffer containing null-terminated string to copy
-+ * @len: Maximum destination buffer space to use
-+ *
-+ * Copies a string from the @src buffer to the @dst buffer, using no
-+ * more than @len bytes in @dst. @dst is guaranteed to be
-+ * null-terminated. The caller can determine if the copy was truncated by
-+ * checking if the return value is greater than or equal to @len.
-+ *
-+ * Returns: The length of the @src string, not including the null
-+ * terminator.
-+ */
-+LIB_EXPORT size_t l_strlcpy(char* dst, const char *src, size_t len)
++static void do_strlcpy(size_t dst_bytes, size_t src_bytes)
 +{
-+	size_t src_len =3D strlen(src);
++	/* A valid address is needed for the destination buffer
++	 * even if l_strlcpy is told to not copy anything there
++	 */
++	char *dst =3D l_malloc(dst_bytes ?: 1);
++	char *src =3D l_malloc(src_bytes);
++	size_t src_strlen =3D src_bytes - 1;
 +
-+	if (len) {
-+		if (src_len < len) {
-+			len =3D src_len + 1;
-+		} else {
-+			len -=3D 1;
-+			dst[len] =3D '\0';
-+		}
++	memset(dst, ' ', dst_bytes ?: 1);
++	memset(src, '@', src_strlen);
++	src[src_strlen] =3D '\0';
 +
-+		memcpy(dst, src, len);
-+	}
++	assert(l_strlcpy(dst, src, dst_bytes) =3D=3D src_strlen);
 +
-+	return src_len;
++	if (!dst_bytes) {
++		assert(*dst =3D=3D ' ');
++	} else if (src_strlen >=3D dst_bytes) {
++		/* Copy was truncated */
++		assert(strlen(dst) =3D=3D dst_bytes - 1);
++		assert(l_str_has_prefix(src, dst));
++	} else
++		assert(!strcmp(src, dst));
++
++	l_free(dst);
++	l_free(src);
 +}
 +
- /**
-  * l_str_has_suffix:
-  * @str: A string to be examined
-diff --git a/ell/util.h b/ell/util.h
-index a77c0b8..126a172 100644
---- a/ell/util.h
-+++ b/ell/util.h
-@@ -222,6 +222,8 @@ char *l_strjoinv(char **str_array, const char delim);
- bool l_str_has_prefix(const char *str, const char *prefix);
- bool l_str_has_suffix(const char *str, const char *suffix);
- =
-
-+size_t l_strlcpy(char* dst, const char *src, size_t len);
++static void test_strlcpy(const void *test_data)
++{
++	do_strlcpy(0, 1);
++	do_strlcpy(0, 10);
++	do_strlcpy(10, 8);
++	do_strlcpy(10, 9);
++	do_strlcpy(10, 10);
++	do_strlcpy(10, 11);
++	do_strlcpy(10, 12);
++}
 +
- char *l_util_hexstring(const unsigned char *buf, size_t len);
- unsigned char *l_util_from_hexstring(const char *str, size_t *out_len);
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -83,5 +122,7 @@ int main(int argc, char *argv[])
  =
 
+ 	l_test_add("l_util_has_suffix", test_has_suffix, NULL);
+ =
+
++	l_test_add("l_strlcpy", test_strlcpy, NULL);
++
+ 	return l_test_run();
+ }
 -- =
 
 2.14.1
 
 
---===============3588370504018464554==--
+--===============4833634411653018251==--
 
