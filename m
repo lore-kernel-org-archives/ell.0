@@ -1,86 +1,133 @@
-Content-Type: multipart/mixed; boundary="===============2304259337533965308=="
+Content-Type: multipart/mixed; boundary="===============5128381583667027968=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 4/4] genl: Fix termination of name strings
-Date: Mon, 25 Sep 2017 10:01:16 -0500
-Message-ID: <3f6b2a0a-6a49-5207-2651-9d3146b3f9ef@gmail.com>
-In-Reply-To: <20170922221244.12670-5-mathew.j.martineau@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH 2/4] util: Add l_strlcpy
+Date: Mon, 25 Sep 2017 15:18:21 -0700
+Message-ID: <alpine.OSX.2.21.1709251505380.10397@mjmartin-mac01.sea.intel.com>
+In-Reply-To: <721a0b90-2d17-c284-9bcd-4518a8ade096@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2304259337533965308==
+--===============5128381583667027968==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
 
-On 09/22/2017 05:12 PM, Mat Martineau wrote:
-> The genl_mcast and l_genl_family structs both have name fields of length
-> GENL_NAMSIZ. They are expected to be null terminated strings, but
-> strncpy() was being misused and not terminating long names
-> correctly. Depending on the context, this would result in an
-> unterminated string being passed to strcmp() or a kernel warning.
-> ---
->   ell/genl.c | 6 +++---
->   1 file changed, 3 insertions(+), 3 deletions(-)
-> =
+Hi Denis,
 
-> diff --git a/ell/genl.c b/ell/genl.c
-> index 0ab6c98..b41a174 100644
-> --- a/ell/genl.c
-> +++ b/ell/genl.c
-> @@ -156,7 +156,7 @@ static struct l_genl_family *family_alloc(struct l_ge=
-nl *genl,
->   	family =3D l_new(struct l_genl_family, 1);
->   =
+On Mon, 25 Sep 2017, Denis Kenzior wrote:
 
->   	family->genl =3D genl;
-> -	strncpy(family->name, name, GENL_NAMSIZ);
-> +	l_strlcpy(family->name, name, GENL_NAMSIZ);
+> Hi Mat,
+>
+> On 09/22/2017 05:12 PM, Mat Martineau wrote:
+>> ---
+>>   ell/util.c | 32 ++++++++++++++++++++++++++++++++
+>>   ell/util.h |  2 ++
+>>   2 files changed, 34 insertions(+)
+>> =
 
-It would seem that l_genl_family_new should sanitize the name.  There's =
+>> diff --git a/ell/util.c b/ell/util.c
+>> index 98916e5..2879f9f 100644
+>> --- a/ell/util.c
+>> +++ b/ell/util.c
+>> @@ -443,6 +443,38 @@ LIB_EXPORT bool l_str_has_prefix(const char *str, =
 
-no point in truncating a name silently and trying to use it afterwards =
+>> const char *prefix)
+>>   	return !strncmp(str, prefix, prefix_len);
+>>   }
+>>   +/**
+>> + * l_strlcpy:
+>> + * @dst: Destination buffer for string
+>> + * @src: Source buffer containing null-terminated string to copy
+>> + * @len: Maximum destination buffer space to use
+>> + *
+>> + * Copies a string from the @src buffer to the @dst buffer, using no
+>> + * more than @len bytes in @dst. @dst is guaranteed to be
+>> + * null-terminated. The caller can determine if the copy was truncated =
+by
+>> + * checking if the return value is greater than or equal to @len.
+>> + *
+>> + * Returns: The length of the @src string, not including the null
+>> + * terminator.
+>> + */
+>> +LIB_EXPORT size_t l_strlcpy(char* dst, const char *src, size_t len)
+>> +{
+>> +	size_t src_len =3D strlen(src);
+>> +
+>> +	if (len) {
+>> +		if (src_len < len) {
+>> +			len =3D src_len + 1;
+>> +		} else {
+>> +			len -=3D 1;
+>> +			dst[len] =3D '\0';
+>> +		}
+>> +
+>> +		memcpy(dst, src, len);
+>
+> how does a direct for/while loop implementation compare speed wise to cal=
+ling =
 
-just to fail spectacularly anyway.
+> strlen & memcpy?
 
->   =
+It's about twice as fast to use strlen/memcpy. The direct =
 
->   	family->op_list =3D l_queue_new();
->   	family->mcast_list =3D l_queue_new();
-> @@ -232,7 +232,7 @@ static void family_add_mcast(struct l_genl_family *fa=
-mily, const char *name,
->   =
+implementation I used for comparison:
 
->   	mcast =3D l_new(struct genl_mcast, 1);
->   =
+         const char *orig_src =3D src;
 
-> -	strncpy(mcast->name, name, GENL_NAMSIZ);
-> +	l_strlcpy(mcast->name, name, GENL_NAMSIZ);
->   	mcast->id =3D id;
->   	mcast->users =3D 0;
->   =
+         if (len) {
+                 while (*src !=3D '\0' && --len) {
+                         *dst++ =3D *src++;
+                 }
+                 *dst =3D '\0';
+         }
+         return (src - orig_src) + strlen(src);
 
-> @@ -1047,7 +1047,7 @@ static void get_family_callback(struct l_genl_msg *=
-msg, void *user_data)
->   			family->id =3D *((uint16_t *) data);
->   			break;
->   		case CTRL_ATTR_FAMILY_NAME:
-> -			strncpy(family->name, data, GENL_NAMSIZ);
-> +			l_strlcpy(family->name, data, GENL_NAMSIZ);
->   			break;
->   		case CTRL_ATTR_VERSION:
->   			family->version =3D *((uint32_t *) data);
-> =
+I modified the unit test to run a bunch of iterations with some more =
 
+string sizes and to take performance samples during the strlcpy test. =
 
-The other two are not called with user input but get their values from =
+gperftools showed that the direct code spent 57.39% of execution time =
 
-the kernel, no?
+inside l_strlcpy and the strlen/memcpy technique spent 16.06% of execution =
 
-Regards,
--Denis
+time inside l_strlcpy. Turning off the profiling stuff and just using =
 
---===============2304259337533965308==--
+'time', direct took 53.973 seconds and strlen/memcpy took 25.176 seconds =
+
+of user time.
+
+>
+>> +	}
+>> +
+>> +	return src_len;
+>> +}
+>> +
+>>   /**
+>>    * l_str_has_suffix:
+>>    * @str: A string to be examined
+>> diff --git a/ell/util.h b/ell/util.h
+>> index a77c0b8..126a172 100644
+>> --- a/ell/util.h
+>> +++ b/ell/util.h
+>> @@ -222,6 +222,8 @@ char *l_strjoinv(char **str_array, const char delim);
+>>   bool l_str_has_prefix(const char *str, const char *prefix);
+>>   bool l_str_has_suffix(const char *str, const char *suffix);
+>>   +size_t l_strlcpy(char* dst, const char *src, size_t len);
+>> +
+>>   char *l_util_hexstring(const unsigned char *buf, size_t len);
+>>   unsigned char *l_util_from_hexstring(const char *str, size_t *out_len);
+>> =
+
+>
+> Regards,
+> -Denis
+>
+
+--
+Mat Martineau
+Intel OTC
+
+--===============5128381583667027968==--
 
