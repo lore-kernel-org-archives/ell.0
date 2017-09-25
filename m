@@ -1,33 +1,97 @@
-Content-Type: multipart/mixed; boundary="===============8340899856417096008=="
+Content-Type: multipart/mixed; boundary="===============5276961480956326116=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: Static analysis
-Date: Fri, 22 Sep 2017 16:44:53 -0700
-Message-ID: <alpine.OSX.2.21.1709221635580.38768@mhartlow-mobl.amr.corp.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 2/4] util: Add l_strlcpy
+Date: Mon, 25 Sep 2017 09:55:55 -0500
+Message-ID: <721a0b90-2d17-c284-9bcd-4518a8ade096@gmail.com>
+In-Reply-To: <20170922221244.12670-3-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8340899856417096008==
+--===============5276961480956326116==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Hi Mat,
 
-ELL has been approved to use Coverity Scan:
+On 09/22/2017 05:12 PM, Mat Martineau wrote:
+> ---
+>   ell/util.c | 32 ++++++++++++++++++++++++++++++++
+>   ell/util.h |  2 ++
+>   2 files changed, 34 insertions(+)
+> =
 
-https://scan.coverity.com/projects/ell
+> diff --git a/ell/util.c b/ell/util.c
+> index 98916e5..2879f9f 100644
+> --- a/ell/util.c
+> +++ b/ell/util.c
+> @@ -443,6 +443,38 @@ LIB_EXPORT bool l_str_has_prefix(const char *str, co=
+nst char *prefix)
+>   	return !strncmp(str, prefix, prefix_len);
+>   }
+>   =
 
-Summary information is available to the public, with defect data acessible =
+> +/**
+> + * l_strlcpy:
+> + * @dst: Destination buffer for string
+> + * @src: Source buffer containing null-terminated string to copy
+> + * @len: Maximum destination buffer space to use
+> + *
+> + * Copies a string from the @src buffer to the @dst buffer, using no
+> + * more than @len bytes in @dst. @dst is guaranteed to be
+> + * null-terminated. The caller can determine if the copy was truncated by
+> + * checking if the return value is greater than or equal to @len.
+> + *
+> + * Returns: The length of the @src string, not including the null
+> + * terminator.
+> + */
+> +LIB_EXPORT size_t l_strlcpy(char* dst, const char *src, size_t len)
+> +{
+> +	size_t src_len =3D strlen(src);
+> +
+> +	if (len) {
+> +		if (src_len < len) {
+> +			len =3D src_len + 1;
+> +		} else {
+> +			len -=3D 1;
+> +			dst[len] =3D '\0';
+> +		}
+> +
+> +		memcpy(dst, src, len);
 
-to project members. This can be opened up (so all defects are public but =
+how does a direct for/while loop implementation compare speed wise to =
 
-read-only), or the summary can be also limited to project members.
+calling strlen & memcpy?
 
-Let me know if you need access and I'll coordinate with the maintainers.
+> +	}
+> +
+> +	return src_len;
+> +}
+> +
+>   /**
+>    * l_str_has_suffix:
+>    * @str: A string to be examined
+> diff --git a/ell/util.h b/ell/util.h
+> index a77c0b8..126a172 100644
+> --- a/ell/util.h
+> +++ b/ell/util.h
+> @@ -222,6 +222,8 @@ char *l_strjoinv(char **str_array, const char delim);
+>   bool l_str_has_prefix(const char *str, const char *prefix);
+>   bool l_str_has_suffix(const char *str, const char *suffix);
+>   =
 
---
-Mat Martineau
-Intel OTC
+> +size_t l_strlcpy(char* dst, const char *src, size_t len);
+> +
+>   char *l_util_hexstring(const unsigned char *buf, size_t len);
+>   unsigned char *l_util_from_hexstring(const char *str, size_t *out_len);
+>   =
 
---===============8340899856417096008==--
+> =
+
+
+Regards,
+-Denis
+
+--===============5276961480956326116==--
 
