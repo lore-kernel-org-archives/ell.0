@@ -1,70 +1,51 @@
-Content-Type: multipart/mixed; boundary="===============4444125653494649260=="
+Content-Type: multipart/mixed; boundary="===============3924973930622309565=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 2/4] unit: Separate tests for different kinds of invalid genl
- names
-Date: Wed, 27 Sep 2017 17:22:03 -0700
-Message-ID: <20170928002205.17218-2-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 3/4] unit: Close files before exiting
+Date: Wed, 27 Sep 2017 17:22:04 -0700
+Message-ID: <20170928002205.17218-3-mathew.j.martineau@linux.intel.com>
 In-Reply-To: <20170928002205.17218-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4444125653494649260==
+--===============3924973930622309565==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Long names now fail earlier and require a different test.
 ---
- unit/test-genl.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+ unit/test-dbus-message-fds.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/unit/test-genl.c b/unit/test-genl.c
-index db6d917..a381e25 100644
---- a/unit/test-genl.c
-+++ b/unit/test-genl.c
-@@ -92,7 +92,7 @@ static bool prep_family_vanished(struct l_genl *genl,
- 	 * Use a bogus family name to trigger the vanished watch to
- 	 * be called during the ELL event loop run.
- 	 */
--	static const char BOGUS_GENL_NAME[] =3D "bogus_genl_family";
-+	static const char BOGUS_GENL_NAME[] =3D "bogusgenlfamily";
+diff --git a/unit/test-dbus-message-fds.c b/unit/test-dbus-message-fds.c
+index ff645ea..c31d0aa 100644
+--- a/unit/test-dbus-message-fds.c
++++ b/unit/test-dbus-message-fds.c
+@@ -277,12 +277,13 @@ static void get_random_return_callback(struct l_dbus_=
+message *message,
+ 	test_assert(fd0 !=3D -1);
  =
 
- 	data->vanished_family =3D l_genl_family_new(genl, BOGUS_GENL_NAME);
- 	return l_genl_family_set_watches(data->vanished_family,
-@@ -100,6 +100,15 @@ static bool prep_family_vanished(struct l_genl *genl,
- 						data, NULL);
+ 	compare_files(fd0, fd1);
+-	if (compare_failed)
+-		return;
+ =
+
+ 	close(fd0);
+ 	close(fd1);
+ =
+
++	if (compare_failed)
++		return;
++
+ 	test_assert(l_idle_oneshot(get_random_idle_callback, NULL, NULL));
  }
  =
 
-+static bool name_too_long(struct l_genl *genl, struct test_data *data)
-+{
-+	static const char LONG_GENL_NAME[] =3D "long_genl_family_name";
-+
-+	assert(!l_genl_family_new(genl, LONG_GENL_NAME));
-+
-+	return true;
-+}
-+
- static bool check_test_data(struct test_data *data)
- {
-     return data->group_id !=3D 0 && data->vanished_called;
-@@ -154,6 +163,8 @@ int main(int argc, char *argv[])
- 	assert(prep_family_appeared(genl, &data));
- 	assert(prep_family_vanished(genl, &data));
- =
-
-+	assert(name_too_long(genl, &data));
-+
- 	idle =3D l_idle_create(idle_callback, &data, NULL);
- =
-
- 	l_main_run();
 -- =
 
 2.14.1
 
 
---===============4444125653494649260==--
+--===============3924973930622309565==--
 
