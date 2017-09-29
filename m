@@ -1,87 +1,151 @@
-Content-Type: multipart/mixed; boundary="===============0276276336320575382=="
+Content-Type: multipart/mixed; boundary="===============2705997892050999398=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] dbus: Check nesting depth and set proper D-Bus stack
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v2 1/2] dbus: Check nesting depth and set proper D-Bus stack
  depth
-Date: Fri, 29 Sep 2017 16:25:05 -0500
-Message-ID: <67181960-d7ad-8165-c683-4bbd75506a1f@gmail.com>
-In-Reply-To: <20170929204215.9897-1-mathew.j.martineau@linux.intel.com>
+Date: Fri, 29 Sep 2017 15:37:29 -0700
+Message-ID: <20170929223730.11955-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0276276336320575382==
+--===============2705997892050999398==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+The maximum nesting level was not being enforced, and the stack array used =
+to
+generate D-Bus messages was not large enough.
+---
 
-On 09/29/2017 03:42 PM, Mat Martineau wrote:
-> The maximum nesting level was not being enforced, and the stack array use=
-d to
-> generate D-Bus messages was not large enough.
-> ---
->   ell/dbus-message.c | 24 +++++++++++++++++++++---
->   1 file changed, 21 insertions(+), 3 deletions(-)
-> =
+v2: Add 'unlikely' notation and comments for unexpected errors, and move
+one error check to skip extra work.
 
-> diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-> index ae132c4..9b24752 100644
-> --- a/ell/dbus-message.c
-> +++ b/ell/dbus-message.c
+ ell/dbus-message.c | 33 +++++++++++++++++++++++++++++++--
+ 1 file changed, 31 insertions(+), 2 deletions(-)
 
-<snip>
+diff --git a/ell/dbus-message.c b/ell/dbus-message.c
+index ae132c4..8a0f91d 100644
+--- a/ell/dbus-message.c
++++ b/ell/dbus-message.c
+@@ -54,6 +54,8 @@
+ #define DBUS_MESSAGE_FIELD_SIGNATURE	8
+ #define DBUS_MESSAGE_FIELD_UNIX_FDS	9
+ =
 
-> @@ -548,6 +553,9 @@ static bool message_iter_next_entry_valist(struct l_d=
-bus_message_iter *orig,
->   			break;
->   		case ')':
->   		case '}':
-> +			if (indent =3D=3D 0)
-> +				return false;
-> +
->   			signature +=3D 1;
->   			indent -=3D 1;
->
++#define DBUS_MAX_NESTING	32
++
+ struct l_dbus_message {
+ 	int refcount;
+ 	void *header;
+@@ -486,7 +488,7 @@ static bool message_iter_next_entry_valist(struct l_dbu=
+s_message_iter *orig,
+ 	const char *signature =3D orig->sig_start + orig->sig_pos;
+ 	const char *end;
+ 	struct l_dbus_message_iter *sub_iter;
+-	struct l_dbus_message_iter stack[32];
++	struct l_dbus_message_iter stack[DBUS_MAX_NESTING];
+ 	unsigned int indent =3D 0;
+ 	uint32_t uint32_val;
+ 	int fd;
+@@ -540,6 +542,9 @@ static bool message_iter_next_entry_valist(struct l_dbu=
+s_message_iter *orig,
+ 			signature +=3D 1;
+ 			indent +=3D 1;
+ =
 
-If we validate the signature in the beginning, then this really can't =
++			if (indent > DBUS_MAX_NESTING)
++				return false;
++
+ 			if (!enter_struct(iter, &stack[indent - 1]))
+ 				return false;
+ =
 
-happen.  We should put an unlikely in here and maybe even a comment.
+@@ -548,6 +553,13 @@ static bool message_iter_next_entry_valist(struct l_db=
+us_message_iter *orig,
+ 			break;
+ 		case ')':
+ 		case '}':
++			/*
++			 * Sanity check in case of an unmatched paren/brace =
 
-> @@ -1082,7 +1090,8 @@ static bool append_arguments(struct l_dbus_message =
-*message,
->   	char *generated_signature;
->   	char subsig[256];
->   	const char *sigend;
-> -	struct container stack[32];
-> +	/* Nesting requires an extra stack entry for the base level */
-> +	struct container stack[DBUS_MAX_NESTING + 1];
->   	unsigned int stack_index =3D 0;
->   =
++			 * that isn't caught elsewhere.
++			 */
++			if (unlikely(indent =3D=3D 0))
++				return false;
++
+ 			signature +=3D 1;
+ 			indent -=3D 1;
+ =
 
->   	if (_dbus_message_is_gvariant(message))
-> @@ -1127,7 +1136,7 @@ static bool append_arguments(struct l_dbus_message =
-*message,
->   				ret =3D false;
->   			}
->   =
+@@ -1082,7 +1094,8 @@ static bool append_arguments(struct l_dbus_message *m=
+essage,
+ 	char *generated_signature;
+ 	char subsig[256];
+ 	const char *sigend;
+-	struct container stack[32];
++	/* Nesting requires an extra stack entry for the base level */
++	struct container stack[DBUS_MAX_NESTING + 1];
+ 	unsigned int stack_index =3D 0;
+ =
 
-> -			if (!ret)
-> +			if (!ret || !stack_index)
->   				goto error;
+ 	if (_dbus_message_is_gvariant(message))
+@@ -1110,6 +1123,13 @@ static bool append_arguments(struct l_dbus_message *=
+message,
+ 				stack[stack_index].sig_end) {
+ 			bool ret;
+ =
 
-Hmm, this again should not be possible given that the leave_foo =
++			/*
++			 * Sanity check in case of an invalid signature that
++			 * isn't caught elsewhere.
++			 */
++			if (unlikely(stack_index =3D=3D 0))
++				goto error;
++
+ 			switch (stack[stack_index].type) {
+ 			case DBUS_CONTAINER_TYPE_STRUCT:
+ 				ret =3D driver->leave_struct(builder);
+@@ -1213,6 +1233,9 @@ static bool append_arguments(struct l_dbus_message *m=
+essage,
+ 		}
+ 		case '(':
+ 		case '{':
++			if (stack_index =3D=3D DBUS_MAX_NESTING)
++				goto error;
++
+ 			sigend =3D _dbus_signature_end(s);
+ 			memcpy(subsig, s + 1, sigend - s - 1);
+ 			subsig[sigend - s - 1] =3D '\0';
+@@ -1237,6 +1260,9 @@ static bool append_arguments(struct l_dbus_message *m=
+essage,
+ =
 
-functions should fail.  Should we have this check prior to attempting to =
+ 			break;
+ 		case 'v':
++			if (stack_index =3D=3D DBUS_MAX_NESTING)
++				goto error;
++
+ 			str =3D va_arg(args, const char *);
+ =
 
-call the driver->leave_foo methods?  And again, unlikely would be good here.
+ 			if (!str)
+@@ -1253,6 +1279,9 @@ static bool append_arguments(struct l_dbus_message *m=
+essage,
+ =
 
->   =
+ 			break;
+ 		case 'a':
++			if (stack_index =3D=3D DBUS_MAX_NESTING)
++				goto error;
++
+ 			sigend =3D _dbus_signature_end(s + 1) + 1;
+ 			memcpy(subsig, s + 1, sigend - s - 1);
+ 			subsig[sigend - s - 1] =3D '\0';
+-- =
 
->   			stack_index -=3D 1;
+2.14.2
 
-Regards,
--Denis
 
---===============0276276336320575382==--
+--===============2705997892050999398==--
 
