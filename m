@@ -1,137 +1,214 @@
-Content-Type: multipart/mixed; boundary="===============7568580298114421180=="
+Content-Type: multipart/mixed; boundary="===============7822021951061523854=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 1/2] dbus: Check nesting depth and set proper D-Bus stack depth
-Date: Fri, 29 Sep 2017 13:42:14 -0700
-Message-ID: <20170929204215.9897-1-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 2/2] unit: Test D-Bus nesting depth
+Date: Fri, 29 Sep 2017 13:42:15 -0700
+Message-ID: <20170929204215.9897-2-mathew.j.martineau@linux.intel.com>
+In-Reply-To: <20170929204215.9897-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7568580298114421180==
+--===============7822021951061523854==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The maximum nesting level was not being enforced, and the stack array used =
-to
-generate D-Bus messages was not large enough.
+The D-Bus spec limits struct nesting to 32 levels, so check that the
+maximum works and exceeding the maximum fails.
 ---
- ell/dbus-message.c | 24 +++++++++++++++++++++---
- 1 file changed, 21 insertions(+), 3 deletions(-)
+ unit/test-dbus-message.c | 156 +++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 1 file changed, 156 insertions(+)
 
-diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-index ae132c4..9b24752 100644
---- a/ell/dbus-message.c
-+++ b/ell/dbus-message.c
-@@ -54,6 +54,8 @@
- #define DBUS_MESSAGE_FIELD_SIGNATURE	8
- #define DBUS_MESSAGE_FIELD_UNIX_FDS	9
+diff --git a/unit/test-dbus-message.c b/unit/test-dbus-message.c
+index 99c6058..9af2cb1 100644
+--- a/unit/test-dbus-message.c
++++ b/unit/test-dbus-message.c
+@@ -541,6 +541,106 @@ static const struct message_data message_data_struct_=
+2 =3D {
+ 	.binary_len	=3D 185,
+ };
  =
 
-+#define DBUS_MAX_NESTING	32
++static const unsigned char message_binary_struct_3[] =3D {
++			0x6c, 0x01, 0x00, 0x01, 0xfc, 0x00, 0x00, 0x00,
++			0x00, 0x00, 0x00, 0x00, 0xce, 0x00, 0x00, 0x00,
++			0x01, 0x01, 0x6f, 0x00, 0x13, 0x00, 0x00, 0x00,
++			0x2f, 0x63, 0x6f, 0x6d, 0x2f, 0x65, 0x78, 0x61,
++			0x6d, 0x70, 0x6c, 0x65, 0x2f, 0x6f, 0x62, 0x6a,
++			0x65, 0x63, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x03, 0x01, 0x73, 0x00, 0x06, 0x00, 0x00, 0x00,
++			0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x00, 0x00,
++			0x02, 0x01, 0x73, 0x00, 0x15, 0x00, 0x00, 0x00,
++			0x63, 0x6f, 0x6d, 0x2e, 0x65, 0x78, 0x61, 0x6d,
++			0x70, 0x6c, 0x65, 0x2e, 0x69, 0x6e, 0x74, 0x65,
++			0x72, 0x66, 0x61, 0x63, 0x65, 0x00, 0x00, 0x00,
++			0x06, 0x01, 0x73, 0x00, 0x0b, 0x00, 0x00, 0x00,
++			0x63, 0x6f, 0x6d, 0x2e, 0x65, 0x78, 0x61, 0x6d,
++			0x70, 0x6c, 0x65, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x08, 0x01, 0x67, 0x00, 0x60, 0x28, 0x69, 0x28,
++			0x69, 0x28, 0x69, 0x28, 0x69, 0x28, 0x69, 0x28,
++			0x69, 0x28, 0x69, 0x28, 0x69, 0x28, 0x69, 0x28,
++			0x69, 0x28, 0x69, 0x28, 0x69, 0x28, 0x69, 0x28,
++			0x69, 0x28, 0x69, 0x28, 0x69, 0x28, 0x69, 0x28,
++			0x69, 0x28, 0x69, 0x28, 0x69, 0x28, 0x69, 0x28,
++			0x69, 0x28, 0x69, 0x28, 0x69, 0x28, 0x69, 0x28,
++			0x69, 0x28, 0x69, 0x28, 0x69, 0x28, 0x69, 0x28,
++			0x69, 0x28, 0x69, 0x28, 0x69, 0x29, 0x29, 0x29,
++			0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29,
++			0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29,
++			0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29,
++			0x29, 0x29, 0x29, 0x29, 0x29, 0x00, 0x00, 0x00,
++			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x13, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x15, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x19, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x1a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x1b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x1c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x1d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x1e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			0x1f, 0x00, 0x00, 0x00};
 +
- struct l_dbus_message {
- 	int refcount;
- 	void *header;
-@@ -486,7 +488,7 @@ static bool message_iter_next_entry_valist(struct l_dbu=
-s_message_iter *orig,
- 	const char *signature =3D orig->sig_start + orig->sig_pos;
- 	const char *end;
- 	struct l_dbus_message_iter *sub_iter;
--	struct l_dbus_message_iter stack[32];
-+	struct l_dbus_message_iter stack[DBUS_MAX_NESTING];
- 	unsigned int indent =3D 0;
- 	uint32_t uint32_val;
- 	int fd;
-@@ -540,6 +542,9 @@ static bool message_iter_next_entry_valist(struct l_dbu=
-s_message_iter *orig,
- 			signature +=3D 1;
- 			indent +=3D 1;
- =
-
-+			if (indent > DBUS_MAX_NESTING)
-+				return false;
++#define MESSAGE_SIGNATURE_STRUCT_3					\
++	"(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i" \
++	"))))))))))))))))))))))))))))))))"
 +
- 			if (!enter_struct(iter, &stack[indent - 1]))
- 				return false;
- =
-
-@@ -548,6 +553,9 @@ static bool message_iter_next_entry_valist(struct l_dbu=
-s_message_iter *orig,
- 			break;
- 		case ')':
- 		case '}':
-+			if (indent =3D=3D 0)
-+				return false;
++static const struct message_data message_data_struct_3 =3D {
++	.type		=3D "method_call",
++	.path		=3D "/com/example/object",
++	.interface	=3D "com.example.interface",
++	.member		=3D "method",
++	.destination	=3D "com.example",
++	.signature	=3D MESSAGE_SIGNATURE_STRUCT_3,
++	.serial		=3D 0,
++	.reply_serial	=3D 0,
++	.no_reply	=3D 0,
++	.auto_start	=3D 1,
++	.unix_fds	=3D 0,
++	.binary		=3D message_binary_struct_3,
++	.binary_len	=3D 476,
++};
 +
- 			signature +=3D 1;
- 			indent -=3D 1;
- =
-
-@@ -1082,7 +1090,8 @@ static bool append_arguments(struct l_dbus_message *m=
-essage,
- 	char *generated_signature;
- 	char subsig[256];
- 	const char *sigend;
--	struct container stack[32];
-+	/* Nesting requires an extra stack entry for the base level */
-+	struct container stack[DBUS_MAX_NESTING + 1];
- 	unsigned int stack_index =3D 0;
- =
-
- 	if (_dbus_message_is_gvariant(message))
-@@ -1127,7 +1136,7 @@ static bool append_arguments(struct l_dbus_message *m=
-essage,
- 				ret =3D false;
- 			}
- =
-
--			if (!ret)
-+			if (!ret || !stack_index)
- 				goto error;
- =
-
- 			stack_index -=3D 1;
-@@ -1213,6 +1222,9 @@ static bool append_arguments(struct l_dbus_message *m=
-essage,
- 		}
- 		case '(':
- 		case '{':
-+			if (stack_index =3D=3D DBUS_MAX_NESTING)
-+				goto error;
++#define MESSAGE_SIGNATURE_STRUCT_4					\
++	"(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i(i" \
++	")))))))))))))))))))))))))))))))))"
 +
- 			sigend =3D _dbus_signature_end(s);
- 			memcpy(subsig, s + 1, sigend - s - 1);
- 			subsig[sigend - s - 1] =3D '\0';
-@@ -1237,6 +1249,9 @@ static bool append_arguments(struct l_dbus_message *m=
-essage,
- =
-
- 			break;
- 		case 'v':
-+			if (stack_index =3D=3D DBUS_MAX_NESTING)
-+				goto error;
++static const struct message_data message_data_struct_4 =3D {
++	.type		=3D "method_call",
++	.path		=3D "/com/example/object",
++	.interface	=3D "com.example.interface",
++	.member		=3D "method",
++	.destination	=3D "com.example",
++	.signature	=3D MESSAGE_SIGNATURE_STRUCT_4,
++	.serial		=3D 0,
++	.reply_serial	=3D 0,
++	.no_reply	=3D 0,
++	.auto_start	=3D 1,
++	.unix_fds	=3D 0,
++};
 +
- 			str =3D va_arg(args, const char *);
+ static const unsigned char message_binary_array_1[] =3D {
+ 			0x6c, 0x01, 0x00, 0x01, 0x1d, 0x00, 0x00, 0x00,
+ 			0x00, 0x00, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00,
+@@ -1716,6 +1816,59 @@ static void build_struct_2(const void *data)
+ 	compare_message(msg, data);
+ }
  =
 
- 			if (!str)
-@@ -1253,6 +1268,9 @@ static bool append_arguments(struct l_dbus_message *m=
-essage,
- =
-
- 			break;
- 		case 'a':
-+			if (stack_index =3D=3D DBUS_MAX_NESTING)
-+				goto error;
++static void parse_struct_3(const void *data)
++{
++	struct l_dbus_message *msg =3D check_message(data);
++	const int num[32] =3D { 0 };
++	bool result;
 +
- 			sigend =3D _dbus_signature_end(s + 1) + 1;
- 			memcpy(subsig, s + 1, sigend - s - 1);
- 			subsig[sigend - s - 1] =3D '\0';
++	result =3D l_dbus_message_get_arguments(msg, MESSAGE_SIGNATURE_STRUCT_3,
++		      &num[0], &num[1], &num[2], &num[3],
++		      &num[4], &num[5], &num[6], &num[7],
++		      &num[8], &num[9], &num[10], &num[11],
++		      &num[12], &num[13], &num[14], &num[15],
++		      &num[16], &num[17], &num[18], &num[19],
++		      &num[20], &num[21], &num[22], &num[23],
++		      &num[24], &num[25], &num[26], &num[27],
++		      &num[28], &num[29], &num[30], &num[31]);
++
++	assert(result);
++
++	for (int i =3D 0; i < 32; i++) {
++		assert(i =3D=3D num[i]);
++	}
++
++	l_dbus_message_unref(msg);
++}
++
++static void build_struct_3(const void *data)
++{
++	struct l_dbus_message *msg =3D build_message(data);
++	bool result;
++
++	result =3D l_dbus_message_set_arguments(msg, MESSAGE_SIGNATURE_STRUCT_3,
++		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
++		18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
++
++	assert(result);
++
++	compare_message(msg, data);
++}
++
++static void build_struct_4(const void *data)
++{
++	struct l_dbus_message *msg =3D build_message(data);
++	bool result;
++
++	result =3D l_dbus_message_set_arguments(msg, MESSAGE_SIGNATURE_STRUCT_4,
++		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
++		18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
++
++	assert(!result);
++
++	l_dbus_message_unref(msg);
++}
++
+ static void check_array_1(const void *data)
+ {
+ 	struct l_dbus_message *msg =3D check_message(data);
+@@ -2720,6 +2873,9 @@ int main(int argc, char *argv[])
+ 	l_test_add("Struct 1 (build)", build_struct_1, &message_data_struct_1);
+ 	l_test_add("Struct 2 (parse)", parse_struct_2, &message_data_struct_2);
+ 	l_test_add("Struct 2 (build)", build_struct_2, &message_data_struct_2);
++	l_test_add("Struct 3 (parse)", parse_struct_3, &message_data_struct_3);
++	l_test_add("Struct 3 (build)", build_struct_3, &message_data_struct_3);
++	l_test_add("Struct 4 (build)", build_struct_4, &message_data_struct_4);
+ =
+
+ 	l_test_add("Array 1 (parse)", check_array_1, &message_data_array_1);
+ 	l_test_add("Array 1 (build)", build_array_1, &message_data_array_1);
 -- =
 
 2.14.2
 
 
---===============7568580298114421180==--
+--===============7822021951061523854==--
 
