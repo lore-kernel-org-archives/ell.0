@@ -1,42 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============0361176639390247596=="
+Content-Type: multipart/mixed; boundary="===============0459866538231346718=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2 1/2] dbus: Check nesting depth and set proper D-Bus
- stack depth
-Date: Fri, 29 Sep 2017 17:41:05 -0500
-Message-ID: <dbd7c975-9498-f402-b547-6d085abff6aa@gmail.com>
-In-Reply-To: <20170929223730.11955-1-mathew.j.martineau@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH] README: Add web site URL
+Date: Fri, 29 Sep 2017 16:29:19 -0700
+Message-ID: <20170929232919.29164-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0361176639390247596==
+--===============0459866538231346718==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+---
+ README | 3 +++
+ 1 file changed, 3 insertions(+)
 
-On 09/29/2017 05:37 PM, Mat Martineau wrote:
-> The maximum nesting level was not being enforced, and the stack array use=
-d to
-> generate D-Bus messages was not large enough.
-> ---
-> =
+diff --git a/README b/README
+index f4bafcc..4f6ed1b 100644
+--- a/README
++++ b/README
+@@ -53,3 +53,6 @@ Mailing list:
+ =
 
-> v2: Add 'unlikely' notation and comments for unexpected errors, and move
-> one error check to skip extra work.
-> =
+ IRC:
+ 	irc://irc.freenode.net/#ell
++
++For additional information about the project visit the ELL web site:
++	https://01.org/embedded-linux-library-ell
+-- =
 
->   ell/dbus-message.c | 33 +++++++++++++++++++++++++++++++--
->   1 file changed, 31 insertions(+), 2 deletions(-)
-> =
-
-
-Both applied thanks.
-
-Regards,
--Denis
+2.14.2
 
 
---===============0361176639390247596==--
+--===============0459866538231346718==--
 
