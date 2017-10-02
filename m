@@ -1,32 +1,36 @@
-Content-Type: multipart/mixed; boundary="===============3708414131350890964=="
+Content-Type: multipart/mixed; boundary="===============7096850505681246565=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] README: Add web site URL
-Date: Fri, 29 Sep 2017 18:30:34 -0500
-Message-ID: <a81c241b-1b36-3729-11b5-224f646a6d89@gmail.com>
-In-Reply-To: <20170929232919.29164-1-mathew.j.martineau@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH] README: New and improved URL
+Date: Mon, 02 Oct 2017 14:12:48 -0700
+Message-ID: <20171002211248.9754-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3708414131350890964==
+--===============7096850505681246565==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+---
+ README | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 09/29/2017 06:29 PM, Mat Martineau wrote:
-> ---
->   README | 3 +++
->   1 file changed, 3 insertions(+)
-> =
+diff --git a/README b/README
+index 4f6ed1b..3d24881 100644
+--- a/README
++++ b/README
+@@ -55,4 +55,4 @@ IRC:
+ 	irc://irc.freenode.net/#ell
+ =
+
+ For additional information about the project visit the ELL web site:
+-	https://01.org/embedded-linux-library-ell
++	https://01.org/ell
+-- =
+
+2.14.2
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
-
---===============3708414131350890964==--
+--===============7096850505681246565==--
 
