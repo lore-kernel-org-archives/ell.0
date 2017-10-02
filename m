@@ -1,36 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============7096850505681246565=="
+Content-Type: multipart/mixed; boundary="===============3359093984797235432=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH] README: New and improved URL
-Date: Mon, 02 Oct 2017 14:12:48 -0700
-Message-ID: <20171002211248.9754-1-mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] README: New and improved URL
+Date: Mon, 02 Oct 2017 17:43:17 -0500
+Message-ID: <011f894c-579f-0616-1c6a-2302bdfb2d10@gmail.com>
+In-Reply-To: <20171002211248.9754-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7096850505681246565==
+--===============3359093984797235432==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- README | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Hi Mat,
 
-diff --git a/README b/README
-index 4f6ed1b..3d24881 100644
---- a/README
-+++ b/README
-@@ -55,4 +55,4 @@ IRC:
- 	irc://irc.freenode.net/#ell
- =
-
- For additional information about the project visit the ELL web site:
--	https://01.org/embedded-linux-library-ell
-+	https://01.org/ell
--- =
-
-2.14.2
+On 10/02/2017 04:12 PM, Mat Martineau wrote:
+> ---
+>   README | 2 +-
+>   1 file changed, 1 insertion(+), 1 deletion(-)
+> =
 
 
---===============7096850505681246565==--
+Applied, thanks.
+
+Regards,
+-Denis
+
+
+--===============3359093984797235432==--
 
