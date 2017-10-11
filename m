@@ -1,62 +1,93 @@
-Content-Type: multipart/mixed; boundary="===============7477653053168649507=="
+Content-Type: multipart/mixed; boundary="===============4662047297945485584=="
 MIME-Version: 1.0
 From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH 1/2] genl: Make iovec parameter const
-Date: Wed, 11 Oct 2017 15:12:38 -0700
-Message-ID: <20171011221239.8656-2-ossama.othman@intel.com>
-In-Reply-To: <20171011221239.8656-1-ossama.othman@intel.com>
+Subject: [PATCH v2 2/2] unit: Added test for l_genl_msg_append_attrv()
+Date: Wed, 11 Oct 2017 15:18:36 -0700
+Message-ID: <20171011221836.9434-1-ossama.othman@intel.com>
+In-Reply-To: <20171011221239.8656-2-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7477653053168649507==
+--===============4662047297945485584==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Make the iovec parameter of l_genl_msg_append_attrv() const since it
-isn't modified by the function.  This allows a pointer to a const
-struct iovec to be passed as an argument without casting away the
-const.
 ---
- ell/genl.c | 3 ++-
- ell/genl.h | 2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ unit/test-genl-msg.c | 47 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 47 insertions(+)
 
-diff --git a/ell/genl.c b/ell/genl.c
-index aa6266f..c04a47f 100644
---- a/ell/genl.c
-+++ b/ell/genl.c
-@@ -797,7 +797,8 @@ LIB_EXPORT bool l_genl_msg_append_attr(struct l_genl_ms=
-g *msg, uint16_t type,
+diff --git a/unit/test-genl-msg.c b/unit/test-genl-msg.c
+index 49de707..1dd62be 100644
+--- a/unit/test-genl-msg.c
++++ b/unit/test-genl-msg.c
+@@ -366,6 +366,50 @@ static void build_libnl_nested(const void *data)
+ 	l_genl_msg_unref(msg);
  }
  =
 
- LIB_EXPORT bool l_genl_msg_append_attrv(struct l_genl_msg *msg, uint16_t t=
-ype,
--					struct iovec *iov, size_t iov_len)
-+					const struct iovec *iov,
-+					size_t iov_len)
++static void test_append_attrv(const void *data)
++{
++	static const int num_blocks =3D 3;
++	unsigned char * const payload =3D set_station_request;
++	const size_t total_len =3D L_ARRAY_SIZE(set_station_request);
++	const size_t block_len =3D total_len / num_blocks;
++	const struct iovec iov[] =3D {
++	    {
++		.iov_base =3D payload,
++		.iov_len  =3D block_len
++	    },
++	    {
++		.iov_base =3D payload + block_len,
++		.iov_len  =3D block_len
++	    },
++	    {
++		.iov_base =3D payload + block_len * 2,
++		.iov_len  =3D total_len - block_len * 2
++	    }
++	};
++
++	struct l_genl_msg *msg;
++	const uint16_t type =3D 2;
++	struct l_genl_attr attr;
++	uint16_t attr_type;
++	uint16_t attr_len;
++	const void *attr_payload;
++
++	assert(L_ARRAY_SIZE(iov) =3D=3D num_blocks);
++
++	msg =3D l_genl_msg_new_sized(1, NLA_HDRLEN + NLA_ALIGN(total_len));
++	assert(msg);
++
++	assert(l_genl_msg_append_attrv(msg, type, iov, L_ARRAY_SIZE(iov)));
++	assert(l_genl_attr_init(&attr, msg));
++	assert(l_genl_attr_next(&attr, &attr_type, &attr_len, &attr_payload));
++
++	assert(type =3D=3D attr_type);
++	assert(total_len =3D=3D attr_len);
++	assert(memcmp(payload, attr_payload, total_len) =3D=3D 0);
++
++	l_genl_msg_unref(msg);
++}
++
+ int main(int argc, char *argv[])
  {
- 	struct nlattr *nla;
- 	size_t len =3D 0;
-diff --git a/ell/genl.h b/ell/genl.h
-index 8597c8f..bddf1d4 100644
---- a/ell/genl.h
-+++ b/ell/genl.h
-@@ -72,7 +72,7 @@ int l_genl_msg_get_error(struct l_genl_msg *msg);
- bool l_genl_msg_append_attr(struct l_genl_msg *msg, uint16_t type,
- 					uint16_t len, const void *data);
- bool l_genl_msg_append_attrv(struct l_genl_msg *msg, uint16_t type,
--					struct iovec *iov, size_t iov_len);
-+				const struct iovec *iov, size_t iov_len);
- bool l_genl_msg_enter_nested(struct l_genl_msg *msg, uint16_t type);
- bool l_genl_msg_leave_nested(struct l_genl_msg *msg);
+ 	bool little_endian;
+@@ -396,6 +440,9 @@ int main(int argc, char *argv[])
+ 	l_test_add("Build libnl-generated Example with Nesting",
+ 				build_libnl_nested, NULL);
  =
 
++	l_test_add("Test l_genl_msg_append_attrv",
++				test_append_attrv, NULL);
++
+ done:
+ 	return l_test_run();
+ }
 -- =
 
 2.11.0
 
 
---===============7477653053168649507==--
+--===============4662047297945485584==--
 
