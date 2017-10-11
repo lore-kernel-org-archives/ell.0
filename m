@@ -1,62 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============0256992504442233705=="
+Content-Type: multipart/mixed; boundary="===============5052668658458977354=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] unit: Add PBKDF2 tests from iwd
-Date: Mon, 09 Oct 2017 14:33:54 -0500
-Message-ID: <c95b6782-c533-71f6-4d1b-739645bbc65f@gmail.com>
-In-Reply-To: <CAOq732LT7cZiC8unwyhF35PMR8t3q2inq-X1OGVATfDY=XmdzA@mail.gmail.com>
+From: Ossama Othman <ossama.othman@intel.com>
+Subject: [PATCH 0/2] genl: Make iovec parameter const
+Date: Wed, 11 Oct 2017 15:12:37 -0700
+Message-ID: <20171011221239.8656-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0256992504442233705==
+--===============5052668658458977354==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
-
-On 10/09/2017 02:21 PM, Andrew Zaborowski wrote:
-> Hi Denis,
-> =
-
-> On 9 October 2017 at 19:05, Denis Kenzior <denkenz@gmail.com> wrote:
->> On 10/09/2017 04:46 AM, Andrew Zaborowski wrote:
->>> Test l_pkcs5_pbkdf2 using test data from iwd with the exception of the
->>> test case that contained a \0 inside the password string.
->>
->> So the obvious question is why that test was excepted?
-> =
-
-> Because in the ell implementation I treat the password as a C string
-> so it can't have a \0 in the middle, while the iwd version would take
-> a length parameter.  We don't have a use case for non-C-string
-> passwords but RFC8018 doesn't exactly prohibit them or define what is
-> considered a password.
-> =
-
-> "Throughout this document, a password is considered to be an octet
-> string of arbitrary length whose interpretation as a text string is
-> unspecified.  In the interest of interoperability, however, it is
-> recommended that applications follow some common text encoding rules.
-> ASCII and UTF-8 [RFC3629] are two possibilities.  (ASCII is a subset
-> of UTF-8.)
-> =
-
-> Although the selection of passwords is outside the scope of this
-> document, guidelines have been published [NISTSP63] that may well be
-> taken into account."
-> =
-
-> Best regards
-> =
+This set of patches makes the iovec parameter of
+l_genl_msg_append_attrv() function const since it isn't modified by
+that function.  This allows a pointer to a const struct iovec to be
+passed as an argument without casting away the const.  Of course, a
+pointer to a non-const iovec may still be passed without a cast as
+well.  A new unit test for l_genl_msg_append_attrv() is also added.
 
 
-Sweet.  So I took the liberty of copy-pasting this explanation into the =
+Ossama Othman (2):
+  genl: Make iovec parameter const
+  unit: Added test for l_genl_msg_append_attrv()
 
-patch description (git commit --amend) and pushed it out ;)
+ ell/genl.c           |  3 ++-
+ ell/genl.h           |  2 +-
+ unit/test-genl-msg.c | 47 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 50 insertions(+), 2 deletions(-)
 
-Regards,
--Denis
+-- =
 
---===============0256992504442233705==--
+2.11.0
+
+
+--===============5052668658458977354==--
 
