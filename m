@@ -1,165 +1,95 @@
-Content-Type: multipart/mixed; boundary="===============1007333220658950515=="
+Content-Type: multipart/mixed; boundary="===============8078588518437647064=="
 MIME-Version: 1.0
 From: Szymon Janc <szymon.janc@codecoup.pl>
-Subject: [RFC 5/6] dbus: Add support for setting properties on D-Bus proxy
+Subject: [RFC 6/6] dbus: Add convenient API for calling method on proxy
  interface
-Date: Wed, 29 Nov 2017 16:16:47 +0100
-Message-ID: <20171129151648.24749-6-szymon.janc@codecoup.pl>
+Date: Wed, 29 Nov 2017 16:16:48 +0100
+Message-ID: <20171129151648.24749-7-szymon.janc@codecoup.pl>
 In-Reply-To: <20171129151648.24749-1-szymon.janc@codecoup.pl>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1007333220658950515==
+--===============8078588518437647064==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-l_dbus_proxy_set_property function allows to set properties via proxy
-interface.
+This is simple wrapper around l_dbus_method_call.
 ---
- ell/dbus-client.c | 96 +++++++++++++++++++++++++++++++++++++++++++++++++++=
-++++
- ell/dbus-client.h |  8 +++++
- 2 files changed, 104 insertions(+)
+ ell/dbus-client.c | 41 +++++++++++++++++++++++++++++++++++++++++
+ ell/dbus-client.h |  7 +++++++
+ 2 files changed, 48 insertions(+)
 
 diff --git a/ell/dbus-client.c b/ell/dbus-client.c
-index e6b6ff3..3f8c49f 100644
+index 3f8c49f..4eacd01 100644
 --- a/ell/dbus-client.c
 +++ b/ell/dbus-client.c
-@@ -182,6 +182,102 @@ static void l_dbus_proxy_unref(struct l_dbus_proxy *p=
-roxy)
- 	l_free(proxy);
+@@ -278,6 +278,47 @@ LIB_EXPORT bool l_dbus_proxy_set_property(struct l_dbu=
+s_proxy *proxy,
+ 	return true;
  }
  =
 
-+struct set_prop_data
++struct proxy_call_data
 +{
 +	struct l_dbus_proxy *proxy;
-+	l_dbus_client_proxy_result_func_t result;
++	l_dbus_client_proxy_result_func_t reply;
 +	void *user_data;
 +	l_dbus_destroy_func_t destroy;
 +};
 +
-+static void set_prop_data_free(void *user_data)
++static void proxy_call_data_reply(struct l_dbus_message *message,
++							void *user_data)
 +{
-+	struct set_prop_data* prop =3D user_data;
++	struct proxy_call_data *data =3D user_data;
 +
-+	if (prop->destroy)
-+		prop->destroy(prop->user_data);
-+
-+	l_dbus_proxy_unref(prop->proxy);
-+	l_free(prop);
++	if (data->reply)
++		data->reply(data->proxy, message, data->user_data);
 +}
 +
-+static void set_prop_reply(struct l_dbus_message *message, void *user_data)
++LIB_EXPORT uint32_t l_dbus_proxy_method_call(struct l_dbus_proxy *proxy,
++						const char *method,
++						l_dbus_message_func_t setup,
++						l_dbus_client_proxy_result_func_t reply,
++						void *user_data,
++						l_dbus_destroy_func_t destroy)
 +{
-+	struct set_prop_data* prop =3D user_data;
-+
-+	prop->result(prop->proxy, message, prop->user_data);
-+}
-+
-+LIB_EXPORT bool l_dbus_proxy_set_property(struct l_dbus_proxy *proxy,
-+				l_dbus_client_proxy_result_func_t result,
-+				void *user_data, l_dbus_destroy_func_t destroy,
-+				const char *name, const char *signature, ...)
-+{
-+	struct l_dbus_client *client =3D proxy->client;
-+	struct l_dbus_message_builder *builder;
-+	struct set_prop_data *set_prop_data;
-+	struct l_dbus_message *message;
-+	struct proxy_property *prop;
-+	va_list args;
++	struct proxy_call_data *call_data;
 +
 +	if (unlikely(!proxy))
-+		return false;
++		return 0;
 +
-+	prop =3D find_property(proxy, name);
-+	if (!prop)
-+		return false;
++	call_data =3D l_new(struct proxy_call_data, 1);
++	call_data->proxy =3D proxy;
++	call_data->reply =3D reply;
++	call_data->user_data =3D user_data;
++	call_data->destroy =3D destroy;
 +
-+	if (strcmp(l_dbus_message_get_signature(prop->msg), signature))
-+		return false;
-+
-+	message =3D l_dbus_message_new_method_call(client->dbus, client->service,
-+						proxy->path,
-+						L_DBUS_INTERFACE_PROPERTIES,
-+						"Set");
-+	if (!message)
-+		return false;
-+
-+	builder =3D l_dbus_message_builder_new(message);
-+	if (!builder) {
-+		l_dbus_message_unref(message);
-+		return false;
-+	}
-+
-+	l_dbus_message_builder_append_basic(builder, 's', proxy->interface);
-+	l_dbus_message_builder_append_basic(builder, 's', name);
-+
-+	l_dbus_message_builder_enter_variant(builder, signature);
-+
-+	va_start(args, signature);
-+	l_dbus_message_builder_append_from_valist(builder, signature, args);
-+	va_end(args);
-+
-+	l_dbus_message_builder_leave_variant(builder);
-+
-+	l_dbus_message_builder_finalize(builder);
-+	l_dbus_message_builder_destroy(builder);
-+
-+
-+	if (!result) {
-+		return l_dbus_send(client->dbus, message);
-+	}
-+
-+	set_prop_data =3D l_new(struct set_prop_data, 1);
-+	set_prop_data->proxy =3D l_dbus_proxy_ref(proxy);
-+	set_prop_data->result =3D result;
-+	set_prop_data->user_data =3D user_data;
-+	set_prop_data->destroy =3D destroy;
-+
-+	if (!l_dbus_send_with_reply(client->dbus, message, set_prop_reply,
-+					set_prop_data, set_prop_data_free)) {
-+		l_dbus_proxy_unref(set_prop_data->proxy);
-+		l_free(set_prop_data);
-+		return false;
-+	}
-+
-+	return true;
++	return l_dbus_method_call(proxy->client->dbus, proxy->client->service,
++					proxy->path, proxy->interface, method,
++					setup, proxy_call_data_reply, call_data,
++					l_free);
 +}
 +
  static void proxy_update_property(struct l_dbus_proxy *proxy,
  					const char *name,
  					struct l_dbus_message_iter *property)
 diff --git a/ell/dbus-client.h b/ell/dbus-client.h
-index b32f4a3..a65d8bb 100644
+index a65d8bb..ebfbd77 100644
 --- a/ell/dbus-client.h
 +++ b/ell/dbus-client.h
-@@ -39,6 +39,9 @@ typedef void (*l_dbus_client_ready_func_t)(struct l_dbus_=
-client *client,
- 							void *user_data);
- typedef void (*l_dbus_client_proxy_func_t) (struct l_dbus_proxy *proxy,
- 							void *user_data);
-+typedef void (*l_dbus_client_proxy_result_func_t) (struct l_dbus_proxy *pr=
-oxy,
-+						struct l_dbus_message *result,
-+						void *user_data);
- typedef void (*l_dbus_client_property_function_t) (struct l_dbus_proxy *pr=
-oxy,
- 						const char *name,
- 						struct l_dbus_message *msg,
-@@ -80,6 +83,11 @@ const char *l_dbus_proxy_get_interface(struct l_dbus_pro=
-xy *proxy);
- =
-
- bool l_dbus_proxy_get_property(struct l_dbus_proxy *proxy, const char *nam=
-e,
- 						const char *signature, ...);
+@@ -88,6 +88,13 @@ bool l_dbus_proxy_set_property(struct l_dbus_proxy *prox=
+y,
+ 				l_dbus_client_proxy_result_func_t result,
+ 				void *user_data, l_dbus_destroy_func_t destroy,
+ 				const char *name, const char *signature, ...);
 +
-+bool l_dbus_proxy_set_property(struct l_dbus_proxy *proxy,
-+				l_dbus_client_proxy_result_func_t result,
-+				void *user_data, l_dbus_destroy_func_t destroy,
-+				const char *name, const char *signature, ...);
++uint32_t l_dbus_proxy_method_call(struct l_dbus_proxy *proxy,
++				const char *method,
++				l_dbus_message_func_t setup,
++				l_dbus_client_proxy_result_func_t reply,
++				void *user_data, l_dbus_destroy_func_t destroy);
++
  #ifdef __cplusplus
  }
  #endif
@@ -168,5 +98,5 @@ e,
 2.14.3
 
 
---===============1007333220658950515==--
+--===============8078588518437647064==--
 
