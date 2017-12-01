@@ -1,59 +1,64 @@
-Content-Type: multipart/mixed; boundary="===============4512353490957287731=="
+Content-Type: multipart/mixed; boundary="===============2612547669564864187=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [RFC 4/6] dbus: Add support for proxy interface
-Date: Fri, 01 Dec 2017 09:40:36 -0600
-Message-ID: <6db58dc6-c89f-3655-a56f-cc5c46856b44@gmail.com>
-In-Reply-To: <3899174.ZFCDLsYfQH@ix>
+Subject: Re: [RFC 5/6] dbus: Add support for setting properties on D-Bus proxy
+ interface
+Date: Fri, 01 Dec 2017 09:50:18 -0600
+Message-ID: <7ac3a66c-7d45-d3c5-7a2d-a1d7630335fa@gmail.com>
+In-Reply-To: <8844831.h3fZ7XXDys@ix>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4512353490957287731==
+--===============2612547669564864187==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Szymon,
 
->> I'm okay with this being the first naive solution, but this seems quite
->> wasteful.  Can we store the serialized property data without the
->> enclosing message?  E.g. by using GVariant serializer and storing the
->> raw data?
-> =
-
-> Yeah, I was aware of that when sending patches :) Just wasn't sure on what
-> else could I use. I can fix that in subsequent patch if this is OK?
-> =
-
-
-That's fine.
-
->>> +	/* TODO should we allow to set different root? */
->>> +	client->objects_call =3D l_dbus_method_call(dbus, client->service, "/=
-",
+>> So its a bit weird that a proxy_removed might have been called, yet an >=
+> outstanding call for that proxy is ongoing...  No idea how to fix this
+>> nicely but some options:
 >>
->> Should "/" be client->path instead?  Note that ell only exports
->> ObjectManager on the root path.  It doesn't export it for any child
->> paths.  However, BlueZ might act differently.
+>> - cancel all pending requests when the proxy is destroyed
+>> - set a destroyed flag on the proxy and don't bother calling the
+>> callback in set_prop_reply
+>> - something else?
 > =
 
-> BlueZ also exports it on "/".
-> Maybe to cover all we could have root param in l_dbus_client_new()?
-> Other option would be to add eg l_dbus_client_new_full() that would
-> allow to specify root while l_dbus_client_new() would always use "/"?
+> Right, I've miss that. I'll go with queue of pending calls and cancel tho=
+se
+> when proxy is destroyed.
 > =
 
 
-If you have no usecase for this right now I would simply not worry about =
+So another option would be to introduce l_dbus_cancel_by_group, similar =
 
-it for now.  Just drop the client parameter from client_new and if we =
+to how ofono.git/drivers/mbimmodem/mbim.h does things.  The idea is that =
 
-ever need this at some point we can either add a _set function or a new =
+we add a group parameter to dbus_send_full and store the gid as part of =
 
-constructor.
+the dbus message_callback.  Then you can cancel all pending messages =
+
+with a given gid.
+
+Proxy would then obtain a unique gid when its created and we could get =
+
+rid of the queue for the proxy's pending messages.
+
+Roughly:
+uint32_t _dbus_send_with_reply_full(struct l_dbus *dbus,
+                                 struct l_dbus_message *message,
+				uint32_t gid,
+                                 l_dbus_message_func_t function,
+                                 void *user_data,
+				l_dbus_destroy_func_t destroy);
+bool _dbus_cancel_group(struct l_dbus *dbus, uint32_t gid);
+
+uint32_t _dbus_generate_gid(struct l_dbus *dbus);
 
 Regards,
 -Denis
 
---===============4512353490957287731==--
+--===============2612547669564864187==--
 
