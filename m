@@ -1,164 +1,59 @@
-Content-Type: multipart/mixed; boundary="===============3342911470652314505=="
+Content-Type: multipart/mixed; boundary="===============4512353490957287731=="
 MIME-Version: 1.0
-From: Szymon Janc <szymon.janc@codecoup.pl>
-Subject: [PATCH 6/6] examples: Extend dbus-client example
-Date: Fri, 01 Dec 2017 16:06:10 +0100
-Message-ID: <20171201150610.9696-7-szymon.janc@codecoup.pl>
-In-Reply-To: <20171201150610.9696-1-szymon.janc@codecoup.pl>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [RFC 4/6] dbus: Add support for proxy interface
+Date: Fri, 01 Dec 2017 09:40:36 -0600
+Message-ID: <6db58dc6-c89f-3655-a56f-cc5c46856b44@gmail.com>
+In-Reply-To: <3899174.ZFCDLsYfQH@ix>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3342911470652314505==
+--===============4512353490957287731==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This adds sample code for using D-Bus proxy interface.
----
- examples/dbus-client.c | 93 +++++++++++++++++++++++++++++++++++++++++++++-=
-----
- 1 file changed, 84 insertions(+), 9 deletions(-)
+Hi Szymon,
 
-diff --git a/examples/dbus-client.c b/examples/dbus-client.c
-index 507a4e8..1f60643 100644
---- a/examples/dbus-client.c
-+++ b/examples/dbus-client.c
-@@ -60,23 +60,81 @@ static void disconnect_callback(void *user_data)
- 	l_main_quit();
- }
- =
+>> I'm okay with this being the first naive solution, but this seems quite
+>> wasteful.  Can we store the serialized property data without the
+>> enclosing message?  E.g. by using GVariant serializer and storing the
+>> raw data?
+> =
 
--static void service_appeared(struct l_dbus *dbus, void *user_data)
-+static void iwd_service_appeared(struct l_dbus *dbus, void *user_data)
- {
- 	l_info("Service appeared");
- }
- =
-
--static void service_disappeared(struct l_dbus *dbus, void *user_data)
-+static void iwd_service_disappeared(struct l_dbus *dbus, void *user_data)
- {
--	l_info("Service disappeared, quitting...");
--	l_main_quit();
-+	l_info("Service disappeared");
-+}
-+
-+static void bluez_client_connected(struct l_dbus *dbus, void *user_data)
-+{
-+	l_info("client connected");
-+}
-+
-+static void bluez_client_disconnected(struct l_dbus *dbus, void *user_data)
-+{
-+	l_info("client disconnected");
-+}
-+
-+static void bluez_client_ready(struct l_dbus_client *client, void *user_da=
-ta)
-+{
-+	l_info("client ready");
-+}
-+
-+static void proxy_added(struct l_dbus_proxy *proxy, void *user_data)
-+{
-+	const char *interface =3D l_dbus_proxy_get_interface(proxy);
-+	const char *path =3D l_dbus_proxy_get_path(proxy);
-+
-+	l_info("proxy added: %s %s", path, interface);
-+
-+	if (!strcmp(interface, "org.bluez.Adapter1") ||
-+				!strcmp(interface, "org.bluez.Device1")) {
-+		char *str;
-+
-+		if (!l_dbus_proxy_get_property(proxy, "Address", "s", &str))
-+			return;
-+
-+		l_info("   Address: %s", str);
-+	}
-+}
-+
-+static void proxy_removed(struct l_dbus_proxy *proxy, void *user_data)
-+{
-+	l_info("proxy removed: %s %s", l_dbus_proxy_get_path(proxy),
-+					l_dbus_proxy_get_interface(proxy));
-+}
-+
-+static void property_changed(struct l_dbus_proxy *proxy, const char *name,
-+				struct l_dbus_message *msg, void *user_data)
-+{
-+	l_info("property changed: %s (%s %s)", name,
-+					l_dbus_proxy_get_path(proxy),
-+					l_dbus_proxy_get_interface(proxy));
-+
-+	if (!strcmp(name, "Address")) {
-+		char *str;
-+
-+		if (!l_dbus_message_get_arguments(msg, "s", &str)) {
-+			return;
-+		}
-+
-+		l_info("   Address: %s", str);
-+	}
- }
- =
-
- int main(int argc, char *argv[])
- {
-+	struct l_dbus_client *client;
- 	struct l_dbus *dbus;
- 	struct l_signal *signal;
- 	sigset_t mask;
--	uint32_t watch_id;
-+	uint32_t iwd_watch_id;
-+
- =
-
- 	if (!l_main_init())
- 		return -1;
-@@ -93,14 +151,31 @@ int main(int argc, char *argv[])
- 	l_dbus_set_ready_handler(dbus, ready_callback, dbus, NULL);
- 	l_dbus_set_disconnect_handler(dbus, disconnect_callback, NULL, NULL);
- =
-
--	watch_id =3D l_dbus_add_service_watch(dbus, "net.connman.iwd",
--						service_appeared,
--						service_disappeared,
-+	/* service basic watch */
-+	iwd_watch_id =3D l_dbus_add_service_watch(dbus, "net.connman.iwd",
-+						iwd_service_appeared,
-+						iwd_service_disappeared,
- 						NULL, NULL);
- =
-
-+	/* proxy example */
-+	client =3D l_dbus_client_new(dbus, "org.bluez", "/org/bluez");
-+
-+	l_dbus_client_set_connect_handler(client, bluez_client_connected, NULL,
-+									NULL);
-+	l_dbus_client_set_disconnect_handler(client, bluez_client_disconnected,
-+								NULL, NULL);
-+
-+	l_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
-+							property_changed, NULL, NULL);
-+
-+	l_dbus_client_set_ready_handler(client, bluez_client_ready, NULL, NULL);
-+
-+
- 	l_main_run();
- =
-
--	l_dbus_remove_watch(dbus, watch_id);
-+	l_dbus_remove_watch(dbus, iwd_watch_id);
-+
-+	l_dbus_client_destroy(client);
- =
-
- 	l_dbus_destroy(dbus);
- 	l_signal_remove(signal);
--- =
-
-2.14.3
+> Yeah, I was aware of that when sending patches :) Just wasn't sure on what
+> else could I use. I can fix that in subsequent patch if this is OK?
+> =
 
 
---===============3342911470652314505==--
+That's fine.
+
+>>> +	/* TODO should we allow to set different root? */
+>>> +	client->objects_call =3D l_dbus_method_call(dbus, client->service, "/=
+",
+>>
+>> Should "/" be client->path instead?  Note that ell only exports
+>> ObjectManager on the root path.  It doesn't export it for any child
+>> paths.  However, BlueZ might act differently.
+> =
+
+> BlueZ also exports it on "/".
+> Maybe to cover all we could have root param in l_dbus_client_new()?
+> Other option would be to add eg l_dbus_client_new_full() that would
+> allow to specify root while l_dbus_client_new() would always use "/"?
+> =
+
+
+If you have no usecase for this right now I would simply not worry about =
+
+it for now.  Just drop the client parameter from client_new and if we =
+
+ever need this at some point we can either add a _set function or a new =
+
+constructor.
+
+Regards,
+-Denis
+
+--===============4512353490957287731==--
 
