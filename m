@@ -1,317 +1,224 @@
-Content-Type: multipart/mixed; boundary="===============3538116644546270330=="
+Content-Type: multipart/mixed; boundary="===============5520766699704105020=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 3/6] dbus: Add support for proxy interface
-Date: Mon, 04 Dec 2017 12:40:29 -0600
-Message-ID: <d62a628a-76f9-6e13-1656-993161d17b73@gmail.com>
-In-Reply-To: <20171201150610.9696-4-szymon.janc@codecoup.pl>
+From: Szymon Janc <szymon.janc@codecoup.pl>
+Subject: [PATCH v2 2/4] dbus: Add support for setting properties on D-Bus
+ proxy interface
+Date: Tue, 05 Dec 2017 17:22:31 +0100
+Message-ID: <20171205162233.22452-2-szymon.janc@codecoup.pl>
+In-Reply-To: <20171205162233.22452-1-szymon.janc@codecoup.pl>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3538116644546270330==
+--===============5520766699704105020==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Szymon,
+l_dbus_proxy_set_property function allows to set properties via proxy
+interface.
+---
+ ell/dbus-client.c | 113 ++++++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ ell/dbus-client.h |   8 ++++
+ 2 files changed, 121 insertions(+)
 
-<snip>
+diff --git a/ell/dbus-client.c b/ell/dbus-client.c
+index e4ca4ad..3e68ba1 100644
+--- a/ell/dbus-client.c
++++ b/ell/dbus-client.c
+@@ -70,6 +70,7 @@ struct l_dbus_proxy {
+ 	bool ready;
+ =
 
-> +static struct l_dbus_proxy *l_dbus_proxy_new(struct l_dbus_client *clien=
-t,
-> +					const char *path, const char *interface)
+ 	struct l_queue *properties;
++	struct l_queue *pending_calls;
+ };
+ =
 
-I would just call it dbus_proxy_new since it is not exported.  Same with =
+ LIB_EXPORT const char *l_dbus_proxy_get_path(struct l_dbus_proxy *proxy)
+@@ -152,6 +153,18 @@ static void property_free(void *data)
+ 	l_free(prop);
+ }
+ =
 
-l_dbus_proxy_destroy
++static void cancel_pending_calls(struct l_dbus_proxy *proxy)
++{
++	const struct l_queue_entry *entry;
++
++	for (entry =3D l_queue_get_entries(proxy->pending_calls); entry;
++							entry =3D entry->next) {
++		uint32_t call_id =3D L_PTR_TO_UINT(entry->data);
++
++		l_dbus_cancel(proxy->client->dbus, call_id);
++	}
++}
++
+ static void dbus_proxy_destroy(struct l_dbus_proxy *proxy)
+ {
+ 	if (unlikely(!proxy))
+@@ -161,12 +174,111 @@ static void dbus_proxy_destroy(struct l_dbus_proxy *=
+proxy)
+ 		l_dbus_remove_signal_watch(proxy->client->dbus,
+ 						proxy->properties_watch);
+ =
 
-> +{
-> +	struct l_dbus_proxy *proxy;
-> +
-> +	proxy =3D l_new(struct l_dbus_proxy, 1);
++	cancel_pending_calls(proxy);
++	l_queue_destroy(proxy->pending_calls, NULL);
+ 	l_queue_destroy(proxy->properties, property_free);
+ 	l_free(proxy->interface);
+ 	l_free(proxy->path);
+ 	l_free(proxy);
+ }
+ =
 
-can condense these to a single line...
++struct method_call_request
++{
++	struct l_dbus_proxy *proxy;
++	uint32_t call_id;
++	l_dbus_client_proxy_result_func_t result;
++	void *user_data;
++	l_dbus_destroy_func_t destroy;
++};
++
++static void method_call_request_free(void *user_data)
++{
++	struct method_call_request *req =3D user_data;
++
++	l_queue_remove(req->proxy->pending_calls, L_UINT_TO_PTR(req->call_id));
++
++	if (req->destroy)
++		req->destroy(req->user_data);
++
++	l_free(req);
++}
++
++static void method_call_reply(struct l_dbus_message *message, void *user_d=
+ata)
++{
++	struct method_call_request *req =3D user_data;
++
++	if (req->result)
++		req->result(req->proxy, message, req->user_data);
++}
++
++LIB_EXPORT bool l_dbus_proxy_set_property(struct l_dbus_proxy *proxy,
++				l_dbus_client_proxy_result_func_t result,
++				void *user_data, l_dbus_destroy_func_t destroy,
++				const char *name, const char *signature, ...)
++{
++	struct l_dbus_client *client =3D proxy->client;
++	struct l_dbus_message_builder *builder;
++	struct method_call_request *req;
++	struct l_dbus_message *message;
++	struct proxy_property *prop;
++	va_list args;
++
++	if (unlikely(!proxy))
++		return false;
++
++	prop =3D find_property(proxy, name);
++	if (!prop)
++		return false;
++
++	if (strcmp(l_dbus_message_get_signature(prop->msg), signature))
++		return false;
++
++	message =3D l_dbus_message_new_method_call(client->dbus, client->service,
++						proxy->path,
++						L_DBUS_INTERFACE_PROPERTIES,
++						"Set");
++	if (!message)
++		return false;
++
++	builder =3D l_dbus_message_builder_new(message);
++	if (!builder) {
++		l_dbus_message_unref(message);
++		return false;
++	}
++
++	l_dbus_message_builder_append_basic(builder, 's', proxy->interface);
++	l_dbus_message_builder_append_basic(builder, 's', name);
++
++	l_dbus_message_builder_enter_variant(builder, signature);
++
++	va_start(args, signature);
++	l_dbus_message_builder_append_from_valist(builder, signature, args);
++	va_end(args);
++
++	l_dbus_message_builder_leave_variant(builder);
++
++	l_dbus_message_builder_finalize(builder);
++	l_dbus_message_builder_destroy(builder);
++
++	req =3D l_new(struct method_call_request, 1);
++	req->proxy =3D proxy;
++	req->result =3D result;
++	req->user_data =3D user_data;
++	req->destroy =3D destroy;
++
++	req->call_id =3D l_dbus_send_with_reply(client->dbus, message,
++						method_call_reply, req,
++						method_call_request_free);
++	if (!req->call_id) {
++		l_free(req);
++		return false;
++	}
++
++	l_queue_push_tail(proxy->pending_calls, L_UINT_TO_PTR(req->call_id));
++
++	return true;
++}
++
+ static void proxy_update_property(struct l_dbus_proxy *proxy,
+ 					const char *name,
+ 					struct l_dbus_message_iter *property)
+@@ -254,6 +366,7 @@ static struct l_dbus_proxy *dbus_proxy_new(struct l_dbu=
+s_client *client,
+ 	proxy->interface =3D l_strdup(interface);
+ 	proxy->path =3D l_strdup(path);
+ 	proxy->properties =3D l_queue_new();
++	proxy->pending_calls =3D l_queue_new();;
+ =
 
-> +
-> +	proxy->properties_watch =3D l_dbus_add_signal_watch(client->dbus,
-> +						client->service, path,
-> +						L_DBUS_INTERFACE_PROPERTIES,
-> +						"PropertiesChanged",
-> +						L_DBUS_MATCH_ARGUMENT(0),
-> +						interface, L_DBUS_MATCH_NONE,
-> +						properties_changed_callback,
-> +						proxy);
-> +	if (!proxy->properties_watch) {
-> +		l_free(proxy);
-> +		return NULL;
-> +	}
-> +
-> +	proxy->client =3D client;
-> +	proxy->interface =3D l_strdup(interface);
-> +	proxy->path =3D l_strdup(path);
-> +	proxy->properties =3D l_queue_new();
-> +
-> +	l_queue_push_tail(client->proxies, proxy);
-> +
-> +	return proxy;
-> +}
-> +
-> +static bool is_ignorable(const char *interface)
-> +{
-> +	static const struct {
-> +		const char *interface;
-> +	} interfaces_to_ignore[] =3D {
-> +		{ L_DBUS_INTERFACE_OBJECT_MANAGER },
-> +		{ L_DBUS_INTERFACE_INTROSPECTABLE },
-> +		{ L_DBUS_INTERFACE_PROPERTIES },
-> +	};
-> +	size_t i;
-> +
-> +	for (i =3D 0; i < L_ARRAY_SIZE(interfaces_to_ignore); i++)
-> +		if (!strcmp(interfaces_to_ignore[i].interface, interface))
-> +			return true;
-> +
-> +	return false;
-> +}
-> +
-> +static struct l_dbus_proxy *find_proxy(struct l_dbus_client *client,
-> +					const char *path, const char *interface)
-> +{
-> +	const struct l_queue_entry *entry;
-> +
-> +	for (entry =3D l_queue_get_entries(client->proxies); entry;
-> +							entry =3D entry->next) {
-> +		struct l_dbus_proxy *proxy =3D entry->data;
-> +
-> +		if (!strcmp(proxy->interface, interface) &&
-> +						!strcmp(proxy->path, path))
-> +			return proxy;
-> +	}
-> +
-> +	return NULL;
-> +}
-> +
-> +static void parse_interface(struct l_dbus_client *client, const char *pa=
-th,
-> +					const char *interface,
-> +					struct l_dbus_message_iter *properties)
-> +{
-> +	struct l_dbus_proxy *proxy;
-> +
-> +	if (is_ignorable(interface))
-> +		return;
-> +
-> +	proxy =3D find_proxy(client, path, interface);
-> +	if (!proxy) {
-> +		proxy =3D l_dbus_proxy_new(client, path, interface);
-> +	}
+ 	l_queue_push_tail(client->proxies, proxy);
+ =
 
-No need for {}
+diff --git a/ell/dbus-client.h b/ell/dbus-client.h
+index 460c6c5..928dcec 100644
+--- a/ell/dbus-client.h
++++ b/ell/dbus-client.h
+@@ -39,6 +39,9 @@ typedef void (*l_dbus_client_ready_func_t)(struct l_dbus_=
+client *client,
+ 							void *user_data);
+ typedef void (*l_dbus_client_proxy_func_t) (struct l_dbus_proxy *proxy,
+ 							void *user_data);
++typedef void (*l_dbus_client_proxy_result_func_t) (struct l_dbus_proxy *pr=
+oxy,
++						struct l_dbus_message *result,
++						void *user_data);
+ typedef void (*l_dbus_client_property_function_t) (struct l_dbus_proxy *pr=
+oxy,
+ 						const char *name,
+ 						struct l_dbus_message *msg,
+@@ -75,6 +78,11 @@ const char *l_dbus_proxy_get_interface(struct l_dbus_pro=
+xy *proxy);
+ =
 
-> +
-> +	if (!proxy)
-> +		return;
-> +
-> +	proxy_update_properties(proxy, properties);
-> +
-> +	if (!proxy->ready) {
-> +		proxy->ready =3D true;
-> +
-> +		if (client->proxy_added_cb)
-> +			client->proxy_added_cb(proxy, client->proxy_cb_data);
-> +	}
-> +}
-> +
+ bool l_dbus_proxy_get_property(struct l_dbus_proxy *proxy, const char *nam=
+e,
+ 						const char *signature, ...);
++
++bool l_dbus_proxy_set_property(struct l_dbus_proxy *proxy,
++				l_dbus_client_proxy_result_func_t result,
++				void *user_data, l_dbus_destroy_func_t destroy,
++				const char *name, const char *signature, ...);
+ #ifdef __cplusplus
+ }
+ #endif
+-- =
 
-<snip>
+2.14.3
 
-> +
-> +static void service_appeared_callback(struct l_dbus *dbus, void *user_da=
-ta)
-> +{
-> +	struct l_dbus_client *client =3D user_data;
-> +
-> +	/* TODO should we allow to set different root? */
-> +	client->objects_call =3D l_dbus_method_call(dbus, client->service, "/",
-> +						L_DBUS_INTERFACE_OBJECT_MANAGER,
-> +						"GetManagedObjects", NULL,
-> +						get_managed_objects_reply,
-> +						client, NULL);
-> +
-> +	if (client->connect_cb)
-> +		client->connect_cb(client->dbus, client->connect_cb_data);
-> +}
-> +
-> +static void service_disappeared_callback(struct l_dbus *dbus, void *user=
-_data)
-> +{
-> +	struct l_dbus_client *client =3D user_data;
-> +
-> +	if (client->disconnect_cb)
-> +		client->disconnect_cb(client->dbus, client->disconnect_cb_data);
-> +
-> +	l_queue_clear(client->proxies,
-> +				(l_queue_destroy_func_t)l_dbus_proxy_destroy);
-> +}
-> +
-> +LIB_EXPORT struct l_dbus_client *l_dbus_client_new(struct l_dbus *dbus,
-> +					const char *service, const char *path)
-> +{
-> +	struct l_dbus_client *client;
-> +
-> +	client =3D l_new(struct l_dbus_client, 1);
-> +
 
-Can condense these to a single line
-
-> +	client->dbus =3D dbus;
-> +
-> +	client->watch =3D l_dbus_add_service_watch(dbus, service,
-> +						service_appeared_callback,
-> +						service_disappeared_callback,
-> +						client, NULL);
-> +
-> +	if (!client->watch) {
-> +		l_free(client);
-> +		return NULL;
-> +	}
-> +
-> +	client->service =3D l_strdup(service);
-> +	client->path =3D l_strdup(path);
-
-What is the purpose of this member actually?  We're not using it for the =
-
-ObjectManager root, nor are we using it for anything else.  I also don't =
-
-get its purpose in gdbus either.  Can we simply drop it?
-
-> +	client->proxies =3D l_queue_new();
-> +
-> +	return client;
-> +}
-> +
-> +LIB_EXPORT void l_dbus_client_destroy(struct l_dbus_client *client)
-> +{
-> +	if (unlikely(!client))
-> +		return;
-> +
-> +	if (client->watch)
-> +		l_dbus_remove_signal_watch(client->dbus, client->watch);
-> +
-> +	if (client->added_watch)
-> +		l_dbus_remove_signal_watch(client->dbus, client->added_watch);
-> +
-> +	if (client->removed_watch)
-> +		l_dbus_remove_signal_watch(client->dbus, client->removed_watch);
-> +
-> +	if (client->connect_cb_data_destroy)
-> +		client->connect_cb_data_destroy(client->connect_cb_data);
-> +
-> +	if (client->disconnect_cb_data_destroy)
-> +		client->disconnect_cb_data_destroy(client->disconnect_cb_data);
-> +
-> +	if (client->ready_cb_data_destroy)
-> +		client->ready_cb_data_destroy(client->ready_cb_data);
-> +
-> +	if (client->proxy_cb_data_destroy)
-> +		client->proxy_cb_data_destroy(client->proxy_cb_data);
-> +
-> +	if (client->objects_call)
-> +		l_dbus_cancel(client->dbus, client->objects_call)
-> +;
-> +	l_queue_destroy(client->proxies,
-> +				(l_queue_destroy_func_t)l_dbus_proxy_destroy);
-> +
-> +	l_free(client->service);
-> +	l_free(client->path);
-> +	l_free(client);
-> +}
-> +
-> +LIB_EXPORT bool l_dbus_client_set_connect_handler(struct l_dbus_client *=
-client,
-> +						l_dbus_watch_func_t function,
-> +						void *user_data,
-> +						l_dbus_destroy_func_t destroy)
-> +{
-> +	if (unlikely(!client))
-> +		return false;
-> +
-> +	client->connect_cb =3D function;
-> +	client->connect_cb_data =3D user_data;
-> +	client->connect_cb_data_destroy =3D destroy;
-
-No biggie, but maybe we should call destroy function here in case it is =
-
-already set.
-
-> +
-> +	return true;
-> +}
-> +
-> +LIB_EXPORT bool l_dbus_client_set_disconnect_handler(struct l_dbus_clien=
-t *client,
-> +						l_dbus_watch_func_t function,
-> +						void *user_data,
-> +						l_dbus_destroy_func_t destroy)
-> +{
-> +	if (unlikely(!client))
-> +		return false;
-> +
-> +	client->disconnect_cb =3D function;
-> +	client->disconnect_cb_data =3D user_data;
-> +	client->disconnect_cb_data_destroy =3D destroy;
-
-as above
-
-> +
-> +	return true;
-> +}
-> +
-> +LIB_EXPORT bool l_dbus_client_set_ready_handler(struct l_dbus_client *cl=
-ient,
-> +					l_dbus_client_ready_func_t function,
-> +					void *user_data,
-> +					l_dbus_destroy_func_t destroy)
-> +{
-> +	if (unlikely(!client))
-> +		return false;
-> +
-> +	client->ready_cb =3D function;
-> +	client->ready_cb_data =3D user_data;
-> +	client->ready_cb_data_destroy =3D destroy;
-
-as above
-
-> +
-> +	return true;
-> +}
-> +
-> +LIB_EXPORT bool l_dbus_client_set_proxy_handlers(struct l_dbus_client *c=
-lient,
-> +			l_dbus_client_proxy_func_t proxy_added,
-> +			l_dbus_client_proxy_func_t proxy_removed,
-> +			l_dbus_client_property_function_t property_changed,
-> +			void *user_data, l_dbus_destroy_func_t destroy)
-> +{
-> +	if (unlikely(!client))
-> +		return false;
-> +
-> +	client->proxy_added_cb =3D proxy_added;
-> +	client->proxy_removed_cb =3D proxy_removed;
-> +	client->properties_changed_cb =3D property_changed;
-> +	client->proxy_cb_data =3D user_data;
-> +	client->proxy_cb_data_destroy =3D destroy;
-
-as above
-
-> +
-> +	return true;
-> +}
-
-<snip>
-
-Regards,
--Denis
-
---===============3538116644546270330==--
+--===============5520766699704105020==--
 
