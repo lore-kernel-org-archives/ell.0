@@ -1,67 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============7702051743689198426=="
+Content-Type: multipart/mixed; boundary="===============0048105078708287991=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 4/4] unit: Skip TLS tests that are not supported by the
- running kernel
-Date: Tue, 23 Jan 2018 13:02:23 -0800
-Message-ID: <20180123210223.28042-4-mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/4] key: Add private API for key feature detection
+Date: Tue, 23 Jan 2018 15:25:56 -0600
+Message-ID: <102756be-04a3-d3d8-2a49-0c810ab564d4@gmail.com>
 In-Reply-To: <20180123210223.28042-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7702051743689198426==
+--===============0048105078708287991==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-tls.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+Hi Mat,
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index 5dc921d..d568097 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -32,6 +32,7 @@
- #include "ell/cipher.h"
- #include "ell/checksum.h"
- #include "ell/tls-private.h"
-+#include "ell/key-private.h"
- =
-
- static void test_tls10_prf(const void *data)
- {
-@@ -453,7 +454,8 @@ int main(int argc, char *argv[])
- 	l_test_add("TLS 1.2 PRF with SHA512", test_tls12_prf,
- 			&tls12_prf_sha512_0);
- =
-
--	l_test_add("Certificate chains", test_certificates, NULL);
-+	if (l_key_is_supported(L_KEY_FEATURE_RESTRICT))
-+		l_test_add("Certificate chains", test_certificates, NULL);
- =
-
- 	if (!l_getrandom_is_supported()) {
- 		printf("getrandom missing, skipping TLS connection tests...\n");
-@@ -468,6 +470,13 @@ int main(int argc, char *argv[])
- 		goto done;
- 	}
- =
-
-+	if (!l_key_is_supported(L_KEY_FEATURE_RESTRICT |
-+				L_KEY_FEATURE_CRYPTO)) {
-+		printf("Kernel lacks key restrictions or crypto, "
-+			"skipping TLS connection tests...\n");
-+		goto done;
-+	}
-+
- 	l_test_add("TLS connection no auth", test_tls_test,
- 			&tls_conn_test_no_auth);
- 	l_test_add("TLS connection server auth", test_tls_test,
--- =
-
-2.16.1
+On 01/23/2018 03:02 PM, Mat Martineau wrote:
+> The Diffie-Hellman, keyring restrictions, and key crypto parts of the
+> l_key API depend on kernel features that were added relatively
+> recently. While the affected l_key calls fail gracefully when the kernel
+> doesn't implement the required feature, they do not fail in a way that
+> allows unit tests to differentiate between library bugs and kernel
+> support. l_key_is_supported() is a private API to check for kernel
+> support.
+> ---
+>   ell/key-private.h | 27 +++++++++++++++++++++++++++
+>   ell/key.c         | 31 +++++++++++++++++++++++++++++++
+>   2 files changed, 58 insertions(+)
+>   create mode 100644 ell/key-private.h
+> =
 
 
---===============7702051743689198426==--
+All applied, thanks!
+
+Regards,
+-Denis
+
+
+--===============0048105078708287991==--
 
