@@ -1,55 +1,57 @@
-Content-Type: multipart/mixed; boundary="===============1194643585115350927=="
+Content-Type: multipart/mixed; boundary="===============4461839467302725051=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: Re: [PATCH 1/4] key: Add private API for key feature detection
-Date: Tue, 23 Jan 2018 16:36:39 -0800
-Message-ID: <alpine.OSX.2.21.1801231442540.14612@mjmartin-mac01.sea.intel.com>
-In-Reply-To: <f42d9603-59eb-861b-58a4-558119f2084c@gmail.com>
+Subject: [PATCH 4/4] unit: Add kernel bug information to AEAD encryption
+ failure output
+Date: Wed, 24 Jan 2018 13:51:29 -0800
+Message-ID: <20180124215129.13337-4-mathew.j.martineau@linux.intel.com>
+In-Reply-To: <20180124215129.13337-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1194643585115350927==
+--===============4461839467302725051==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+---
+ unit/test-cipher.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-On Tue, 23 Jan 2018, Denis Kenzior wrote:
+diff --git a/unit/test-cipher.c b/unit/test-cipher.c
+index c99650c..4765c3e 100644
+--- a/unit/test-cipher.c
++++ b/unit/test-cipher.c
+@@ -26,6 +26,7 @@
+ =
 
->> I did run in to some glitches with test-pem and test-cipher on some old =
+ #include <assert.h>
+ #include <alloca.h>
++#include <stdio.h>
+ =
 
->> kernels. test-pem needs L_CIPHER_DES_CBC for encrypted certs, and =
+ #include <ell/ell.h>
+ =
 
->
-> I've just pushed out an update to test-pem that hopefully takes care of t=
-his.
+@@ -203,6 +204,12 @@ static void test_aes_ccm(const void *data)
+ =
 
-It worked with my old 4.2 kernel.
+ 	success =3D l_aead_cipher_encrypt(cipher, pt, ptlen, aad, aadlen,
+ 					nonce, noncelen, encbuf, encbuflen);
++	if (!success) {
++		printf("* Some kernel versions before v4.9 have a known AEAD\n"
++			"* bug. If the system running this test is using a\n"
++			"* v4.8 or earlier kernel, a failure here is likely\n"
++			"* due to that kernel bug.\n");
++	}
+ 	assert(success);
+ =
 
->> test-cipher fails because AEAD ciphers had a bogus recv() return value =
+ 	r =3D memcmp(encbuf, ct, ctlen);
+-- =
 
->> before v4.9 (see kernel commit 0c1e16cd1e).
->
-> Not sure what we can do about this one.
-
-We could print a more descriptive message for that failure, so people at =
-
-least have a hint about what's going on.
-
-Only other idea I have is to attempt a crypto op and compare against a =
-
-known-bad result. While the results before v4.9 are wrong, I think they're =
-
-at least consistent.
+2.16.1
 
 
-I will send a couple more patches for AEAD failure handling and unit =
-
-test issues that I noticed.
-
---
-Mat Martineau
-Intel OTC
-
---===============1194643585115350927==--
+--===============4461839467302725051==--
 
