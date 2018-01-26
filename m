@@ -1,220 +1,262 @@
-Content-Type: multipart/mixed; boundary="===============0112095353283151887=="
+Content-Type: multipart/mixed; boundary="===============0051724543280101578=="
 MIME-Version: 1.0
-From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH 3/3] unit: test more_tofollow flag in l_tls_write_cb_t
-Date: Fri, 26 Jan 2018 09:57:42 -0800
-Message-ID: <20180126175742.11881-3-tim.a.kourt@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/3] tls: introduce more_tofollow flag into
+ l_tls_write_cb_t
+Date: Fri, 26 Jan 2018 14:59:22 -0600
+Message-ID: <c4555120-dffa-c925-f73e-1a230f08c451@gmail.com>
 In-Reply-To: <20180126175742.11881-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0112095353283151887==
+--===============0051724543280101578==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-tls.c | 130 ++++++++++++++++++++++++++++++++++++++++++++++++++++=
-++--
- 1 file changed, 126 insertions(+), 4 deletions(-)
+Hi Tim,
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index d568097..16dd6c5 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -306,15 +306,17 @@ static const struct tls_conn_test tls_conn_test_full_=
-auth =3D {
- =
+On 01/26/2018 11:57 AM, Tim Kourt wrote:
+> TLS is a stream-oriented protocol and assumes processing of
+> a TLS record as soon as it becomes available. Certain
+> applications of TLS such as: TTLS, PEAP, etc. require to deal
+> with the packets that span multiple TLS records and must be
+> handled as a single block of data. This change introduces
+> 'more_tofollow' flag into l_tls_write_cb_t that indicates
+> whether we have processed all of the data submitted into
+> l_tls_write or l_tls_handle_rx functions.
 
- #define identity_compare(a, b) ((!(a) && !(b)) || ((a) && (b) && !strcmp(a=
-, b)))
- =
+You might also want to have patches ready on iwd side, since I can't =
 
-+#define TX_RECORD_MAX_LEN 4096
-+
- struct tls_test_state {
- 	struct l_tls *tls;
- =
+take these until those are ready as well.
 
--	bool ready, success;
-+	bool ready, success, is_block_processed;
- =
+> ---
+>   ell/tls-private.h |  3 ++-
+>   ell/tls-record.c  | 28 +++++++++++++++++-----------
+>   ell/tls.c         |  5 +++--
+>   ell/tls.h         |  2 +-
+>   4 files changed, 23 insertions(+), 15 deletions(-)
+>
+Might have been better to split this into two sets, one for tx path and =
 
- 	uint8_t raw_buf[16384];
- 	int raw_buf_len;
- =
+one for rx path.  Oh well.
 
--	uint8_t plaintext_buf[128];
-+	uint8_t plaintext_buf[TX_RECORD_MAX_LEN * 3];
- 	int plaintext_buf_len;
- =
+> diff --git a/ell/tls-private.h b/ell/tls-private.h
+> index d501651..ace1293 100644
+> --- a/ell/tls-private.h
+> +++ b/ell/tls-private.h
+> @@ -218,7 +218,8 @@ void tls_disconnect(struct l_tls *tls, enum l_tls_ale=
+rt_desc desc,
+>   void tls_tx_record(struct l_tls *tls, enum tls_content_type type,
+>   			const uint8_t *data, size_t len);
+>   bool tls_handle_message(struct l_tls *tls, const uint8_t *message,
+> -			int len, enum tls_content_type type, uint16_t version);
+> +			int len, enum tls_content_type type, uint16_t version,
+> +			bool more_tofollow);
+>   =
 
- 	const char *send_data;
-@@ -322,7 +324,8 @@ struct tls_test_state {
- 	const char *expect_peer;
- };
- =
+>   /* X509 Certificates and Certificate Chains */
+>   =
 
--static void tls_test_new_data(const uint8_t *data, size_t len, void *user_=
-data)
-+static void tls_test_new_data(const uint8_t *data, size_t len,
-+				bool more_tofollow, void *user_data)
- {
- 	struct tls_test_state *s =3D user_data;
- =
+> diff --git a/ell/tls-record.c b/ell/tls-record.c
+> index c0e5834..9a05450 100644
+> --- a/ell/tls-record.c
+> +++ b/ell/tls-record.c
+> @@ -63,7 +63,8 @@ static void tls_write_mac(struct l_tls *tls, uint8_t *c=
+ompressed,
+>   =
 
-@@ -338,7 +341,8 @@ static void tls_test_new_data(const uint8_t *data, size=
-_t len, void *user_data)
- 		s->success =3D true;
- }
- =
+>   static void tls_tx_record_plaintext(struct l_tls *tls,
+>   					uint8_t *plaintext,
+> -					uint16_t plaintext_len)
+> +					uint16_t plaintext_len,
+> +					bool more_tofollow)
 
--static void tls_test_write(const uint8_t *data, size_t len, void *user_dat=
-a)
-+static void tls_test_write(const uint8_t *data, size_t len,
-+				bool more_tofollow, void *user_data)
- {
- 	struct tls_test_state *s =3D user_data;
- =
+So essentially this a hint to the network layer / L3 that there is a =
 
-@@ -430,6 +434,121 @@ static void test_tls_test(const void *data)
- 	l_tls_free(s[1].tls);
- }
- =
+packet boundary at the end of the data...  Naming to that effect would =
 
-+static void tls_test_data_block_recieved(const uint8_t *data, size_t len,
-+						bool more_tofollow,
-+						void *user_data)
-+{
-+	struct tls_test_state *s =3D user_data;
-+
-+	assert(s->ready);
-+	assert(s->plaintext_buf_len + len <=3D strlen(s->expect_data));
-+
-+	memcpy(s->plaintext_buf + s->plaintext_buf_len, data, len);
-+	s->plaintext_buf_len +=3D len;
-+
-+	if (more_tofollow)
-+		return;
-+
-+	assert(s->plaintext_buf_len =3D=3D (int) strlen(s->expect_data));
-+	assert(!memcmp(s->plaintext_buf, s->expect_data, s->plaintext_buf_len));
-+
-+	s->success =3D true;
-+}
-+
-+static void tls_test_data_block_send(const uint8_t *data, size_t len,
-+					bool more_tofollow, void *user_data)
-+{
-+	struct tls_test_state *s =3D user_data;
-+
-+	assert(s->raw_buf_len + len <=3D sizeof(s->raw_buf));
-+
-+	memcpy(s->raw_buf + s->raw_buf_len, data, len);
-+	s->raw_buf_len +=3D len;
-+
-+	s->is_block_processed =3D !more_tofollow;
-+}
-+
-+static void test_tls_test_data_block_transfer(const void *data)
-+{
-+	bool auth_ok;
-+	const struct tls_conn_test *test =3D data;
-+	char client_to_server_buf[TX_RECORD_MAX_LEN * 2 + 2];
-+	char server_to_client_buf[TX_RECORD_MAX_LEN + 2];
-+	struct tls_test_state s[2] =3D {
-+		{
-+			.ready =3D false,
-+			.success =3D false,
-+			.is_block_processed =3D false,
-+			.raw_buf_len =3D 0,
-+			.plaintext_buf_len =3D 0,
-+			.send_data =3D client_to_server_buf,
-+			.expect_data =3D server_to_client_buf,
-+			.expect_peer =3D test->server_expect_identity,
-+		},
-+		{
-+			.ready =3D false,
-+			.success =3D false,
-+			.is_block_processed =3D false,
-+			.raw_buf_len =3D 0,
-+			.plaintext_buf_len =3D 0,
-+			.send_data =3D server_to_client_buf,
-+			.expect_data =3D client_to_server_buf,
-+			.expect_peer =3D test->client_expect_identity,
-+		},
-+	};
-+
-+	memset(&client_to_server_buf, 'C', sizeof(client_to_server_buf) - 1);
-+	memset(&server_to_client_buf, 'S', sizeof(server_to_client_buf) - 1);
-+
-+	client_to_server_buf[sizeof(client_to_server_buf) - 1] =3D '\0';
-+	server_to_client_buf[sizeof(server_to_client_buf) - 1] =3D '\0';
-+
-+	/* Server */
-+	s[0].tls =3D l_tls_new(true, tls_test_data_block_recieved,
-+				tls_test_data_block_send,
-+				tls_test_ready,
-+				tls_test_disconnected, &s[0]);
-+	/* Client */
-+	s[1].tls =3D l_tls_new(false, tls_test_data_block_recieved,
-+				tls_test_data_block_send,
-+				tls_test_ready,
-+				tls_test_disconnected, &s[1]);
-+
-+	assert(s[0].tls);
-+	assert(s[1].tls);
-+
-+	auth_ok =3D l_tls_set_auth_data(s[0].tls, test->server_cert_path,
-+					test->server_key_path,
-+					test->server_key_passphrase);
-+	assert(auth_ok);
-+	auth_ok =3D l_tls_set_auth_data(s[1].tls, test->client_cert_path,
-+					test->client_key_path,
-+					test->client_key_passphrase);
-+	assert(auth_ok);
-+	l_tls_set_cacert(s[0].tls, test->server_ca_cert_path);
-+	l_tls_set_cacert(s[1].tls, test->client_ca_cert_path);
-+
-+	while (1) {
-+		if (s[0].is_block_processed) {
-+			l_tls_handle_rx(s[1].tls, s[0].raw_buf,
-+					s[0].raw_buf_len);
-+			s[0].raw_buf_len =3D 0;
-+			s[0].is_block_processed =3D false;
-+		} else if (s[1].is_block_processed) {
-+			l_tls_handle_rx(s[0].tls, s[1].raw_buf,
-+					s[1].raw_buf_len);
-+			s[1].raw_buf_len =3D 0;
-+			s[1].is_block_processed =3D false;
-+		} else
-+			break;
-+	}
-+
-+	assert(s[0].success && s[1].success);
-+
-+	l_tls_free(s[0].tls);
-+	l_tls_free(s[1].tls);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -489,6 +608,9 @@ int main(int argc, char *argv[])
- 			&tls_conn_test_full_auth_attempt);
- 	l_test_add("TLS connection full auth", test_tls_test,
- 			&tls_conn_test_full_auth);
-+	l_test_add("TLS connection data block transfer",
-+			test_tls_test_data_block_transfer,
-+			&tls_conn_test_full_auth);
- =
+be better I think.
 
- done:
- 	return l_test_run();
--- =
+>   {
+>   	uint8_t *compressed;
+>   	uint16_t compressed_len;
+> @@ -169,9 +170,9 @@ static void tls_tx_record_plaintext(struct l_tls *tls,
+>   	ciphertext[3] =3D ciphertext_len >> 8;
+>   	ciphertext[4] =3D ciphertext_len >> 0;
+>   =
 
-2.9.4
+> -	tls->tx(ciphertext, ciphertext_len + 5, tls->user_data);
+> +	tls->tx(ciphertext, ciphertext_len + 5, more_tofollow, tls->user_data);
+>   }
+> -
+> +#include <stdio.h>
+
+??
+
+>   void tls_tx_record(struct l_tls *tls, enum tls_content_type type,
+>   			const uint8_t *data, size_t len)
+>   {
+> @@ -195,15 +196,17 @@ void tls_tx_record(struct l_tls *tls, enum tls_cont=
+ent_type type,
+>   		plaintext[4] =3D fragment_len >> 0;
+>   		memcpy(plaintext + 5, data, fragment_len);
+>   =
+
+> -		tls_tx_record_plaintext(tls, plaintext, fragment_len + 5);
+> -
+>   		data +=3D fragment_len;
+>   		len -=3D fragment_len;
+> +
+> +		tls_tx_record_plaintext(tls, plaintext, fragment_len + 5,
+> +							len ? true : false);
+>   	}
+>   }
+>   =
 
 
---===============0112095353283151887==--
+The TX side looks reasonable to me
+
+>   static bool tls_handle_plaintext(struct l_tls *tls, const uint8_t *plai=
+ntext,
+> -					int len, uint8_t type, uint16_t version)
+> +					int len, uint8_t type, uint16_t version,
+> +					bool more_tofollow)
+>   {
+>   	int header_len, need_len;
+>   	int chunk_len;
+> @@ -218,7 +221,8 @@ static bool tls_handle_plaintext(struct l_tls *tls, c=
+onst uint8_t *plaintext,
+>   	switch (type) {
+>   	case TLS_CT_CHANGE_CIPHER_SPEC:
+>   	case TLS_CT_APPLICATION_DATA:
+> -		return tls_handle_message(tls, plaintext, len, type, version);
+> +		return tls_handle_message(tls, plaintext, len, type, version,
+> +								more_tofollow);
+>   =
+
+>   	/*
+>   	 * We need to perform input reassembly twice at different levels:
+> @@ -277,7 +281,8 @@ static bool tls_handle_plaintext(struct l_tls *tls, c=
+onst uint8_t *plaintext,
+>   			if (tls->message_buf_len =3D=3D need_len) {
+>   				if (!tls_handle_message(tls, tls->message_buf,
+>   							need_len, type,
+> -							version))
+> +							version,
+> +							len ? true : false))
+
+So this part is tricky.  You don't seem to be propagating more_tofollow =
+
+but instead computing a new value and not taking more_tofollow into =
+
+account.  This seems suspect?  Do you even need this information for non =
+
+CT_APPLICATION_DATA messages?  In fact it might be easier to separate =
+
+out CT_APPLICATION_DATA and the rest into two functions, e.g. break up =
+
+tls_handle_message.
+
+However, there's still the possibility that tls_handle_plaintext gets =
+
+called like:
+
+tls_handle_plaintext(CT_APPLICATION_DATA, more_tofollow=3Dfalse) then
+tls_handle_plaintext(CT_HANDSHAKE, more_tofollow=3Dtrue)
+
+At which point your boundary flag is not going to be propagated =
+
+properly.  What are the EAP rules for this actually?
+
+>   					return false;
+>   =
+
+>   				tls->message_buf_len =3D 0;
+> @@ -314,7 +319,7 @@ static bool tls_handle_plaintext(struct l_tls *tls, c=
+onst uint8_t *plaintext,
+>   	return true;
+>   }
+>   =
+
+> -static bool tls_handle_ciphertext(struct l_tls *tls)
+> +static bool tls_handle_ciphertext(struct l_tls *tls, bool more_tofollow)
+>   {
+>   	uint8_t type;
+>   	uint16_t version;
+> @@ -483,7 +488,7 @@ static bool tls_handle_ciphertext(struct l_tls *tls)
+>   	/* DEFLATE not supported so just pass on compressed / compressed_len */
+>   =
+
+>   	return tls_handle_plaintext(tls, compressed, compressed_len,
+> -					type, version);
+> +					type, version, more_tofollow);
+>   }
+>   =
+
+>   LIB_EXPORT void l_tls_handle_rx(struct l_tls *tls, const uint8_t *data,
+> @@ -501,7 +506,8 @@ LIB_EXPORT void l_tls_handle_rx(struct l_tls *tls, co=
+nst uint8_t *data,
+>   =
+
+>   			/* Do we have a full structure? */
+>   			if (tls->record_buf_len =3D=3D need_len) {
+> -				if (!tls_handle_ciphertext(tls))
+> +				if (!tls_handle_ciphertext(tls, len ?
+> +								true : false))
+>   					return;
+>   =
+
+>   				tls->record_buf_len =3D 0;
+> diff --git a/ell/tls.c b/ell/tls.c
+> index d3b4809..8e5b927 100644
+> --- a/ell/tls.c
+> +++ b/ell/tls.c
+> @@ -2065,7 +2065,8 @@ LIB_EXPORT void l_tls_write(struct l_tls *tls, cons=
+t uint8_t *data, size_t len)
+>   }
+>   =
+
+>   bool tls_handle_message(struct l_tls *tls, const uint8_t *message,
+> -			int len, enum tls_content_type type, uint16_t version)
+> +			int len, enum tls_content_type type, uint16_t version,
+> +			bool more_tofollow)
+>   {
+>   	enum handshake_hash_type hash;
+>   =
+
+> @@ -2178,7 +2179,7 @@ bool tls_handle_message(struct l_tls *tls, const ui=
+nt8_t *message,
+>   		if (!len)
+>   			return true;
+>   =
+
+> -		tls->rx(message, len, tls->user_data);
+> +		tls->rx(message, len, more_tofollow, tls->user_data);
+>   =
+
+>   		return true;
+>   	}
+> diff --git a/ell/tls.h b/ell/tls.h
+> index 0a7c920..865792e 100644
+> --- a/ell/tls.h
+> +++ b/ell/tls.h
+> @@ -56,7 +56,7 @@ enum l_tls_alert_desc {
+>   };
+>   =
+
+>   typedef void (*l_tls_write_cb_t)(const uint8_t *data, size_t len,
+> -					void *user_data);
+> +					bool more_tofollow, void *user_data);
+>   typedef void (*l_tls_ready_cb_t)(const char *peer_identity, void *user_=
+data);
+>   typedef void (*l_tls_disconnect_cb_t)(enum l_tls_alert_desc reason,
+>   					bool remote, void *user_data);
+> =
+
+
+Regards,
+-Denis
+
+--===============0051724543280101578==--
 
