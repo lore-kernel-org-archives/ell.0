@@ -1,72 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============2339344694845550715=="
+Content-Type: multipart/mixed; boundary="===============1658800594055293576=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dbus: added l_dbus_message_iter_get_fixed_array
-Date: Tue, 30 Jan 2018 11:22:51 -0600
-Message-ID: <6b73051a-dab4-b681-32a8-b6621e8498ac@gmail.com>
-In-Reply-To: <1517269726-12151-1-git-send-email-james.prestwood@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH] unit: Fix typo in pbkdf2 output
+Date: Wed, 07 Feb 2018 17:20:46 -0800
+Message-ID: <20180208012046.28396-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2339344694845550715==
+--===============1658800594055293576==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+---
+ unit/test-pbkdf2.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-On 01/29/2018 05:48 PM, James Prestwood wrote:
-> Returns pointer and length of dbus array in place so no copying
-> is needed.
-> ---
->   ell/dbus-message.c | 14 ++++++++++++++
->   ell/dbus.h         |  3 ++-
->   2 files changed, 16 insertions(+), 1 deletion(-)
-> =
+diff --git a/unit/test-pbkdf2.c b/unit/test-pbkdf2.c
+index c970abe..f1b13ea 100644
+--- a/unit/test-pbkdf2.c
++++ b/unit/test-pbkdf2.c
+@@ -54,12 +54,12 @@ static void pbkdf2_test(const void *data)
+ =
 
-> diff --git a/ell/dbus-message.c b/ell/dbus-message.c
-> index f4f6b42..7a24f5b 100644
-> --- a/ell/dbus-message.c
-> +++ b/ell/dbus-message.c
-> @@ -1414,6 +1414,20 @@ LIB_EXPORT bool l_dbus_message_iter_get_variant(
->   	return result;
->   }
->   =
+ 	key_len =3D test->key_len ? : (strlen(test->key) / 2);
+ =
 
-> +LIB_EXPORT bool l_dbus_message_iter_get_fixed_array(
-> +					struct l_dbus_message_iter *iter,
-> +					const void **a, uint32_t *len)
-> +{
-> +	if (iter->container_type !=3D 'a')
-> +		return false;
-> +
+-	printf("Password =3D \"%s\" (%d octects)\n",
++	printf("Password =3D \"%s\" (%d octets)\n",
+ 					test->password, password_len);
+-	printf("Salt     =3D \"%s\" (%d octects)\n",
++	printf("Salt     =3D \"%s\" (%d octets)\n",
+ 					test->salt, salt_len);
+ 	printf("Count    =3D %d\n", test->count);
+-	printf("Key      =3D %s (%d octects)\n", test->key, key_len);
++	printf("Key      =3D %s (%d octets)\n", test->key, key_len);
+ =
 
-Also, we need to be a bit stricter here and check that the type is =
+ 	result =3D l_pkcs5_pbkdf2(L_CHECKSUM_SHA1, test->password,
+ 				(const uint8_t *) test->salt, salt_len,
+-- =
 
-indeed a fixed type.
+2.16.1
 
-> +	*a =3D iter->data + iter->pos;
-> +	*len =3D iter->len - 4;
 
-Why len - 4?  That can't be right
-
-> +
-> +	return true;
-> +}
-> +
-> +
->   void _dbus_message_set_sender(struct l_dbus_message *message,
->   					const char *sender)
->   {
-
-The DBus stuff is a bit complex, so I just went ahead and implemented =
-
-the needed logic in commits:
-a9ea8d44618e9216fde6e550f2cae61f248b1218
-886aeec677d1c5c7d5c83b59a857727507510050
-
-Regards,
--Denis
-
---===============2339344694845550715==--
+--===============1658800594055293576==--
 
