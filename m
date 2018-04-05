@@ -1,35 +1,51 @@
-Content-Type: multipart/mixed; boundary="===============6257214648714126325=="
+Content-Type: multipart/mixed; boundary="===============8047766177104233407=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dbus: Fix l_dbus_client_set_proxy_handlers user data
-Date: Tue, 27 Feb 2018 11:19:05 -0600
-Message-ID: <7d939d66-8c67-64e7-b3ab-3764e63ab83e@gmail.com>
-In-Reply-To: <20180227134319.1657-1-ckt@cesar.org.br>
+From: maxin.john@gmail.com
+Subject: [PATCH] ell: fix build with musl libc
+Date: Thu, 05 Apr 2018 17:54:50 +0300
+Message-ID: <1522940090-16702-1-git-send-email-maxin.john@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6257214648714126325==
+--===============8047766177104233407==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Claudio,
+From: "Maxin B. John" <maxin.john@intel.com>
 
-On 02/27/2018 07:43 AM, Claudio Takahasi wrote:
-> Proxy property changed callback is passing wrong argument. The argument
-> should be user data instead of destroy function.
-> ---
->   ell/dbus-client.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> =
+musl libc doesn't implement TEMP_FAILURE_RETRY. Use the
+TEMP_FAILURE_RETRY from glibc to fix build.
+---
+ ell/dbus.h | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/ell/dbus.h b/ell/dbus.h
+index a7c08d2..3ff5e0f 100644
+--- a/ell/dbus.h
++++ b/ell/dbus.h
+@@ -28,6 +28,16 @@
+ #include <stddef.h>
+ #include <stdarg.h>
+ =
+
++/* taken from glibc unistd.h for musl support */
++#ifndef TEMP_FAILURE_RETRY
++#define TEMP_FAILURE_RETRY(expression)             \
++  (__extension__                                   \
++    ({ long int __result;                          \
++       do __result =3D (long int) (expression);      \
++       while (__result =3D=3D -1L && errno =3D=3D EINTR);  \
++       __result; }))
++#endif
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+-- =
+
+2.4.0
 
 
-Hah, good spot.  Applied, thanks.
-
-And good to see you are still around :)
-
-Regards,
--Denis
-
---===============6257214648714126325==--
+--===============8047766177104233407==--
 
