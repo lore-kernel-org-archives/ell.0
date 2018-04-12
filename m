@@ -1,37 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============5771233762374978452=="
+Content-Type: multipart/mixed; boundary="===============7470893456436906734=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] ell: fix build with musl libc
-Date: Fri, 06 Apr 2018 10:29:25 -0500
-Message-ID: <1745a1a7-1549-de42-cfa5-88c768d14834@gmail.com>
-In-Reply-To: <1522940090-16702-1-git-send-email-maxin.john@gmail.com>
+From: James Prestwood <james.prestwood@linux.intel.com>
+Subject: [PATCH] net: fix include error
+Date: Thu, 12 Apr 2018 10:28:56 -0700
+Message-ID: <1523554136-9237-1-git-send-email-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5771233762374978452==
+--===============7470893456436906734==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Maxin,
+sys/socket.h needed to be included before linux/if_arp.h
+to fix a build error.
+---
+ ell/net.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-On 04/05/2018 09:54 AM, maxin.john(a)gmail.com wrote:
-> From: "Maxin B. John" <maxin.john@intel.com>
-> =
+diff --git a/ell/net.c b/ell/net.c
+index 77eadff..b5b5f9d 100644
+--- a/ell/net.c
++++ b/ell/net.c
+@@ -24,6 +24,7 @@
+ #include <config.h>
+ #endif
+ =
 
-> musl libc doesn't implement TEMP_FAILURE_RETRY. Use the
-> TEMP_FAILURE_RETRY from glibc to fix build.
-> ---
->   ell/dbus.h | 10 ++++++++++
->   1 file changed, 10 insertions(+)
-> =
++#include <sys/socket.h>
+ #include <linux/if_arp.h>
+ #include <unistd.h>
+ #include <errno.h>
+-- =
+
+2.7.4
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
-
---===============5771233762374978452==--
+--===============7470893456436906734==--
 
