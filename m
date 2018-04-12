@@ -1,40 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============7470893456436906734=="
+Content-Type: multipart/mixed; boundary="===============3884430935750815542=="
 MIME-Version: 1.0
-From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH] net: fix include error
-Date: Thu, 12 Apr 2018 10:28:56 -0700
-Message-ID: <1523554136-9237-1-git-send-email-james.prestwood@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] net: fix include error
+Date: Thu, 12 Apr 2018 14:34:51 -0500
+Message-ID: <c3ff3bcd-55ce-8aa9-4536-f0332a9abd10@gmail.com>
+In-Reply-To: <1523554136-9237-1-git-send-email-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7470893456436906734==
+--===============3884430935750815542==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-sys/socket.h needed to be included before linux/if_arp.h
-to fix a build error.
----
- ell/net.c | 1 +
- 1 file changed, 1 insertion(+)
+Hi James,
 
-diff --git a/ell/net.c b/ell/net.c
-index 77eadff..b5b5f9d 100644
---- a/ell/net.c
-+++ b/ell/net.c
-@@ -24,6 +24,7 @@
- #include <config.h>
- #endif
- =
-
-+#include <sys/socket.h>
- #include <linux/if_arp.h>
- #include <unistd.h>
- #include <errno.h>
--- =
-
-2.7.4
+On 04/12/2018 12:28 PM, James Prestwood wrote:
+> sys/socket.h needed to be included before linux/if_arp.h
+> to fix a build error.
+> ---
+>   ell/net.c | 1 +
+>   1 file changed, 1 insertion(+)
+> =
 
 
---===============7470893456436906734==--
+Applied, thanks.
+
+Regards,
+-Denis
+
+
+--===============3884430935750815542==--
 
