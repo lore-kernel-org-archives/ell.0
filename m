@@ -1,97 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============2247855590646210815=="
+Content-Type: multipart/mixed; boundary="===============8363897401454971619=="
 MIME-Version: 1.0
-From: Stotland, Inga <inga.stotland@intel.com>
-Subject: Debug logging with ell
-Date: Tue, 24 Apr 2018 16:33:53 +0000
-Message-ID: <1524587632.3524.3.camel@intel.com>
+From: Othman, Ossama <ossama.othman@intel.com>
+Subject: Re: Debug logging with ell
+Date: Tue, 24 Apr 2018 10:35:20 -0700
+Message-ID: <CAPyD+=BDGLT8WYTZEthm9ROfRSY6fbBJyZMLCuRoXPFcLp0yCQ@mail.gmail.com>
+In-Reply-To: <1524587632.3524.3.camel@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2247855590646210815==
+--===============8363897401454971619==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi all,
+Hi Inga,
 
-Quick question: can I use l_debug() when I am dynamically linking with
-installed ell library (i.e., the one created with make install and
-linked as -lell)?
-Calling l_debug() generates no output, l_info() works just fine.
+On Tue, Apr 24, 2018 at 9:33 AM, Stotland, Inga <inga.stotland@intel.com>=
+ wrote:
+>
+> Quick question: can I use l_debug() when I am dynamically linking with
+> installed ell library (i.e., the one created with make install and
+> linked as -lell)?
+> Calling l_debug() generates no output, l_info() works just fine.
+>
+> When I link with libell-private, l_debug works as expected. Something
+> to do with debug mem sections?
+>
+> I would rather not write my own logging if l_debug() is
+> available.
 
-When I link with libell-private, l_debug works as expected. Something
-to do with debug mem sections?
+Try enabling debug logging at run-time, e.g.:   l_debug_enable("*");
 
-I would rather not write my own logging if l_debug() is
-available.
+HTH!
+-Ossama
 
-Thanks,
-
-Inga
-
---===============2247855590646210815==
-Content-Type: application/x-pkcs7-signature
-MIME-Version: 1.0
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-
-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
-s+FjFlMZRl+6tAsU6MKgNPjqLZM/5/UApupmE4I4+I7tJzH7J+/PQP756UTWANxeOFXXAgMBAAGj
-ggIxMIICLTAdBgNVHQ4EFgQUGgH+hmVcYfkjP42Io/H7dyFj/xEwHwYDVR0jBBgwFoAUHmkqtNwo
-/kcYTiELP7ysES/wmPUwZQYDVR0fBF4wXDBaoFigVoZUaHR0cDovL3d3dy5pbnRlbC5jb20vcmVw
-b3NpdG9yeS9DUkwvSW50ZWwlMjBFeHRlcm5hbCUyMEJhc2ljJTIwSXNzdWluZyUyMENBJTIwNEEu
-Y3JsMIGfBggrBgEFBQcBAQSBkjCBjzBpBggrBgEFBQcwAoZdaHR0cDovL3d3dy5pbnRlbC5jb20v
-cmVwb3NpdG9yeS9jZXJ0aWZpY2F0ZXMvSW50ZWwlMjBFeHRlcm5hbCUyMEJhc2ljJTIwSXNzdWlu
-ZyUyMENBJTIwNEEuY3J0MCIGCCsGAQUFBzABhhZodHRwOi8vb2NzcC5pbnRlbC5jb20vMAsGA1Ud
-DwQEAwIHgDA8BgkrBgEEAYI3FQcELzAtBiUrBgEEAYI3FQiGw4x1hJnlUYP9gSiFjp9TgpHACWeB
-3r05lfBDAgFkAgEJMB8GA1UdJQQYMBYGCCsGAQUFBwMEBgorBgEEAYI3CgMMMCkGCSsGAQQBgjcV
-CgQcMBowCgYIKwYBBQUHAwQwDAYKKwYBBAGCNwoDDDBLBgNVHREERDBCoCcGCisGAQQBgjcUAgOg
-GQwXaW5nYS5zdG90bGFuZEBpbnRlbC5jb22BF2luZ2Euc3RvdGxhbmRAaW50ZWwuY29tMA0GCSqG
-SIb3DQEBBQUAA4IBAQBL46xSWeaTcedNEVjOvWuiMQNz8rRju5xKMBBA6PlBi7C3pe2oPLrn5fuy
-93vXsrFtVyxQs+rp19FwjthhpLl743f7SLWA8AGL+Mm2Uq8WSwhpgUBWjbqSZuyEZUvrLNMLIMch
-eNbju3KeUiY/cMt6ovGcAGrZG1KMRpL8DC9i/dwDMGFXmIiOrMTqZFSj3i+Fn05WVkRRRUmxoKWi
-KQpGTgKtfHEfKcns+tJssBGYoop4jdF1voX59gnxpIjIO97LpTd5mYWjSufKLAXZ4E3JBwLs2nYA
-hPjGOjiW4KniOu8alYzWYdXUNG7HCHZq+V/EKgLxNYrhwDF1meav+rMRMYICFzCCAhMCAQEwgZAw
-eTELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNBMRQwEgYDVQQHEwtTYW50YSBDbGFyYTEaMBgGA1UE
-ChMRSW50ZWwgQ29ycG9yYXRpb24xKzApBgNVBAMTIkludGVsIEV4dGVybmFsIEJhc2ljIElzc3Vp
-bmcgQ0EgNEECEzMAAKB78iXkGFQW8ngAAAAAoHswCQYFKw4DAhoFAKBdMBgGCSqGSIb3DQEJAzEL
-BgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTE4MDQyNDE2MzM1MlowIwYJKoZIhvcNAQkEMRYE
-FMZ2zY86BMKm1d8phG4fw9EpWavyMA0GCSqGSIb3DQEBAQUABIIBAMlKshRl+gO86ruTUDVHWBFT
-2ASsELvt/DZSfyOHaBSxDwbPYEtC02WyVMk/SkuztV2P2257kcN5h5fM9GNQQpP5pUZz0gxmNt7I
-WIlHHhi8AUgJXIbFg1xbmgIvfcTHGB175BPbc+c+ABNfBejvDh95InRboDPEWA0BKg5FRnbQWFDk
-+7C2AMc8hloXofq08tMhBsexwCJ+9TjqPHRz2W4jSGMsLwhWXfs3jbZqroFSa7yyDn1nZuEJV5l+
-BA73A31XAylhtdHophWqNWmw4ulMAvNtWKmvSMNrFu0GAkQTE0jSZx7/8dOEx8GFyKJLp282MAdP
-9Ol/0oRumVcZHTwAAAAAAAA=
---===============2247855590646210815==--
+--===============8363897401454971619==--
 
