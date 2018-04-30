@@ -1,40 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============6322766725101732053=="
+Content-Type: multipart/mixed; boundary="===============6332767879964507931=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] settings: Overwrite values before freeing memory
-Date: Sat, 28 Apr 2018 04:25:42 +0200
-Message-ID: <20180428022542.4289-1-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] settings: Overwrite values before freeing memory
+Date: Mon, 30 Apr 2018 10:49:14 -0500
+Message-ID: <14b7bc52-17b2-9d48-7b47-77ae2eeaf665@gmail.com>
+In-Reply-To: <20180428022542.4289-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6322766725101732053==
+--===============6332767879964507931==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Since there may be sensitive data in the setting values, wipe the
-value memory before freeing.
----
- ell/settings.c | 1 +
- 1 file changed, 1 insertion(+)
+Hi Andrew,
 
-diff --git a/ell/settings.c b/ell/settings.c
-index a556144..8e67fa3 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -61,6 +61,7 @@ static void setting_destroy(void *data)
- 	struct setting_data *pair =3D data;
- =
-
- 	l_free(pair->key);
-+	memset(pair->value, 0, strlen(pair->value));
- 	l_free(pair->value);
- 	l_free(pair);
- }
--- =
-
-2.14.1
+On 04/27/2018 09:25 PM, Andrew Zaborowski wrote:
+> Since there may be sensitive data in the setting values, wipe the
+> value memory before freeing.
+> ---
+>   ell/settings.c | 1 +
+>   1 file changed, 1 insertion(+)
+> =
 
 
---===============6322766725101732053==--
+Applied, thanks.
+
+Regards,
+-Denis
+
+
+--===============6332767879964507931==--
 
