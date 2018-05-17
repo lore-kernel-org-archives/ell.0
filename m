@@ -1,52 +1,63 @@
-Content-Type: multipart/mixed; boundary="===============0756372936985325711=="
+Content-Type: multipart/mixed; boundary="===============0380359987901981354=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] dhcp-transport: define _GNU_SOURCE
-Date: Thu, 17 May 2018 11:13:20 -0500
-Message-ID: <89469edc-1e03-031b-bd5d-99347f3d8ad3@gmail.com>
-In-Reply-To: <2f39121366cbd4eb5fc354c08af99357df4fe8cc.camel@posteo.net>
+From: Claudio Takahasi <ckt@cesar.org.br>
+Subject: [PATCH] checksum: Fix undefined references
+Date: Thu, 17 May 2018 13:26:18 -0300
+Message-ID: <20180517162618.16655-1-ckt@cesar.org.br>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0756372936985325711==
+--===============0380359987901981354==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi John,
+---
+ ell/checksum.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-On 05/17/2018 10:50 AM, John Zimmermann wrote:
-> On Thu, 2018-05-17 at 10:34 -0500, Denis Kenzior wrote:
->> Hi John,
->>
->> On 05/17/2018 06:08 AM, John wrote:
->>> the source, dest, len, check naming for the udphdr struct is not
->>> avaible
->>> on non GLIBC libc's like MUSL without defining _GNU_SOURCE
->>> ---
->>>    ell/dhcp-transport.c | 1 +
->>>    1 file changed, 1 insertion(+)
->>>
->>
->> These look fine, but could you add some form of last name to your
->> author
->> info? We use a simplified form of Linux Kernel patch submission
->> guidelines but still require a full name for acceptance.
->>
->> Regards,
->> -Denis
-> =
+diff --git a/ell/checksum.c b/ell/checksum.c
+index 1e6a4b5..56b337c 100644
+--- a/ell/checksum.c
++++ b/ell/checksum.c
+@@ -223,8 +223,8 @@ LIB_EXPORT struct l_checksum *l_checksum_new_cmac_aes(c=
+onst void *key,
+ 	return checksum;
+ }
+ =
 
-> Yep can do that.
-> =
+-struct l_checksum *l_checksum_new_hmac(enum l_checksum_type type,
+-					const void *key, size_t key_len)
++LIB_EXPORT struct l_checksum *l_checksum_new_hmac(enum l_checksum_type typ=
+e,
++					  const void *key, size_t key_len)
+ {
+ 	struct l_checksum *checksum;
+ 	int fd;
+@@ -309,7 +309,7 @@ LIB_EXPORT void l_checksum_free(struct l_checksum *chec=
+ksum)
+  *
+  * Resets the internal state of @checksum.
+  **/
+-void l_checksum_reset(struct l_checksum *checksum)
++LIB_EXPORT void l_checksum_reset(struct l_checksum *checksum)
+ {
+ 	if (unlikely(!checksum))
+ 		return;
+@@ -353,7 +353,7 @@ LIB_EXPORT bool l_checksum_update(struct l_checksum *ch=
+ecksum,
+  *
+  * Returns: true if the operation succeeded, false otherwise.
+  **/
+-bool l_checksum_updatev(struct l_checksum *checksum,
++LIB_EXPORT bool l_checksum_updatev(struct l_checksum *checksum,
+ 					const struct iovec *iov, size_t iov_len)
+ {
+ 	struct msghdr msg;
+-- =
+
+2.17.0
 
 
-Could you resubmit with git send-email to save me the trouble of =
-
-manually editing the author info?  Would be appreciated.
-
-Regard,
--Denis
-
---===============0756372936985325711==--
+--===============0380359987901981354==--
 
