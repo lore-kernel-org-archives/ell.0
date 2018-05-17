@@ -1,32 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============8444680828737821878=="
+Content-Type: multipart/mixed; boundary="===============5911942342278501482=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] checksum: Fix undefined references
-Date: Thu, 17 May 2018 11:30:51 -0500
-Message-ID: <ee58f2da-7653-38b6-9aa4-ed4addeded31@gmail.com>
-In-Reply-To: <20180517162618.16655-1-ckt@cesar.org.br>
+From: John Zimmermann <johnz@posteo.net>
+Subject: [PATCH 1/2] dhcp-transport: define _GNU_SOURCE
+Date: Thu, 17 May 2018 23:56:37 +0200
+Message-ID: <20180517215637.15765-1-johnz@posteo.net>
+In-Reply-To: <89469edc-1e03-031b-bd5d-99347f3d8ad3@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8444680828737821878==
+--===============5911942342278501482==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Claudio,
+the source, dest, len, check naming for the udphdr struct is not avaible
+on non GLIBC libc's like MUSL without defining _GNU_SOURCE
+---
+ ell/dhcp-transport.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-On 05/17/2018 11:26 AM, Claudio Takahasi wrote:
-> ---
->   ell/checksum.c | 8 ++++----
->   1 file changed, 4 insertions(+), 4 deletions(-)
-> =
+diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
+index a317431..1de190a 100644
+--- a/ell/dhcp-transport.c
++++ b/ell/dhcp-transport.c
+@@ -24,6 +24,7 @@
+ #include <config.h>
+ #endif
+ =
+
++#define _GNU_SOURCE
+ #include <linux/types.h>
+ #include <sys/uio.h>
+ #include <sys/socket.h>
+-- =
+
+2.17.0
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
-
---===============8444680828737821878==--
+--===============5911942342278501482==--
 
