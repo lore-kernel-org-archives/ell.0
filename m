@@ -1,45 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============5104255868063531937=="
+Content-Type: multipart/mixed; boundary="===============6940520618584143900=="
 MIME-Version: 1.0
-From: John <johnz@posteo.net>
-Subject: [PATCH] dhcp.c: include net/ethernet.h before linux headers
-Date: Thu, 17 May 2018 13:09:06 +0200
-Message-ID: <20180517110906.24911-1-johnz@posteo.net>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/2] dhcp-transport: define _GNU_SOURCE
+Date: Thu, 17 May 2018 10:34:17 -0500
+Message-ID: <a8719c91-ab9a-eb35-c3c0-1882fe8390da@gmail.com>
+In-Reply-To: <20180517110855.24429-1-johnz@posteo.net>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5104255868063531937==
+--===============6940520618584143900==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-to fix compilation on systems with MUSL libc since MUSL a few argp
-structs exists in MUSL libc headers and kernel headers. Including libc
-headers before lets libc_compat.h take care of that.
----
- ell/dhcp.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Hi John,
 
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index ad95850..6c90370 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -25,9 +25,9 @@
- #endif
- =
-
- #include <netinet/ip.h>
-+#include <net/ethernet.h>
- #include <linux/types.h>
- #include <linux/if_arp.h>
--#include <net/ethernet.h>
- #include <errno.h>
- #include <time.h>
- =
-
--- =
-
-2.17.0
+On 05/17/2018 06:08 AM, John wrote:
+> the source, dest, len, check naming for the udphdr struct is not avaible
+> on non GLIBC libc's like MUSL without defining _GNU_SOURCE
+> ---
+>   ell/dhcp-transport.c | 1 +
+>   1 file changed, 1 insertion(+)
+> =
 
 
---===============5104255868063531937==--
+These look fine, but could you add some form of last name to your author =
+
+info? We use a simplified form of Linux Kernel patch submission =
+
+guidelines but still require a full name for acceptance.
+
+Regards,
+-Denis
+
+--===============6940520618584143900==--
 
