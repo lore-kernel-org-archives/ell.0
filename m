@@ -1,41 +1,46 @@
-Content-Type: multipart/mixed; boundary="===============5911942342278501482=="
+Content-Type: multipart/mixed; boundary="===============8112382779806904682=="
 MIME-Version: 1.0
 From: John Zimmermann <johnz@posteo.net>
-Subject: [PATCH 1/2] dhcp-transport: define _GNU_SOURCE
-Date: Thu, 17 May 2018 23:56:37 +0200
-Message-ID: <20180517215637.15765-1-johnz@posteo.net>
-In-Reply-To: <89469edc-1e03-031b-bd5d-99347f3d8ad3@gmail.com>
+Subject: [PATCH] dhcp.c: include net/ethernet.h before linux headers
+Date: Fri, 18 May 2018 00:01:23 +0200
+Message-ID: <20180517220123.26055-1-johnz@posteo.net>
+In-Reply-To: <20180517110906.24911-1-johnz@posteo.net>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5911942342278501482==
+--===============8112382779806904682==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-the source, dest, len, check naming for the udphdr struct is not avaible
-on non GLIBC libc's like MUSL without defining _GNU_SOURCE
+to fix compilation on systems with MUSL libc since MUSL a few argp
+structs exists in MUSL libc headers and kernel headers. Including libc
+headers before lets libc_compat.h take care of that.
 ---
- ell/dhcp-transport.c | 1 +
- 1 file changed, 1 insertion(+)
+ ell/dhcp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
-index a317431..1de190a 100644
---- a/ell/dhcp-transport.c
-+++ b/ell/dhcp-transport.c
-@@ -24,6 +24,7 @@
- #include <config.h>
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index ad95850..6c90370 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -25,9 +25,9 @@
  #endif
  =
 
-+#define _GNU_SOURCE
+ #include <netinet/ip.h>
++#include <net/ethernet.h>
  #include <linux/types.h>
- #include <sys/uio.h>
- #include <sys/socket.h>
+ #include <linux/if_arp.h>
+-#include <net/ethernet.h>
+ #include <errno.h>
+ #include <time.h>
+ =
+
 -- =
 
 2.17.0
 
 
---===============5911942342278501482==--
+--===============8112382779806904682==--
 
