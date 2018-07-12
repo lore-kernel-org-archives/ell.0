@@ -1,36 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============0543746871203344945=="
+Content-Type: multipart/mixed; boundary="===============7194473529542275415=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] genl: Include <stddef.h> for size_t typedef.
-Date: Wed, 06 Jun 2018 19:36:33 -0500
-Message-ID: <2b86c2ef-3a48-f2c1-5b86-1d7233e931a2@gmail.com>
-In-Reply-To: <20180606223423.30240-1-ossama.othman@intel.com>
+From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
+Subject: [PATCH] dhcp: include if_arp.h from libc instead of linux headers
+Date: Thu, 12 Jul 2018 10:30:29 +0200
+Message-ID: <81df296b-695f-2c6e-2d8b-653f6b1684e6@geanix.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0543746871203344945==
+--===============7194473529542275415==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+Compilation with musl libc fails due to redefinition of 'struct
+arp{req,req_old,hdr}' in linux/if_arp.h, since it is already defined and
+included in net/if_arp.h (through net/ethernet.h -> net/if_ether.h).
 
-On 06/06/2018 05:34 PM, Ossama Othman wrote:
-> The l_genl_msg_append_attrv() prototype in the ELL genl.h header uses
-> the size_t typedef.  Explicitly include <stddef.h> to pull in the
-> size_t typedef declaration in case the user directly includes
-> <ell/genl.h> without, or prior to, other headers that would have done
-> the same.  This addresses an "unknown type name" compile-time error in
-> such a case.
-> ---
->   ell/genl.h | 1 +
->   1 file changed, 1 insertion(+)
+The only symbols used from if_arp.h is ARPHRD_ETHER, so it should be
+safe to avoid the compile error by including the if_arp.h header from
+the c-library instead.
 
-Applied, thanks.
+Signed-off-by: Martin Hundeb=C3=B8ll <martin@geanix.com>
+---
+  ell/dhcp.c | 2 +-
+  1 file changed, 1 insertion(+), 1 deletion(-)
 
-Regards,
--Denis
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index 6c90370..0d99f74 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -27,7 +27,7 @@
+  #include <netinet/ip.h>
+  #include <net/ethernet.h>
+  #include <linux/types.h>
+-#include <linux/if_arp.h>
++#include <net/if_arp.h>
+  #include <errno.h>
+  #include <time.h>
+  -- 2.18.0
 
 
---===============0543746871203344945==--
+--===============7194473529542275415==--
 
