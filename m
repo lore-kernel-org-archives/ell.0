@@ -1,36 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============3780713645115655551=="
+Content-Type: multipart/mixed; boundary="===============1114010098520291509=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/3] Move TEMP_FAILURE_RETRY outside dbus.h
-Date: Fri, 20 Jul 2018 12:17:27 -0500
-Message-ID: <da0a95aa-054b-2d0f-7454-848bd801d730@gmail.com>
-In-Reply-To: <20180720164951.9338-1-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 1/2] fswatch: Add fswatch API
+Date: Fri, 20 Jul 2018 19:37:57 +0200
+Message-ID: <CAOq732+7cQKBpYh9pFLne=WBwnJUBky9kJBYsofHiGsoq1xGMw@mail.gmail.com>
+In-Reply-To: <2e29b28a-c46d-0edf-50af-6deebbdfbe4f@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3780713645115655551==
+--===============1114010098520291509==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+On 20 July 2018 at 19:16, Denis Kenzior <denkenz@gmail.com> wrote:
+>> BTW I looked at the for loop in the man page and it seems it's
+>> actually not initialising 'event' before first use so I won't be
+>> following that pattern.
+>
+>
+> for (ptr =3D buf; ptr < buf + len;
+>         ptr +=3D sizeof(struct inotify_event) + event->len) {
+>
+>         event =3D (const struct inotify_event *) ptr;
+>
+> ...
+> }
+>
+> This looks fine to me?  The ptr +=3D is not executed until the end of the
+> iteration.
 
-On 07/20/2018 11:49 AM, Andrew Zaborowski wrote:
-> Make this macro available for the rest of ell in private.h and on the
-> other hand remove from public header as it doesn't start with "L_".
-> Note that IWD does optionally use it in rfkill.c and storage.c.
-> ---
->   ell/dbus.h    | 10 ----------
->   ell/private.h | 11 +++++++++++
->   2 files changed, 11 insertions(+), 10 deletions(-)
-> =
+Oh true, it doesn't do the length check before initial iteration.  I
+thought it's better to have a sanity check.
 
+The loop is wrong though and would cause valgrind to complain because
+after your last iteration ptr equals buf + len, so 'event' also points
+at the end of buf and event->len is beyond the end of your buffer.
 
-Applied, thanks.
+Cheers
 
-Regards,
--Denis
-
-
---===============3780713645115655551==--
+--===============1114010098520291509==--
 
