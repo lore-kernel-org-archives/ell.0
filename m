@@ -1,77 +1,75 @@
-Content-Type: multipart/mixed; boundary="===============7714000327990445555=="
+Content-Type: multipart/mixed; boundary="===============3926695967403247224=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/2] fswatch: Add fswatch API
-Date: Fri, 20 Jul 2018 03:15:18 +0200
-Message-ID: <20180720011519.10210-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] unit: Add an fswatch unit test
+Date: Fri, 20 Jul 2018 03:15:19 +0200
+Message-ID: <20180720011519.10210-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20180720011519.10210-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7714000327990445555==
+--===============3926695967403247224==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add the header and the implementation for a filesystem watch API.  It's
-a simple wrapper around the Linux inotify mechanism but not named inotify
-so as not to preclude using other mechanisms in the implementation.
 ---
- Makefile.am   |   6 +-
- ell/ell.h     |   1 +
- ell/fswatch.c | 257 ++++++++++++++++++++++++++++++++++++++++++++++++++++++=
+ .gitignore          |   1 +
+ Makefile.am         |   5 +-
+ unit/test-fswatch.c | 290 ++++++++++++++++++++++++++++++++++++++++++++++++=
 ++++
- ell/fswatch.h |  45 ++++++++++
- 4 files changed, 307 insertions(+), 2 deletions(-)
- create mode 100644 ell/fswatch.c
- create mode 100644 ell/fswatch.h
+ 3 files changed, 295 insertions(+), 1 deletion(-)
+ create mode 100644 unit/test-fswatch.c
 
+diff --git a/.gitignore b/.gitignore
+index 4dc3777..6c9ffb0 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -55,6 +55,7 @@ unit/test-uuid
+ unit/test-key
+ unit/test-pbkdf2
+ unit/test-dhcp
++unit/test-fswatch
+ unit/cert-*.pem
+ unit/cert-*.csr
+ unit/cert-*.srl
 diff --git a/Makefile.am b/Makefile.am
-index 100e24c..8203fd4 100644
+index 8203fd4..9fe00fb 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -45,7 +45,8 @@ pkginclude_HEADERS =3D ell/ell.h \
- 			ell/pkcs5.h \
- 			ell/file.h \
- 			ell/net.h \
--			ell/dhcp.h
-+			ell/dhcp.h \
-+			ell/fswatch.h
+@@ -147,7 +147,8 @@ unit_tests =3D unit/test-unit \
+ 			unit/test-base64 \
+ 			unit/test-uuid \
+ 			unit/test-pbkdf2 \
+-			unit/test-dhcp
++			unit/test-dhcp \
++			unit/test-fswatch
  =
 
- lib_LTLIBRARIES =3D ell/libell.la
+ dbus_tests =3D unit/test-hwdb \
+ 			unit/test-dbus \
+@@ -264,6 +265,8 @@ unit_test_uuid_LDADD =3D ell/libell-private.la
  =
 
-@@ -104,7 +105,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/dhcp-private.h \
- 			ell/dhcp.c \
- 			ell/dhcp-transport.c \
--			ell/dhcp-lease.c
-+			ell/dhcp-lease.c \
-+			ell/fswatch.c
+ unit_test_dhcp_LDADD =3D ell/libell-private.la
  =
 
- ell_libell_la_LDFLAGS =3D -no-undefined \
- 			-version-info $(ELL_CURRENT):$(ELL_REVISION):$(ELL_AGE)
-diff --git a/ell/ell.h b/ell/ell.h
-index 03bb61d..c03faf2 100644
---- a/ell/ell.h
-+++ b/ell/ell.h
-@@ -53,3 +53,4 @@
- #include <ell/dbus-service.h>
- #include <ell/dbus-client.h>
- #include <ell/dhcp.h>
-+#include <ell/fswatch.h>
-diff --git a/ell/fswatch.c b/ell/fswatch.c
++unit_test_fswatch_LDADD =3D ell/libell-private.la
++
+ if MAINTAINER_MODE
+ noinst_LTLIBRARIES +=3D unit/example-plugin.la
+ endif
+diff --git a/unit/test-fswatch.c b/unit/test-fswatch.c
 new file mode 100644
-index 0000000..638bdf0
+index 0000000..3042fbb
 --- /dev/null
-+++ b/ell/fswatch.c
-@@ -0,0 +1,257 @@
++++ b/unit/test-fswatch.c
+@@ -0,0 +1,290 @@
 +/*
 + *
 + *  Embedded Linux library
 + *
-+ *  Copyright (C) 2018  Intel Corporation. All rights reserved.
++ *  Copyright (C) 2011-2014  Intel Corporation. All rights reserved.
 + *
 + *  This library is free software; you can redistribute it and/or
 + *  modify it under the terms of the GNU Lesser General Public
@@ -94,295 +92,274 @@ index 0000000..638bdf0
 +#include <config.h>
 +#endif
 +
-+#include <dirent.h>
 +#include <unistd.h>
-+#include <sys/inotify.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <stdio.h>
++#include <assert.h>
 +
-+#include "private.h"
-+#include "util.h"
-+#include "io.h"
-+#include "queue.h"
-+#include "fswatch.h"
++#include <ell/ell.h>
 +
-+static struct l_io *inotify_io;
-+static struct l_queue *watches;
-+static bool in_notify;
-+static bool stale_items;
++#define TEST_DIR "/tmp/ell-test-dir"
++#define TEST_FILE1 "/tmp/ell-test-dir/file1"
++#define TEST_FILE2 "/tmp/ell-test-dir/file2"
 +
-+struct l_fswatch {
-+	int id;
-+	l_fswatch_cb_t cb;
-+	void *user_data;
-+	l_fswatch_destroy_cb_t destroy;
++static struct l_fswatch *dir_watch;
++static struct l_fswatch *file_watch;
++static int data;
++
++static enum {
++	TEST_DIR_DESTROY_CB_1,
++	TEST_FILE_CREATE,
++	TEST_FILE_MOVE,
++	TEST_FILE_MODIFY,
++	TEST_FILE_REMOVE,
++	TEST_DIR_REMOVE,
++	TEST_DIR_DESTROY_CB_2,
++} state;
++
++static int substate;
++
++enum {
++	TEST_FILE_MOVE_DIR_FROM_EVENT =3D 1 << 0,
++	TEST_FILE_MOVE_DIR_TO_EVENT =3D 1 << 1,
++	TEST_FILE_MOVE_FILE_EVENT =3D 1 << 2,
++	TEST_FILE_MOVE_ALL =3D 7,
 +};
 +
-+#define EVENT_MASK	(IN_CREATE | IN_DELETE | IN_DELETE_SELF | \
-+				IN_MODIFY | IN_MOVE | IN_MOVE_SELF)
-+
-+static void l_fswatch_free(void *data)
-+{
-+	struct l_fswatch *watch =3D data;
-+
-+	if (watch->destroy)
-+		watch->destroy(watch, watch->user_data);
-+
-+	l_free(watch);
-+}
-+
-+static void l_fswatch_shutdown(void)
-+{
-+	if (!inotify_io)
-+		return;
-+
-+	l_io_destroy(inotify_io);
-+	inotify_io =3D NULL;
-+}
-+
-+static bool l_fswatch_remove_func(const void *a, const void *b)
-+{
-+	const struct l_fswatch *watch =3D a;
-+
-+	return !watch->cb;
-+}
-+
-+static bool inotify_read_cb(struct l_io *io, void *user_data)
-+{
-+	uint8_t buf[sizeof(struct inotify_event) + NAME_MAX + 1];
-+	const struct inotify_event *event;
-+	ssize_t len;
-+	enum l_fswatch_event event_type;
-+
-+	len =3D read(l_io_get_fd(io), buf, sizeof(buf));
-+	if (unlikely(len <=3D 0))
-+		return true;
-+
-+	event =3D (struct inotify_event *) buf;
-+
-+	if (event->mask & IN_CREATE)
-+		event_type =3D L_FSWATCH_EVENT_CREATE;
-+	else if (event->mask & (IN_DELETE | IN_DELETE_SELF))
-+		event_type =3D L_FSWATCH_EVENT_DELETE;
-+	else if (event->mask & (IN_MOVE | IN_MOVE_SELF))
-+		event_type =3D L_FSWATCH_EVENT_MOVE;
-+	else
-+		event_type =3D L_FSWATCH_EVENT_MODIFY;
-+
-+	in_notify =3D true;
-+
-+	while ((size_t) len >=3D sizeof(struct inotify_event) + event->len) {
-+		const struct l_queue_entry *entry;
-+		const uint8_t *next_ptr;
-+		const char *name =3D NULL;
-+
-+		if (event->len)
-+			name =3D event->name;
-+
-+		for (entry =3D l_queue_get_entries(watches); entry;
-+				entry =3D entry->next) {
-+			struct l_fswatch *watch =3D entry->data;
-+
-+			if (watch->id !=3D event->wd)
-+				continue;
-+
-+			if ((event->mask & EVENT_MASK) && watch->cb)
-+				watch->cb(watch, name, event_type,
-+						watch->user_data);
-+
-+			if (event->mask & IN_IGNORED) {
-+				stale_items =3D true;
-+				watch->cb =3D NULL;
-+			}
-+		}
-+
-+		len -=3D sizeof(struct inotify_event) + event->len;
-+		/* event->len is supposed to include alignment */
-+		next_ptr =3D (const uint8_t *) (event + 1) + event->len;
-+		event =3D (struct inotify_event *) next_ptr;
-+	}
-+
-+	in_notify =3D false;
-+
-+	if (stale_items) {
-+		struct l_fswatch *watch;
-+
-+		while ((watch =3D l_queue_remove_if(watches,
-+						l_fswatch_remove_func, NULL)))
-+			l_fswatch_free(watch);
-+
-+		stale_items =3D false;
-+
-+		if (l_queue_isempty(watches))
-+			l_fswatch_shutdown();
-+	}
-+
-+	return true;
-+}
-+
-+static void l_fswatch_io_destroy(void *user_data)
-+{
-+	l_queue_destroy(watches, l_fswatch_free);
-+	watches =3D NULL;
-+}
-+
-+static bool l_fswatch_init(void)
-+{
-+	int inotify_fd =3D inotify_init1(IN_CLOEXEC);
-+
-+	if (unlikely(inotify_fd < 0))
-+		return false;
-+
-+	inotify_io =3D l_io_new(inotify_fd);
-+	if (unlikely(!inotify_io)) {
-+		close(inotify_fd);
-+		return false;
-+	}
-+
-+	l_io_set_close_on_destroy(inotify_io, true);
-+
-+	if (unlikely(!l_io_set_read_handler(inotify_io, inotify_read_cb,
-+						NULL, l_fswatch_io_destroy))) {
-+		l_io_destroy(inotify_io);
-+		return false;
-+	}
-+
-+	return true;
-+}
-+
-+LIB_EXPORT struct l_fswatch *l_fswatch_new(const char *path, l_fswatch_cb_=
-t cb,
-+						void *user_data,
-+						l_fswatch_destroy_cb_t destroy)
-+{
-+	struct l_fswatch *watch;
-+	int id;
-+
-+	if (unlikely(!cb))
-+		return NULL;
-+
-+	if (!inotify_io && !l_fswatch_init())
-+		return NULL;
-+
-+	/*
-+	 * inotify_watch_add already checks if the path is already being
-+	 * watched and will return the old watch ID so we're fine.
-+	 */
-+	id =3D inotify_add_watch(l_io_get_fd(inotify_io), path,
-+						EVENT_MASK | IN_EXCL_UNLINK);
-+	if (unlikely(id < 0)) {
-+		if (l_queue_isempty(watches))
-+			l_fswatch_shutdown();
-+
-+		return NULL;
-+	}
-+
-+	watch =3D l_new(struct l_fswatch, 1);
-+	watch->id =3D id;
-+	watch->cb =3D cb;
-+	watch->user_data =3D user_data;
-+	watch->destroy =3D destroy;
-+
-+	if (!watches)
-+		watches =3D l_queue_new();
-+
-+	l_queue_push_tail(watches, watch);
-+
-+	return watch;
-+}
-+
-+LIB_EXPORT bool l_fswatch_destroy(struct l_fswatch *watch)
-+{
-+	const struct l_queue_entry *entry;
-+	int id;
-+
-+	if (unlikely(!inotify_io || !watch))
-+		return false;
-+
-+	id =3D watch->id;
-+
-+	/* Check if we have any other watch with the same inotify ID */
-+	for (entry =3D l_queue_get_entries(watches); entry;
-+			entry =3D entry->next) {
-+		struct l_fswatch *watch2 =3D entry->data;
-+
-+		if (watch2 !=3D watch && watch2->id =3D=3D id)
-+			break;
-+	}
-+
-+	if (!entry && id !=3D -1)
-+		if (inotify_rm_watch(l_io_get_fd(inotify_io), id) < 0)
-+			return false;
-+
-+	if (in_notify) {
-+		watch->cb =3D NULL;
-+		stale_items =3D true;
-+		return true;
-+	}
-+
-+	l_queue_remove(watches, watch);
-+	l_fswatch_free(watch);
-+
-+	if (l_queue_isempty(watches))
-+		l_fswatch_shutdown();
-+
-+	return true;
-+}
-diff --git a/ell/fswatch.h b/ell/fswatch.h
-new file mode 100644
-index 0000000..79b379c
---- /dev/null
-+++ b/ell/fswatch.h
-@@ -0,0 +1,45 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2018  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifndef __ELL_FSWATCH_H
-+#define __ELL_FSWATCH_H
-+
-+struct l_fswatch;
-+
-+enum l_fswatch_event {
-+	L_FSWATCH_EVENT_CREATE,
-+	L_FSWATCH_EVENT_MOVE,
-+	L_FSWATCH_EVENT_MODIFY,
-+	L_FSWATCH_EVENT_DELETE,
++enum {
++	TEST_FILE_MODIFY_DIR_EVENT =3D 1 << 0,
++	TEST_FILE_MODIFY_FILE_EVENT =3D 1 << 1,
++	TEST_FILE_MODIFY_ALL =3D 3,
 +};
 +
-+typedef void (*l_fswatch_cb_t) (struct l_fswatch *watch, const char *filen=
-ame,
-+				enum l_fswatch_event event, void *user_data);
-+typedef void (*l_fswatch_destroy_cb_t) (struct l_fswatch *watch,
-+					void *user_data);
++enum {
++	TEST_FILE_REMOVE_DIR_EVENT =3D 1 << 0,
++	TEST_FILE_REMOVE_FILE_EVENT =3D 1 << 1,
++	TEST_FILE_REMOVE_DESTROY_CB =3D 1 << 2,
++	TEST_FILE_REMOVE_ALL =3D 7,
++};
 +
-+struct l_fswatch *l_fswatch_new(const char *path, l_fswatch_cb_t cb,
-+				void *user_data,
-+				l_fswatch_destroy_cb_t destroy);
-+bool l_fswatch_destroy(struct l_fswatch *watch);
++static void test_file_move_check(void)
++{
++	if (substate =3D=3D TEST_FILE_MOVE_ALL) {
++		l_info("TEST_FILE_MODIFY");
++		state =3D TEST_FILE_MODIFY;
++		substate =3D 0;
++		assert(close(creat(TEST_FILE2, 0600)) =3D=3D 0);
++	}
++}
 +
-+#endif /* __ELL_FSWATCH_H */
++static void test_file_modify_check(void)
++{
++	if (substate =3D=3D TEST_FILE_MODIFY_ALL) {
++		l_info("TEST_FILE_REMOVE");
++		state =3D TEST_FILE_REMOVE;
++		substate =3D 0;
++		assert(unlink(TEST_FILE2) =3D=3D 0);
++	}
++}
++
++static void test_file_remove_check(void)
++{
++	if (substate =3D=3D TEST_FILE_REMOVE_ALL) {
++		l_info("TEST_DIR_REMOVE");
++		state =3D TEST_DIR_REMOVE;
++		substate =3D 0;
++		assert(rmdir(TEST_DIR) =3D=3D 0);
++	}
++}
++
++static void file_watch_destroy(struct l_fswatch *watch, void *user_data)
++{
++	assert(state =3D=3D TEST_FILE_REMOVE);
++	assert(!(substate & TEST_FILE_REMOVE_DESTROY_CB));
++	assert(substate & TEST_FILE_REMOVE_FILE_EVENT);
++
++	substate |=3D TEST_FILE_REMOVE_DESTROY_CB;
++
++	test_file_remove_check();
++}
++
++static void file_watch_cb(struct l_fswatch *watch, const char *filename,
++				enum l_fswatch_event event, void *user_data)
++{
++	assert(watch =3D=3D file_watch);
++	assert(user_data =3D=3D &data);
++	assert(filename =3D=3D NULL);
++
++	switch (state) {
++	case TEST_FILE_MOVE:
++		assert(event =3D=3D L_FSWATCH_EVENT_MOVE);
++		assert(!(substate & TEST_FILE_MOVE_FILE_EVENT));
++
++		substate |=3D TEST_FILE_MOVE_FILE_EVENT;
++
++		test_file_move_check();
++		break;
++	case TEST_FILE_MODIFY:
++		assert(event =3D=3D L_FSWATCH_EVENT_MODIFY);
++		assert(!(substate & TEST_FILE_MODIFY_FILE_EVENT));
++
++		substate |=3D TEST_FILE_MODIFY_FILE_EVENT;
++
++		test_file_modify_check();
++		break;
++	case TEST_FILE_REMOVE:
++		assert(event =3D=3D L_FSWATCH_EVENT_DELETE);
++		assert(!(substate & TEST_FILE_REMOVE_FILE_EVENT));
++
++		substate |=3D TEST_FILE_REMOVE_FILE_EVENT;
++
++		test_file_remove_check();
++		break;
++	default:
++		assert(false);
++	}
++}
++
++static void dir_watch_destroy_1(struct l_fswatch *watch, void *user_data)
++{
++	assert(state =3D=3D TEST_DIR_DESTROY_CB_1);
++	assert(dir_watch);
++
++	dir_watch =3D NULL;
++}
++
++static void dir_watch_destroy_2(struct l_fswatch *watch, void *user_data)
++{
++	assert(state =3D=3D TEST_DIR_DESTROY_CB_2);
++	assert(dir_watch);
++
++	l_main_quit();
++
++	dir_watch =3D NULL;
++}
++
++static void dir_watch_cb(struct l_fswatch *watch, const char *filename,
++				enum l_fswatch_event event, void *user_data)
++{
++	assert(watch =3D=3D dir_watch);
++	assert(user_data =3D=3D &data);
++
++	switch (state) {
++	case TEST_FILE_CREATE:
++		assert(event =3D=3D L_FSWATCH_EVENT_CREATE);
++		assert(filename);
++		assert(strstr(TEST_FILE1, filename));
++
++		file_watch =3D l_fswatch_new(TEST_FILE1, file_watch_cb, &data,
++						file_watch_destroy);
++		assert(file_watch);
++
++		l_info("TEST_FILE_MOVE");
++		state =3D TEST_FILE_MOVE;
++		substate =3D 0;
++		assert(rename(TEST_FILE1, TEST_FILE2) =3D=3D 0);
++		break;
++	case TEST_FILE_MOVE:
++		assert(event =3D=3D L_FSWATCH_EVENT_MOVE);
++		assert(filename);
++
++		if (strstr(TEST_FILE1, filename)) {
++			assert(!(substate & TEST_FILE_MOVE_DIR_FROM_EVENT));
++
++			substate |=3D TEST_FILE_MOVE_DIR_FROM_EVENT;
++		} else if (strstr(TEST_FILE2, filename)) {
++			assert(!(substate & TEST_FILE_MOVE_DIR_TO_EVENT));
++
++			substate |=3D TEST_FILE_MOVE_DIR_TO_EVENT;
++		} else
++			assert(false);
++
++		test_file_move_check();
++		break;
++	case TEST_FILE_MODIFY:
++		assert(event =3D=3D L_FSWATCH_EVENT_MODIFY);
++		assert(filename);
++		assert(strstr(TEST_FILE2, filename));
++		assert(!(substate & TEST_FILE_MODIFY_DIR_EVENT));
++
++		substate |=3D TEST_FILE_MODIFY_DIR_EVENT;
++
++		test_file_modify_check();
++		break;
++	case TEST_FILE_REMOVE:
++		assert(event =3D=3D L_FSWATCH_EVENT_DELETE);
++		assert(filename);
++		assert(strstr(TEST_FILE2, filename));
++		assert(!(substate & TEST_FILE_REMOVE_DIR_EVENT));
++
++		substate |=3D TEST_FILE_REMOVE_DIR_EVENT;
++
++		test_file_remove_check();
++		break;
++	case TEST_DIR_REMOVE:
++		assert(event =3D=3D L_FSWATCH_EVENT_DELETE);
++		assert(filename =3D=3D NULL);
++
++		l_info("TEST_DIR_DESTROY_CB_2");
++		state =3D TEST_DIR_DESTROY_CB_2;
++		break;
++	default:
++		assert(false);
++	}
++}
++
++static void timeout_cb(struct l_timeout *timeout, void *user_data)
++{
++	assert(false);
++}
++
++int main(int argc, char *argv[])
++{
++	struct l_timeout *timeout;
++
++	assert(l_main_init());
++
++	l_log_set_stderr();
++
++	unlink(TEST_FILE1);
++	unlink(TEST_FILE2);
++	rmdir(TEST_DIR);
++	assert(mkdir(TEST_DIR, 0700) =3D=3D 0);
++
++	timeout =3D l_timeout_create(1, timeout_cb, NULL, NULL);
++
++	l_info("TEST_DIR_DESTROY_CB_1");
++	state =3D TEST_DIR_DESTROY_CB_1;
++
++	dir_watch =3D l_fswatch_new(TEST_DIR, dir_watch_cb, &data,
++					dir_watch_destroy_1);
++
++	assert(dir_watch);
++	assert(l_fswatch_destroy(dir_watch));
++	assert(!dir_watch);
++
++	dir_watch =3D l_fswatch_new(TEST_DIR, dir_watch_cb, &data,
++					dir_watch_destroy_2);
++
++	assert(dir_watch);
++	assert(!l_fswatch_new(TEST_FILE1, file_watch_cb, &data,
++				file_watch_destroy));
++
++	l_info("TEST_FILE_CREATE");
++	state =3D TEST_FILE_CREATE;
++	assert(close(creat(TEST_FILE1, 0600)) =3D=3D 0);
++
++	l_main_run();
++
++	l_timeout_remove(timeout);
++
++	l_main_exit();
++
++	return 0;
++}
 -- =
 
 2.14.1
 
 
---===============7714000327990445555==--
+--===============3926695967403247224==--
 
