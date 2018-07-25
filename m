@@ -1,16 +1,18 @@
-Content-Type: multipart/mixed; boundary="===============2883800065265369416=="
+Content-Type: multipart/mixed; boundary="===============2194259195480489859=="
 MIME-Version: 1.0
 From: maxice8 <thinkabit.ukim@gmail.com>
 Subject: [PATCH] fswatch: add missing limits.h include for NAME_MAX
-Date: Wed, 25 Jul 2018 13:43:33 -0300
-Message-ID: <20180725164333.19552-1-thinkabit.ukim@gmail.com>
+Date: Wed, 25 Jul 2018 13:48:17 -0300
+Message-ID: <20180725164817.22908-1-thinkabit.ukim@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2883800065265369416==
+--===============2194259195480489859==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
+
+From: William Maxwell <thinkabit.ukim@gmail.com>
 
 fixes compilation on stricter libcs like Musl.
 
@@ -43,5 +45,5 @@ index c65a1b9..c5980d3 100644
 2.18.0
 
 
---===============2883800065265369416==--
+--===============2194259195480489859==--
 
