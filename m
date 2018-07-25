@@ -1,41 +1,47 @@
-Content-Type: multipart/mixed; boundary="===============8292377782611058209=="
+Content-Type: multipart/mixed; boundary="===============2883800065265369416=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] fswatch: Add fswatch API
-Date: Fri, 20 Jul 2018 13:57:17 -0500
-Message-ID: <66e4f020-0cb4-c93c-27cc-44ed90c0eeb7@gmail.com>
-In-Reply-To: <20180720181249.21876-1-andrew.zaborowski@intel.com>
+From: maxice8 <thinkabit.ukim@gmail.com>
+Subject: [PATCH] fswatch: add missing limits.h include for NAME_MAX
+Date: Wed, 25 Jul 2018 13:43:33 -0300
+Message-ID: <20180725164333.19552-1-thinkabit.ukim@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8292377782611058209==
+--===============2883800065265369416==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+fixes compilation on stricter libcs like Musl.
 
-On 07/20/2018 01:12 PM, Andrew Zaborowski wrote:
-> Add the header and the implementation for a filesystem watch API.  It's
-> a simple wrapper around the Linux inotify mechanism but not named inotify
-> so as not to preclude using other mechanisms in the implementation.
-> ---
->   Makefile.am   |   6 +-
->   ell/ell.h     |   1 +
->   ell/fswatch.c | 255 +++++++++++++++++++++++++++++++++++++++++++++++++++=
-+++++++
->   ell/fswatch.h |  44 ++++++++++
->   4 files changed, 304 insertions(+), 2 deletions(-)
->   create mode 100644 ell/fswatch.c
->   create mode 100644 ell/fswatch.h
-> =
+ell/fswatch.c: In function 'inotify_read_cb':
+ell/fswatch.c:80:45: error: 'NAME_MAX' undeclared (first use in this functi=
+on); did you mean 'SIZE_MAX'?
+  uint8_t buf[sizeof(struct inotify_event) + NAME_MAX + 1]
+                                             ^~~~~~~~
+                                             SIZE_MAX
+---
+ ell/fswatch.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/ell/fswatch.c b/ell/fswatch.c
+index c65a1b9..c5980d3 100644
+--- a/ell/fswatch.c
++++ b/ell/fswatch.c
+@@ -26,6 +26,7 @@
+ =
+
+ #include <dirent.h>
+ #include <unistd.h>
++#include <limits.h>
+ #include <sys/inotify.h>
+ =
+
+ #include "private.h"
+-- =
+
+2.18.0
 
 
-Both applied, thanks.
-
-Regards,
--Denis
-
-
---===============8292377782611058209==--
+--===============2883800065265369416==--
 
