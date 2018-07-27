@@ -1,73 +1,87 @@
-Content-Type: multipart/mixed; boundary="===============2691829214901284926=="
+Content-Type: multipart/mixed; boundary="===============2384615681829799540=="
 MIME-Version: 1.0
 From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH 3/3] unit: Remove verbose output from test-pbkdf2
-Date: Fri, 27 Jul 2018 14:27:52 -0700
-Message-ID: <20180727212752.20497-3-mathew.j.martineau@linux.intel.com>
-In-Reply-To: <20180727212752.20497-1-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 1/3] build: Fix up sanitizer library detection
+Date: Fri, 27 Jul 2018 14:27:50 -0700
+Message-ID: <20180727212752.20497-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2691829214901284926==
+--===============2384615681829799540==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The test was printing control characters in the salt value for one test
-case, but the verbose output for passing tests wasn't needed anyway.
+The exported symbol names in libasan/liblsan/libubsan have changed over
+time, which broke library detection. We really only care if the
+sanitizer libraries are present, but the configure scripts require a
+symbol name.  '_init' is present in new and old sanitizer libraries.
 ---
- unit/test-pbkdf2.c | 11 -----------
- 1 file changed, 11 deletions(-)
+ configure.ac | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/unit/test-pbkdf2.c b/unit/test-pbkdf2.c
-index ad9c47c..37d87ed 100644
---- a/unit/test-pbkdf2.c
-+++ b/unit/test-pbkdf2.c
-@@ -41,25 +41,16 @@ struct pbkdf2_data {
- static void pbkdf2_test(const void *data)
- {
- 	const struct pbkdf2_data *test =3D data;
--	unsigned int password_len;
- 	unsigned int salt_len;
- 	unsigned int key_len;
- 	unsigned char output[25];
- 	char *key;
- 	bool result;
+diff --git a/configure.ac b/configure.ac
+index 0e7cee2..cec3499 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -56,13 +56,13 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
+ ])
  =
 
--	password_len =3D strlen(test->password);
- 	salt_len =3D test->salt_len ? : strlen(test->salt);
+ save_LIBS=3D$LIBS
+-AC_CHECK_LIB(asan, __sanitizer_cov_init)
++AC_CHECK_LIB(asan, _init)
+ LIBS=3D$save_LIBS
  =
 
- 	key_len =3D test->key_len ? : (strlen(test->key) / 2);
+ AC_ARG_ENABLE(asan, AC_HELP_STRING([--enable-asan],
+ 			[enable linking with address sanitizer]), [
+ 	if (test "${enableval}" =3D "yes" &&
+-				test "${ac_cv_lib_asan___sanitizer_cov_init}" =3D "yes" &&
++				test "${ac_cv_lib_asan__init}" =3D "yes" &&
+ 				test "${ac_cv_prog_cc_asan}" =3D "yes"); then
+ 		CFLAGS=3D"$CFLAGS -fsanitize=3Daddress";
+ 		LDFLAGS=3D"$LDFLAGS -fsanitize=3Daddress"
+@@ -70,13 +70,13 @@ AC_ARG_ENABLE(asan, AC_HELP_STRING([--enable-asan],
+ ])
  =
 
--	printf("Password =3D \"%s\" (%d octets)\n",
--					test->password, password_len);
--	printf("Salt     =3D \"%s\" (%d octets)\n",
--					test->salt, salt_len);
--	printf("Count    =3D %d\n", test->count);
--	printf("Key      =3D %s (%d octets)\n", test->key, key_len);
--
- 	result =3D l_pkcs5_pbkdf2(L_CHECKSUM_SHA1, test->password,
- 				(const uint8_t *) test->salt, salt_len,
- 				test->count, output, key_len);
-@@ -68,8 +59,6 @@ static void pbkdf2_test(const void *data)
+ save_LIBS=3D$LIBS
+-AC_CHECK_LIB(lsan, __sanitizer_cov_init)
++AC_CHECK_LIB(lsan, _init)
+ LIBS=3D$save_LIBS
  =
 
- 	key =3D l_util_hexstring(output, key_len);
+ AC_ARG_ENABLE(lsan, AC_HELP_STRING([--enable-lsan],
+ 			[enable linking with leak sanitizer]), [
+ 	if (test "${enableval}" =3D "yes" &&
+-				test "${ac_cv_lib_lsan___sanitizer_cov_init}" =3D "yes" &&
++				test "${ac_cv_lib_lsan__init}" =3D "yes" &&
+ 				test "${ac_cv_prog_cc_lsan}" =3D "yes"); then
+ 		CFLAGS=3D"$CFLAGS -fsanitize=3Dleak";
+ 		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dleak"
+@@ -84,13 +84,13 @@ AC_ARG_ENABLE(lsan, AC_HELP_STRING([--enable-lsan],
+ ])
  =
 
--	printf("Result   =3D %s\n", key);
--
- 	assert(strcmp(test->key, key) =3D=3D 0);
+ save_LIBS=3D$LIBS
+-AC_CHECK_LIB(ubsan, __sanitizer_cov_init)
++AC_CHECK_LIB(ubsan, _init)
+ LIBS=3D$save_LIBS
  =
 
- 	l_free(key);
+ AC_ARG_ENABLE(ubsan, AC_HELP_STRING([--enable-ubsan],
+ 			[enable linking with undefined behavior sanitizer]), [
+ 	if (test "${enableval}" =3D "yes" &&
+-				test "${ac_cv_lib_ubsan___sanitizer_cov_init}" =3D "yes" &&
++				test "${ac_cv_lib_ubsan__init}" =3D "yes" &&
+ 				test "${ac_cv_prog_cc_ubsan}" =3D "yes"); then
+ 		CFLAGS=3D"$CFLAGS -fsanitize=3Dundefined";
+ 		LDFLAGS=3D"$LDFLAGS -fsanitize=3Dundefined"
 -- =
 
 2.18.0
 
 
---===============2691829214901284926==--
+--===============2384615681829799540==--
 
