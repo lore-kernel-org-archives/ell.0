@@ -1,71 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============6707303351646389096=="
+Content-Type: multipart/mixed; boundary="===============2512407711121808335=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/2] fswatch: Notify about L_FSWATCH_EVENT_ATTRIB events
-Date: Thu, 09 Aug 2018 16:28:51 +0200
-Message-ID: <20180809142852.17764-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] unit: Make fswatch test pass with new event type
+Date: Thu, 09 Aug 2018 16:28:52 +0200
+Message-ID: <20180809142852.17764-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20180809142852.17764-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6707303351646389096==
+--===============2512407711121808335==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Also emit events on file attribute changes, this was actually my
-original intent but I must have missed this bit in the bitmask.
+Ignore the L_FSWATCH_EVENT_ATTRIB event seen for files being unlinked
+that precedes the L_FSWATCH_EVENT_DELETE.
 ---
- ell/fswatch.c | 7 ++++++-
- ell/fswatch.h | 1 +
- 2 files changed, 7 insertions(+), 1 deletion(-)
+ unit/test-fswatch.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/ell/fswatch.c b/ell/fswatch.c
-index c5980d3..f7719b3 100644
---- a/ell/fswatch.c
-+++ b/ell/fswatch.c
-@@ -48,7 +48,8 @@ struct l_fswatch {
- };
+diff --git a/unit/test-fswatch.c b/unit/test-fswatch.c
+index d8b5f7b..a616495 100644
+--- a/unit/test-fswatch.c
++++ b/unit/test-fswatch.c
+@@ -140,9 +140,13 @@ static void file_watch_cb(struct l_fswatch *watch, con=
+st char *filename,
+ 		test_file_modify_check();
+ 		break;
+ 	case TEST_FILE_REMOVE:
+-		assert(event =3D=3D L_FSWATCH_EVENT_DELETE);
++		assert(event =3D=3D L_FSWATCH_EVENT_DELETE ||
++				event =3D=3D L_FSWATCH_EVENT_ATTRIB);
+ 		assert(!(substate & TEST_FILE_REMOVE_FILE_EVENT));
  =
 
- #define EVENT_MASK	(IN_CREATE | IN_DELETE | IN_DELETE_SELF | \
--				IN_MODIFY | IN_MOVE | IN_MOVE_SELF)
-+				IN_MODIFY | IN_MOVE | IN_MOVE_SELF | \
-+				IN_ATTRIB)
- =
-
- static void l_fswatch_free(void *data)
- {
-@@ -125,6 +126,10 @@ static bool inotify_read_cb(struct l_io *io, void *use=
-r_data)
- 				watch->cb(watch, name, L_FSWATCH_EVENT_DELETE,
- 						watch->user_data);
- =
-
-+			if ((event->mask & IN_ATTRIB) && watch->cb)
-+				watch->cb(watch, name, L_FSWATCH_EVENT_ATTRIB,
-+						watch->user_data);
++		if (event =3D=3D L_FSWATCH_EVENT_ATTRIB)
++			break;
 +
- 			if (event->mask & IN_IGNORED) {
- 				stale_items =3D true;
- 				watch->cb =3D NULL;
-diff --git a/ell/fswatch.h b/ell/fswatch.h
-index 419df09..425dc3e 100644
---- a/ell/fswatch.h
-+++ b/ell/fswatch.h
-@@ -30,6 +30,7 @@ enum l_fswatch_event {
- 	L_FSWATCH_EVENT_MOVE,
- 	L_FSWATCH_EVENT_MODIFY,
- 	L_FSWATCH_EVENT_DELETE,
-+	L_FSWATCH_EVENT_ATTRIB,
- };
+ 		substate |=3D TEST_FILE_REMOVE_FILE_EVENT;
  =
 
- typedef void (*l_fswatch_cb_t) (struct l_fswatch *watch, const char *filen=
-ame,
+ 		test_file_remove_check();
 -- =
 
 2.14.1
 
 
---===============6707303351646389096==--
+--===============2512407711121808335==--
 
