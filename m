@@ -1,50 +1,58 @@
-Content-Type: multipart/mixed; boundary="===============5384619929984311552=="
+Content-Type: multipart/mixed; boundary="===============0266450929622596739=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: Re: [PATCH] key: Change initialization of struct keyctl_dh_params
-Date: Tue, 25 Sep 2018 09:26:24 -0700
-Message-ID: <alpine.OSX.2.21.1809250919480.17067@kvwoan-mobl2.amr.corp.intel.com>
-In-Reply-To: <1f1a0849-94f5-7538-8f1f-f07240118b7c@gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 1/2][RFC] dbus: Don't automatically emit PropertyChanged
+ after Set
+Date: Sat, 01 Sep 2018 01:05:31 +0200
+Message-ID: <CAOq732+C41hnEboWqsVw1qSBOjjGbjEyTeusmt3RsLkji6jVPw@mail.gmail.com>
+In-Reply-To: <a8adca6f-ab15-26c8-98f4-d75cf2d84578@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5384619929984311552==
+--===============0266450929622596739==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Hi Denis,
+[resending to the list]
 
-On Thu, 20 Sep 2018, Denis Kenzior wrote:
-
-> Hi Mat,
+On Fri, 31 Aug 2018 at 17:49, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 08/29/2018 08:05 PM, Andrew Zaborowski wrote:
+> > Remove the _dbus_object_tree_property_changed call in the complete
+> > handler for property setters so a PropertyChanged/PropertiesChanged
+> > signal is not sent for every successful Set().  This means that the
+> > setter functions will have to emit the signals when the property's value
+> > has changed so it affects ell's clients.  This attempts to allow clients
+> > to solve an issue where PropertyChanged signals were generated even if
+> > Set was called with a value equal to the property's current value so the
+> > values was not effectively chaning.
 >
-> On 09/20/2018 06:14 PM, Mat Martineau wrote:
->> Using a designated initializer with struct keyctl_dh_params has broken
->> due to a kernel header file change to one of the member names,
->> introduced in kernel v4.19-rc3:
->> =
+> So if we do it this way, do we even need the complete callback at all?
+> All it does is just sends a reply now.  This can be easily done by the
+> caller by issuing a dbus_pending_reply or l_dbus_send...
 
->> https://lore.kernel.org/lkml/1735b3a4-2792-0ce4-3bf4-94fee5b50ff6(a)infr=
-adead.org/
->> =
-
->> If the member names are dropped from the initializer then the code will
->> compile and work correctly before or after the kernel header change.
->> ---
+Yes, although I'm not sure that's better.  Perhaps it was never a good
+idea for the complete callback to be an opaque pointer instead of an
+api call but at least it builds the reply for you.
 >
-> Applied, thanks.
+> >
+> > I'm not 100% convinced this small benefit is worth the added work for
+> > clients.  Another possibilty would be for the setter functions to give
+> > the complete callback some hint when they want an property change to be
+> > signalled.  For example an additional parameter or always when the
+>
+> I thought about this and I'm afraid this would be unreadable.  The
+> callback already includes 3 pointers and one of the pointers can be
+> NULL.  There's already way too much magic and parameters in there.  The
+> GDBus approach of pending_property_success/error is actually more
+> readable and clear.  But it still comes down to a dbus_send in the end.
 
-The good news is that the kernel change causing this headache has been =
+With a direct l_dbus_send call you have to know exactly what the
+method's signature was, it's not difficult but it's nicer when you
+don't have to care like in the GDBus case.
 
-reverted for the upcoming v4.19-rc6.
+Best regards
 
-The bad news is that it found its way in to v4.14.{70,71} and v4.18.{8,9}. =
-
-The revert was cc'd to stable (but I don't see them in stable-queue yet).
-
---
-Mat Martineau
-Intel OTC
-
---===============5384619929984311552==--
+--===============0266450929622596739==--
 
