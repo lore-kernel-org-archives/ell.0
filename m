@@ -1,54 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============8858917359491870919=="
+Content-Type: multipart/mixed; boundary="===============4940101990259847759=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 2/2][RFC] unit: Emit PropertyChanged in setters in
- test-dbus-service
-Date: Sat, 01 Sep 2018 01:19:06 +0200
-Message-ID: <CAOq732JHz66OH1rPXDwmy_iqw_en7w_sV7wy0xwf_myFgvgcoA@mail.gmail.com>
-In-Reply-To: <c1569ec3-6f27-e597-ae5f-bb1c72bc4380@gmail.com>
+Subject: [PATCH] netlink: Don't change error code signs
+Date: Fri, 05 Oct 2018 03:48:15 +0200
+Message-ID: <20181005014815.16483-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8858917359491870919==
+--===============4940101990259847759==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, 31 Aug 2018 at 17:38, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 08/29/2018 08:05 PM, Andrew Zaborowski wrote:
-> > Send the property change signals in the setter now that it's not done
-> > automatically.  Note that the signals are now sent before the Set method
-> > return message.
->
-> Hmm, aren't we able to control the order of signals by issuing the
-> complete callback prior to the property changed call?
+Netlink errors returned by the kernel are already negative so don't
+change the sign, this was confusing some iwd code that depends on
+negative error numbers from l_netlink.
+---
+ ell/netlink.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Yes, it's just for convenience here.  Since the complete callback
-unrefs "message", we'd need to ref/unref it once or use an extra
-variable to send the reply after.
+diff --git a/ell/netlink.c b/ell/netlink.c
+index d247173..d1871ba 100644
+--- a/ell/netlink.c
++++ b/ell/netlink.c
+@@ -178,7 +178,7 @@ static void process_message(struct l_netlink *netlink, =
+struct nlmsghdr *nlmsg)
+ 		case NLMSG_ERROR:
+ 			err =3D data + NLMSG_HDRLEN;
+ =
 
->  Obviously we
-> can't do so if l_dbus_message_new_method_return() is used as the return
-> value due to the clashing of property changed coalescing logic and the
-> signal flushing logic inside dbus_send.
->
-> The way around this, is for the implementer to use complete() if a
-> synchronous method call is being implemented and the property change is
-> immediate.  Not a common case for us, but still ugly...  Not sure what
-> else we can do though?
+-			command->handler(-err->error, 0, NULL, 0,
++			command->handler(err->error, 0, NULL, 0,
+ 							command->user_data);
+ 			break;
+ 		}
+-- =
 
-I don't think the orders matters if the change is immediate, clients
-should be able to handle both cases.
+2.17.1
 
->
-> By the way, looking at test_string_setter again, I actually don't get
-> how its supposed to work.  Shouldn't it return at least some errors
-> somewhere?
 
-We only use this property to test the success case and we test the
-error cases using the "SetError" and "Readonly" properties.
-
-Best regards
-
---===============8858917359491870919==--
+--===============4940101990259847759==--
 
