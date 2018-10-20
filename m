@@ -1,35 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============3232106304095749584=="
+Content-Type: multipart/mixed; boundary="===============4122522988365451787=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] netlink: Don't change error code signs
-Date: Thu, 04 Oct 2018 20:53:41 -0500
-Message-ID: <5d606172-5763-ba01-5039-c103e8d8b1ef@gmail.com>
-In-Reply-To: <20181005014815.16483-1-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH] hashmap: Fix removing last entry in l_hashmap_foreach_remove
+Date: Sat, 20 Oct 2018 04:33:47 +0200
+Message-ID: <20181020023347.29555-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3232106304095749584==
+--===============4122522988365451787==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+When the last entry in a bucket with 2 or more entries was removed
+the loop would roll over and iterate over the remaining entries for a
+second time (then stop), add missing check.
+---
+ ell/hashmap.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-On 10/04/2018 08:48 PM, Andrew Zaborowski wrote:
-> Netlink errors returned by the kernel are already negative so don't
-> change the sign, this was confusing some iwd code that depends on
-> negative error numbers from l_netlink.
-> ---
->   ell/netlink.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> =
+diff --git a/ell/hashmap.c b/ell/hashmap.c
+index ee11d31..061080b 100644
+--- a/ell/hashmap.c
++++ b/ell/hashmap.c
+@@ -607,6 +607,8 @@ LIB_EXPORT unsigned int l_hashmap_foreach_remove(struct=
+ l_hashmap *hashmap,
+ 				free_key(hashmap, entry->key);
+ 				l_free(entry);
+ 				entry =3D prev->next;
++				if (entry =3D=3D head)
++					break;
+ 				continue;
+ 			}
+ =
+
+-- =
+
+2.19.1
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
-
---===============3232106304095749584==--
+--===============4122522988365451787==--
 
