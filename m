@@ -1,36 +1,54 @@
-Content-Type: multipart/mixed; boundary="===============4181779329284809063=="
+Content-Type: multipart/mixed; boundary="===============2092105839528993255=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] hashmap: Fix removing last entry in
- l_hashmap_foreach_remove
-Date: Sat, 20 Oct 2018 11:02:02 -0500
-Message-ID: <a0d4a425-bd4a-daf3-f813-e0595ba40c06@gmail.com>
-In-Reply-To: <20181020023347.29555-1-andrew.zaborowski@intel.com>
+From: maxice8 <thinkabit.ukim@gmail.com>
+Subject: [PATCH] ell/dir.c: include limits.h for NAME_MAX
+Date: Sat, 20 Oct 2018 18:01:29 -0300
+Message-ID: <20181020210129.27142-1-thinkabit.ukim@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4181779329284809063==
+--===============2092105839528993255==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+From: William Maxwell <thinkabit.ukim@gmail.com>
 
-On 10/19/2018 09:33 PM, Andrew Zaborowski wrote:
-> When the last entry in a bucket with 2 or more entries was removed
-> the loop would roll over and iterate over the remaining entries for a
-> second time (then stop), add missing check.
-> ---
->   ell/hashmap.c | 2 ++
->   1 file changed, 2 insertions(+)
-> =
+fixes compilation on musl libc systems that are stricter
+
+the error:
+
+ell/dir.c: In function 'inotify_read_cb':
+ell/dir.c:176:45: error: 'NAME_MAX' undeclared (first use in this function)=
+; did you mean 'SIZE_MAX'?
+  uint8_t buf[sizeof(struct inotify_event) + NAME_MAX + 1]
+                                             ^~~~~~~~
+                                             SIZE_MAX
+ell/dir.c:176:45: note: each undeclared identifier is reported only once fo=
+r each function it appears in
+
+Signed-off-by: William Maxwell <thinkabit.ukim@gmail.com>
+---
+ ell/dir.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/ell/dir.c b/ell/dir.c
+index d1870c8..7917664 100644
+--- a/ell/dir.c
++++ b/ell/dir.c
+@@ -27,6 +27,7 @@
+ #include <unistd.h>
+ #include <dirent.h>
+ #include <sys/inotify.h>
++#include <limits.h>
+ =
+
+ #include "private.h"
+ #include "queue.h"
+-- =
+
+2.19.1
 
 
-Hah, good catch.  Applied, thanks.
-
-Regards,
--Denis
-
-
---===============4181779329284809063==--
+--===============2092105839528993255==--
 
