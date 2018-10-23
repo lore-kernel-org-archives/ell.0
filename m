@@ -1,31 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============5221100184446712667=="
+Content-Type: multipart/mixed; boundary="===============8403391007158605518=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] Update Linux kernel documentation URLs.
-Date: Tue, 23 Oct 2018 16:36:19 -0500
-Message-ID: <8adc1544-44ad-6891-312e-089b822451cd@gmail.com>
-In-Reply-To: <20181023202105.31112-1-ossama.othman@intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH 1/2] log: Use __func__ for function name
+Date: Tue, 23 Oct 2018 16:34:58 -0700
+Message-ID: <20181023233459.18708-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5221100184446712667==
+--===============8403391007158605518==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+__FUNCTION__ and __PRETTY_FUNCTION__ are older gcc aliases for
+__func__. Switch to use __func__ in L_DEBUG_SYMBOL(), like l_log()
+already does. This resolves some compiler warnings in ELL headers when a
+program is built with compiler flags that are more strict than the
+maintainer-mode build.
+---
+ ell/log.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-On 10/23/2018 03:21 PM, Ossama Othman wrote:
-> ---
->   HACKING              | 3 ++-
->   doc/coding-style.txt | 3 ++-
->   2 files changed, 4 insertions(+), 2 deletions(-)
+diff --git a/ell/log.h b/ell/log.h
+index d21e2aa..a86705f 100644
+--- a/ell/log.h
++++ b/ell/log.h
+@@ -66,12 +66,12 @@ struct l_debug_desc {
+ #define L_DEBUG_SYMBOL(symbol, format, args...) do { \
+ 	static struct l_debug_desc symbol \
+ 	__attribute__((used, section("__ell_debug"), aligned(8))) =3D { \
+-		.file =3D __FILE__, .func =3D __FUNCTION__, \
++		.file =3D __FILE__, .func =3D __func__, \
+ 		.flags =3D L_DEBUG_FLAG_DEFAULT, \
+ 	}; \
+ 	if (symbol.flags & L_DEBUG_FLAG_PRINT) \
+ 		l_log(L_LOG_DEBUG, "%s:%s() " format, __FILE__, \
+-					__PRETTY_FUNCTION__ , ## args); \
++					__func__ , ## args); \
+ } while (0)
+ =
 
-Applied, thanks.
+ void l_debug_enable_full(const char *pattern,
+-- =
 
-Regards,
--Denis
+2.19.1
 
 
---===============5221100184446712667==--
+--===============8403391007158605518==--
 
