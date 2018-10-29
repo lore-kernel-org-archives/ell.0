@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============2943909187349000157=="
+Content-Type: multipart/mixed; boundary="===============6795078082851565711=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 5/5] tools: Only include required ELL headers.
-Date: Mon, 29 Oct 2018 15:51:45 -0500
-Message-ID: <90a1819c-49d9-4ab1-8ba3-241047c6c676@gmail.com>
-In-Reply-To: <20181029200715.28427-6-ossama.othman@intel.com>
+Subject: Re: [PATCH 2/5] settings: Include strings.h for strcasecmp() proto
+Date: Mon, 29 Oct 2018 15:53:45 -0500
+Message-ID: <2c3be9ee-5d44-1dba-9398-fc0d0d304342@gmail.com>
+In-Reply-To: <20181029200715.28427-3-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2943909187349000157==
+--===============6795078082851565711==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,49 +16,37 @@ Content-Transfer-Encoding: quoted-printable
 Hi Ossama,
 
 On 10/29/2018 03:07 PM, Ossama Othman wrote:
-> Limit build side effects caused by enabling or disabling C library
-> features through C standard related compiler flags (e.g. -std=3Dc99) by
-> only including the required ELL headers.
+> Restricting the C standard supported by compiler, e.g. to C99, can
+> prevent some function prototypes from being indirectly pulled in, as
+> is the case for strcasecmp().  Include <strings.h> to explicitly pull
+> in its prototype.
 > ---
->   tools/certchain-verify.c | 5 ++++-
->   1 file changed, 4 insertions(+), 1 deletion(-)
+>   ell/settings.c | 1 +
+>   1 file changed, 1 insertion(+)
 > =
 
-> diff --git a/tools/certchain-verify.c b/tools/certchain-verify.c
-> index 1800f68..e8d8374 100644
-> --- a/tools/certchain-verify.c
-> +++ b/tools/certchain-verify.c
-> @@ -26,13 +26,16 @@
->   #include <errno.h>
->   #include <stdint.h>
->   #include <stdbool.h>
-> +#include <stdlib.h>
-> +#include <string.h>
->   #include <sys/types.h>
->   #include <sys/stat.h>
->   #include <fcntl.h>
->   #include <unistd.h>
->   #include <sys/mman.h>
+> diff --git a/ell/settings.c b/ell/settings.c
+> index 539263b..08a7748 100644
+> --- a/ell/settings.c
+> +++ b/ell/settings.c
+> @@ -26,6 +26,7 @@
 >   =
 
-> -#include <ell/ell.h>
-> +#include <ell/log.h>
-> +#include <ell/util.h>
+>   #include <stdio.h>
+>   #include <stdlib.h>
+> +#include <strings.h>  // strcasecmp
 
-I actually don't like this.  This is just a normal ell application, so =
+We don't use C++ style comments, so I just removed that one and applied =
 
-it should just #include <ell/ell.h> and be done with it.
-
->   #include "ell/tls-private.h"
->   =
-
->   static int load_cert_chain(const char *file, struct tls_cert **certchai=
-n)
-> =
-
+this patch.
 
 Regards,
 -Denis
 
---===============2943909187349000157==--
+>   #include <errno.h>
+>   #include <sys/types.h>
+>   #include <sys/stat.h>
+>=20
+
+--===============6795078082851565711==--
 
