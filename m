@@ -1,48 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============7622432528116599462=="
+Content-Type: multipart/mixed; boundary="===============0754244025256816919=="
 MIME-Version: 1.0
 From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH 3/5] dbus-client: Only include required ELL headers.
-Date: Mon, 29 Oct 2018 13:07:13 -0700
-Message-ID: <20181029200715.28427-4-ossama.othman@intel.com>
+Subject: [PATCH 2/5] settings: Include strings.h for strcasecmp() proto
+Date: Mon, 29 Oct 2018 13:07:12 -0700
+Message-ID: <20181029200715.28427-3-ossama.othman@intel.com>
 In-Reply-To: <20181029200715.28427-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7622432528116599462==
+--===============0754244025256816919==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Reduce dependencies in ell/dbus-client.c by only including the ELL
-headers it requires rather than the <ell/ell.h> convenience header.
-This also limits build side effects caused by enabling or disabling
-C library features through C standard related compiler flags
-(e.g. -std=3Dc99).
+Restricting the C standard supported by compiler, e.g. to C99, can
+prevent some function prototypes from being indirectly pulled in, as
+is the case for strcasecmp().  Include <strings.h> to explicitly pull
+in its prototype.
 ---
- ell/dbus-client.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ ell/settings.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/ell/dbus-client.c b/ell/dbus-client.c
-index 1628b67..d2eb70f 100644
---- a/ell/dbus-client.c
-+++ b/ell/dbus-client.c
-@@ -25,7 +25,9 @@
- #include <config.h>
- #endif
+diff --git a/ell/settings.c b/ell/settings.c
+index 539263b..08a7748 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -26,6 +26,7 @@
  =
 
--#include "ell.h"
-+#include "dbus.h"
-+#include "dbus-client.h"
-+#include "queue.h"
- #include "private.h"
- =
-
- struct l_dbus_client {
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <strings.h>  // strcasecmp
+ #include <errno.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
 -- =
 
 2.17.1
 
 
---===============7622432528116599462==--
+--===============0754244025256816919==--
 
