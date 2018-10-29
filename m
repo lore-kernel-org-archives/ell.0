@@ -1,61 +1,53 @@
-Content-Type: multipart/mixed; boundary="===============0590477632893007513=="
+Content-Type: multipart/mixed; boundary="===============5527265614827021887=="
 MIME-Version: 1.0
 From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH 4/5] ell: Make tls-private.h header self-contained.
-Date: Mon, 29 Oct 2018 13:07:14 -0700
-Message-ID: <20181029200715.28427-5-ossama.othman@intel.com>
+Subject: [PATCH 5/5] tools: Only include required ELL headers.
+Date: Mon, 29 Oct 2018 13:07:15 -0700
+Message-ID: <20181029200715.28427-6-ossama.othman@intel.com>
 In-Reply-To: <20181029200715.28427-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0590477632893007513==
+--===============5527265614827021887==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add a missing struct iovec forward declaration, and include the
-appropriate headers in tls-private.h to make it self-contained.  This
-simplifies its use so that files that include it need not be forced to
-include other headers it requires.
+Limit build side effects caused by enabling or disabling C library
+features through C standard related compiler flags (e.g. -std=3Dc99) by
+only including the required ELL headers.
 ---
- ell/cipher.h      | 1 +
- ell/tls-private.h | 4 ++++
- 2 files changed, 5 insertions(+)
+ tools/certchain-verify.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/ell/cipher.h b/ell/cipher.h
-index d787f33..6b43458 100644
---- a/ell/cipher.h
-+++ b/ell/cipher.h
-@@ -27,6 +27,7 @@
- extern "C" {
- #endif
+diff --git a/tools/certchain-verify.c b/tools/certchain-verify.c
+index 1800f68..e8d8374 100644
+--- a/tools/certchain-verify.c
++++ b/tools/certchain-verify.c
+@@ -26,13 +26,16 @@
+ #include <errno.h>
+ #include <stdint.h>
+ #include <stdbool.h>
++#include <stdlib.h>
++#include <string.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <sys/mman.h>
  =
 
-+struct iovec;
- struct l_cipher;
+-#include <ell/ell.h>
++#include <ell/log.h>
++#include <ell/util.h>
+ #include "ell/tls-private.h"
  =
 
- enum l_cipher_type {
-diff --git a/ell/tls-private.h b/ell/tls-private.h
-index 8cf5be9..0da7d21 100644
---- a/ell/tls-private.h
-+++ b/ell/tls-private.h
-@@ -20,6 +20,10 @@
-  *
-  */
- =
-
-+#include <ell/checksum.h>
-+#include <ell/cipher.h>
-+#include <ell/tls.h>
-+
- /* Only TLS 1.2 supported */
- #define TLS_V12		((3 << 8) | 3)
- #define TLS_V11		((3 << 8) | 2)
+ static int load_cert_chain(const char *file, struct tls_cert **certchain)
 -- =
 
 2.17.1
 
 
---===============0590477632893007513==--
+--===============5527265614827021887==--
 
