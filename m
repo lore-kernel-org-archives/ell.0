@@ -1,490 +1,394 @@
-Content-Type: multipart/mixed; boundary="===============1558197195315805388=="
+Content-Type: multipart/mixed; boundary="===============8960672482925030793=="
 MIME-Version: 1.0
-From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH v2 3/3] unit: test-genl: Reworked genl tests after
- restructuring
-Date: Wed, 31 Oct 2018 13:31:45 -0700
-Message-ID: <20181031203145.5637-3-james.prestwood@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH v2 1/3] watchlist: added watchlist functionality
+Date: Wed, 31 Oct 2018 13:37:45 -0700
+Message-ID: <alpine.OSX.2.21.1810311329490.15001@pgaurav-mobl.amr.corp.intel.com>
 In-Reply-To: <20181031203145.5637-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1558197195315805388==
+--===============8960672482925030793==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-genl.c | 351 ++++++++++++++++++++++++++++++++++++-----------
- 1 file changed, 270 insertions(+), 81 deletions(-)
+On Wed, 31 Oct 2018, James Prestwood wrote:
 
-diff --git a/unit/test-genl.c b/unit/test-genl.c
-index a381e25..c05c55c 100644
---- a/unit/test-genl.c
-+++ b/unit/test-genl.c
-@@ -2,7 +2,7 @@
-  *
-  *  Embedded Linux library
-  *
-- *  Copyright (C) 2011-2014  Intel Corporation. All rights reserved.
-+ *  Copyright (C) 2011-2018  Intel Corporation. All rights reserved.
-  *
-  *  This library is free software; you can redistribute it and/or
-  *  modify it under the terms of the GNU Lesser General Public
-@@ -32,10 +32,13 @@
- struct test_data
- {
- 	struct l_genl_family *appeared_family;
--	struct l_genl_family *vanished_family;
- =
+> These two files (watchlist.[ch]) were copied from IWD, and public
+> API's changed to l_ prefix.
+> ---
+> Makefile.am     |   6 +-
+> ell/ell.h       |   1 +
+> ell/watchlist.c | 149 ++++++++++++++++++++++++++++++++++++++++++++++++
+> ell/watchlist.h | 129 +++++++++++++++++++++++++++++++++++++++++
+> 4 files changed, 283 insertions(+), 2 deletions(-)
+> create mode 100644 ell/watchlist.c
+> create mode 100644 ell/watchlist.h
+>
+> diff --git a/Makefile.am b/Makefile.am
+> index 0a8d0f6..31612a7 100644
+> --- a/Makefile.am
+> +++ b/Makefile.am
+> @@ -48,7 +48,8 @@ pkginclude_HEADERS =3D ell/ell.h \
+> 			ell/file.h \
+> 			ell/dir.h \
+> 			ell/net.h \
+> -			ell/dhcp.h
+> +			ell/dhcp.h \
+> +			ell/watchlist.h
+>
+> lib_LTLIBRARIES =3D ell/libell.la
+>
+> @@ -109,7 +110,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
+> 			ell/dhcp-private.h \
+> 			ell/dhcp.c \
+> 			ell/dhcp-transport.c \
+> -			ell/dhcp-lease.c
+> +			ell/dhcp-lease.c \
+> +			ell/watchlist.c
+>
+> ell_libell_la_LDFLAGS =3D -no-undefined \
+> 			-Wl,--version-script=3D$(top_srcdir)/ell/ell.sym \
+> diff --git a/ell/ell.h b/ell/ell.h
+> index ba1928d..0d8e74e 100644
+> --- a/ell/ell.h
+> +++ b/ell/ell.h
+> @@ -56,3 +56,4 @@
+> #include <ell/dbus-service.h>
+> #include <ell/dbus-client.h>
+> #include <ell/dhcp.h>
+> +#include <ell/watchlist.h>
+> diff --git a/ell/watchlist.c b/ell/watchlist.c
+> new file mode 100644
+> index 0000000..d300756
+> --- /dev/null
+> +++ b/ell/watchlist.c
+> @@ -0,0 +1,149 @@
+> +/*
+> + *
+> + *  Wireless daemon for Linux
 
--	unsigned int group_id;
--	bool vanished_called;
-+	bool destroyed_called;
-+	bool appeared_called;
-+	bool genl_destroyed;
-+	int message_destroy;
-+
-+	int idle_count;
- };
- =
+Change this to match ELL files? Probably update the copyright dates too.
 
- static void do_debug(const char *str, void *user_data)
-@@ -45,138 +48,324 @@ static void do_debug(const char *str, void *user_data)
- 	l_info("%s%s", prefix, str);
- }
- =
+> + *
+> + *  Copyright (C) 2016  Intel Corporation. All rights reserved.
+> + *
+> + *  This library is free software; you can redistribute it and/or
+> + *  modify it under the terms of the GNU Lesser General Public
+> + *  License as published by the Free Software Foundation; either
+> + *  version 2.1 of the License, or (at your option) any later version.
+> + *
+> + *  This library is distributed in the hope that it will be useful,
+> + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+> + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+> + *  Lesser General Public License for more details.
+> + *
+> + *  You should have received a copy of the GNU Lesser General Public
+> + *  License along with this library; if not, write to the Free Software
+> + *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-130=
+1  USA
+> + *
+> + */
+> +
+> +#ifdef HAVE_CONFIG_H
+> +#include <config.h>
+> +#endif
+> +
+> +#include <ell/ell.h>
 
--static void notify_callback(struct l_genl_msg *msg, void *user_data)
--{
--}
--
--static void family_appeared(void *user_data)
-+static void family_appeared(struct l_genl_family *family, void *user_data)
- {
- 	struct test_data *data =3D user_data;
- =
+Can this include the relevant header files instead?
 
--	data->group_id =3D l_genl_family_register(data->appeared_family,
--						"notify",
--						notify_callback,
--						NULL,
--						NULL);
-+	data->appeared_called =3D true;
-+	data->appeared_family =3D family;
- }
- =
+> +
+> +static bool watchlist_item_match(const void *a, const void *b)
+> +{
+> +	const struct l_watchlist_item *item =3D a;
+> +	uint32_t id =3D L_PTR_TO_UINT(b);
+> +
+> +	return item->id =3D=3D id;
+> +}
+> +
+> +static void __watchlist_item_free(struct l_watchlist *watchlist,
+> +						struct l_watchlist_item *item)
+> +{
+> +	if (item->destroy)
+> +		item->destroy(item->notify_data);
+> +
+> +	if (watchlist->ops && watchlist->ops->item_free)
+> +		watchlist->ops->item_free(item);
+> +	else
+> +		l_free(item);
+> +}
+> +
+> +struct l_watchlist *l_watchlist_new(const struct l_watchlist_ops *ops)
 
--static void family_vanished(void *user_data)
-+static void family_destroyed(void *user_data)
- {
--	struct test_data *data =3D user_data;
-+	struct test_data *td =3D user_data;
- =
+You'll need to add LIB_EXPORT to functions that are public, and also =
 
--	data->vanished_called =3D true;
-+	td->destroyed_called =3D true;
- }
- =
+update ell.sym.
 
--static bool prep_family_appeared(struct l_genl *genl,
--					struct test_data *data)
-+static void idle_callback(struct l_idle *idle, void *user_data)
- {
-+	struct test_data *data =3D user_data;
-+
- 	/*
--	 * Set a family_appeared watch for the "nlctrl" family.
-+	 * Exit the event loop if the desired results have been
-+	 * obtained, but limit the number of iterations to prevent the
-+	 * loop from running indefinitely if the conditions for
-+	 * success are never reached.
- 	 *
--	 * The "nlctrl" generic netlink family always exists in the
--	 * kernel so it is a suitable family to use for testing
--	 * the family_appeared watch and related family registration
--	 * operations.
-+	 * Allow the main loop to iterate at least four times to allow
-+	 * the generic netlink watches and family registration to be
-+	 * called and completed, respectively.
- 	 */
--	data->appeared_family =3D l_genl_family_new(genl, "nlctrl");
--
--	return l_genl_family_set_watches(data->appeared_family,
--						family_appeared, NULL,
--						data, NULL);
-+	if (++data->idle_count > 3)
-+		l_main_quit();
- }
- =
+> +{
+> +	struct l_watchlist *watchlist;
+> +
+> +	watchlist =3D l_new(struct l_watchlist, 1);
+> +	watchlist->items =3D l_queue_new();
+> +	watchlist->ops =3D ops;
+> +	return watchlist;
+> +}
+> +
+> +void l_watchlist_init(struct l_watchlist *watchlist,
+> +					const struct l_watchlist_ops *ops)
+> +{
+> +	watchlist->next_id =3D 0;
+> +	watchlist->items =3D l_queue_new();
+> +	watchlist->ops =3D ops;
+> +}
+> +
+> +unsigned int l_watchlist_link(struct l_watchlist *watchlist,
+> +					struct l_watchlist_item *item,
+> +					void *notify, void *notify_data,
+> +					l_watchlist_item_destroy_func_t destroy)
+> +{
+> +	item->id =3D ++watchlist->next_id;
+> +	item->notify =3D notify;
+> +	item->notify_data =3D notify_data;
+> +	item->destroy =3D destroy;
+> +
+> +	l_queue_push_tail(watchlist->items, item);
+> +
+> +	return item->id;
+> +}
+> +
+> +unsigned int l_watchlist_add(struct l_watchlist *watchlist, void *notify,
+> +					void *notify_data,
+> +					l_watchlist_item_destroy_func_t destroy)
+> +{
+> +	struct l_watchlist_item *item;
+> +
+> +	item =3D l_new(struct l_watchlist_item, 1);
+> +	return l_watchlist_link(watchlist, item, notify, notify_data, destroy);
+> +}
+> +
+> +bool l_watchlist_remove(struct l_watchlist *watchlist, unsigned int id)
+> +{
+> +	struct l_watchlist_item *item;
+> +
+> +	if (watchlist->in_notify) {
+> +		item =3D l_queue_find(watchlist->items, watchlist_item_match,
+> +							L_UINT_TO_PTR(id));
+> +		if (!item)
+> +			return false;
+> +
+> +		item->id =3D 0;	/* Mark stale */
+> +		watchlist->stale_items =3D true;
+> +
+> +		return true;
+> +	}
+> +
+> +	item =3D l_queue_remove_if(watchlist->items, watchlist_item_match,
+> +							L_UINT_TO_PTR(id));
+> +	if (!item)
+> +		return false;
+> +
+> +	__watchlist_item_free(watchlist, item);
+> +
+> +	return true;
+> +}
+> +
+> +static void __watchlist_clear(struct l_watchlist *watchlist)
+> +{
+> +	struct l_watchlist_item *item;
+> +
+> +	while ((item =3D l_queue_pop_head(watchlist->items)))
+> +		__watchlist_item_free(watchlist, item);
+> +}
+> +
+> +void l_watchlist_destroy(struct l_watchlist *watchlist)
+> +{
+> +	__watchlist_clear(watchlist);
+> +	l_queue_destroy(watchlist->items, NULL);
+> +	watchlist->items =3D NULL;
+> +}
+> +
+> +void l_watchlist_free(struct l_watchlist *watchlist)
+> +{
+> +	__watchlist_clear(watchlist);
+> +	l_queue_destroy(watchlist->items, NULL);
+> +	l_free(watchlist);
+> +}
+> +
+> +void __watchlist_prune_stale(struct l_watchlist *watchlist)
+> +{
+> +	struct l_watchlist_item *item;
+> +
+> +	while ((item =3D l_queue_remove_if(watchlist->items, watchlist_item_mat=
+ch,
+> +							L_UINT_TO_PTR(0))))
+> +		__watchlist_item_free(watchlist, item);
+> +
+> +	watchlist->stale_items =3D false;
+> +}
+> diff --git a/ell/watchlist.h b/ell/watchlist.h
+> new file mode 100644
+> index 0000000..89a6374
+> --- /dev/null
+> +++ b/ell/watchlist.h
+> @@ -0,0 +1,129 @@
+> +/*
+> + *
+> + *  Wireless daemon for Linux
 
--static bool prep_family_vanished(struct l_genl *genl,
--					struct test_data *data)
-+static void test_basic(const void *user_data)
- {
--	/*
--	 * Use a bogus family name to trigger the vanished watch to
--	 * be called during the ELL event loop run.
--	 */
--	static const char BOGUS_GENL_NAME[] =3D "bogusgenlfamily";
-+	struct l_genl *genl;
-+	struct l_idle *idle;
-+	struct test_data td1 =3D { 0 };
-+	struct test_data td2 =3D { 0 };
- =
+Update this too.
 
--	data->vanished_family =3D l_genl_family_new(genl, BOGUS_GENL_NAME);
--	return l_genl_family_set_watches(data->vanished_family,
--						NULL, family_vanished,
--						data, NULL);
--}
-+	if (!l_main_init()) {
-+		assert(false);
-+		return;
-+	}
- =
+> + *
+> + *  Copyright (C) 2016-2017  Intel Corporation. All rights reserved.
+> + *
+> + *  This library is free software; you can redistribute it and/or
+> + *  modify it under the terms of the GNU Lesser General Public
+> + *  License as published by the Free Software Foundation; either
+> + *  version 2.1 of the License, or (at your option) any later version.
+> + *
+> + *  This library is distributed in the hope that it will be useful,
+> + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+> + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+> + *  Lesser General Public License for more details.
+> + *
+> + *  You should have received a copy of the GNU Lesser General Public
+> + *  License along with this library; if not, write to the Free Software
+> + *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-130=
+1  USA
+> + *
+> + */
+> +
+> +#ifndef __ELL_WATCHLIST_H
+> +#define __ELL_WATCHLIST_H
+> +
+> +#ifdef __cplusplus
+> +extern "C" {
+> +#endif
+> +
+> +typedef void (*l_watchlist_item_destroy_func_t)(void *data);
+> +
+> +struct l_watchlist_item {
+> +	unsigned int id;
+> +	void *notify;
+> +	void *notify_data;
+> +	l_watchlist_item_destroy_func_t destroy;
+> +};
+> +
+> +struct l_watchlist_ops {
+> +	void (*item_free)(struct l_watchlist_item *item);
+> +};
+> +
+> +struct l_watchlist {
+> +	int next_id;
+> +	struct l_queue *items;
+> +	bool in_notify : 1;
+> +	bool stale_items : 1;
+> +	const struct l_watchlist_ops *ops;
+> +};
+> +
+> +struct l_watchlist *l_watchlist_new(const struct l_watchlist_ops *ops);
+> +void l_watchlist_init(struct l_watchlist *watchlist,
+> +				const struct l_watchlist_ops *ops);
+> +unsigned int l_watchlist_add(struct l_watchlist *watchlist, void *notify,
+> +				void *notify_data,
+> +				l_watchlist_item_destroy_func_t destroy);
+> +unsigned int l_watchlist_link(struct l_watchlist *watchlist,
+> +				struct l_watchlist_item *item,
+> +				void *notify, void *notify_data,
+> +				l_watchlist_item_destroy_func_t destroy);
+> +bool l_watchlist_remove(struct l_watchlist *watchlist, unsigned int id);
+> +void l_watchlist_destroy(struct l_watchlist *watchlist);
+> +void l_watchlist_free(struct l_watchlist *watchlist);
+> +
+> +void __watchlist_prune_stale(struct l_watchlist *watchlist);
 
--static bool name_too_long(struct l_genl *genl, struct test_data *data)
--{
--	static const char LONG_GENL_NAME[] =3D "long_genl_family_name";
-+	l_log_set_stderr();
-+
-+	genl =3D l_genl_new_default();
-+
-+	l_genl_set_debug(genl, do_debug, "[GENL] ", NULL);
- =
-
--	assert(!l_genl_family_new(genl, LONG_GENL_NAME));
-+	assert(l_genl_get_family(genl, "nlctrl", family_appeared,
-+					&td1, family_destroyed));
-+	assert(l_genl_get_family(genl, "bogusgenlfamily", family_appeared,
-+					&td2, family_destroyed));
-+	assert(!l_genl_get_family(genl, "long_genl_family_name",
-+					family_appeared, NULL,
-+					family_destroyed));
-+
-+	idle =3D l_idle_create(idle_callback, &td1, NULL);
-+
-+	l_main_run();
-+
-+	l_idle_remove(idle);
-+
-+	assert(td1.appeared_called && td1.appeared_family);
-+	assert(td2.destroyed_called);
-+
-+	l_genl_family_destroy(td1.appeared_family);
-+
-+	l_genl_unref(genl);
- =
-
--	return true;
-+	l_main_exit();
- }
- =
-
--static bool check_test_data(struct test_data *data)
-+static void test_gets_before_lookup(const void *user_data)
- {
--    return data->group_id !=3D 0 && data->vanished_called;
-+	struct l_genl *genl;
-+	struct l_idle *idle;
-+	struct test_data td1 =3D { 0 };
-+	struct test_data td2 =3D { 0 };
-+
-+	if (!l_main_init()) {
-+		assert(false);
-+		return;
-+	}
-+
-+	l_log_set_stderr();
-+
-+	genl =3D l_genl_new_default();
-+
-+	l_genl_set_debug(genl, do_debug, "[GENL] ", NULL);
-+
-+	assert(l_genl_get_family(genl, "nlctrl", family_appeared, &td1,
-+					family_destroyed));
-+	assert(l_genl_get_family(genl, "nlctrl", family_appeared, &td2,
-+					family_destroyed));
-+
-+	idle =3D l_idle_create(idle_callback, &td1, NULL);
-+
-+	l_main_run();
-+
-+	l_idle_remove(idle);
-+
-+	assert(td1.appeared_called && td1.appeared_family);
-+	assert(td1.appeared_called && td1.appeared_family);
-+
-+	l_genl_family_destroy(td1.appeared_family);
-+	l_genl_family_destroy(td2.appeared_family);
-+
-+	l_genl_unref(genl);
-+
-+	l_main_exit();
- }
- =
-
--static void idle_callback(struct l_idle *idle, void *user_data)
-+static void test_destroy_before_lookup(const void *user_data)
- {
--	struct test_data *data =3D user_data;
--	static int count =3D 0;
-+	struct l_genl *genl;
-+	struct test_data td1 =3D { 0 };
-+	struct test_data td2 =3D { 0 };
-+
-+	if (!l_main_init()) {
-+		assert(false);
-+		return;
-+	}
-+
-+	l_log_set_stderr();
-+
-+	genl =3D l_genl_new_default();
-+
-+	l_genl_set_debug(genl, do_debug, "[GENL] ", NULL);
-+
-+	assert(l_genl_get_family(genl, "nlctrl", family_appeared, &td1,
-+					family_destroyed));
-+	assert(l_genl_get_family(genl, "nlctrl", family_appeared, &td2,
-+					family_destroyed));
- =
-
- 	/*
--	 * Exit the event loop if the desired results have been
--	 * obtained, but limit the number of iterations to prevent the
--	 * loop from running indefinitely if the conditions for
--	 * success are never reached.
--	 *
--	 * Allow the main loop to iterate at least four times to allow
--	 * the generic netlink watches and family registration to be
--	 * called and completed, respectively.
-+	 * In practice you would never do this. But it effectively simulates
-+	 * the genl transport disappearing while you have family lookups
-+	 * pending.
- 	 */
--	if (check_test_data(data) || ++count > 3)
--		l_main_quit();
-+	l_genl_unref(genl);
-+	l_genl_unref(genl);
-+
-+	assert(td1.destroyed_called);
-+	assert(td2.destroyed_called);
-+
-+	l_main_exit();
- }
- =
-
--static bool destroy_test_data(struct test_data *data)
-+static void test_family_after_lookup(const void *user_data)
- {
--	bool unregistered =3D
--			l_genl_family_unregister(data->appeared_family,
--							data->group_id);
-+	struct l_genl *genl;
-+	struct l_idle *idle;
-+	struct test_data td1 =3D { 0 };
-+	struct test_data td2 =3D { 0 };
-+
-+	if (!l_main_init()) {
-+		assert(false);
-+		return;
-+	}
-+
-+	l_log_set_stderr();
-+
-+	genl =3D l_genl_new_default();
-+
-+	l_genl_set_debug(genl, do_debug, "[GENL] ", NULL);
-+
-+	assert(l_genl_get_family(genl, "nlctrl", family_appeared, &td1,
-+					family_destroyed));
-+
-+	idle =3D l_idle_create(idle_callback, &td1, NULL);
-+
-+	l_main_run();
-+
-+	l_idle_remove(idle);
-+
-+	assert(td1.appeared_called);
-+
-+	l_main_exit();
-+
-+	if (!l_main_init()) {
-+		assert(false);
-+		return;
-+	}
-+
-+	assert(l_genl_get_family(genl, "nlctrl", family_appeared, &td2,
-+					family_destroyed));
-+
-+	idle =3D l_idle_create(idle_callback, &td2, NULL);
-+
-+	l_main_run();
-+
-+	l_idle_remove(idle);
-+
-+	assert(td2.appeared_called);
-+
-+	l_genl_family_destroy(td1.appeared_family);
-+	l_genl_family_destroy(td2.appeared_family);
- =
-
--	l_genl_family_unref(data->vanished_family);
--	l_genl_family_unref(data->appeared_family);
-+	l_genl_unref(genl);
- =
-
--	return unregistered;
-+	l_main_exit();
- }
- =
-
--int main(int argc, char *argv[])
-+static void message_destroy(void *user_data)
-+{
-+	struct test_data *td =3D user_data;
-+
-+	td->message_destroy++;
-+}
-+
-+static void test_cancel_all_request(const void *user_data)
- {
- 	struct l_genl *genl;
-+	struct l_genl_msg *msg1, *msg2, *msg3, *msg4;
-+	unsigned int msg3_id;
- 	struct l_idle *idle;
--	struct test_data data =3D { .group_id =3D 0 };
- =
-
--	if (!l_main_init())
--		return -1;
-+	struct test_data td1 =3D { 0 };
-+	struct test_data td2 =3D { 0 };
- =
-
--	l_log_set_stderr();
-+	if (!l_main_init()) {
-+		assert(false);
-+		return;
-+	}
- =
-
- 	genl =3D l_genl_new_default();
- =
-
- 	l_genl_set_debug(genl, do_debug, "[GENL] ", NULL);
- =
-
--	assert(prep_family_appeared(genl, &data));
--	assert(prep_family_vanished(genl, &data));
-+	assert(l_genl_get_family(genl, "nlctrl", family_appeared, &td1,
-+					family_destroyed));
-+	assert(l_genl_get_family(genl, "nlctrl", family_appeared, &td2,
-+					family_destroyed));
- =
-
--	assert(name_too_long(genl, &data));
--
--	idle =3D l_idle_create(idle_callback, &data, NULL);
-+	idle =3D l_idle_create(idle_callback, &td1, NULL);
- =
-
- 	l_main_run();
- =
-
- 	l_idle_remove(idle);
- =
-
--	assert(check_test_data(&data));
--	assert(destroy_test_data(&data));
-+	assert(td1.appeared_called);
-+	assert(td2.appeared_called);
-+
-+	/* create some dummy messages to send on both families */
-+	msg1 =3D l_genl_msg_new(1);
-+	msg2 =3D l_genl_msg_new(1);
-+	msg3 =3D l_genl_msg_new(1);
-+	msg4 =3D l_genl_msg_new(1);
-+
-+	l_genl_family_send(td1.appeared_family, msg1, NULL, &td1,
-+					message_destroy);
-+	l_genl_family_send(td1.appeared_family, msg2, NULL, &td1,
-+					message_destroy);
-+	msg3_id =3D l_genl_family_send(td2.appeared_family, msg3, NULL, &td2,
-+					message_destroy);
-+	l_genl_family_send(td2.appeared_family, msg4, NULL, &td2,
-+					message_destroy);
-+
-+	/* this should cancel msg1 and msg2 */
-+	l_genl_family_destroy(td1.appeared_family);
-+
-+	assert(td1.message_destroy =3D=3D 2);
-+	assert(td2.message_destroy =3D=3D 0);
-+
-+	/* cancel just message 3 */
-+	l_genl_family_cancel(td2.appeared_family, msg3_id);
-+	assert(td2.message_destroy =3D=3D 1);
-+
-+	/* cancel all remaining (just message 4) */
-+	l_genl_family_destroy(td2.appeared_family);
-+	assert(td2.message_destroy =3D=3D 2);
- =
-
- 	l_genl_unref(genl);
- =
-
- 	l_main_exit();
-+}
-+
-+static void genl_destroyed(void *user_data)
-+{
-+	struct test_data *td =3D user_data;
-+
-+	td->genl_destroyed =3D true;
-+}
-+
-+static void test_genl_disappearing(const void *user_data)
-+{
-+	struct l_genl *genl;
-+	struct test_data td =3D { 0 };
-+
-+	if (!l_main_init()) {
-+		assert(false);
-+		return;
-+	}
-+
-+	genl =3D l_genl_new_default();
-+
-+	l_genl_add_destroy_watch(genl, genl_destroyed, &td);
-+
-+	l_genl_unref(genl);
-+
-+	assert(td.genl_destroyed);
-+
-+	l_main_exit();
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	l_test_init(&argc, &argv);
-+
-+	l_test_add("Basic", test_basic, NULL);
-+	l_test_add("Gets before lookup", test_gets_before_lookup, NULL);
-+	l_test_add("Destroy before lookup", test_destroy_before_lookup, NULL);
-+	l_test_add("New family after lookup", test_family_after_lookup, NULL);
-+	l_test_add("Cancel all family requests", test_cancel_all_request, NULL);
-+	l_test_add("Genl disappearing", test_genl_disappearing, NULL);
- =
-
--	return 0;
-+	return l_test_run();
- }
--- =
-
-2.17.1
+Should this be in the public header?
 
 
---===============1558197195315805388==--
+Thanks,
+Mat
+
+
+> +
+> +#define L_WATCHLIST_NOTIFY(watchlist, type, args...)			\
+> +	do {								\
+> +		const struct l_queue_entry *entry =3D			\
+> +				l_queue_get_entries((watchlist)->items);\
+> +									\
+> +		(watchlist)->in_notify =3D true;				\
+> +		for (; entry; entry =3D entry->next) {			\
+> +			struct l_watchlist_item *item =3D entry->data;	\
+> +			type t =3D item->notify;				\
+> +			if (item->id =3D=3D 0)				\
+> +				continue;				\
+> +			t(args, item->notify_data);			\
+> +		}							\
+> +		(watchlist)->in_notify =3D false;				\
+> +		if ((watchlist)->stale_items)				\
+> +			__watchlist_prune_stale(watchlist);		\
+> +	} while	(false)							\
+> +
+> +#define L_WATCHLIST_NOTIFY_MATCHES(watchlist, match, match_data, type, a=
+rgs...) \
+> +	do {								\
+> +		const struct l_queue_entry *entry =3D			\
+> +				l_queue_get_entries((watchlist)->items);\
+> +									\
+> +		(watchlist)->in_notify =3D true;				\
+> +		for (; entry; entry =3D entry->next) {			\
+> +			struct l_watchlist_item *item =3D entry->data;	\
+> +			type t =3D item->notify;				\
+> +									\
+> +			if (item->id =3D=3D 0)				\
+> +				continue;				\
+> +			if (!match(item, match_data))			\
+> +				continue;				\
+> +									\
+> +			t(args, item->notify_data);			\
+> +		}							\
+> +		(watchlist)->in_notify =3D false;				\
+> +		if ((watchlist)->stale_items)				\
+> +			__watchlist_prune_stale(watchlist);		\
+> +	} while	(false)
+> +
+> +#define L_WATCHLIST_NOTIFY_NO_ARGS(watchlist, type)			\
+> +	do {								\
+> +		const struct l_queue_entry *entry =3D			\
+> +				l_queue_get_entries((watchlist)->items);\
+> +									\
+> +		(watchlist)->in_notify =3D true;				\
+> +		for (; entry; entry =3D entry->next) {			\
+> +			struct l_watchlist_item *item =3D entry->data;	\
+> +			type t =3D item->notify;				\
+> +			if (item->id =3D=3D 0)				\
+> +				continue;				\
+> +			t(item->notify_data);			\
+> +		}							\
+> +		(watchlist)->in_notify =3D false;				\
+> +		if ((watchlist)->stale_items)				\
+> +			__watchlist_prune_stale(watchlist);		\
+> +	} while	(false)
+> +
+> +#ifdef __cplusplus
+> +}
+> +#endif
+> +
+> +#endif /* __ELL_WATCHLIST_H */
+> \ No newline at end of file
+> -- =
+
+> 2.17.1
+>
+> _______________________________________________
+> ell mailing list
+> ell(a)lists.01.org
+> https://lists.01.org/mailman/listinfo/ell
+>
+
+--
+Mat Martineau
+Intel OTC
+
+--===============8960672482925030793==--
 
