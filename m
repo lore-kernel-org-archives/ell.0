@@ -1,38 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============1612817043738983449=="
+Content-Type: multipart/mixed; boundary="===============5558291820084611598=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel@holtmann.org>
-Subject: Re: [PATCH v2 1/3] watchlist: added watchlist functionality
-Date: Wed, 31 Oct 2018 22:21:00 +0100
-Message-ID: <5AC3415C-148D-45D4-9251-9B96AEACB267@holtmann.org>
-In-Reply-To: <224aed54a774b0a667477d3178e92a83d4334eb7.camel@linux.intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/7] settings: Fix a format string
+Date: Thu, 01 Nov 2018 03:12:14 +0100
+Message-ID: <20181101021220.19073-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1612817043738983449==
+--===============5558291820084611598==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+The %d conersion specifier is for integers.
+---
+ ell/settings.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
->>> +
->>> +void __watchlist_prune_stale(struct l_watchlist *watchlist);
->> =
+diff --git a/ell/settings.c b/ell/settings.c
+index c6cb0ff..e3e8303 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -1068,7 +1068,7 @@ LIB_EXPORT bool l_settings_set_double(struct l_settin=
+gs *settings,
+ {
+ 	L_AUTO_FREE_VAR(char *, buf);
+ =
 
->> Should this be in the public header?
-> =
+-	buf =3D l_strdup_printf("%d", in);
++	buf =3D l_strdup_printf("%f", in);
+ =
 
-> Yeah.. I meant to inquire about this. Its needed for the macros below
-> so it does need to be available as a public API, but its not meant to
-> be called directly. Not sure if ELL has anything else like this. Any
-> suggestions?
+ 	return l_settings_set_value(settings, group_name, key, buf);
+ }
+-- =
 
-you need to create a watchlist-private.h for these.
-
-Regards
-
-Marcel
+2.19.1
 
 
---===============1612817043738983449==--
+--===============5558291820084611598==--
 
