@@ -1,220 +1,340 @@
-Content-Type: multipart/mixed; boundary="===============3758036588963500872=="
+Content-Type: multipart/mixed; boundary="===============0213659330813840868=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 04/11] pem: Add l_pem_load_certificate_list utility
-Date: Thu, 01 Nov 2018 12:54:46 +0100
-Message-ID: <20181101115453.10373-4-andrew.zaborowski@intel.com>
+Subject: [PATCH 05/11] tls: Support loading multiple root CAs
+Date: Thu, 01 Nov 2018 12:54:47 +0100
+Message-ID: <20181101115453.10373-5-andrew.zaborowski@intel.com>
 In-Reply-To: <20181101115453.10373-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3758036588963500872==
+--===============0213659330813840868==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-l_pem_load_certificate_list loads all the certificates in a file with
-multiple concatenated PEM structures.  This could also be done
-previously by calling l_pem_load_file with consecutive index values
-until it returned an error, this is a faster way to load all of the
-certificates.
----
- ell/ell.sym |  1 +
- ell/pem.c   | 84 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- ell/pem.h   |  8 +++++
- 3 files changed, 90 insertions(+), 3 deletions(-)
+If a file with multiple concatenated certificates is supplied to
+set_auth_data, load all of them and verify received certificate chains
+aginst any of them instead of just the first one.  This is also what
+wpa_supplicant does for files supplied with the ca_cert=3D setting and
+it's actually useful.  Some enterprise CAs have multiple root
+certificates and provision clients with a file that contains all of them
+concatenated and it does happen that they switch from a certificate
+chain using one root to a new chain with a different root for their wifi
+in which case our network config files break while wpa_supplicant
+configs keep working.
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 614bc93..2b1d3d7 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -337,6 +337,7 @@ global:
- 	l_pem_load_buffer;
- 	l_pem_load_file;
- 	l_pem_load_certificate;
-+	l_pem_load_certificate_list;
- 	l_pem_load_private_key;
- 	/* pkcs5 */
- 	l_pkcs5_pbkdf1;
-diff --git a/ell/pem.c b/ell/pem.c
-index e24dd7d..d65b99c 100644
---- a/ell/pem.c
-+++ b/ell/pem.c
-@@ -39,6 +39,7 @@
+Also simplify tls_cert_verify_certchain slightly.
+---
+ ell/tls-private.h |   3 +-
+ ell/tls.c         | 137 ++++++++++++++++++++++++++++++++--------------
+ ell/tls.h         |   2 +-
+ 3 files changed, 100 insertions(+), 42 deletions(-)
+
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index 4f680a0..95b8c65 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -240,6 +240,7 @@ enum tls_cert_key_type {
+ };
+ =
+
+ struct tls_cert *tls_cert_load_file(const char *filename);
++struct l_queue *tls_cert_list_load_file(const char *filename);
+ int tls_cert_from_certificate_list(const void *data, size_t len,
+ 					struct tls_cert **out_certchain);
+ =
+
+@@ -247,7 +248,7 @@ bool tls_cert_find_certchain(struct tls_cert *cert,
+ 				const char *cacert_filename);
+ =
+
+ bool tls_cert_verify_certchain(struct tls_cert *certchain,
+-				struct tls_cert *ca_cert);
++				struct l_queue *ca_certs);
+ =
+
+ void tls_cert_free_certchain(struct tls_cert *cert);
+ =
+
+diff --git a/ell/tls.c b/ell/tls.c
+index 4b37785..fbbc1bf 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -38,6 +38,7 @@
+ #include "tls-private.h"
+ #include "key.h"
  #include "asn1-private.h"
- #include "pkcs5-private.h"
- #include "cipher.h"
 +#include "queue.h"
  =
 
- #define PEM_START_BOUNDARY	"-----BEGIN "
- #define PEM_END_BOUNDARY	"-----END "
-@@ -119,7 +120,8 @@ static bool is_end_boundary(const uint8_t *buf, size_t =
-buf_len,
- }
- =
-
- static uint8_t *pem_load_buffer(const uint8_t *buf, size_t buf_len, int in=
-dex,
--				char **type_label, size_t *len)
-+				char **type_label, size_t *len,
-+				const uint8_t **endp)
+ void tls10_prf(const void *secret, size_t secret_len,
+ 		const char *label,
+@@ -1571,7 +1572,7 @@ static void tls_handle_certificate(struct l_tls *tls,
  {
- 	const uint8_t *base64_data =3D NULL, *label =3D NULL, *eol;
- 	uint8_t *data;
-@@ -152,6 +154,9 @@ static uint8_t *pem_load_buffer(const uint8_t *buf, siz=
-e_t buf_len, int index,
- 				*type_label =3D l_strndup((const char *) label,
- 							label_len);
+ 	size_t total;
+ 	struct tls_cert *certchain =3D NULL;
+-	struct tls_cert *ca_cert =3D NULL;
++	struct l_queue *ca_certs =3D NULL;
+ 	bool dummy;
  =
 
-+				if (endp)
-+					*endp =3D eol + 1;
-+
- 				return data;
- 			}
+ 	if (len < 3)
+@@ -1614,12 +1615,12 @@ static void tls_handle_certificate(struct l_tls *tl=
+s,
  =
 
-@@ -178,7 +183,7 @@ LIB_EXPORT uint8_t *l_pem_load_buffer(const uint8_t *bu=
-f, size_t buf_len,
- 					int index, char **type_label,
- 					size_t *out_len)
- {
--	return pem_load_buffer(buf, buf_len, index, type_label, out_len);
-+	return pem_load_buffer(buf, buf_len, index, type_label, out_len, NULL);
- }
+ 	/*
+ 	 * Validate the certificate chain's consistency and validate it
+-	 * against our CA if we have any.
++	 * against our CAs if we have any.
+ 	 */
  =
 
- LIB_EXPORT uint8_t *l_pem_load_file(const char *filename, int index,
-@@ -205,7 +210,7 @@ LIB_EXPORT uint8_t *l_pem_load_file(const char *filenam=
-e, int index,
- 		return NULL;
+ 	if (tls->ca_cert_path) {
+-		ca_cert =3D tls_cert_load_file(tls->ca_cert_path);
+-		if (!ca_cert) {
++		ca_certs =3D tls_cert_list_load_file(tls->ca_cert_path);
++		if (!ca_certs) {
+ 			TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR,
+ 					TLS_ALERT_BAD_CERT,
+ 					"Can't load %s", tls->ca_cert_path);
+@@ -1628,10 +1629,10 @@ static void tls_handle_certificate(struct l_tls *tl=
+s,
+ 		}
  	}
  =
 
--	result =3D pem_load_buffer(data, st.st_size, index, type_label, len);
-+	result =3D pem_load_buffer(data, st.st_size, index, type_label, len, NULL=
-);
+-	if (!tls_cert_verify_certchain(certchain, ca_cert)) {
++	if (!tls_cert_verify_certchain(certchain, ca_certs)) {
+ 		TLS_DISCONNECT(TLS_ALERT_BAD_CERT, 0,
+ 				"Peer certchain verification failed against "
+-				"CA cert %s", tls->ca_cert_path);
++				"CA cert(s) in %s", tls->ca_cert_path);
  =
 
- 	munmap(data, st.st_size);
- 	close(fd);
-@@ -233,6 +238,79 @@ LIB_EXPORT uint8_t *l_pem_load_certificate(const char =
-*filename, size_t *len)
- 	return content;
+ 		goto done;
+ 	}
+@@ -1691,8 +1692,8 @@ decode_error:
+ 			"TLS_CERTIFICATE decode error");
+ =
+
+ done:
+-	if (ca_cert)
+-		l_free(ca_cert);
++	if (ca_certs)
++		l_queue_destroy(ca_certs, l_free);
+ =
+
+ 	tls_cert_free_certchain(certchain);
+ }
+@@ -2592,6 +2593,44 @@ struct tls_cert *tls_cert_load_file(const char *file=
+name)
+ 	return cert;
  }
  =
 
-+static void pem_element_free(void *data)
++struct l_queue *tls_cert_list_load_file(const char *filename)
 +{
-+	struct l_pem_list_element *element =3D data;
++	struct l_queue *pem_list;
++	struct l_queue *cert_list;
++	bool error =3D false;
 +
-+	l_free(element->content);
-+	l_free(element);
++	pem_list =3D l_pem_load_certificate_list(filename);
++	if (!pem_list)
++		return NULL;
++
++	cert_list =3D l_queue_new();
++
++	while (!l_queue_isempty(pem_list)) {
++		struct tls_cert *cert;
++		struct l_pem_list_element *elem =3D l_queue_pop_head(pem_list);
++		uint8_t *der =3D elem->content;
++
++		if (!elem->len || der[0] !=3D ASN1_ID_SEQUENCE)
++			error =3D true;
++
++		cert =3D l_malloc(sizeof(struct tls_cert) + elem->len);
++		cert->size =3D elem->len;
++		cert->issuer =3D NULL;
++		memcpy(cert->asn1, der, cert->size);
++		l_queue_push_tail(cert_list, cert);
++		l_free(elem->content);
++		l_free(elem);
++	}
++
++	l_queue_destroy(pem_list, NULL);
++
++	if (!error)
++		return cert_list;
++
++	l_queue_destroy(cert_list, l_free);
++	return NULL;
 +}
 +
-+LIB_EXPORT struct l_queue *l_pem_load_certificate_list(const char *filenam=
-e)
+ int tls_cert_from_certificate_list(const void *data, size_t len,
+ 					struct tls_cert **out_certchain)
+ {
+@@ -2653,9 +2692,18 @@ static void tls_key_cleanup(struct l_key **p)
+ 	l_key_free_norevoke(*p);
+ }
+ =
+
++static bool tls_cert_link(struct tls_cert *cert, struct l_keyring *ring)
 +{
-+	int fd;
-+	struct stat st;
-+	uint8_t *data;
-+	size_t start =3D 0;
-+	struct l_queue *result =3D NULL;
++	L_AUTO_CLEANUP_VAR(struct l_key *, key, tls_key_cleanup) =3D NULL;
 +
-+	fd =3D open(filename, O_RDONLY);
-+	if (fd < 0)
-+		return NULL;
++	key =3D l_key_new(L_KEY_RSA, cert->asn1, cert->size);
 +
-+	if (fstat(fd, &st) < 0) {
-+		close(fd);
++	return key && l_keyring_link(ring, key);
++}
 +
-+		return NULL;
-+	}
-+
-+	data =3D mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-+	if (data =3D=3D MAP_FAILED) {
-+		close(fd);
-+
-+		return NULL;
-+	}
-+
-+	while (1) {
-+		uint8_t *certificate;
-+		size_t len;
-+		char *label;
-+		struct l_pem_list_element *element;
-+		const uint8_t *end;
-+
-+		certificate =3D pem_load_buffer(data + start, st.st_size - start, 0,
-+						&label, &len, &end);
-+		if (!certificate)
-+			goto done;
-+
-+		if (strcmp(label, "CERTIFICATE")) {
-+			l_free(certificate);
-+			break;
+ static bool tls_cert_verify_with_keyring(struct tls_cert *cert,
+ 						struct l_keyring *ring,
+-						struct tls_cert *root,
++						struct l_queue *roots,
+ 						struct l_keyring *trusted)
+ {
+ 	if (!cert)
+@@ -2668,19 +2716,30 @@ static bool tls_cert_verify_with_keyring(struct tls=
+_cert *cert,
+ 	 * specifies the root certificate authority MAY be omitted from
+ 	 * the chain, under the assumption that the remote end must
+ 	 * already possess it in order to validate it in any case."
++	 *
++	 * This is an optimization to skip adding the root cert if
++	 * it's already in the trusted keyring.  It also happens to
++	 * work around a kernel issue preventing self-signed certificates
++	 * missing the AKID extension from being linked.
++	 *
++	 * If 'roots' were supplied we assume the keyring is already
++	 * restricted.
+ 	 */
+-	if (!cert->issuer && root && cert->size =3D=3D root->size &&
+-			!memcmp(cert->asn1, root->asn1, root->size))
+-		return true;
++	if (!cert->issuer && roots) {
++		const struct l_queue_entry *entry;
+ =
+
+-	if (tls_cert_verify_with_keyring(cert->issuer, ring, root, trusted)) {
+-		L_AUTO_CLEANUP_VAR(struct l_key *, key, tls_key_cleanup);
++		for (entry =3D l_queue_get_entries(roots); entry;
++				entry =3D entry->next) {
++			const struct tls_cert *root =3D entry->data;
+ =
+
+-		key =3D l_key_new(L_KEY_RSA, cert->asn1, cert->size);
+-		if (!key)
+-			return false;
++			if (cert->size =3D=3D root->size && !memcmp(cert->asn1,
++						root->asn1, root->size))
++				return true;
 +		}
-+
-+		l_free(label);
-+		element =3D l_malloc(sizeof(struct l_pem_list_element));
-+		element->content =3D certificate;
-+		element->len =3D len;
-+
-+		if (!result)
-+			result =3D l_queue_new();
-+
-+		l_queue_push_tail(result, element);
-+		start =3D end - data;
 +	}
-+
-+	/* Error occured */
-+	l_queue_destroy(result, pem_element_free);
-+	result =3D NULL;
-+
-+done:
-+	munmap(data, st.st_size);
-+	close(fd);
-+
-+	return result;
-+}
-+
- /**
-  * l_pem_load_private_key
-  * @filename: path string to the PEM file to load
-diff --git a/ell/pem.h b/ell/pem.h
-index 93282a3..9cead5c 100644
---- a/ell/pem.h
-+++ b/ell/pem.h
-@@ -27,12 +27,20 @@
- extern "C" {
- #endif
  =
 
-+struct l_queue;
-+
-+struct l_pem_list_element {
-+	uint8_t *content;
-+	size_t len;
-+};
-+
- uint8_t *l_pem_load_buffer(const uint8_t *buf, size_t buf_len,
- 				int index, char **type_label, size_t *out_len);
- uint8_t *l_pem_load_file(const char *filename, int index,
- 				char **type_label, size_t *len);
+-		if (!l_keyring_link(ring, key))
++	if (tls_cert_verify_with_keyring(cert->issuer, ring, roots, trusted)) {
++		if (!tls_cert_link(cert, ring))
+ 			return false;
  =
 
- uint8_t *l_pem_load_certificate(const char *filename, size_t *len);
-+struct l_queue *l_pem_load_certificate_list(const char *filename);
+ 		if (trusted || cert->issuer)
+@@ -2711,46 +2770,44 @@ static void tls_keyring_cleanup(struct l_keyring **=
+p)
+ }
  =
 
- uint8_t *l_pem_load_private_key(const char *filename, const char *passphra=
-se,
- 				bool *encrypted, size_t *len);
+ bool tls_cert_verify_certchain(struct tls_cert *certchain,
+-				struct tls_cert *ca_cert)
++				struct l_queue *ca_certs)
+ {
+ 	L_AUTO_CLEANUP_VAR(struct l_keyring *, ca_ring, tls_keyring_cleanup);
+ 	L_AUTO_CLEANUP_VAR(struct l_keyring *, verify_ring,
+ 				tls_keyring_cleanup);
+ =
+
+ 	ca_ring =3D NULL;
+-	verify_ring =3D NULL;
+-
+-	if (ca_cert) {
+-		L_AUTO_CLEANUP_VAR(struct l_key *, ca_key, tls_key_cleanup);
+-		ca_key =3D NULL;
+-
+-		ca_ring =3D l_keyring_new();
+-		if (!ca_ring)
+-			return false;
+-
+-		ca_key =3D l_key_new(L_KEY_RSA, ca_cert->asn1, ca_cert->size);
+-		if (!ca_key || !l_keyring_link(ca_ring, ca_key))
+-			return false;
+-	}
+ =
+
+ 	verify_ring =3D l_keyring_new();
+ 	if (!verify_ring)
+ 		return false;
+ =
+
+ 	/*
+-	 * If a CA cert was supplied, restrict verify_ring now so
+-	 * everything else in certchain is validated against the CA.
++	 * If CA cert(s) were supplied, restrict verify_ring now so
++	 * everything else in certchain is validated against the CA(s).
+ 	 * Otherwise, verify_ring will be restricted after the root of
+ 	 * certchain is added to verify_ring by
+ 	 * tls_cert_verify_with_keyring().
+ 	 */
+-	if (ca_ring && !l_keyring_restrict(verify_ring,
+-						L_KEYRING_RESTRICT_ASYM_CHAIN,
+-						ca_ring)) {
+-		return false;
++	if (ca_certs) {
++		const struct l_queue_entry *entry;
++
++		ca_ring =3D l_keyring_new();
++		if (!ca_ring)
++			return false;
++
++		for (entry =3D l_queue_get_entries(ca_certs); entry;
++				entry =3D entry->next)
++			if (!tls_cert_link(entry->data, ca_ring))
++				return false;
++
++		if (!l_keyring_restrict(verify_ring,
++					L_KEYRING_RESTRICT_ASYM_CHAIN,
++					ca_ring))
++			return false;
+ 	}
+ =
+
+-	return tls_cert_verify_with_keyring(certchain, verify_ring, ca_cert,
++	return tls_cert_verify_with_keyring(certchain, verify_ring, ca_certs,
+ 						ca_ring);
+ }
+ =
+
+diff --git a/ell/tls.h b/ell/tls.h
+index 893fd63..8eec360 100644
+--- a/ell/tls.h
++++ b/ell/tls.h
+@@ -86,7 +86,7 @@ void l_tls_write(struct l_tls *tls, const uint8_t *data, =
+size_t len);
+ /* Submit TLS payload from underlying transport to be decrypted */
+ void l_tls_handle_rx(struct l_tls *tls, const uint8_t *data, size_t len);
+ =
+
+-/* If peer is to be authenticated, supply the CA certificate */
++/* If peer is to be authenticated, supply the CA certificate(s) */
+ void l_tls_set_cacert(struct l_tls *tls, const char *ca_cert_path);
+ =
+
+ /*
 -- =
 
 2.19.1
 
 
---===============3758036588963500872==--
+--===============0213659330813840868==--
 
