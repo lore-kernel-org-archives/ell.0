@@ -1,99 +1,53 @@
-Content-Type: multipart/mixed; boundary="===============0570850002282753327=="
+Content-Type: multipart/mixed; boundary="===============4217426679764759135=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 11/11] unit: More TLS certificate tests
-Date: Thu, 01 Nov 2018 12:54:53 +0100
-Message-ID: <20181101115453.10373-11-andrew.zaborowski@intel.com>
-In-Reply-To: <20181101115453.10373-1-andrew.zaborowski@intel.com>
+From: Othman, Ossama <ossama.othman@intel.com>
+Subject: Re: [PATCH] ell/signal.h: use sigset_t instead of internal libc
+ implementation
+Date: Thu, 01 Nov 2018 10:00:38 -0700
+Message-ID: <CAPyD+=B0+UEJZO3m9o0kcZEe+nbvQqHAwm8DEqh_w61djUOkNQ@mail.gmail.com>
+In-Reply-To: <39FDF977-0C4A-49DE-B086-6BC281495816@holtmann.org>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0570850002282753327==
+--===============4217426679764759135==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add a few more certificate chain checks including some using
-tls_cert_list_load_file and the stricter tls_cert_verify_certchain.
----
- unit/test-tls.c | 39 ++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 38 insertions(+), 1 deletion(-)
+Hi Marcel,
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index 75f36f0..a134125 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -216,6 +216,9 @@ static void test_certificates(const void *data)
- 	struct tls_cert *cert;
- 	struct l_queue *cacert;
- 	struct l_queue *wrongca;
-+	struct l_queue *twocas;
-+	struct tls_cert *chain;
-+	struct tls_cert *chain2;
- =
+Sorry about the duplicate e-mail.  I neglected to reply to all earlier.
 
- 	cert =3D tls_cert_load_file(CERTDIR "cert-server.pem");
- 	assert(cert);
-@@ -226,15 +229,49 @@ static void test_certificates(const void *data)
- 	wrongca =3D tls_cert_list_load_file(CERTDIR "cert-intca.pem");
- 	assert(wrongca);
- =
+On Thu, Nov 1, 2018 at 2:31 AM Marcel Holtmann <marcel@holtmann.org> wrot=
+e:
+> > On Nov 1, 2018, at 10:27, maxice8 <thinkabit.ukim@gmail.com> wrote:
+> > Error message:
+> >
+> >  CC       ell/main.lo
+> > In file included from ell/main.c:35:
+> > ell/signal.h:39:40: error: unknown type name '__sigset_t'
+> > struct l_signal *l_signal_create(const __sigset_t *mask,
+> >                                        ^~~~~~~~~~
+>
+> I tried to make this work with -std=3Dc99 and I am kinda lost on what the=
+ right approach here is. Define _USE_POSIX or what is the recommendation?
 
-+	twocas =3D tls_cert_list_load_file(CERTDIR "cert-chain.pem");
-+	assert(wrongca);
-+
- 	assert(!tls_cert_verify_certchain(cert, wrongca));
- =
+Ideally ELL's public API should not depend on the definition of a
+feature test macro, but if one is going to be defined I'd avoid
+__USE_POSIX since it's a glibc implementation detail.  I'd go with
+_DEFAULT_SOURCE, which I think is specific to glibc, or one of the
+standard _POSIX_SOURCE, _POSIX_C_SOURCE (>=3D 1), or _XOPEN_SOURCE.
+Relevant feature test macro documentation:
 
- 	assert(tls_cert_verify_certchain(cert, cacert));
- =
+http://man7.org/linux/man-pages/man7/feature_test_macros.7.html
+http://pubs.opengroup.org/onlinepubs/007904975/functions/xsh_chap02_02.html
+https://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html
 
- 	assert(tls_cert_verify_certchain(cert, NULL));
- =
+BTW, this problem isn't specific to -std=3Dc99 builds.  It occurs with
+-std=3Dc11 and -ansi, too.
 
--	l_free(cert);
-+	assert(tls_cert_verify_certchain(cert, twocas));
-+
-+	chain =3D tls_cert_load_file(CERTDIR "cert-server.pem");
-+	assert(chain);
-+	chain->issuer =3D tls_cert_load_file(CERTDIR "cert-entity-int.pem");
-+	assert(chain->issuer);
-+	chain->issuer->issuer =3D tls_cert_load_file(CERTDIR "cert-intca.pem");
-+	assert(chain->issuer->issuer);
-+	chain->issuer->issuer->issuer =3D
-+		tls_cert_load_file(CERTDIR "cert-ca.pem");
-+	assert(chain->issuer->issuer->issuer);
-+	assert(tls_cert_verify_certchain(chain->issuer, cacert));
-+	assert(tls_cert_verify_certchain(chain->issuer, NULL));
-+	assert(!tls_cert_verify_certchain(chain->issuer, wrongca));
-+	assert(tls_cert_verify_certchain(chain->issuer, twocas));
-+	assert(!tls_cert_verify_certchain(chain, cacert));
-+	assert(!tls_cert_verify_certchain(chain, NULL));
-+	assert(!tls_cert_verify_certchain(chain, twocas));
-+
-+	chain2 =3D tls_cert_load_file(CERTDIR "cert-chain.pem");
-+	assert(chain2);
-+	assert(chain2->issuer);
-+	assert(!chain2->issuer->issuer);
-+	assert(tls_cert_verify_certchain(chain2, cacert));
-+	assert(tls_cert_verify_certchain(chain2, NULL));
-+	assert(!tls_cert_verify_certchain(chain2, wrongca));
-+	assert(tls_cert_verify_certchain(chain2, twocas));
-+
-+	tls_cert_free_certchain(cert);
-+	tls_cert_free_certchain(chain);
-+	tls_cert_free_certchain(chain2);
- 	l_queue_destroy(cacert, l_free);
- 	l_queue_destroy(wrongca, l_free);
-+	l_queue_destroy(twocas, l_free);
- }
- =
+HTH,
+-Ossama
 
- struct tls_conn_test {
--- =
-
-2.19.1
-
-
---===============0570850002282753327==--
+--===============4217426679764759135==--
 
