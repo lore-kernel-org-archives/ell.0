@@ -1,45 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============8789767294837208419=="
+Content-Type: multipart/mixed; boundary="===============8700792732646703325=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel@holtmann.org>
-Subject: Re: [PATCH] ell/signal.h: use sigset_t instead of internal libc
- implementation
-Date: Thu, 01 Nov 2018 10:31:25 +0100
-Message-ID: <39FDF977-0C4A-49DE-B086-6BC281495816@holtmann.org>
-In-Reply-To: <20181101092742.24873-1-thinkabit.ukim@gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 01/11] settings: Fix a format string
+Date: Thu, 01 Nov 2018 12:54:43 +0100
+Message-ID: <20181101115453.10373-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8789767294837208419==
+--===============8700792732646703325==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Maxwell,
+The %d conersion specifier is for integers.
+---
+ ell/settings.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> On Nov 1, 2018, at 10:27, maxice8 <thinkabit.ukim@gmail.com> wrote:
+diff --git a/ell/settings.c b/ell/settings.c
+index c6cb0ff..e3e8303 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -1068,7 +1068,7 @@ LIB_EXPORT bool l_settings_set_double(struct l_settin=
+gs *settings,
+ {
+ 	L_AUTO_FREE_VAR(char *, buf);
+ =
 
-Please use full name in author information.
+-	buf =3D l_strdup_printf("%d", in);
++	buf =3D l_strdup_printf("%f", in);
+ =
 
-> Fixes compilation on musl libc which doesn't show up the internal
-> implementation.
-> =
+ 	return l_settings_set_value(settings, group_name, key, buf);
+ }
+-- =
 
-> Error message:
-> =
-
->  CC       ell/main.lo
-> In file included from ell/main.c:35:
-> ell/signal.h:39:40: error: unknown type name '__sigset_t'
-> struct l_signal *l_signal_create(const __sigset_t *mask,
->                                        ^~~~~~~~~~
-
-I tried to make this work with -std=3Dc99 and I am kinda lost on what the r=
-ight approach here is. Define _USE_POSIX or what is the recommendation?
-
-Regards
-
-Marcel
+2.19.1
 
 
---===============8789767294837208419==--
+--===============8700792732646703325==--
 
