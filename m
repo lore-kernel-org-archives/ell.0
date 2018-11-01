@@ -1,153 +1,189 @@
-Content-Type: multipart/mixed; boundary="===============3508702979405418154=="
+Content-Type: multipart/mixed; boundary="===============0348377951469435583=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 09/11] tls: Support loading certificate chains from file
-Date: Thu, 01 Nov 2018 12:54:51 +0100
-Message-ID: <20181101115453.10373-9-andrew.zaborowski@intel.com>
+Subject: [PATCH 10/11] tls: Propagate errors to l_tls_prf_get_bytes
+Date: Thu, 01 Nov 2018 12:54:52 +0100
+Message-ID: <20181101115453.10373-10-andrew.zaborowski@intel.com>
 In-Reply-To: <20181101115453.10373-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3508702979405418154==
+--===============0348377951469435583==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-When loading the file supplied with l_tls_set_auth_data to be sent as
-Server Certificate or Client Certificate, allow for the possibility
-of loading a chain of certificates instead of just one if the file
-contains multiple concatenated PEM certificates, ordered from the
-end-entity to the CA.  The chain has to end with one of the CA certs
-set through l_tls_set_cacert or a cert directly signed by one of them,
-if l_tls_set_cacert was called.
+Add bool return types to tls_prf_get_bytes, tls10_prf, tls12_prf so that
+l_new_checksum errors can be reported.
 ---
- ell/tls.c | 69 +++++++++++++++++++++++++++++++++++++++++--------------
- 1 file changed, 52 insertions(+), 17 deletions(-)
+ ell/tls-private.h |  6 +++---
+ ell/tls.c         | 36 +++++++++++++++++++++++-------------
+ 2 files changed, 26 insertions(+), 16 deletions(-)
 
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index 95b8c65..d71a3bb 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -207,12 +207,12 @@ struct l_tls {
+ 	bool ready;
+ };
+ =
+
+-void tls10_prf(const void *secret, size_t secret_len,
++bool tls10_prf(const void *secret, size_t secret_len,
+ 		const char *label,
+ 		const void *seed, size_t seed_len,
+ 		uint8_t *out, size_t out_len);
+ =
+
+-void tls12_prf(enum l_checksum_type type, size_t hash_len,
++bool tls12_prf(enum l_checksum_type type, size_t hash_len,
+ 		const void *secret, size_t secret_len,
+ 		const char *label,
+ 		const void *seed, size_t seed_len,
+@@ -254,7 +254,7 @@ void tls_cert_free_certchain(struct tls_cert *cert);
+ =
+
+ enum tls_cert_key_type tls_cert_get_pubkey_type(struct tls_cert *cert);
+ =
+
+-void tls_prf_get_bytes(struct l_tls *tls,
++bool tls_prf_get_bytes(struct l_tls *tls,
+ 				enum l_checksum_type type, size_t hash_len,
+ 				const void *secret, size_t secret_len,
+ 				const char *label,
 diff --git a/ell/tls.c b/ell/tls.c
-index 7f42240..0aa10e7 100644
+index 0aa10e7..7420772 100644
 --- a/ell/tls.c
 +++ b/ell/tls.c
-@@ -754,7 +754,7 @@ static bool tls_send_certificate(struct l_tls *tls)
+@@ -40,7 +40,7 @@
+ #include "asn1-private.h"
+ #include "queue.h"
  =
 
- 	if (tls->server && !cert) {
- 		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, TLS_ALERT_BAD_CERT,
--				"Loading server certificate %s failed",
-+				"Loading server certificate chain %s failed",
- 				tls->cert_path);
- 		return false;
- 	}
-@@ -828,7 +828,7 @@ static bool tls_send_certificate(struct l_tls *tls)
- 	if (cert)
- 		tls->cert_sent =3D true;
+-void tls10_prf(const void *secret, size_t secret_len,
++bool tls10_prf(const void *secret, size_t secret_len,
+ 		const char *label,
+ 		const void *seed, size_t seed_len,
+ 		uint8_t *out, size_t out_len)
+@@ -59,24 +59,28 @@ void tls10_prf(const void *secret, size_t secret_len,
+ 	 * the first byte of S2.
+ 	 */
  =
 
--	l_free(cert);
-+	tls_cert_free_certchain(cert);
+-	tls12_prf(L_CHECKSUM_MD5, 16,
++	if (!tls12_prf(L_CHECKSUM_MD5, 16,
+ 			secret, l_s1,
+ 			label, seed, seed_len,
+-			out, out_len);
++			out, out_len))
++		return false;
  =
 
- 	return true;
- }
-@@ -2570,27 +2570,41 @@ const char *tls_handshake_state_to_str(enum tls_han=
-dshake_state state)
+ 	if (secret_len > 0)
+ 		secret +=3D secret_len - l_s1;
  =
 
- struct tls_cert *tls_cert_load_file(const char *filename)
- {
--	uint8_t *der;
--	size_t len;
--	struct tls_cert *cert;
-+	struct l_queue *pem_list;
-+	struct tls_cert *chain =3D NULL;
-+	struct tls_cert **root =3D &chain;
-+	bool error =3D false;
+-	tls12_prf(L_CHECKSUM_SHA1, 20,
++	if (!tls12_prf(L_CHECKSUM_SHA1, 20,
+ 			secret, l_s1,
+ 			label, seed, seed_len,
+-			p_hash2, out_len);
++			p_hash2, out_len))
++		return false;
  =
 
--	der =3D l_pem_load_certificate(filename, &len);
--	if (!der)
-+	pem_list =3D l_pem_load_certificate_list(filename);
-+	if (!pem_list)
- 		return NULL;
- =
-
--	if (!len || der[0] !=3D ASN1_ID_SEQUENCE) {
--		l_free(der);
--		return NULL;
-+	while (!l_queue_isempty(pem_list)) {
-+		struct tls_cert *cert;
-+		struct l_pem_list_element *elem =3D l_queue_pop_head(pem_list);
-+		uint8_t *der =3D elem->content;
+ 	for (i =3D 0; i < out_len; i++)
+ 		out[i] ^=3D p_hash2[i];
 +
-+		if (!elem->len || der[0] !=3D ASN1_ID_SEQUENCE)
-+			error =3D true;
-+
-+		cert =3D l_malloc(sizeof(struct tls_cert) + elem->len);
-+		cert->size =3D elem->len;
-+		cert->issuer =3D NULL;
-+		memcpy(cert->asn1, der, cert->size);
-+		l_free(elem->content);
-+		l_free(elem);
-+
-+		*root =3D cert;
-+		root =3D &cert->issuer;
- 	}
- =
-
--	cert =3D l_malloc(sizeof(struct tls_cert) + len);
--	cert->size =3D len;
--	cert->issuer =3D NULL;
--	memcpy(cert->asn1, der, len);
-+	l_queue_destroy(pem_list, NULL);
- =
-
--	l_free(der);
-+	if (!error)
-+		return chain;
- =
-
--	return cert;
-+	tls_cert_free_certchain(chain);
-+	return NULL;
++	return true;
  }
  =
 
- struct l_queue *tls_cert_list_load_file(const char *filename)
-@@ -2674,7 +2688,28 @@ decode_error:
- bool tls_cert_find_certchain(struct tls_cert *cert,
- 				const char *cacert_filename)
- {
--	return true;
-+	struct l_queue *ca_certs =3D NULL;
-+	bool valid;
-+
-+	/* Nothing to do if no CA certificates supplied */
-+	if (!cacert_filename)
-+		return true;
-+
-+	ca_certs =3D tls_cert_list_load_file(cacert_filename);
-+	if (!ca_certs)
+-void tls12_prf(enum l_checksum_type type, size_t hash_len,
++bool tls12_prf(enum l_checksum_type type, size_t hash_len,
+ 		const void *secret, size_t secret_len,
+ 		const char *label,
+ 		const void *seed, size_t seed_len,
+@@ -86,6 +90,9 @@ void tls12_prf(enum l_checksum_type type, size_t hash_len,
+ 	size_t a_len, chunk_len, prfseed_len =3D strlen(label) + seed_len;
+ 	uint8_t a[128], prfseed[prfseed_len];
+ =
+
++	if (!hmac)
 +		return false;
 +
-+	/*
-+	 * Also nothing to do if the user already supplied a working
-+	 * certificate chain.
-+	 */
-+	valid =3D tls_cert_verify_certchain(cert, ca_certs);
-+	l_queue_destroy(ca_certs, l_free);
-+	if (valid)
-+		return true;
-+
-+	/* Actual search for a chain to the CA cert is unimplemented, fail */
-+	return false;
+ 	/* Generate the hash seed or A(0) as label + seed */
+ 	memcpy(prfseed, label, strlen(label));
+ 	memcpy(prfseed + strlen(label), seed, seed_len);
+@@ -112,9 +119,10 @@ void tls12_prf(enum l_checksum_type type, size_t hash_=
+len,
+ 	}
+ =
+
+ 	l_checksum_free(hmac);
++	return true;
  }
  =
 
- static const struct pkcs1_encryption_oid {
+-void tls_prf_get_bytes(struct l_tls *tls,
++bool tls_prf_get_bytes(struct l_tls *tls,
+ 				enum l_checksum_type type, size_t hash_len,
+ 				const void *secret, size_t secret_len,
+ 				const char *label,
+@@ -122,10 +130,11 @@ void tls_prf_get_bytes(struct l_tls *tls,
+ 				uint8_t *buf, size_t len)
+ {
+ 	if (tls->negotiated_version >=3D TLS_V12)
+-		tls12_prf(type, hash_len, secret, secret_len, label,
+-				seed, seed_len, buf, len);
++		return tls12_prf(type, hash_len, secret, secret_len, label,
++					seed, seed_len, buf, len);
+ 	else
+-		tls10_prf(secret, secret_len, label, seed, seed_len, buf, len);
++		return tls10_prf(secret, secret_len, label,
++					seed, seed_len, buf, len);
+ }
+ =
+
+ LIB_EXPORT bool l_tls_prf_get_bytes(struct l_tls *tls,
+@@ -134,6 +143,7 @@ LIB_EXPORT bool l_tls_prf_get_bytes(struct l_tls *tls,
+ 				const char *label, uint8_t *buf, size_t len)
+ {
+ 	uint8_t seed[64];
++	bool r;
+ =
+
+ 	if (unlikely(!tls))
+ 		return false;
+@@ -142,16 +152,16 @@ LIB_EXPORT bool l_tls_prf_get_bytes(struct l_tls *tls,
+ 	memcpy(seed + 32, tls->pending.server_random, 32);
+ =
+
+ 	if (use_master_secret)
+-		tls_prf_get_bytes(tls, type, hash_len,
++		r =3D tls_prf_get_bytes(tls, type, hash_len,
+ 						tls->pending.master_secret, 48,
+ 						label, seed, 64, buf, len);
+ 	else
+-		tls_prf_get_bytes(tls, type, hash_len, "", 0,
++		r =3D tls_prf_get_bytes(tls, type, hash_len, "", 0,
+ 						label, seed, 64, buf, len);
+ =
+
+ 	memset(seed, 0, 64);
+ =
+
+-	return true;
++	return r;
+ }
+ =
+
+ static void tls_write_random(uint8_t *buf)
 -- =
 
 2.19.1
 
 
---===============3508702979405418154==--
+--===============0348377951469435583==--
 
