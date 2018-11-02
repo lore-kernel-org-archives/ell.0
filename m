@@ -1,188 +1,157 @@
-Content-Type: multipart/mixed; boundary="===============5425656902043117586=="
+Content-Type: multipart/mixed; boundary="===============4100021357239684434=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 04/11] pem: Add l_pem_load_certificate_list utility
-Date: Fri, 02 Nov 2018 08:32:07 +0100
-Message-ID: <CAOq732JHSGgvP2UOHqn8wQwd95=aZhf8UMf-t6aA5XPK5U7ttg@mail.gmail.com>
-In-Reply-To: <ab97fe67-0aab-e098-1e29-f5b5c0b2ad7c@gmail.com>
+Subject: Re: [PATCH 08/11] tls: Stricter certificate chain verification
+Date: Fri, 02 Nov 2018 09:38:32 +0100
+Message-ID: <CAOq732+adoJWPHCgn-29+R59OeoVSdW=vyPF-Edd4X2E-nKkyw@mail.gmail.com>
+In-Reply-To: <d83e1648-de36-8864-3232-0e243532b98e@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5425656902043117586==
+--===============4100021357239684434==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi,
 
-On Thu, 1 Nov 2018 at 20:40, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 11/01/2018 06:54 AM, Andrew Zaborowski wrote:
-> > +static void pem_element_free(void *data)
-> > +{
-> > +     struct l_pem_list_element *element =3D data;
-> > +
-> > +     l_free(element->content);
-> > +     l_free(element);
-> > +}
->
-> So I see that we duplicate this free function a bunch of times in the
-> later commits in this series.  Perhaps we should bite the bullet and
-> make l_pem an actual first class object with some getters and a destructo=
-r.
-
-So an l_pem would represent a single '----- BEGIN' to '----- END'
-fragment of a PEM file?  I'd the rather call it an l_pem_element or
-similar, and make l_pem_element_free() public, and could also make the
-struct non-public and add accessors but that doesn't help much I
-think.
-
-However what I'd really prefer instead is to add back the l_cert type,
-which could be a first class object with a lot of functionality and
-tls.c would become much shorter.  It could hide the l_key usage (but
-could have an accessor for the public key in the certificate) and also
-could have l_cert_new_from_pem(), or alternatively pem.c could rather
-have a l_pem_load_cert() returning l_cert objects.
-
-Similarly maybe our current l_pem_load_private_key() could be changed
-to return an l_key directly.
-
->
-> E.g.
->
-> const void *l_pem_get_content(struct l_pem *);
-> size_t l_pem_get_content_length(struct l_pem *);
->
-> void l_pem_free(struct l_pem *);
->
-> and possibly:
-> enum l_pem_type l_pem_get_type(struct l_pem *);
->
-> > +
-> > +LIB_EXPORT struct l_queue *l_pem_load_certificate_list(const char *fil=
-ename)
-> > +{
-> > +     int fd;
-> > +     struct stat st;
-> > +     uint8_t *data;
-> > +     size_t start =3D 0;
-> > +     struct l_queue *result =3D NULL;
-> > +
-> > +     fd =3D open(filename, O_RDONLY);
-> > +     if (fd < 0)
-> > +             return NULL;
-> > +
-> > +     if (fstat(fd, &st) < 0) {
-> > +             close(fd);
-> > +
-> > +             return NULL;
-> > +     }
-> > +
-> > +     data =3D mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-> > +     if (data =3D=3D MAP_FAILED) {
-> > +             close(fd);
-> > +
-> > +             return NULL;
-> > +     }
-> > +
-> > +     while (1) {
-> > +             uint8_t *certificate;
-> > +             size_t len;
-> > +             char *label;
-> > +             struct l_pem_list_element *element;
-> > +             const uint8_t *end;
-> > +
-> > +             certificate =3D pem_load_buffer(data + start, st.st_size =
-- start, 0,
-> > +                                             &label, &len, &end);
-> > +             if (!certificate)
-> > +                     goto done;
->
-> I'm not so sure about this.  pem_load_buffer can fail for base64 decode
-> failure reasons.  So I wouldn't think that you can assume that a failure
-> means EOF + success.
-
-I was thinking about the case of having 5 certificates already loaded
-and the last one failing -- in this case we might just want to return
-the 5 that parsed ok but I can add better error checking.
-
->
-> > +
-> > +             if (strcmp(label, "CERTIFICATE")) {
-> > +                     l_free(certificate);
-> > +                     break;
-> > +             }
-> > +
-> > +             l_free(label);
-> > +             element =3D l_malloc(sizeof(struct l_pem_list_element));
->
-> l_new?
->
-> > +             element->content =3D certificate;
-> > +             element->len =3D len;
-> > +
-> > +             if (!result)
-> > +                     result =3D l_queue_new();
-> > +
-> > +             l_queue_push_tail(result, element);
-> > +             start =3D end - data;
->
-> You really need serious mental gymnastics to get this part.  Can't we
-> just have a curpos variable or something?
-
-Ok, if I rename "start" to "curpos" and "end" to "newendpos" or
-similar I think it should be pretty clear.
-
->
-> > +     }
-> > +
-> > +     /* Error occured */
-> > +     l_queue_destroy(result, pem_element_free);
-> > +     result =3D NULL;
-> > +
-> > +done:
-> > +     munmap(data, st.st_size);
-> > +     close(fd);
-> > +
-> > +     return result;
-> > +}
-> > +
-> >   /**
-> >    * l_pem_load_private_key
-> >    * @filename: path string to the PEM file to load
-> > diff --git a/ell/pem.h b/ell/pem.h
-> > index 93282a3..9cead5c 100644
-> > --- a/ell/pem.h
-> > +++ b/ell/pem.h
-> > @@ -27,12 +27,20 @@
-> >   extern "C" {
-> >   #endif
+On Fri, 2 Nov 2018 at 01:55, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 11/01/2018 07:35 PM, Mat Martineau wrote:
+> > Have you considered loading the root certs in to a kernel keyring once
+> > in l_tls_set_cacert() then keeping it around to reuse?
 > >
-> > +struct l_queue;
-> > +
-> > +struct l_pem_list_element {
-> > +     uint8_t *content;
-> > +     size_t len;
-> > +};
-> > +
 >
-> As mentioned above, this probably should be a first class opaque data now.
->
-> >   uint8_t *l_pem_load_buffer(const uint8_t *buf, size_t buf_len,
-> >                               int index, char **type_label, size_t *out=
-_len);
->
-> and we can change this to
->
-> struct l_pem *l_pem_load_buffer(buf, buf_len, index, char **);
->
-> I also really wonder if we want to take this function out of the public
-> API, though we do need to add support for TPM 1.2 certificates as well.
+> Exactly.  This is ultimately what we want: to load root CAs once and
+> reuse them between multiple connections.  So the CA keyring needs to be
+> reusable.
 
-This could be done separately but I think having a public function to
-just get the first PEM fragment in a file is practical (saves you from
-loading all of them and freeing all but the first struct.)
+Ok.  With it being possible to add nested keyrings this is easy.
+
+> >> <snip>
+> >>
+> >>> @@ -2772,43 +2840,19 @@ static void tls_keyring_cleanup(struct
+> >>> l_keyring **p)
+> >>>   bool tls_cert_verify_certchain(struct tls_cert *certchain,
+> >>>                   struct l_queue *ca_certs)
+> >>>   {
+> >>> -    L_AUTO_CLEANUP_VAR(struct l_keyring *, ca_ring,
+> >>> tls_keyring_cleanup);
+> >>>       L_AUTO_CLEANUP_VAR(struct l_keyring *, verify_ring,
+> >>> -                tls_keyring_cleanup);
+> >>> +                tls_keyring_cleanup) =3D l_keyring_new();
+> >>> +    struct l_key *trusted;
+> >>
+> >> This function is so simple I would consider dropping the
+> >> L_AUTO_CLEANUP_VAR completely.
+
+Ok.
+
+> >
+> > The auto cleanup stuff was handy when there were many different 'return'
+> > statements, but with the simplified version of this function I agree
+> > with Denis.
+> >
+> >>
+> >>>   -    ca_ring =3D NULL;
+> >>> -
+> >>> -    verify_ring =3D l_keyring_new();
+> >>>       if (!verify_ring)
+> >>>           return false;
+> >>>   -    /*
+> >>> -     * If CA cert(s) were supplied, restrict verify_ring now so
+> >>> -     * everything else in certchain is validated against the CA(s).
+> >>> -     * Otherwise, verify_ring will be restricted after the root of
+> >>> -     * certchain is added to verify_ring by
+> >>> -     * tls_cert_verify_with_keyring().
+> >>> -     */
+> >>> -    if (ca_certs) {
+> >>> -        const struct l_queue_entry *entry;
+> >>> -
+> >>> -        ca_ring =3D l_keyring_new();
+> >>> -        if (!ca_ring)
+> >>> -            return false;
+> >>> -
+> >>> -        for (entry =3D l_queue_get_entries(ca_certs); entry;
+> >>> -                entry =3D entry->next)
+> >>> -            if (!tls_cert_link(entry->data, ca_ring))
+> >>> -                return false;
+> >>> -
+> >>> -        if (!l_keyring_restrict(verify_ring,
+> >>> -                    L_KEYRING_RESTRICT_ASYM_CHAIN,
+> >>> -                    ca_ring))
+> >>> -            return false;
+> >>> -    }
+> >>> +    trusted =3D tls_cert_verify_with_keyring(certchain, verify_ring,
+> >>> ca_certs);
+> >>> +    if (!trusted)
+> >>> +        return false;
+> >>>   -    return tls_cert_verify_with_keyring(certchain, verify_ring,
+> >>> ca_certs,
+> >>> -                        ca_ring);
+> >>> +    l_key_free(trusted);
+> >>> +    return true;
+> >>>   }
+> >>>     void tls_cert_free_certchain(struct tls_cert *cert)
+> >>>
+> >>
+> >
+> > It seems like the implementation is made more complicated by the fact
+> > that the cert list is a singly-linked list starting with the end-entity
+> > cert (which we then follow toward the root using the issuer pointers),
+> > while in order to verify we need to link keys to the restricted keyring
+> > starting from the root end of the chain.
+> >
+> > If we know that it's a linear cert chain, the code could be simplified
+> > by making the cert chain a doubly-linked list that could be walked in
+> > the other direction. That would eliminate the recursion, leading to an
+> > implementation that looks more like this:
+> >
+> > 1. Create a keyring
+> > 2. Load it with the root certs
+> > 3. Try to load the first cert in the chain (from the root-facing end)
+> > 4. If that works, clear the root certs
+> > 5. Try to load the next cert in the chain
+> > 6. If that works, clear the previous cert
+> > 7. Repeat 5-6 until you get to the end-entity cert
+> >
+> > That's the behavior of this patch (from the perspective of the kernel),
+> > but it's hard to see because recursive calls are used to follow the
+> > issuer chain toward the root first, then the keyring loads are attempted
+> > as the stack gets unwound.
+> >
+> > (I realize the recursive code structure is inherited from my earlier
+> > implementation :) )
+> >
+>
+> I agree here, I think recursive implementation is actually harder to
+> read and more resource intensive.
+
+Yep, definitely, but using a doubly-linked list for all tls_cert
+structs also seems like unneeded overhead.  We can easily create a
+temporary reversed list or a plain array in tls_cert_verify_certchain,
+which is only called once per l_tls object anyway.
+
+>
+> >
+> > As Denis pointed out above, it would be convenient to add and remove the
+> > root certs as a group. The kernel lets keyrings contain keyrings. A
+> > restricted keyring R will search for signing keys in the trusted keyring
+> > T (if it wasn't NULL), and within R itself. If R "contains" a link to
+> > another keyring A, it will search T, R, and A for signing keys.
+> >
+> > If we add l_keyring_link_nested(keyring, nested_keyring) to ELL, then
+> > you could have a persistent ca_ring that is temporarly linked to the
+> > verify ring to check the first cert, then ca_ring gets unlinked in a
+> > single operation when you want to check the second cert.
+> >
+>
+> So that might actually be an even better solution than what I proposed
+> above with having a temporary restriction ring.
+
+Yes, makes sense, I had actually seen this in the kernel keyring
+search function but it didn't occur to me to use it.
 
 Best regards
 
---===============5425656902043117586==--
+--===============4100021357239684434==--
 
