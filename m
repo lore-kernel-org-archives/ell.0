@@ -1,386 +1,295 @@
-Content-Type: multipart/mixed; boundary="===============4092027269759048101=="
+Content-Type: multipart/mixed; boundary="===============8951379065744366526=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 5/5] unit: Update tests to new certificate API
-Date: Thu, 08 Nov 2018 13:06:51 +0100
-Message-ID: <20181108120651.32521-5-andrew.zaborowski@intel.com>
-In-Reply-To: <20181108120651.32521-1-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: [PATCH] key: Have kernel handle padding
+Date: Thu, 08 Nov 2018 09:21:45 -0600
+Message-ID: <20181108152145.23765-1-denkenz@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4092027269759048101==
+--===============8951379065744366526==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-key.c | 89 ++++++++++++++++++++-----------------------------
- unit/test-pem.c | 57 ++++++++++++++++++-------------
- unit/test-tls.c | 24 ++++++-------
- 3 files changed, 83 insertions(+), 87 deletions(-)
+ ell/key.c | 170 ++++++++++++----------------------------------------------=
+----
+ 1 file changed, 33 insertions(+), 137 deletions(-)
 
-diff --git a/unit/test-key.c b/unit/test-key.c
-index afe4103..5f65793 100644
---- a/unit/test-key.c
-+++ b/unit/test-key.c
-@@ -394,23 +394,20 @@ static void test_trusted_keyring(const void *data)
- {
- 	struct l_keyring *ring;
- 	struct l_keyring *trust;
--	uint8_t *cacert;
--	size_t cacertlen;
--	uint8_t *cert;
--	size_t certlen;
-+	struct l_cert *cacert;
-+	struct l_cert *cert;
- 	struct l_key *cakey;
- 	struct l_key *key;
- 	bool success;
- =
-
--	cacert =3D l_pem_load_certificate(CERTDIR "cert-ca.pem", &cacertlen);
-+	cacert =3D l_pem_load_certificate(CERTDIR "cert-ca.pem");
- 	assert(cacert);
--	cert =3D l_pem_load_certificate(CERTDIR "cert-server.pem",
--					&certlen);
-+	cert =3D l_pem_load_certificate(CERTDIR "cert-server.pem");
- 	assert(cert);
- =
-
--	cakey =3D l_key_new(L_KEY_RSA, cacert, cacertlen);
-+	cakey =3D l_cert_get_pubkey(cacert);
- 	assert(cakey);
--	key =3D l_key_new(L_KEY_RSA, cert, certlen);
-+	key =3D l_cert_get_pubkey(cert);
- 	assert(key);
- =
-
- 	trust =3D l_keyring_new();
-@@ -431,39 +428,34 @@ static void test_trusted_keyring(const void *data)
- 	l_keyring_free(ring);
- 	l_key_free(cakey);
- 	l_key_free(key);
--	l_free(cacert);
--	l_free(cert);
-+	l_cert_free(cacert);
-+	l_cert_free(cert);
+diff --git a/ell/key.c b/ell/key.c
+index fe2fbb3..37e1841 100644
+--- a/ell/key.c
++++ b/ell/key.c
+@@ -238,6 +238,26 @@ static long kernel_key_eds(int op, int32_t serial, con=
+st char *encoding,
+ 	return result >=3D 0 ? result : -errno;
  }
  =
 
- static void test_trust_chain(const void *data)
- {
- 	struct l_keyring *ring;
- 	struct l_keyring *trust;
--	uint8_t *cacert;
--	size_t cacertlen;
--	uint8_t *intcert;
--	size_t intcertlen;
--	uint8_t *cert;
--	size_t certlen;
-+	struct l_cert *cacert;
-+	struct l_cert *intcert;
-+	struct l_cert *cert;
- 	struct l_key *cakey;
- 	struct l_key *intkey;
- 	struct l_key *key;
- 	bool success;
- =
-
--	cacert =3D l_pem_load_certificate(CERTDIR "cert-ca.pem", &cacertlen);
-+	cacert =3D l_pem_load_certificate(CERTDIR "cert-ca.pem");
- 	assert(cacert);
--	intcert =3D l_pem_load_certificate(CERTDIR "cert-intca.pem",
--						&intcertlen);
-+	intcert =3D l_pem_load_certificate(CERTDIR "cert-intca.pem");
- 	assert(intcert);
--	cert =3D l_pem_load_certificate(CERTDIR "cert-entity-int.pem",
--					&certlen);
-+	cert =3D l_pem_load_certificate(CERTDIR "cert-entity-int.pem");
- 	assert(cert);
- =
-
--	cakey =3D l_key_new(L_KEY_RSA, cacert, cacertlen);
-+	cakey =3D l_cert_get_pubkey(cacert);
- 	assert(cakey);
--	intkey =3D l_key_new(L_KEY_RSA, intcert, intcertlen);
-+	intkey =3D l_cert_get_pubkey(intcert);
- 	assert(intkey);
--	key =3D l_key_new(L_KEY_RSA, cert, certlen);
-+	key =3D l_cert_get_pubkey(cert);
- 	assert(key);
- =
-
- 	trust =3D l_keyring_new();
-@@ -492,18 +484,15 @@ static void test_trust_chain(const void *data)
- 	l_key_free(cakey);
- 	l_key_free(intkey);
- 	l_key_free(key);
--	l_free(cacert);
--	l_free(intcert);
--	l_free(cert);
-+	l_cert_free(cacert);
-+	l_cert_free(intcert);
-+	l_cert_free(cert);
- }
- =
-
- static void test_key_crypto(const void *data)
- {
--	uint8_t *cert;
--	size_t certlen;
--	uint8_t *pubcert;
--	size_t pubcertlen;
--	struct l_key *key;
-+	struct l_key *privkey;
-+	struct l_cert *cert;
- 	struct l_key *pubkey;
- 	bool is_public;
- 	size_t keybits;
-@@ -514,24 +503,21 @@ static void test_key_crypto(const void *data)
- 	int hash =3D L_CHECKSUM_NONE;
- 	int rsa =3D L_KEY_RSA_PKCS1_V1_5;
- =
-
--	cert =3D l_pem_load_private_key(CERTDIR "cert-client-key-pkcs8.pem",
--					NULL, NULL, &certlen);
-+	privkey =3D l_pem_load_private_key(CERTDIR "cert-client-key-pkcs8.pem",
-+						NULL, NULL);
-+	assert(privkey);
-+	cert =3D l_pem_load_certificate(CERTDIR "cert-client.pem");
- 	assert(cert);
--	pubcert =3D l_pem_load_certificate(CERTDIR "cert-client.pem",
--						&pubcertlen);
--	assert(pubcert);
- =
-
--	key =3D l_key_new(L_KEY_RSA, cert, certlen);
--	assert(key);
--	pubkey =3D l_key_new(L_KEY_RSA, pubcert, pubcertlen);
-+	pubkey =3D l_cert_get_pubkey(cert);
- 	assert(pubkey);
- =
-
--	success =3D l_key_get_info(key, rsa, hash, &keybits, &is_public);
-+	success =3D l_key_get_info(privkey, rsa, hash, &keybits, &is_public);
- 	assert(success);
- 	assert(keybits =3D=3D 2048);
- 	assert(!is_public);
- =
-
--	success =3D l_key_get_info(key, rsa, L_CHECKSUM_NONE, &keybits,
-+	success =3D l_key_get_info(privkey, rsa, L_CHECKSUM_NONE, &keybits,
- 					&is_public);
- 	assert(success);
- 	assert(keybits =3D=3D 2048);
-@@ -554,14 +540,14 @@ static void test_key_crypto(const void *data)
- 				sizeof(ciphertext), sizeof(decrypted));
- 	assert(len < 0);
- =
-
--	len =3D l_key_decrypt(key, rsa, hash, ciphertext, decrypted,
-+	len =3D l_key_decrypt(privkey, rsa, hash, ciphertext, decrypted,
- 				sizeof(ciphertext), sizeof(decrypted));
- 	assert(len =3D=3D (ssize_t)strlen(plaintext));
- 	assert(strcmp(plaintext, (char *)decrypted) =3D=3D 0);
- =
-
- 	/* Decrypt reference ciphertext */
- 	memset(decrypted, 0, sizeof(decrypted));
--	len =3D l_key_decrypt(key, rsa, hash, reference_ciphertext, decrypted,
-+	len =3D l_key_decrypt(privkey, rsa, hash, reference_ciphertext, decrypted,
- 				sizeof(reference_ciphertext),
- 				sizeof(decrypted));
- 	assert(len =3D=3D (ssize_t)strlen(plaintext));
-@@ -571,7 +557,7 @@ static void test_key_crypto(const void *data)
- 	memset(decrypted, 0, sizeof(decrypted));
- 	memcpy(ciphertext, reference_ciphertext, sizeof(ciphertext));
- 	ciphertext[0] =3D ciphertext[0] ^ (uint8_t)0xFF;
--	len =3D l_key_decrypt(key, rsa, hash, ciphertext, decrypted,
-+	len =3D l_key_decrypt(privkey, rsa, hash, ciphertext, decrypted,
- 				sizeof(ciphertext),
- 				sizeof(decrypted));
- 	assert(len < 0);
-@@ -581,7 +567,7 @@ static void test_key_crypto(const void *data)
- 				strlen(plaintext), sizeof(ciphertext));
- 	assert(len < 0);
- =
-
--	len =3D l_key_sign(key, rsa, hash, plaintext, ciphertext,
-+	len =3D l_key_sign(privkey, rsa, hash, plaintext, ciphertext,
- 				strlen(plaintext), sizeof(ciphertext));
- 	assert(len =3D=3D sizeof(ciphertext));
- =
-
-@@ -589,7 +575,7 @@ static void test_key_crypto(const void *data)
- 				strlen(plaintext), sizeof(ciphertext));
- 	assert(success);
- =
-
--	success =3D l_key_verify(key, rsa, hash, plaintext, ciphertext,
-+	success =3D l_key_verify(privkey, rsa, hash, plaintext, ciphertext,
- 				strlen(plaintext), sizeof(ciphertext));
- 	assert(success);
- =
-
-@@ -600,14 +586,13 @@ static void test_key_crypto(const void *data)
- =
-
- 	/* Corrupt signature */
- 	ciphertext[42] =3D ciphertext[52] ^ (uint8_t)0xFF;
--	success =3D l_key_verify(key, rsa, hash, plaintext, ciphertext,
-+	success =3D l_key_verify(privkey, rsa, hash, plaintext, ciphertext,
- 				strlen(plaintext), sizeof(ciphertext));
- 	assert(!success);
- =
-
--	l_key_free(key);
-+	l_key_free(privkey);
- 	l_key_free(pubkey);
--	l_free(cert);
--	l_free(pubcert);
-+	l_cert_free(cert);
- }
- =
-
- int main(int argc, char *argv[])
-diff --git a/unit/test-pem.c b/unit/test-pem.c
-index 3325e54..b37a29e 100644
---- a/unit/test-pem.c
-+++ b/unit/test-pem.c
-@@ -91,36 +91,47 @@ static void test_encrypted_pkey(const void *data)
- {
- 	const char *encrypted_pem =3D data;
- 	const char *plaintext_pem =3D CERTDIR "cert-client-key-pkcs8.pem";
--	bool encrypted;
--	size_t size1, size2;
--	uint8_t *pkey1, *pkey2;
-+	bool is_encrypted;
-+	size_t size;
-+	uint8_t encrypted1[256], encrypted2[256], plaintext[256];
-+	struct l_key *pkey1, *pkey2;
-+	bool is_public;
- =
-
--	encrypted =3D false;
--	assert(!l_pem_load_private_key(encrypted_pem, NULL,
--					&encrypted, &size1));
--	assert(encrypted);
-+	is_encrypted =3D false;
-+	assert(!l_pem_load_private_key(encrypted_pem, NULL, &is_encrypted));
-+	assert(is_encrypted);
- =
-
--	encrypted =3D false;
-+	is_encrypted =3D false;
- 	assert(!l_pem_load_private_key(encrypted_pem, "wrong-passwd",
--					&encrypted, &size1));
--	assert(encrypted);
-+					&is_encrypted));
-+	assert(is_encrypted);
- =
-
--	encrypted =3D false;
--	pkey1 =3D l_pem_load_private_key(encrypted_pem, "abc",
--					&encrypted, &size1);
-+	is_encrypted =3D false;
-+	pkey1 =3D l_pem_load_private_key(encrypted_pem, "abc", &is_encrypted);
- 	assert(pkey1);
--	assert(encrypted);
-+	assert(is_encrypted);
- =
-
--	pkey2 =3D l_pem_load_private_key(plaintext_pem, NULL,
--					&encrypted, &size2);
-+	pkey2 =3D l_pem_load_private_key(plaintext_pem, NULL, &is_encrypted);
- 	assert(pkey2);
--	assert(!encrypted);
--
--	assert(size1 =3D=3D size2);
--	assert(!memcmp(pkey1, pkey2, size1));
--
--	l_free(pkey1);
--	l_free(pkey2);
-+	assert(!is_encrypted);
++static long kernel_key_verify(int32_t serial,
++				const char *encoding, const char *hash,
++				const void *data, size_t data_len,
++				const void *sig, size_t sig_len)
++{
++	struct keyctl_pkey_params params =3D {
++		.key_id		=3D serial,
++		.in_len		=3D data_len,
++		.in2_len	=3D sig_len,
++	};
++	char *info =3D format_key_info(encoding, hash);
++	long result;
 +
-+	/*
-+	 * l_key_extract doesn't work for private keys so compare encrypt
-+	 * results instead of key exponent.
-+	 */
-+	memset(plaintext, 42, 256);
-+	assert(l_key_get_info(pkey1, L_KEY_RSA_RAW, L_CHECKSUM_NONE,
-+				&size, &is_public));
-+	assert(size =3D=3D 2048);
-+	assert(!is_public);
-+	assert(l_key_encrypt(pkey1, L_KEY_RSA_RAW, L_CHECKSUM_NONE,
-+				plaintext, encrypted1, 256, 256) =3D=3D 256);
-+	assert(l_key_encrypt(pkey2, L_KEY_RSA_RAW, L_CHECKSUM_NONE,
-+				plaintext, encrypted2, 256, 256) =3D=3D 256);
-+	assert(!memcmp(encrypted1, encrypted2, 256));
++	result =3D syscall(__NR_keyctl, KEYCTL_PKEY_VERIFY, &params,
++				info ?: "", data, sig);
++	l_free(info);
 +
-+	l_key_free(pkey1);
-+	l_key_free(pkey2);
- }
- =
-
- int main(int argc, char *argv[])
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index d969ee7..5dd6569 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -213,28 +213,28 @@ static void test_tls12_prf(const void *data)
- =
-
- static void test_certificates(const void *data)
++	return result >=3D 0 ? result : -errno;
++}
++
+ static bool setup_internal_keyring(void)
  {
--	struct tls_cert *cert;
--	struct tls_cert *cacert;
--	struct tls_cert *wrongca;
-+	struct l_cert *cert;
-+	struct l_cert *cacert;
-+	struct l_cert *wrongca;
- =
-
--	cert =3D tls_cert_load_file(CERTDIR "cert-server.pem");
-+	cert =3D l_pem_load_certificate(CERTDIR "cert-server.pem");
- 	assert(cert);
- =
-
--	cacert =3D tls_cert_load_file(CERTDIR "cert-ca.pem");
-+	cacert =3D l_pem_load_certificate(CERTDIR "cert-ca.pem");
- 	assert(cacert);
- =
-
--	wrongca =3D tls_cert_load_file(CERTDIR "cert-intca.pem");
-+	wrongca =3D l_pem_load_certificate(CERTDIR "cert-intca.pem");
- 	assert(wrongca);
- =
-
--	assert(!tls_cert_verify_certchain(cert, wrongca));
-+	assert(!l_cert_verify_certchain(cert, wrongca));
- =
-
--	assert(tls_cert_verify_certchain(cert, cacert));
-+	assert(l_cert_verify_certchain(cert, cacert));
- =
-
--	assert(tls_cert_verify_certchain(cert, NULL));
-+	assert(l_cert_verify_certchain(cert, NULL));
- =
-
--	l_free(cert);
--	l_free(cacert);
--	l_free(wrongca);
-+	l_cert_free(cert);
-+	l_cert_free(cacert);
-+	l_cert_free(wrongca);
+ 	internal_keyring =3D kernel_add_key("keyring", "ell-internal", NULL, 0,
+@@ -352,7 +372,7 @@ static const char *lookup_cipher(enum l_key_cipher_type=
+ cipher)
+ 		/* Padding is handled in userspace, so the kernel only sees
+ 		 * raw RSA operations
+ 		 */
+-		ret =3D "raw";
++		ret =3D "pkcs1";
+ 		break;
+ 	case L_KEY_RSA_RAW:
+ 		ret =3D "raw";
+@@ -461,75 +481,6 @@ static ssize_t eds_common(struct l_key *key,
+ 				len_out);
  }
  =
 
- struct tls_conn_test {
+-static void getrandom_nonzero(uint8_t *buf, int len)
+-{
+-	l_getrandom(buf, len);
+-
+-	while (len--) {
+-		while (buf[0] =3D=3D 0)
+-			l_getrandom(buf, 1);
+-
+-		buf++;
+-	}
+-}
+-
+-/* PKCS#1 v1.5 RSA padding according to RFC3447 */
+-static uint8_t *pad(const uint8_t *in, size_t len_in, size_t len_out,
+-			uint8_t flag, bool randfill)
+-{
+-	size_t fill_len;
+-	uint8_t *padded;
+-
+-	if (len_in > len_out - 11)
+-		return NULL;
+-
+-	padded =3D l_malloc(len_out);
+-	fill_len =3D len_out - len_in - 3;
+-
+-	padded[0] =3D 0x00;
+-	padded[1] =3D flag;
+-
+-	if (randfill)
+-		getrandom_nonzero(padded + 2, fill_len);
+-	else
+-		memset(padded + 2, 0xff, fill_len);
+-
+-	padded[fill_len + 2] =3D 0x00;
+-	memcpy(padded + fill_len + 3, in, len_in);
+-
+-	return padded;
+-}
+-
+-static ssize_t unpad(uint8_t *in, uint8_t *out, size_t len_in, size_t len_=
+out,
+-			uint8_t flag, bool randfill)
+-{
+-	size_t pos;
+-	ssize_t unpad_len;
+-
+-	if (in[0] !=3D 0x00 || in[1] !=3D flag)
+-		return -EINVAL;
+-
+-	if (randfill)
+-		for (pos =3D 2; pos < len_in && in[pos] !=3D 0x00; pos++);
+-	else
+-		for (pos =3D 2; pos < len_in && in[pos] =3D=3D 0xff; pos++);
+-
+-	if (pos < 10 || pos =3D=3D len_in)
+-		return -EINVAL;
+-
+-	pos++;
+-	unpad_len =3D len_in - pos;
+-
+-	if (out) {
+-		if ((size_t)unpad_len > len_out)
+-			return -EINVAL;
+-
+-		memcpy(out, in + pos, unpad_len);
+-	}
+-
+-	return unpad_len;
+-}
+-
+ LIB_EXPORT ssize_t l_key_encrypt(struct l_key *key,
+ 					enum l_key_cipher_type cipher,
+ 					enum l_checksum_type checksum,
+@@ -543,14 +494,6 @@ LIB_EXPORT ssize_t l_key_encrypt(struct l_key *key,
+ 	if (checksum !=3D L_CHECKSUM_NONE)
+ 		return -EINVAL;
+ =
+
+-	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5) {
+-		padded =3D pad(in, len_in, len_out, 0x02, true);
+-		if (!padded)
+-			return -EOVERFLOW;
+-
+-		cipher =3D L_KEY_RSA_RAW;
+-	}
+-
+ 	ret_len =3D eds_common(key, cipher, checksum, padded ?: in, out,
+ 				padded ? len_out : len_in, len_out,
+ 				KEYCTL_PKEY_ENCRYPT);
+@@ -566,28 +509,19 @@ LIB_EXPORT ssize_t l_key_decrypt(struct l_key *key,
+ 					const void *in, void *out,
+ 					size_t len_in, size_t len_out)
+ {
+-	uint8_t *padded =3D NULL;
+ 	ssize_t ret_len;
+ =
+
+ 	/* Other checksum types are not yet supported */
+ 	if (checksum !=3D L_CHECKSUM_NONE)
+ 		return -EINVAL;
+ =
+
+-	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5)
+-		padded =3D l_malloc(len_in);
+-
+-	ret_len =3D eds_common(key, cipher, checksum, in, padded ?: out, len_in,
+-				padded ? len_in : len_out, KEYCTL_PKEY_DECRYPT);
++	ret_len =3D eds_common(key, cipher, checksum, in, out, len_in,
++				len_out, KEYCTL_PKEY_DECRYPT);
+ =
+
+ 	if (ret_len < 0)
+ 		goto done;
+ =
+
+-	if (padded)
+-		ret_len =3D unpad(padded, out, ret_len, len_out, 0x02, true);
+-
+ done:
+-	l_free(padded);
+-
+ 	return ret_len;
+ }
+ =
+
+@@ -596,27 +530,16 @@ LIB_EXPORT ssize_t l_key_sign(struct l_key *key,
+ 				enum l_checksum_type checksum, const void *in,
+ 				void *out, size_t len_in, size_t len_out)
+ {
+-	uint8_t *padded =3D NULL;
+ 	ssize_t ret_len;
+ =
+
+ 	/* Other checksum types are not yet supported */
+ 	if (checksum !=3D L_CHECKSUM_NONE)
+ 		return -EINVAL;
+ =
+
+-	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5) {
+-		padded =3D pad(in, len_in, len_out, 0x01, false);
+-		if (!padded)
+-			return -EOVERFLOW;
+-
+-		cipher =3D L_KEY_RSA_RAW;
+-	}
+-
+-	ret_len =3D eds_common(key, cipher, checksum, padded ?: in, out,
+-				padded ? len_out : len_in, len_out,
++	ret_len =3D eds_common(key, cipher, checksum, in, out,
++				len_in, len_out,
+ 				KEYCTL_PKEY_SIGN);
+ =
+
+-	l_free(padded);
+-
+ 	return ret_len;
+ }
+ =
+
+@@ -626,48 +549,21 @@ LIB_EXPORT bool l_key_verify(struct l_key *key,
+ 				const void *sig, size_t len_data,
+ 				size_t len_sig)
+ {
+-	enum l_key_cipher_type kernel_cipher;
+-	ssize_t hash_len;
+-	uint8_t *compare_hash;
+-	L_AUTO_FREE_VAR(uint8_t *, sig_hash);
++	long result;
+ =
+
+-	sig_hash =3D l_malloc(len_sig);
++	if (unlikely(!key))
++		return false;
+ =
+
+ 	/* Other checksum types are not yet supported */
+ 	if (checksum !=3D L_CHECKSUM_NONE)
+ 		return false;
+ =
+
+-	/* The keyctl verify implementation compares the verify results
+-	 * before we get a chance to unpad it. Instead, use the *encrypt*
+-	 * operation (which uses the same math as verify) to get the hash
+-	 * returned to us so it can be unpadded before comparing
+-	 */
+-	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5)
+-		kernel_cipher =3D L_KEY_RSA_RAW;
+-	else
+-		kernel_cipher =3D cipher;
+-
+-	hash_len =3D eds_common(key, kernel_cipher, checksum, sig, sig_hash,
+-				len_sig, len_sig, KEYCTL_PKEY_ENCRYPT);
+-
+-	if (hash_len < 0)
+-		return false;
+-
+-	compare_hash =3D sig_hash;
+-
+-	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5) {
+-		ssize_t unpad_len;
+-
+-		unpad_len =3D unpad(sig_hash, NULL, hash_len, 0, 0x01, false);
+-		if (unpad_len < 0)
+-			return false;
+-
+-		compare_hash +=3D hash_len - unpad_len;
+-		hash_len =3D unpad_len;
+-	}
++	result =3D kernel_key_verify(key->serial, lookup_cipher(cipher),
++					lookup_checksum(checksum),
++					data, len_data,
++					sig, len_sig);
+ =
+
+-	return (len_data =3D=3D (size_t)hash_len) &&
+-		(memcmp(data, compare_hash, hash_len) =3D=3D 0);
++	return result >=3D 0;
+ }
+ =
+
+ LIB_EXPORT struct l_keyring *l_keyring_new(void)
 -- =
 
-2.19.1
+2.16.1
 
 
---===============4092027269759048101==--
+--===============8951379065744366526==--
 
