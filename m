@@ -1,339 +1,71 @@
-Content-Type: multipart/mixed; boundary="===============6126530759873003161=="
+Content-Type: multipart/mixed; boundary="===============7283858505429302801=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCHv2] key: Have kernel handle padding
-Date: Thu, 08 Nov 2018 18:53:30 -0600
-Message-ID: <20181109005330.26235-1-denkenz@gmail.com>
+Subject: Re: [PATCH] key: Have kernel handle padding
+Date: Thu, 08 Nov 2018 18:55:43 -0600
+Message-ID: <54aecedf-288b-6c69-1288-9a73ee757b37@gmail.com>
+In-Reply-To: <alpine.OSX.2.21.1811081347530.6619@dbdavenp-mobl.amr.corp.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6126530759873003161==
+--===============7283858505429302801==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Starting with Linux Kernel 4.20 the padding can be handled entirely in
-kernel space.  In preparation for that Kernel version (which will be
-the first upstream kernel with asymmetric key support) remove the
-userspace padding code.
----
+Hi Mat,
 
-v2:
+On 11/08/2018 04:07 PM, Mat Martineau wrote:
+> Hi Denis,
+> =
 
-- Addressing comments from Mat
-- Removed L_CHECKSUM_NONE sanity checks based on input from Andrew
+> On Thu, 8 Nov 2018, Denis Kenzior wrote:
+> =
 
- ell/key.c | 196 +++++++++++-----------------------------------------------=
-----
- 1 file changed, 34 insertions(+), 162 deletions(-)
+> Worth having the commit message note the kernel version where the =
 
-diff --git a/ell/key.c b/ell/key.c
-index fe2fbb3..4dcc9cd 100644
---- a/ell/key.c
-+++ b/ell/key.c
-@@ -35,7 +35,6 @@
- #include "util.h"
- #include "key.h"
- #include "string.h"
--#include "random.h"
- =
-
- #ifndef KEYCTL_DH_COMPUTE
- #define KEYCTL_DH_COMPUTE 23
-@@ -238,6 +237,26 @@ static long kernel_key_eds(int op, int32_t serial, con=
-st char *encoding,
- 	return result >=3D 0 ? result : -errno;
- }
- =
-
-+static long kernel_key_verify(int32_t serial,
-+				const char *encoding, const char *hash,
-+				const void *data, size_t data_len,
-+				const void *sig, size_t sig_len)
-+{
-+	struct keyctl_pkey_params params =3D {
-+		.key_id		=3D serial,
-+		.in_len		=3D data_len,
-+		.in2_len	=3D sig_len,
-+	};
-+	char *info =3D format_key_info(encoding, hash);
-+	long result;
-+
-+	result =3D syscall(__NR_keyctl, KEYCTL_PKEY_VERIFY, &params,
-+				info ?: "", data, sig);
-+	l_free(info);
-+
-+	return result >=3D 0 ? result : -errno;
-+}
-+
- static bool setup_internal_keyring(void)
- {
- 	internal_keyring =3D kernel_add_key("keyring", "ell-internal", NULL, 0,
-@@ -352,7 +371,7 @@ static const char *lookup_cipher(enum l_key_cipher_type=
- cipher)
- 		/* Padding is handled in userspace, so the kernel only sees
- 		 * raw RSA operations
- 		 */
--		ret =3D "raw";
-+		ret =3D "pkcs1";
- 		break;
- 	case L_KEY_RSA_RAW:
- 		ret =3D "raw";
-@@ -402,10 +421,6 @@ LIB_EXPORT bool l_key_get_info(struct l_key *key, enum=
- l_key_cipher_type cipher,
- 	if (unlikely(!key))
- 		return false;
- =
-
--	/* Other checksum types are not yet supported */
--	if (checksum !=3D L_CHECKSUM_NONE)
--		return false;
--
- 	return !kernel_query_key(key->serial, lookup_cipher(cipher),
- 					lookup_checksum(checksum), bits,
- 					public);
-@@ -461,102 +476,18 @@ static ssize_t eds_common(struct l_key *key,
- 				len_out);
- }
- =
-
--static void getrandom_nonzero(uint8_t *buf, int len)
--{
--	l_getrandom(buf, len);
--
--	while (len--) {
--		while (buf[0] =3D=3D 0)
--			l_getrandom(buf, 1);
--
--		buf++;
--	}
--}
--
--/* PKCS#1 v1.5 RSA padding according to RFC3447 */
--static uint8_t *pad(const uint8_t *in, size_t len_in, size_t len_out,
--			uint8_t flag, bool randfill)
--{
--	size_t fill_len;
--	uint8_t *padded;
--
--	if (len_in > len_out - 11)
--		return NULL;
--
--	padded =3D l_malloc(len_out);
--	fill_len =3D len_out - len_in - 3;
--
--	padded[0] =3D 0x00;
--	padded[1] =3D flag;
--
--	if (randfill)
--		getrandom_nonzero(padded + 2, fill_len);
--	else
--		memset(padded + 2, 0xff, fill_len);
--
--	padded[fill_len + 2] =3D 0x00;
--	memcpy(padded + fill_len + 3, in, len_in);
--
--	return padded;
--}
--
--static ssize_t unpad(uint8_t *in, uint8_t *out, size_t len_in, size_t len_=
-out,
--			uint8_t flag, bool randfill)
--{
--	size_t pos;
--	ssize_t unpad_len;
--
--	if (in[0] !=3D 0x00 || in[1] !=3D flag)
--		return -EINVAL;
--
--	if (randfill)
--		for (pos =3D 2; pos < len_in && in[pos] !=3D 0x00; pos++);
--	else
--		for (pos =3D 2; pos < len_in && in[pos] =3D=3D 0xff; pos++);
--
--	if (pos < 10 || pos =3D=3D len_in)
--		return -EINVAL;
--
--	pos++;
--	unpad_len =3D len_in - pos;
--
--	if (out) {
--		if ((size_t)unpad_len > len_out)
--			return -EINVAL;
--
--		memcpy(out, in + pos, unpad_len);
--	}
--
--	return unpad_len;
--}
--
- LIB_EXPORT ssize_t l_key_encrypt(struct l_key *key,
- 					enum l_key_cipher_type cipher,
- 					enum l_checksum_type checksum,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out)
- {
--	uint8_t *padded =3D NULL;
- 	ssize_t ret_len;
- =
-
--	/* Other checksum types are not yet supported */
--	if (checksum !=3D L_CHECKSUM_NONE)
--		return -EINVAL;
--
--	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5) {
--		padded =3D pad(in, len_in, len_out, 0x02, true);
--		if (!padded)
--			return -EOVERFLOW;
--
--		cipher =3D L_KEY_RSA_RAW;
--	}
--
--	ret_len =3D eds_common(key, cipher, checksum, padded ?: in, out,
--				padded ? len_out : len_in, len_out,
-+	ret_len =3D eds_common(key, cipher, checksum, in, out,
-+				len_in, len_out,
- 				KEYCTL_PKEY_ENCRYPT);
- =
-
--	l_free(padded);
--
- 	return ret_len;
- }
- =
-
-@@ -566,28 +497,15 @@ LIB_EXPORT ssize_t l_key_decrypt(struct l_key *key,
- 					const void *in, void *out,
- 					size_t len_in, size_t len_out)
- {
--	uint8_t *padded =3D NULL;
- 	ssize_t ret_len;
- =
-
--	/* Other checksum types are not yet supported */
--	if (checksum !=3D L_CHECKSUM_NONE)
--		return -EINVAL;
--
--	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5)
--		padded =3D l_malloc(len_in);
--
--	ret_len =3D eds_common(key, cipher, checksum, in, padded ?: out, len_in,
--				padded ? len_in : len_out, KEYCTL_PKEY_DECRYPT);
-+	ret_len =3D eds_common(key, cipher, checksum, in, out, len_in,
-+				len_out, KEYCTL_PKEY_DECRYPT);
- =
-
- 	if (ret_len < 0)
- 		goto done;
- =
-
--	if (padded)
--		ret_len =3D unpad(padded, out, ret_len, len_out, 0x02, true);
--
- done:
--	l_free(padded);
--
- 	return ret_len;
- }
- =
-
-@@ -596,27 +514,12 @@ LIB_EXPORT ssize_t l_key_sign(struct l_key *key,
- 				enum l_checksum_type checksum, const void *in,
- 				void *out, size_t len_in, size_t len_out)
- {
--	uint8_t *padded =3D NULL;
- 	ssize_t ret_len;
- =
-
--	/* Other checksum types are not yet supported */
--	if (checksum !=3D L_CHECKSUM_NONE)
--		return -EINVAL;
--
--	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5) {
--		padded =3D pad(in, len_in, len_out, 0x01, false);
--		if (!padded)
--			return -EOVERFLOW;
--
--		cipher =3D L_KEY_RSA_RAW;
--	}
--
--	ret_len =3D eds_common(key, cipher, checksum, padded ?: in, out,
--				padded ? len_out : len_in, len_out,
-+	ret_len =3D eds_common(key, cipher, checksum, in, out,
-+				len_in, len_out,
- 				KEYCTL_PKEY_SIGN);
- =
-
--	l_free(padded);
--
- 	return ret_len;
- }
- =
-
-@@ -626,48 +529,17 @@ LIB_EXPORT bool l_key_verify(struct l_key *key,
- 				const void *sig, size_t len_data,
- 				size_t len_sig)
- {
--	enum l_key_cipher_type kernel_cipher;
--	ssize_t hash_len;
--	uint8_t *compare_hash;
--	L_AUTO_FREE_VAR(uint8_t *, sig_hash);
--
--	sig_hash =3D l_malloc(len_sig);
--
--	/* Other checksum types are not yet supported */
--	if (checksum !=3D L_CHECKSUM_NONE)
--		return false;
--
--	/* The keyctl verify implementation compares the verify results
--	 * before we get a chance to unpad it. Instead, use the *encrypt*
--	 * operation (which uses the same math as verify) to get the hash
--	 * returned to us so it can be unpadded before comparing
--	 */
--	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5)
--		kernel_cipher =3D L_KEY_RSA_RAW;
--	else
--		kernel_cipher =3D cipher;
--
--	hash_len =3D eds_common(key, kernel_cipher, checksum, sig, sig_hash,
--				len_sig, len_sig, KEYCTL_PKEY_ENCRYPT);
-+	long result;
- =
-
--	if (hash_len < 0)
-+	if (unlikely(!key))
- 		return false;
- =
-
--	compare_hash =3D sig_hash;
--
--	if (cipher =3D=3D L_KEY_RSA_PKCS1_V1_5) {
--		ssize_t unpad_len;
--
--		unpad_len =3D unpad(sig_hash, NULL, hash_len, 0, 0x01, false);
--		if (unpad_len < 0)
--			return false;
--
--		compare_hash +=3D hash_len - unpad_len;
--		hash_len =3D unpad_len;
--	}
-+	result =3D kernel_key_verify(key->serial, lookup_cipher(cipher),
-+					lookup_checksum(checksum),
-+					data, len_data,
-+					sig, len_sig);
- =
-
--	return (len_data =3D=3D (size_t)hash_len) &&
--		(memcmp(data, compare_hash, hash_len) =3D=3D 0);
-+	return result >=3D 0;
- }
- =
-
- LIB_EXPORT struct l_keyring *l_keyring_new(void)
--- =
-
-2.16.1
+> padding functionality returns?
+> =
 
 
---===============6126530759873003161==--
+Right, I'll mention that.
+
+> =
+
+> You can drop random.h from the includes now.
+> =
+
+
+Done.
+
+>> =C2=A0=C2=A0=C2=A0=C2=A0ret_len =3D eds_common(key, cipher, checksum, pa=
+dded ?: in, out,
+>> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0 padded ? len_out : len_in, len_out,
+>> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0 KEYCTL_PKEY_ENCRYPT);
+> =
+
+> The 'padded' variable needs to be removed from this function too.
+
+Yep, done.
+
+I also took out the L_CHECKSUM_NONE checks.
+
+> =
+
+> Otherwise, looks good. (I haven't run this with a 4.20 rc build though)
+> =
+
+> =
+
+
+I'm running linux-security on my test box and unit tests check out in =
+
+valgrind.
+
+Regards,
+-Denis
+
+--===============7283858505429302801==--
 
