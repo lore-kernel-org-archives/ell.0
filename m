@@ -1,62 +1,57 @@
-Content-Type: multipart/mixed; boundary="===============4809948361257633581=="
+Content-Type: multipart/mixed; boundary="===============3684228295475797758=="
 MIME-Version: 1.0
 From: Peter Seiderer <ps.report@gmx.net>
-Subject: Re: [PATCH v1] ell/ell.sym: add missing
- l_genl_family_set_unicast_handler
-Date: Sat, 10 Nov 2018 18:42:31 +0100
-Message-ID: <20181110184231.4876bb7f@gmx.net>
-In-Reply-To: <AC3C8583-55C0-4652-9E2A-8F2A82838FAF@holtmann.org>
+Subject: [PATCH v2] ell/ell.sym: add missing l_genl_family_set_unicast_handler
+Date: Sat, 10 Nov 2018 18:44:47 +0100
+Message-ID: <20181110174447.4226-1-ps.report@gmx.net>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4809948361257633581==
+--===============3684228295475797758==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hello Marcel,
+Add l_genl_family_set_unicast_handler (and remove legacy
+l_genl_set_unicast_handler).
 
-On Sat, 10 Nov 2018 17:43:16 +0100, Marcel Holtmann <marcel@holtmann.org>=
- wrote:
+Fixes iwd compile failure:
 
-> Hi Peter,
-> =
+  src/netdev.o: In function `netdev_set_nl80211':
+  netdev.c:(.text+0x6f04): undefined reference to `l_genl_family_set_unicas=
+t_handler'
+---
+Changes v1 -> v2:
+  - remove legacy l_genl_set_unicast_handler (suggested by Marcel Holtmann)
+  - remove Signed-off-by line (suggested by Marcel Holtmann )
+---
+ ell/ell.sym | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> > Fixes iwd compile failure:
-> > =
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 614bc93..c21fb21 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -239,7 +239,6 @@ global:
+ 	l_genl_unref;
+ 	l_genl_set_debug;
+ 	l_genl_set_close_on_unref;
+-	l_genl_set_unicast_handler;
+ 	l_genl_msg_new;
+ 	l_genl_msg_new_sized;
+ 	l_genl_msg_ref;
+@@ -257,6 +256,7 @@ global:
+ 	l_genl_family_new;
+ 	l_genl_family_ref;
+ 	l_genl_family_unref;
++	l_genl_family_set_unicast_handler;
+ 	l_genl_family_set_watches;
+ 	l_genl_family_get_version;
+ 	l_genl_family_get_genl;
+-- =
 
-> >  src/netdev.o: In function `netdev_set_nl80211':
-> >  netdev.c:(.text+0x6f04): undefined reference to `l_genl_family_set_uni=
-cast_handler=E2=80=99  =
-
-> =
-
-> we renamed it from l_genl_set_unicast_handler and it would be useful if y=
-ou also remove this name and not just the new one.
-
-O.k. will do...
-> =
-
-> > Signed-off-by: Peter Seiderer <ps.report@gmx.net>  =
-
-> =
-
-> No signed-off-by for patches please.
-> =
-
-
-O.k....updated patch follows...
-
-Regards,
-Peter
-
-> Regards
-> =
-
-> Marcel
-> =
+2.19.1
 
 
-
---===============4809948361257633581==--
+--===============3684228295475797758==--
 
