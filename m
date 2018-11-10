@@ -1,44 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============7637355392034771193=="
+Content-Type: multipart/mixed; boundary="===============1748201371979523289=="
 MIME-Version: 1.0
-From: Peter Seiderer <ps.report@gmx.net>
-Subject: [PATCH v1] ell/ell.sym: add missing l_genl_family_set_unicast_handler
-Date: Sat, 10 Nov 2018 00:02:02 +0100
-Message-ID: <20181109230202.954-1-ps.report@gmx.net>
+From: Marcel Holtmann <marcel@holtmann.org>
+Subject: Re: [PATCH v1] ell/ell.sym: add missing
+ l_genl_family_set_unicast_handler
+Date: Sat, 10 Nov 2018 17:43:16 +0100
+Message-ID: <AC3C8583-55C0-4652-9E2A-8F2A82838FAF@holtmann.org>
+In-Reply-To: <20181109230202.954-1-ps.report@gmx.net>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7637355392034771193==
+--===============1748201371979523289==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Fixes iwd compile failure:
+Hi Peter,
 
-  src/netdev.o: In function `netdev_set_nl80211':
-  netdev.c:(.text+0x6f04): undefined reference to `l_genl_family_set_unicas=
-t_handler'
+> Fixes iwd compile failure:
+> =
 
-Signed-off-by: Peter Seiderer <ps.report@gmx.net>
----
- ell/ell.sym | 1 +
- 1 file changed, 1 insertion(+)
+>  src/netdev.o: In function `netdev_set_nl80211':
+>  netdev.c:(.text+0x6f04): undefined reference to `l_genl_family_set_unica=
+st_handler=E2=80=99
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 614bc93..cdd2c21 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -257,6 +257,7 @@ global:
- 	l_genl_family_new;
- 	l_genl_family_ref;
- 	l_genl_family_unref;
-+	l_genl_family_set_unicast_handler;
- 	l_genl_family_set_watches;
- 	l_genl_family_get_version;
- 	l_genl_family_get_genl;
--- =
+we renamed it from l_genl_set_unicast_handler and it would be useful if you=
+ also remove this name and not just the new one.
 
-2.19.1
+> Signed-off-by: Peter Seiderer <ps.report@gmx.net>
+
+No signed-off-by for patches please.
+
+Regards
+
+Marcel
 
 
---===============7637355392034771193==--
+--===============1748201371979523289==--
 
