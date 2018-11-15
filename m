@@ -1,33 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============8516753942054606054=="
+Content-Type: multipart/mixed; boundary="===============4586581678013279219=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: Marcel Holtmann <marcel@holtmann.org>
 Subject: Re: [PATCH] signal: Restrict signal_mask to file scope
-Date: Wed, 14 Nov 2018 16:44:25 -0600
-Message-ID: <77061a03-2827-7bfd-c556-2e085efd9992@gmail.com>
-In-Reply-To: <20181114215643.21087-1-mathew.j.martineau@linux.intel.com>
+Date: Thu, 15 Nov 2018 10:46:30 +0100
+Message-ID: <849A00FD-00C1-41BA-8B22-CD1E977C92E0@holtmann.org>
+In-Reply-To: <77061a03-2827-7bfd-c556-2e085efd9992@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8516753942054606054==
+--===============4586581678013279219==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Hi Denis,
 
-On 11/14/2018 03:56 PM, Mat Martineau wrote:
-> ---
->   ell/signal.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
+>> ---
+>>  ell/signal.c | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
 > =
 
+> Whoops.  Thanks for cleaning up after me.
+> =
 
-Whoops.  Thanks for cleaning up after me.
+> Applied.
 
-Applied.
+you might have forgotten to push your tree. So I picked up Mat=E2=80=99s pa=
+tch and fixed the signal mask restore in case of signalfd failure.
 
-Regards,
--Denis
+Regards
 
---===============8516753942054606054==--
+Marcel
+
+
+--===============4586581678013279219==--
 
