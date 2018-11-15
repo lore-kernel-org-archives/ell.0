@@ -1,37 +1,52 @@
-Content-Type: multipart/mixed; boundary="===============4586581678013279219=="
+Content-Type: multipart/mixed; boundary="===============8674304445454344013=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel@holtmann.org>
-Subject: Re: [PATCH] signal: Restrict signal_mask to file scope
-Date: Thu, 15 Nov 2018 10:46:30 +0100
-Message-ID: <849A00FD-00C1-41BA-8B22-CD1E977C92E0@holtmann.org>
-In-Reply-To: <77061a03-2827-7bfd-c556-2e085efd9992@gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 01/12] cipher: Only do the RFC3610 IV formatting for CCM
+Date: Thu, 15 Nov 2018 12:46:24 +0100
+Message-ID: <CAOq732+yPtt=_MNyUMiKJ8EQTqz49Lf2YKdO0oivsNnLaOyJDA@mail.gmail.com>
+In-Reply-To: <alpine.OSX.2.21.1811141259360.19580@mjmartin-mac01.local>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4586581678013279219==
+--===============8674304445454344013==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi Mat,
 
->> ---
->>  ell/signal.c | 2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
-> =
+On Wed, 14 Nov 2018 at 22:13, Mat Martineau
+<mathew.j.martineau@linux.intel.com> wrote:
+> On Wed, 14 Nov 2018, Andrew Zaborowski wrote:
+> > +/* RFC3610 Section 2.3 */
+> > +static ssize_t build_ccm_iv(const void *nonce, uint8_t nonce_len, uint=
+8_t *iv)
+> > +{
+> > +     const size_t iv_overhead =3D 2;
+> > +     const size_t iv_len =3D 16;
+>
+> This depends on the length of the iv array being 16, but all we get from
+> the caller is a uint8_t pointer. How about passing in iv_len for a more
+> robust length check?
 
-> Whoops.  Thanks for cleaning up after me.
-> =
+I think we can check that the provided buffer is big enough but does
+it make sense to use it for the calculations?  Since this is now
+called build_ccm_iv it can assume the cipher mode is CCM and the
+buffer needs 16 bytes.
 
-> Applied.
+The RFC doesn't suggest there may be different IV sizes:
 
-you might have forgotten to push your tree. So I picked up Mat=E2=80=99s pa=
-tch and fixed the signal mask restore in case of signalfd failure.
+      Octet Number   Contents
+      ------------   ---------
+      0              Flags
+      1 ... 15-L     Nonce N
+      16-L ... 15    Counter i
 
-Regards
+>
+> Other than that, the cipher patches look good. I also did a quick review
+> of the rest of the series and didn't spot any issues.
 
-Marcel
+Thank you!
 
-
---===============4586581678013279219==--
+--===============8674304445454344013==--
 
