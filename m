@@ -1,119 +1,247 @@
-Content-Type: multipart/mixed; boundary="===============7677172842787860475=="
+Content-Type: multipart/mixed; boundary="===============6884922229409527982=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: Re: [PATCH] tls: fixed intentation in X509 definitions
-Date: Fri, 16 Nov 2018 16:12:21 -0800
-Message-ID: <alpine.OSX.2.21.1811161611380.6479@bnguyen-mobl.amr.corp.intel.com>
-In-Reply-To: <alpine.OSX.2.21.1811161608070.6479@bnguyen-mobl.amr.corp.intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/8] cipher: Only do the RFC3610 IV formatting for CCM
+Date: Sat, 17 Nov 2018 14:38:04 +0100
+Message-ID: <20181117133811.5470-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7677172842787860475==
+--===============6884922229409527982==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+In preparation to add the AES GCM mode, move the CCM-specific IV
+formatting code from operate_cipher to the callers (only aead encrypt
+and decrypt), make operate_cipher accept the IV buffer directly.  Check
+that the nonce is >=3D 7 bytes.
 
-On Fri, 16 Nov 2018, Mat Martineau wrote:
+Zero the "counter" part of the IV to avoid sending uninitialized bytes
+to the kernel (the kernel will zero them again though)
+---
+ ell/cipher.c | 96 +++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 65 insertions(+), 31 deletions(-)
 
->
-> Hi James -
->
-> On Fri, 16 Nov 2018, James Prestwood wrote:
->
->> Someones editor must have been misbehaving
->
-> Looks like the existing indentation is intended to reflect the nested
+diff --git a/ell/cipher.c b/ell/cipher.c
+index 0128e2e..977ebc8 100644
+--- a/ell/cipher.c
++++ b/ell/cipher.c
+@@ -268,28 +268,11 @@ LIB_EXPORT void l_aead_cipher_free(struct l_aead_ciph=
+er *cipher)
+ 	l_free(cipher);
+ }
+ =
 
-(fixed typo)                                                       ^
+-static ssize_t build_iv(const void *nonce, uint8_t nonce_len, uint8_t *iv,
+-			uint8_t iv_len)
+-{
+-	const size_t iv_overhead =3D 2;
+-
+-	if (nonce_len + iv_overhead > iv_len)
+-		return -EINVAL;
+-
+-	iv[0] =3D iv_len - iv_overhead - nonce_len;
+-	memcpy(iv + 1, nonce, nonce_len);
+-
+-	/* Assumes that remaining bytes in iv were already zeroed out */
+-
+-	return iv_len;
+-}
+-
+ static ssize_t operate_cipher(int sk, __u32 operation,
+ 				const void *in, size_t in_len,
+ 				const void *ad, size_t ad_len,
+-				const void *nonce, size_t nonce_len,
+-				void *out, size_t out_len,
+-				size_t iv_len)
++				const void *iv, size_t iv_len,
++				void *out, size_t out_len)
+ {
+ 	char *c_msg_buf;
+ 	size_t c_msg_size;
+@@ -300,7 +283,7 @@ static ssize_t operate_cipher(int sk, __u32 operation,
+ =
 
-> structure of the certificates. For example, look at the sequence of numbe=
-rs =
+ 	c_msg_size =3D CMSG_SPACE(sizeof(operation));
+ 	c_msg_size +=3D ad_len ? CMSG_SPACE(sizeof(uint32_t)) : 0;
+-	c_msg_size +=3D (nonce && iv_len) ?
++	c_msg_size +=3D iv_len ?
+ 		CMSG_SPACE(sizeof(struct af_alg_iv) + iv_len) : 0;
+ =
 
-> in each column.
->
+ 	c_msg_buf =3D alloca(c_msg_size);
+@@ -340,7 +323,7 @@ static ssize_t operate_cipher(int sk, __u32 operation,
+ 		msg.msg_iovlen =3D 1;
+ 	}
+ =
 
-Mat
+-	if (nonce && iv_len) {
++	if (iv_len) {
+ 		struct af_alg_iv *algiv;
+ =
 
->
->> ---
->> ell/tls.c | 34 +++++++++++++++++-----------------
->> 1 file changed, 17 insertions(+), 17 deletions(-)
->> =
+ 		c_msg =3D CMSG_NXTHDR(&msg, c_msg);
+@@ -350,9 +333,7 @@ static ssize_t operate_cipher(int sk, __u32 operation,
+ =
 
->> diff --git a/ell/tls.c b/ell/tls.c
->> index 9dc97ff..2d2dd4b 100644
->> --- a/ell/tls.c
->> +++ b/ell/tls.c
->> @@ -2549,23 +2549,23 @@ const char *tls_handshake_state_to_str(enum =
+ 		algiv =3D (void *)CMSG_DATA(c_msg);
+ 		algiv->ivlen =3D iv_len;
+-		result =3D build_iv(nonce, nonce_len, &algiv->iv[0], iv_len);
+-		if (result < 0)
+-			return result;
++		memcpy(algiv->iv, iv, iv_len);
+ 	}
+ =
 
->> tls_handshake_state state)
->> /* X509 Certificates and Certificate Chains */
->> =
+ 	result =3D sendmsg(sk, &msg, 0);
+@@ -446,7 +427,7 @@ LIB_EXPORT bool l_cipher_encrypt(struct l_cipher *ciphe=
+r,
+ 		return false;
+ =
 
->> #define X509_CERTIFICATE_POS			0
->> -#define   X509_TBSCERTIFICATE_POS		  0
->> -#define     X509_TBSCERT_VERSION_POS		    0
->> -#define     X509_TBSCERT_SERIAL_POS		    1
->> -#define     X509_TBSCERT_SIGNATURE_POS		    2
->> -#define       X509_ALGORITHM_ID_ALGORITHM_POS	      0
->> -#define       X509_ALGORITHM_ID_PARAMS_POS	      1
->> -#define     X509_TBSCERT_ISSUER_DN_POS		    3
->> -#define     X509_TBSCERT_VALIDITY_POS		    4
->> -#define     X509_TBSCERT_SUBJECT_DN_POS		    5
->> -#define     X509_TBSCERT_SUBJECT_KEY_POS	    6
->> -#define       X509_SUBJECT_KEY_ALGORITHM_POS	      0
->> -#define       X509_SUBJECT_KEY_VALUE_POS	      1
->> -#define     X509_TBSCERT_ISSUER_UID_POS		    7
->> -#define     X509_TBSCERT_SUBJECT_UID_POS	    8
->> -#define     X509_TBSCERT_EXTENSIONS_POS		    9
->> -#define   X509_SIGNATURE_ALGORITHM_POS		  1
->> -#define   X509_SIGNATURE_VALUE_POS		  2
->> +#define X509_TBSCERTIFICATE_POS			0
->> +#define X509_TBSCERT_VERSION_POS		0
->> +#define X509_TBSCERT_SERIAL_POS			1
->> +#define X509_TBSCERT_SIGNATURE_POS		2
->> +#define X509_ALGORITHM_ID_ALGORITHM_POS		0
->> +#define X509_ALGORITHM_ID_PARAMS_POS		1
->> +#define X509_TBSCERT_ISSUER_DN_POS		3
->> +#define X509_TBSCERT_VALIDITY_POS		4
->> +#define X509_TBSCERT_SUBJECT_DN_POS		5
->> +#define X509_TBSCERT_SUBJECT_KEY_POS		6
->> +#define X509_SUBJECT_KEY_ALGORITHM_POS		0
->> +#define X509_SUBJECT_KEY_VALUE_POS		1
->> +#define X509_TBSCERT_ISSUER_UID_POS		7
->> +#define X509_TBSCERT_SUBJECT_UID_POS		8
->> +#define X509_TBSCERT_EXTENSIONS_POS		9
->> +#define X509_SIGNATURE_ALGORITHM_POS		1
->> +#define X509_SIGNATURE_VALUE_POS		2
->> =
+ 	return operate_cipher(cipher->encrypt_sk, ALG_OP_ENCRYPT, in, len,
+-				NULL, 0, NULL, 0, out, len, 0) >=3D 0;
++				NULL, 0, NULL, 0, out, len) >=3D 0;
+ }
+ =
 
->> struct tls_cert *tls_cert_load_file(const char *filename)
->> {
->> -- =
+ LIB_EXPORT bool l_cipher_encryptv(struct l_cipher *cipher,
+@@ -473,7 +454,7 @@ LIB_EXPORT bool l_cipher_decrypt(struct l_cipher *ciphe=
+r,
+ 		return false;
+ =
 
->> 2.17.1
->> =
+ 	return operate_cipher(cipher->decrypt_sk, ALG_OP_DECRYPT, in, len,
+-				NULL, 0, NULL, 0, out, len, 0) >=3D 0;
++				NULL, 0, NULL, 0, out, len) >=3D 0;
+ }
+ =
 
->> _______________________________________________
->> ell mailing list
->> ell(a)lists.01.org
->> https://lists.01.org/mailman/listinfo/ell
->> =
+ LIB_EXPORT bool l_cipher_decryptv(struct l_cipher *cipher,
+@@ -526,11 +507,13 @@ LIB_EXPORT bool l_cipher_set_iv(struct l_cipher *ciph=
+er, const uint8_t *iv,
+ 	return true;
+ }
+ =
 
->
-> --
-> Mat Martineau
-> Intel OTC
-> _______________________________________________
-> ell mailing list
-> ell(a)lists.01.org
-> https://lists.01.org/mailman/listinfo/ell
->
++#define CCM_IV_SIZE 16
++
+ static size_t l_aead_cipher_get_ivlen(struct l_aead_cipher *cipher)
+ {
+ 	switch (cipher->type) {
+ 	case L_AEAD_CIPHER_AES_CCM:
+-		return 16;
++		return CCM_IV_SIZE;
+ 	case L_AEAD_CIPHER_AES_GCM:
+ 		return 12;
+ 	}
+@@ -538,21 +521,55 @@ static size_t l_aead_cipher_get_ivlen(struct l_aead_c=
+ipher *cipher)
+ 	return 0;
+ }
+ =
 
---
-Mat Martineau
-Intel OTC
++/* RFC3610 Section 2.3 */
++static ssize_t build_ccm_iv(const void *nonce, uint8_t nonce_len,
++				uint8_t (*iv)[CCM_IV_SIZE])
++{
++	const size_t iv_overhead =3D 2;
++	int lprime =3D 15 - nonce_len - 1;
++
++	if (unlikely(nonce_len + iv_overhead > CCM_IV_SIZE || lprime > 7))
++		return -EINVAL;
++
++	(*iv)[0] =3D lprime;
++	memcpy(*iv + 1, nonce, nonce_len);
++	memset(*iv + 1 + nonce_len, 0, lprime + 1);
++
++	return CCM_IV_SIZE;
++}
++
+ LIB_EXPORT bool l_aead_cipher_encrypt(struct l_aead_cipher *cipher,
+ 					const void *in, size_t in_len,
+ 					const void *ad, size_t ad_len,
+ 					const void *nonce, size_t nonce_len,
+ 					void *out, size_t out_len)
+ {
++	uint8_t ccm_iv[CCM_IV_SIZE];
++	const uint8_t *iv;
++	ssize_t iv_len;
++
+ 	if (unlikely(!cipher))
+ 		return false;
+ =
 
---===============7677172842787860475==--
+ 	if (unlikely(!in) || unlikely(!out))
+ 		return false;
+ =
+
++	if (cipher->type =3D=3D L_AEAD_CIPHER_AES_CCM) {
++		iv_len =3D build_ccm_iv(nonce, nonce_len, &ccm_iv);
++		if (unlikely(iv_len < 0))
++			return false;
++
++		iv =3D ccm_iv;
++	} else {
++		if (unlikely(nonce_len !=3D l_aead_cipher_get_ivlen(cipher)))
++			return false;
++
++		iv =3D nonce;
++		iv_len =3D nonce_len;
++	}
++
+ 	return operate_cipher(cipher->encrypt_sk, ALG_OP_ENCRYPT, in, in_len,
+-				ad, ad_len, nonce, nonce_len, out, out_len,
+-				l_aead_cipher_get_ivlen(cipher)) =3D=3D
++				ad, ad_len, iv, iv_len, out, out_len) =3D=3D
+ 			(ssize_t)out_len;
+ }
+ =
+
+@@ -562,15 +579,32 @@ LIB_EXPORT bool l_aead_cipher_decrypt(struct l_aead_c=
+ipher *cipher,
+ 					const void *nonce, size_t nonce_len,
+ 					void *out, size_t out_len)
+ {
++	uint8_t ccm_iv[CCM_IV_SIZE];
++	const uint8_t *iv;
++	ssize_t iv_len;
++
+ 	if (unlikely(!cipher))
+ 		return false;
+ =
+
+ 	if (unlikely(!in) || unlikely(!out))
+ 		return false;
+ =
+
++	if (cipher->type =3D=3D L_AEAD_CIPHER_AES_CCM) {
++		iv_len =3D build_ccm_iv(nonce, nonce_len, &ccm_iv);
++		if (unlikely(iv_len < 0))
++			return false;
++
++		iv =3D ccm_iv;
++	} else {
++		if (unlikely(nonce_len !=3D l_aead_cipher_get_ivlen(cipher)))
++			return false;
++
++		iv =3D nonce;
++		iv_len =3D nonce_len;
++	}
++
+ 	return operate_cipher(cipher->decrypt_sk, ALG_OP_DECRYPT, in, in_len,
+-				ad, ad_len, nonce, nonce_len, out, out_len,
+-				l_aead_cipher_get_ivlen(cipher)) =3D=3D
++				ad, ad_len, iv, iv_len, out, out_len) =3D=3D
+ 			(ssize_t)out_len;
+ }
+ =
+
+-- =
+
+2.19.1
+
+
+--===============6884922229409527982==--
 
