@@ -1,52 +1,74 @@
-Content-Type: multipart/mixed; boundary="===============8674304445454344013=="
+Content-Type: multipart/mixed; boundary="===============0710472968332442968=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 01/12] cipher: Only do the RFC3610 IV formatting for CCM
-Date: Thu, 15 Nov 2018 12:46:24 +0100
-Message-ID: <CAOq732+yPtt=_MNyUMiKJ8EQTqz49Lf2YKdO0oivsNnLaOyJDA@mail.gmail.com>
-In-Reply-To: <alpine.OSX.2.21.1811141259360.19580@mjmartin-mac01.local>
+From: James Prestwood <james.prestwood@linux.intel.com>
+Subject: [PATCH] tls: fixed intentation in X509 definitions
+Date: Fri, 16 Nov 2018 16:04:51 -0800
+Message-ID: <20181117000451.30494-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8674304445454344013==
+--===============0710472968332442968==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Someones editor must have been misbehaving
+---
+ ell/tls.c | 34 +++++++++++++++++-----------------
+ 1 file changed, 17 insertions(+), 17 deletions(-)
 
-On Wed, 14 Nov 2018 at 22:13, Mat Martineau
-<mathew.j.martineau@linux.intel.com> wrote:
-> On Wed, 14 Nov 2018, Andrew Zaborowski wrote:
-> > +/* RFC3610 Section 2.3 */
-> > +static ssize_t build_ccm_iv(const void *nonce, uint8_t nonce_len, uint=
-8_t *iv)
-> > +{
-> > +     const size_t iv_overhead =3D 2;
-> > +     const size_t iv_len =3D 16;
->
-> This depends on the length of the iv array being 16, but all we get from
-> the caller is a uint8_t pointer. How about passing in iv_len for a more
-> robust length check?
+diff --git a/ell/tls.c b/ell/tls.c
+index 9dc97ff..2d2dd4b 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -2549,23 +2549,23 @@ const char *tls_handshake_state_to_str(enum tls_han=
+dshake_state state)
+ /* X509 Certificates and Certificate Chains */
+ =
 
-I think we can check that the provided buffer is big enough but does
-it make sense to use it for the calculations?  Since this is now
-called build_ccm_iv it can assume the cipher mode is CCM and the
-buffer needs 16 bytes.
+ #define X509_CERTIFICATE_POS			0
+-#define   X509_TBSCERTIFICATE_POS		  0
+-#define     X509_TBSCERT_VERSION_POS		    0
+-#define     X509_TBSCERT_SERIAL_POS		    1
+-#define     X509_TBSCERT_SIGNATURE_POS		    2
+-#define       X509_ALGORITHM_ID_ALGORITHM_POS	      0
+-#define       X509_ALGORITHM_ID_PARAMS_POS	      1
+-#define     X509_TBSCERT_ISSUER_DN_POS		    3
+-#define     X509_TBSCERT_VALIDITY_POS		    4
+-#define     X509_TBSCERT_SUBJECT_DN_POS		    5
+-#define     X509_TBSCERT_SUBJECT_KEY_POS	    6
+-#define       X509_SUBJECT_KEY_ALGORITHM_POS	      0
+-#define       X509_SUBJECT_KEY_VALUE_POS	      1
+-#define     X509_TBSCERT_ISSUER_UID_POS		    7
+-#define     X509_TBSCERT_SUBJECT_UID_POS	    8
+-#define     X509_TBSCERT_EXTENSIONS_POS		    9
+-#define   X509_SIGNATURE_ALGORITHM_POS		  1
+-#define   X509_SIGNATURE_VALUE_POS		  2
++#define X509_TBSCERTIFICATE_POS			0
++#define X509_TBSCERT_VERSION_POS		0
++#define X509_TBSCERT_SERIAL_POS			1
++#define X509_TBSCERT_SIGNATURE_POS		2
++#define X509_ALGORITHM_ID_ALGORITHM_POS		0
++#define X509_ALGORITHM_ID_PARAMS_POS		1
++#define X509_TBSCERT_ISSUER_DN_POS		3
++#define X509_TBSCERT_VALIDITY_POS		4
++#define X509_TBSCERT_SUBJECT_DN_POS		5
++#define X509_TBSCERT_SUBJECT_KEY_POS		6
++#define X509_SUBJECT_KEY_ALGORITHM_POS		0
++#define X509_SUBJECT_KEY_VALUE_POS		1
++#define X509_TBSCERT_ISSUER_UID_POS		7
++#define X509_TBSCERT_SUBJECT_UID_POS		8
++#define X509_TBSCERT_EXTENSIONS_POS		9
++#define X509_SIGNATURE_ALGORITHM_POS		1
++#define X509_SIGNATURE_VALUE_POS		2
+ =
 
-The RFC doesn't suggest there may be different IV sizes:
+ struct tls_cert *tls_cert_load_file(const char *filename)
+ {
+-- =
 
-      Octet Number   Contents
-      ------------   ---------
-      0              Flags
-      1 ... 15-L     Nonce N
-      16-L ... 15    Counter i
+2.17.1
 
->
-> Other than that, the cipher patches look good. I also did a quick review
-> of the rest of the series and didn't spot any issues.
 
-Thank you!
-
---===============8674304445454344013==--
+--===============0710472968332442968==--
 
