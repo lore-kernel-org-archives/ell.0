@@ -1,234 +1,334 @@
-Content-Type: multipart/mixed; boundary="===============5336619309086865595=="
+Content-Type: multipart/mixed; boundary="===============8337320453930335306=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/8] unit: Add gcm(aes) test vectors
-Date: Sat, 17 Nov 2018 14:38:05 +0100
-Message-ID: <20181117133811.5470-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/8] tls: Add AEAD cipher support
+Date: Sat, 17 Nov 2018 14:38:06 +0100
+Message-ID: <20181117133811.5470-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20181117133811.5470-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5336619309086865595==
+--===============8337320453930335306==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-cipher.c | 127 ++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 114 insertions(+), 13 deletions(-)
+ ell/tls-private.h | 15 +++++++--
+ ell/tls-record.c  | 82 +++++++++++++++++++++++++++++++++++++++++++++--
+ ell/tls.c         | 65 ++++++++++++++++++++++++++++++-------
+ 3 files changed, 147 insertions(+), 15 deletions(-)
 
-diff --git a/unit/test-cipher.c b/unit/test-cipher.c
-index 4765c3e..fe9ae72 100644
---- a/unit/test-cipher.c
-+++ b/unit/test-cipher.c
-@@ -124,7 +124,8 @@ static void test_arc4(const void *data)
- 	l_cipher_free(cipher);
- }
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index 4f680a0..a562846 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -38,10 +38,15 @@ enum tls_cipher_type {
  =
 
--struct ccm_test_vector {
-+struct aead_test_vector {
-+	enum l_aead_cipher_type type;
- 	char *aad;
- 	char *plaintext;
- 	char *key;
-@@ -133,7 +134,8 @@ struct ccm_test_vector {
- 	char *tag;
+ struct tls_bulk_encryption_algorithm {
+ 	enum tls_cipher_type cipher_type;
+-	enum l_cipher_type l_id;
++	union {
++		enum l_cipher_type l_id;
++		enum l_aead_cipher_type l_aead_id;
++	};
+ 	size_t key_length;
+ 	size_t iv_length;
++	size_t fixed_iv_length;
+ 	size_t block_length;
++	size_t auth_tag_length;
  };
  =
 
--static const struct ccm_test_vector ccm_long_nonce =3D {
-+static const struct aead_test_vector ccm_long_nonce =3D {
-+	.type =3D L_AEAD_CIPHER_AES_CCM,
- 	.aad =3D
- 	"333b6b8fda49c6e671bad05c7e2cafa88bd47f9b0aef1a358bc87d04f26f6c82",
- 	.plaintext =3D
-@@ -145,7 +147,8 @@ static const struct ccm_test_vector ccm_long_nonce =3D {
- 	.tag =3D "e0a03b982c5afc8a937373d7d2b0e7a3"
- };
+ struct tls_hash_algorithm {
+@@ -192,11 +197,17 @@ struct l_tls {
  =
 
--static const struct ccm_test_vector ccm_short_nonce =3D {
-+static const struct aead_test_vector ccm_short_nonce =3D {
-+	.type =3D L_AEAD_CIPHER_AES_CCM,
- 	.plaintext =3D
- 	"a3b3fdf26d213f83c5f656b00f77253b68959c188767d584914887602c787595",
- 	.aad =3D
-@@ -157,7 +160,8 @@ static const struct ccm_test_vector ccm_short_nonce =3D=
- {
- 	.tag =3D "ee007aafe91135c39855ebf3db96d7ff"
- };
+ 	enum tls_cipher_type cipher_type[2];
+ 	struct tls_cipher_suite *cipher_suite[2];
+-	struct l_cipher *cipher[2];
++	union {
++		struct l_cipher *cipher[2];
++		struct l_aead_cipher *aead_cipher[2];
++	};
+ 	struct l_checksum *mac[2];
+ 	size_t mac_length[2];
+ 	size_t block_length[2];
+ 	size_t record_iv_length[2];
++	size_t fixed_iv_length[2];
++	uint8_t fixed_iv[2][32];
++	size_t auth_tag_length[2];
+ 	uint64_t seq_num[2];
+ 	/*
+ 	 * Some of the key and IV parts of the "current" state are kept
+diff --git a/ell/tls-record.c b/ell/tls-record.c
+index 8038049..a8ff696 100644
+--- a/ell/tls-record.c
++++ b/ell/tls-record.c
+@@ -75,6 +75,7 @@ static void tls_tx_record_plaintext(struct l_tls *tls,
+ 	uint8_t buf[TX_RECORD_HEADROOM + TX_RECORD_MAX_LEN +
+ 				TX_RECORD_TAILROOM];
+ 	uint8_t iv[32];
++	uint8_t *assocdata;
+ 	int offset;
  =
 
--static const struct ccm_test_vector ccm_no_aad =3D {
-+static const struct aead_test_vector ccm_no_aad =3D {
-+	.type =3D L_AEAD_CIPHER_AES_CCM,
- 	.plaintext =3D
- 	"90795fffab99cffdeee5cadafe448ea4df74c480f9d7e1e481ee49adeee2732a",
- 	.aad =3D "",
-@@ -168,7 +172,94 @@ static const struct ccm_test_vector ccm_no_aad =3D {
- 	.tag =3D "efd1dc938802cd845a16f32a60eabd0f"
- };
+ 	/*
+@@ -156,7 +157,49 @@ static void tls_tx_record_plaintext(struct l_tls *tls,
+ 		break;
  =
 
--static void test_aes_ccm(const void *data)
-+/* https://tools.ietf.org/html/draft-mcgrew-gcm-test-01 */
+ 	case TLS_CIPHER_AEAD:
+-		/* No AEAD ciphers supported today */
++		/* Prepend seq_num to TLSCompressed.type + .version + .length */
++		assocdata =3D compressed - 8;
++		l_put_be64(tls->seq_num[1]++, assocdata);
 +
-+static const struct aead_test_vector gcm_test1 =3D {
-+	.type =3D L_AEAD_CIPHER_AES_GCM,
-+	.aad =3D "000043218765432100000000",
-+	.plaintext =3D
-+	"45000048699a000080114db7c0a80102c0a801010a9bf15638d3010000010000"
-+	"00000000045f736970045f756470037369700963796265726369747902646b00"
-+	"0021000101020201",
-+	/* 128-bit key */
-+	.key =3D "4c80cdefbb5d10da906ac73c3613a634",
-+	.nonce =3D "2e443b684956ed7e3b244cfe",
-+	.ciphertext =3D
-+	"fecf537e729d5b07dc30df528dd22b768d1b98736696a6fd348509fa13ceac34"
-+	"cfa2436f14a3f3cf65925bf1f4a13c5d15b21e1884f5ff6247aeabb786b93bce"
-+	"61bc17d768fd9732",
-+	.tag =3D "459018148f6cbe722fd04796562dfdb4",
-+};
++		cipher_input =3D compressed + 5;
++		cipher_input_len =3D compressed_len;
 +
-+static const struct aead_test_vector gcm_test2 =3D {
-+	.type =3D L_AEAD_CIPHER_AES_GCM,
-+	.aad =3D "0000a5f80000000a",
-+	.plaintext =3D
-+	"45000028a4ad4000400678800a01038f0a010612802306b8cb712602dd6bb03e"
-+	"501016d075680001",
-+	/* 192-bit key */
-+	.key =3D "feffe9928665731c6d6a8f9467308308feffe9928665731c",
-+	.nonce =3D "cafebabefacedbaddecaf888",
-+	.ciphertext =3D
-+	"a5b1f8066029aea40e598b8122de02420938b3ab33f828e687b8858b5bfbdbd0"
-+	"315b27452144cc77",
-+	.tag =3D "95457b9652037f5318027b5b4cd7a636",
-+};
++		/*
++		 * Build the IV.  The explicit part generation method is
++		 * actually cipher suite-specific but our only AEAD cipher
++		 * suites only require this part to be unique for each
++		 * record.  For future suites there may need to be a callback
++		 * that generates the per-record IV or an enum for the suite
++		 * to select one of a few IV types.
++		 *
++		 * Note kernel's rfc4106(gcm(...)) algorithm could potentially
++		 * be used to build the IV.
++		 */
++		memcpy(iv, tls->fixed_iv[1], tls->fixed_iv_length[1]);
++		l_put_le64(tls->seq_num[1], iv + tls->fixed_iv_length[1]);
 +
-+static const struct aead_test_vector gcm_test3 =3D {
-+	.type =3D L_AEAD_CIPHER_AES_GCM,
-+	.aad =3D "4a2cbfe300000002",
-+	.plaintext =3D
-+	"4500003069a6400080062690c0a801029389155e0a9e008b2dc57ee000000000"
-+	"7002400020bf0000020405b40101040201020201",
-+	/* 256-bit key */
-+	.key =3D
-+	"abbccddef00112233445566778899aababbccddef00112233445566778899aab",
-+	.nonce =3D "112233440102030405060708",
-+	.ciphertext =3D
-+	"ff425c9b724599df7a3bcd510194e00d6a78107f1b0b1cbf06efae9d65a5d763"
-+	"748a637985771d347f0545659f14e99def842d8e",
-+	.tag =3D "b335f4eecfdbf831824b4c4915956c96",
-+};
++		if (tls->record_iv_length[1] > 8)
++			memset(iv + tls->fixed_iv_length[1] + 8, 42,
++				tls->record_iv_length[1] - 8);
 +
-+static const struct aead_test_vector gcm_test4 =3D {
-+	.type =3D L_AEAD_CIPHER_AES_GCM,
-+	.aad =3D "0000000000000001",
-+	.plaintext =3D
-+	"4500003c99c500008001cb7a40679318010101010800075c0200440061626364"
-+	"65666768696a6b6c6d6e6f707172737475767761626364656667686901020201",
-+	.key =3D "00000000000000000000000000000000",
-+	.nonce =3D "000000000000000000000000",
-+	.ciphertext =3D
-+	"4688daf2f973a392732909c331d56d60f694abaa414b5e7ff5fdcdfff5e9a284"
-+	"456476492719ffb64de7d9dca1e1d894bc3bd57873ed4d181d19d4d5c8c18af3",
-+	.tag =3D "f821d496eeb096e98ad2b69e4799c71d",
-+};
++		/* Build the GenericAEADCipher struct */
++		ciphertext =3D buf + TX_RECORD_HEADROOM;
++		memcpy(ciphertext, iv + tls->fixed_iv_length[1],
++			tls->record_iv_length[1]);
++		l_aead_cipher_encrypt(tls->aead_cipher[1],
++					cipher_input, cipher_input_len,
++					assocdata, 13,
++					iv, tls->fixed_iv_length[1] +
++					tls->record_iv_length[1],
++					ciphertext + tls->record_iv_length[1],
++					cipher_input_len +
++					tls->auth_tag_length[1]);
 +
-+static const struct aead_test_vector gcm_test5 =3D {
-+	.type =3D L_AEAD_CIPHER_AES_GCM,
-+	.aad =3D "335467aeffffffff",
-+	.plaintext =3D "01020201",
-+	.key =3D "7d773d00c144c525ac619d18c84a3f47",
-+	.nonce =3D "d966426743457e9182443bc6",
-+	.ciphertext =3D "437f866b",
-+	.tag =3D "cb3f699fe9b0822bac961c4504bef270",
-+};
++		ciphertext_len =3D tls->record_iv_length[1] +
++			cipher_input_len + tls->auth_tag_length[1];
 +
-+static const struct aead_test_vector gcm_test6 =3D {
-+	.type =3D L_AEAD_CIPHER_AES_GCM,
-+	.aad =3D
-+	"0000432100000007000000000000000045000030da3a00008001df3bc0a80005"
-+	"c0a800010800c6cd020007006162636465666768696a6b6c6d6e6f7071727374"
-+	"01020201",
-+	.plaintext =3D "",
-+	.key =3D "4c80cdefbb5d10da906ac73c3613a634",
-+	.nonce =3D "22433c640000000000000000",
-+	.ciphertext =3D "",
-+	.tag =3D "f2a9a836e155106aa8dcd618e4099aaa",
-+};
++		break;
 +
-+static void test_aead(const void *data)
- {
- 	struct l_aead_cipher *cipher;
- 	char *encbuf;
-@@ -177,10 +268,11 @@ static void test_aes_ccm(const void *data)
- 	size_t decbuflen;
- 	int r;
- 	bool success;
--	const struct ccm_test_vector *tv =3D data;
-+	const struct aead_test_vector *tv =3D data;
+ 	default:
+ 		return;
+ 	}
+@@ -332,6 +375,7 @@ static bool tls_handle_ciphertext(struct l_tls *tls)
+ 	uint8_t *compressed;
+ 	int compressed_len;
+ 	uint8_t iv[32];
++	uint8_t *assocdata;
  =
 
- 	size_t ptlen;
--	uint8_t *pt =3D l_util_from_hexstring(tv->plaintext, &ptlen);
-+	uint8_t *pt =3D l_util_from_hexstring(tv->plaintext, &ptlen) ?:
-+		(uint8_t[]) {};
- 	size_t aadlen;
- 	uint8_t *aad =3D l_util_from_hexstring(tv->aad, &aadlen);
- 	size_t keylen;
-@@ -199,7 +291,7 @@ static void test_aes_ccm(const void *data)
- 	decbuf =3D alloca(decbuflen);
- 	memset(decbuf, 0, decbuflen);
+ 	type =3D tls->record_buf[0];
+ 	version =3D l_get_be16(tls->record_buf + 1);
+@@ -496,7 +540,41 @@ static bool tls_handle_ciphertext(struct l_tls *tls)
+ 		break;
  =
 
--	cipher =3D l_aead_cipher_new(L_AEAD_CIPHER_AES_CCM, key, keylen, taglen);
-+	cipher =3D l_aead_cipher_new(tv->type, key, keylen, taglen);
- 	assert(cipher);
- =
-
- 	success =3D l_aead_cipher_encrypt(cipher, pt, ptlen, aad, aadlen,
-@@ -225,7 +317,8 @@ static void test_aes_ccm(const void *data)
- 	assert(!r);
- =
-
- 	l_aead_cipher_free(cipher);
--	l_free(pt);
-+	if (ptlen)
-+		l_free(pt);
- 	l_free(key);
- 	l_free(aad);
- 	l_free(nonce);
-@@ -246,10 +339,18 @@ int main(int argc, char *argv[])
- 		l_test_add("arc4", test_arc4, NULL);
- =
-
- 	if (l_aead_cipher_is_supported(L_AEAD_CIPHER_AES_CCM)) {
--		l_test_add("aes_ccm long nonce", test_aes_ccm, &ccm_long_nonce);
--		l_test_add("aes_ccm short nonce", test_aes_ccm,
--							&ccm_short_nonce);
--		l_test_add("aes_ccm no AAD", test_aes_ccm, &ccm_no_aad);
-+		l_test_add("aes_ccm long nonce", test_aead, &ccm_long_nonce);
-+		l_test_add("aes_ccm short nonce", test_aead, &ccm_short_nonce);
-+		l_test_add("aes_ccm no AAD", test_aead, &ccm_no_aad);
-+	}
+ 	case TLS_CIPHER_AEAD:
+-		/* No AEAD ciphers supported today */
++		if (fragment_len <=3D tls->record_iv_length[0] +
++				tls->auth_tag_length[0]) {
++			TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
++					"Record fragment too short: %u",
++					fragment_len);
++			return false;
++		}
 +
-+	if (l_aead_cipher_is_supported(L_AEAD_CIPHER_AES_GCM)) {
-+		l_test_add("aes_gcm test 1", test_aead, &gcm_test1);
-+		l_test_add("aes_gcm test 2", test_aead, &gcm_test2);
-+		l_test_add("aes_gcm test 3", test_aead, &gcm_test3);
-+		l_test_add("aes_gcm test 4", test_aead, &gcm_test4);
-+		l_test_add("aes_gcm test 5", test_aead, &gcm_test5);
-+		l_test_add("aes_gcm test 6", test_aead, &gcm_test6);
++		compressed_len =3D fragment_len - tls->record_iv_length[0] -
++			tls->auth_tag_length[0];
++		l_put_be16(compressed_len, compressed + 11);
++
++		/* Prepend seq_num to TLSCompressed.type + .version + .length */
++		assocdata =3D compressed;
++		l_put_be64(tls->seq_num[0]++, assocdata);
++		compressed +=3D 13;
++
++		/* Build the IV */
++		memcpy(iv, tls->fixed_iv[0], tls->fixed_iv_length[0]);
++		memcpy(iv + tls->fixed_iv_length[0], tls->record_buf + 5,
++			tls->record_iv_length[0]);
++
++		if (!l_aead_cipher_decrypt(tls->aead_cipher[0],
++				tls->record_buf + 5 + tls->record_iv_length[0],
++				fragment_len - tls->record_iv_length[0],
++				assocdata, 13, iv, tls->fixed_iv_length[0] +
++				tls->record_iv_length[0],
++				compressed, compressed_len)) {
++			TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
++					"Decrypting record fragment failed");
++			return false;
++		}
++
++		break;
++
+ 	default:
+ 		return false;
+ 	}
+diff --git a/ell/tls.c b/ell/tls.c
+index 9dc97ff..fd26306 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -206,12 +206,20 @@ static bool tls_change_cipher_spec(struct l_tls *tls,=
+ bool txrx,
+ 	int key_offset;
+ 	static char error_buf[200];
+ =
+
+-	if (tls->cipher[txrx]) {
+-		l_cipher_free(tls->cipher[txrx]);
+-		tls->cipher[txrx] =3D NULL;
+-		tls->cipher_type[txrx] =3D TLS_CIPHER_STREAM;
++	if (tls->cipher_type[txrx] =3D=3D TLS_CIPHER_AEAD) {
++		if (tls->aead_cipher[txrx]) {
++			l_aead_cipher_free(tls->aead_cipher[txrx]);
++			tls->aead_cipher[txrx] =3D NULL;
++		}
++	} else {
++		if (tls->cipher[txrx]) {
++			l_cipher_free(tls->cipher[txrx]);
++			tls->cipher[txrx] =3D NULL;
++		}
  	}
  =
 
- 	return l_test_run();
++	tls->cipher_type[txrx] =3D TLS_CIPHER_STREAM;
++
+ 	if (tls->mac[txrx]) {
+ 		l_checksum_free(tls->mac[txrx]);
+ 		tls->mac[txrx] =3D NULL;
+@@ -221,6 +229,12 @@ static bool tls_change_cipher_spec(struct l_tls *tls, =
+bool txrx,
+ 	tls->block_length[txrx] =3D 0;
+ 	tls->record_iv_length[txrx] =3D 0;
+ =
+
++	if (tls->fixed_iv_length[txrx]) {
++		memset(tls->fixed_iv[txrx], 0, tls->fixed_iv_length[txrx]);
++		tls->fixed_iv_length[txrx] =3D 0;
++	}
++
++	tls->auth_tag_length[txrx] =3D 0;
+ 	tls->seq_num[txrx] =3D 0;
+ =
+
+ 	tls->cipher_suite[txrx] =3D tls->pending.cipher_suite;
+@@ -261,20 +275,31 @@ static bool tls_change_cipher_spec(struct l_tls *tls,=
+ bool txrx,
+ 	}
+ =
+
+ 	if (tls->cipher_suite[txrx]->encryption) {
++		void *cipher;
++
+ 		enc =3D tls->cipher_suite[txrx]->encryption;
+ =
+
+ 		/* Server write / client read is 4th in the key block */
+ 		if ((tls->server && txrx) || (!tls->server && !txrx))
+ 			key_offset +=3D enc->key_length;
+ =
+
+-		tls->cipher[txrx] =3D l_cipher_new(enc->l_id,
++		if (enc->cipher_type =3D=3D TLS_CIPHER_AEAD) {
++			cipher =3D l_aead_cipher_new(enc->l_aead_id,
++						tls->pending.key_block +
++						key_offset, enc->key_length,
++						enc->auth_tag_length);
++			tls->aead_cipher[txrx] =3D cipher;
++		} else {
++			cipher =3D l_cipher_new(enc->l_id,
+ 						tls->pending.key_block +
+ 						key_offset, enc->key_length);
++			tls->cipher[txrx] =3D cipher;
++		}
+ =
+
+ 		/* Wipe out the now unneeded part of the key block */
+ 		memset(tls->pending.key_block + key_offset, 0, enc->key_length);
+ =
+
+-		if (!tls->cipher[txrx]) {
++		if (!cipher) {
+ 			if (error) {
+ 				*error =3D error_buf;
+ 				snprintf(error_buf, sizeof(error_buf),
+@@ -287,10 +312,10 @@ static bool tls_change_cipher_spec(struct l_tls *tls,=
+ bool txrx,
+ 		}
+ =
+
+ 		tls->cipher_type[txrx] =3D enc->cipher_type;
+-		if (enc->cipher_type =3D=3D TLS_CIPHER_BLOCK) {
+-			tls->record_iv_length[txrx] =3D enc->iv_length;
+-			tls->block_length[txrx] =3D enc->block_length;
+-		}
++		tls->record_iv_length[txrx] =3D enc->iv_length -
++			enc->fixed_iv_length;
++		tls->block_length[txrx] =3D enc->block_length;
++		tls->auth_tag_length[txrx] =3D enc->auth_tag_length;
+ =
+
+ 		if ((tls->server && txrx) || (!tls->server && !txrx))
+ 			key_offset +=3D enc->key_length;
+@@ -313,6 +338,21 @@ static bool tls_change_cipher_spec(struct l_tls *tls, =
+bool txrx,
+ =
+
+ 		/* Wipe out the now unneeded part of the key block */
+ 		memset(tls->pending.key_block + key_offset, 0, enc->iv_length);
++	} else if (tls->cipher_suite[txrx]->encryption &&
++			tls->cipher_suite[txrx]->encryption->fixed_iv_length) {
++		enc =3D tls->cipher_suite[txrx]->encryption;
++
++		/* Server write / client read is 6th in the key block */
++		if ((tls->server && txrx) || (!tls->server && !txrx))
++			key_offset +=3D enc->fixed_iv_length;
++
++		tls->fixed_iv_length[txrx] =3D enc->fixed_iv_length;
++		memcpy(tls->fixed_iv[txrx], tls->pending.key_block + key_offset,
++			enc->fixed_iv_length);
++
++		/* Wipe out the now unneeded part of the key block */
++		memset(tls->pending.key_block + key_offset, 0,
++			enc->fixed_iv_length);
+ 	}
+ =
+
+ 	return true;
+@@ -940,7 +980,10 @@ static void tls_generate_master_secret(struct l_tls *t=
+ls,
+ 			TLS_CIPHER_BLOCK)
+ 		key_block_size +=3D 2 *
+ 			tls->pending.cipher_suite->encryption->iv_length;
+-	/* Note: 2x fixed_IV_length also needed for AEAD ciphers */
++
++	if (tls->pending.cipher_suite->encryption)
++		key_block_size +=3D 2 * tls->pending.cipher_suite->encryption->
++			fixed_iv_length;
+ =
+
+ 	/* Reverse order from the master secret seed */
+ 	memcpy(seed +  0, tls->pending.server_random, 32);
 -- =
 
 2.19.1
 
 
---===============5336619309086865595==--
+--===============8337320453930335306==--
 
