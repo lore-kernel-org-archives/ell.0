@@ -1,116 +1,51 @@
-Content-Type: multipart/mixed; boundary="===============0258464636810739016=="
+Content-Type: multipart/mixed; boundary="===============2913554572907398614=="
 MIME-Version: 1.0
-From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: Re: [PATCH] tls: fixed intentation in X509 definitions
-Date: Mon, 19 Nov 2018 09:01:32 -0800
-Message-ID: <1dedfd6163f33a95fd13d0f92e34195f6591884a.camel@linux.intel.com>
-In-Reply-To: <alpine.OSX.2.21.1811161608070.6479@bnguyen-mobl.amr.corp.intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/7] asn1: Add length check in asn1_parse_definite_length
+Date: Mon, 19 Nov 2018 19:23:42 +0100
+Message-ID: <20181119182348.4562-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0258464636810739016==
+--===============2913554572907398614==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, 2018-11-16 at 16:09 -0800, Mat Martineau wrote:
-> Hi James -
-> =
+I'm going to be using asn1_parse_definite_length outside of the local
+functions so add the missing length validation.
+---
+ ell/asn1-private.h | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-> On Fri, 16 Nov 2018, James Prestwood wrote:
-> =
+diff --git a/ell/asn1-private.h b/ell/asn1-private.h
+index 4ba17ac..0c5897a 100644
+--- a/ell/asn1-private.h
++++ b/ell/asn1-private.h
+@@ -46,8 +46,14 @@ static inline int asn1_parse_definite_length(const uint8=
+_t **buf,
+ 	int n;
+ 	size_t result =3D 0;
+ =
 
-> > Someones editor must have been misbehaving
-> =
+-	(*len)--;
++	/* Decrease the buffer length left */
++	if ((*len)-- < 1)
++		return -1;
+ =
 
-> Looks like the existing indentation is intended to reflect the
-> nexted =
++	/*
++	 * If short form length, move the pointer to start of data and
++	 * return the data length.
++	 */
+ 	if (!(**buf & 0x80))
+ 		return *(*buf)++;
+ =
 
-> structure of the certificates. For example, look at the sequence of =
+-- =
 
-> numbers in each column.
-
-Ah ok that makes sense. You can disregard this then, it just looked
-very strange at first paging through the code :)
-
-Thanks,
-James
-
-> =
-
-> Mat
-> =
-
-> > ---
-> > ell/tls.c | 34 +++++++++++++++++-----------------
-> > 1 file changed, 17 insertions(+), 17 deletions(-)
-> > =
-
-> > diff --git a/ell/tls.c b/ell/tls.c
-> > index 9dc97ff..2d2dd4b 100644
-> > --- a/ell/tls.c
-> > +++ b/ell/tls.c
-> > @@ -2549,23 +2549,23 @@ const char *tls_handshake_state_to_str(enum
-> > tls_handshake_state state)
-> > /* X509 Certificates and Certificate Chains */
-> > =
-
-> > #define X509_CERTIFICATE_POS			0
-> > -#define   X509_TBSCERTIFICATE_POS		  0
-> > -#define     X509_TBSCERT_VERSION_POS		    0
-> > -#define     X509_TBSCERT_SERIAL_POS		    1
-> > -#define     X509_TBSCERT_SIGNATURE_POS		    2
-> > -#define       X509_ALGORITHM_ID_ALGORITHM_POS	      0
-> > -#define       X509_ALGORITHM_ID_PARAMS_POS	      1
-> > -#define     X509_TBSCERT_ISSUER_DN_POS		    3
-> > -#define     X509_TBSCERT_VALIDITY_POS		    4
-> > -#define     X509_TBSCERT_SUBJECT_DN_POS		    5
-> > -#define     X509_TBSCERT_SUBJECT_KEY_POS	    6
-> > -#define       X509_SUBJECT_KEY_ALGORITHM_POS	      0
-> > -#define       X509_SUBJECT_KEY_VALUE_POS	      1
-> > -#define     X509_TBSCERT_ISSUER_UID_POS		    7
-> > -#define     X509_TBSCERT_SUBJECT_UID_POS	    8
-> > -#define     X509_TBSCERT_EXTENSIONS_POS		    9
-> > -#define   X509_SIGNATURE_ALGORITHM_POS		  1
-> > -#define   X509_SIGNATURE_VALUE_POS		  2
-> > +#define X509_TBSCERTIFICATE_POS			0
-> > +#define X509_TBSCERT_VERSION_POS		0
-> > +#define X509_TBSCERT_SERIAL_POS			1
-> > +#define X509_TBSCERT_SIGNATURE_POS		2
-> > +#define X509_ALGORITHM_ID_ALGORITHM_POS		0
-> > +#define X509_ALGORITHM_ID_PARAMS_POS		1
-> > +#define X509_TBSCERT_ISSUER_DN_POS		3
-> > +#define X509_TBSCERT_VALIDITY_POS		4
-> > +#define X509_TBSCERT_SUBJECT_DN_POS		5
-> > +#define X509_TBSCERT_SUBJECT_KEY_POS		6
-> > +#define X509_SUBJECT_KEY_ALGORITHM_POS		0
-> > +#define X509_SUBJECT_KEY_VALUE_POS		1
-> > +#define X509_TBSCERT_ISSUER_UID_POS		7
-> > +#define X509_TBSCERT_SUBJECT_UID_POS		8
-> > +#define X509_TBSCERT_EXTENSIONS_POS		9
-> > +#define X509_SIGNATURE_ALGORITHM_POS		1
-> > +#define X509_SIGNATURE_VALUE_POS		2
-> > =
-
-> > struct tls_cert *tls_cert_load_file(const char *filename)
-> > {
-> > -- =
-
-> > 2.17.1
-> > =
-
-> > _______________________________________________
-> > ell mailing list
-> > ell(a)lists.01.org
-> > https://lists.01.org/mailman/listinfo/ell
-> > =
-
-> =
-
-> --
-> Mat Martineau
-> Intel OTC
+2.19.1
 
 
---===============0258464636810739016==--
+--===============2913554572907398614==--
 
