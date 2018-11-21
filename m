@@ -1,59 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============5598757605025550469=="
+Content-Type: multipart/mixed; boundary="===============8429555596779595760=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 11/16] examples: Ensure SIGPIPE is ignore in https examples
-Date: Wed, 21 Nov 2018 16:08:58 +0100
-Message-ID: <20181121150903.24437-11-andrew.zaborowski@intel.com>
+Subject: [PATCH 12/16] examples: Fix check in https-server-test
+Date: Wed, 21 Nov 2018 16:08:59 +0100
+Message-ID: <20181121150903.24437-12-andrew.zaborowski@intel.com>
 In-Reply-To: <20181121150903.24437-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5598757605025550469==
+--===============8429555596779595760==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Potential SIGPIPEs on a write to a socket that's been shut down would
-kill the example without letting it print any explanation to user.
 ---
- examples/https-client-test.c | 2 +-
  examples/https-server-test.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/examples/https-client-test.c b/examples/https-client-test.c
-index 55709dc..9454a1d 100644
---- a/examples/https-client-test.c
-+++ b/examples/https-client-test.c
-@@ -86,7 +86,7 @@ static void https_tls_write(const uint8_t *data, size_t l=
-en, void *user_data)
- 	int r;
- =
-
- 	while (len) {
--		r =3D write(l_io_get_fd(io), data, len);
-+		r =3D send(l_io_get_fd(io), data, len, MSG_NOSIGNAL);
- 		if (r < 0) {
- 			l_main_quit();
- 			break;
 diff --git a/examples/https-server-test.c b/examples/https-server-test.c
-index 73ea6ad..da44af8 100644
+index da44af8..f720f09 100644
 --- a/examples/https-server-test.c
 +++ b/examples/https-server-test.c
-@@ -89,7 +89,7 @@ static void https_tls_write(const uint8_t *data, size_t l=
-en, void *user_data)
- 	int r;
+@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
+ 	auth_ok =3D l_tls_set_auth_data(tls, argv[1], argv[2], argv[3]);
+ 	l_tls_set_cacert(tls, argc > 4 ? argv[4] : NULL);
  =
 
- 	while (len) {
--		r =3D write(l_io_get_fd(io), data, len);
-+		r =3D send(l_io_get_fd(io), data, len, MSG_NOSIGNAL);
- 		if (r < 0) {
- 			l_main_quit();
- 			break;
+-	if (tls && !auth_ok)
++	if (tls && auth_ok)
+ 		l_main_run();
+ =
+
+ 	l_io_destroy(io);
 -- =
 
 2.19.1
 
 
---===============5598757605025550469==--
+--===============8429555596779595760==--
 
