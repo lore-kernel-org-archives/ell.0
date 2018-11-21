@@ -1,68 +1,59 @@
-Content-Type: multipart/mixed; boundary="===============6376832057460555487=="
+Content-Type: multipart/mixed; boundary="===============5598757605025550469=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 10/16] tls: Flush remaining decoded messages on Alert
-Date: Wed, 21 Nov 2018 16:08:57 +0100
-Message-ID: <20181121150903.24437-10-andrew.zaborowski@intel.com>
+Subject: [PATCH 11/16] examples: Ensure SIGPIPE is ignore in https examples
+Date: Wed, 21 Nov 2018 16:08:58 +0100
+Message-ID: <20181121150903.24437-11-andrew.zaborowski@intel.com>
 In-Reply-To: <20181121150903.24437-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6376832057460555487==
+--===============5598757605025550469==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-We previously started flushing the received raw records that we still
-had queued when one of the records being decoded generates an Alert
-message.  But if there were multiple plaintext messages within one
-record, they'd still be processed after one message had generated an
-error, so also flush these too.  This caused further Alert messages to
-be sent if the TLS state machine couldn't make sense of the new messages
-after it had reset its state due to the initial Alert.
-
-Also simplify the record_flush logic in l_tls_handle_rx slightly.
+Potential SIGPIPEs on a write to a socket that's been shut down would
+kill the example without letting it print any explanation to user.
 ---
- ell/tls-record.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ examples/https-client-test.c | 2 +-
+ examples/https-server-test.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/ell/tls-record.c b/ell/tls-record.c
-index 73be1a4..bffa413 100644
---- a/ell/tls-record.c
-+++ b/ell/tls-record.c
-@@ -334,6 +334,9 @@ static bool tls_handle_plaintext(struct l_tls *tls, con=
-st uint8_t *plaintext,
+diff --git a/examples/https-client-test.c b/examples/https-client-test.c
+index 55709dc..9454a1d 100644
+--- a/examples/https-client-test.c
++++ b/examples/https-client-test.c
+@@ -86,7 +86,7 @@ static void https_tls_write(const uint8_t *data, size_t l=
+en, void *user_data)
+ 	int r;
  =
 
- 				tls->message_buf_len =3D 0;
+ 	while (len) {
+-		r =3D write(l_io_get_fd(io), data, len);
++		r =3D send(l_io_get_fd(io), data, len, MSG_NOSIGNAL);
+ 		if (r < 0) {
+ 			l_main_quit();
+ 			break;
+diff --git a/examples/https-server-test.c b/examples/https-server-test.c
+index 73ea6ad..da44af8 100644
+--- a/examples/https-server-test.c
++++ b/examples/https-server-test.c
+@@ -89,7 +89,7 @@ static void https_tls_write(const uint8_t *data, size_t l=
+en, void *user_data)
+ 	int r;
  =
 
-+				if (tls->record_flush)
-+					break;
-+
- 				continue;
- 			}
- =
-
-@@ -609,10 +612,8 @@ LIB_EXPORT void l_tls_handle_rx(struct l_tls *tls, con=
-st uint8_t *data,
- 				tls->record_buf_len =3D 0;
- 				need_len =3D 5;
- =
-
--				if (tls->record_flush) {
--					tls->record_flush =3D false;
-+				if (tls->record_flush)
- 					break;
--				}
- 			}
- =
-
- 			if (!len)
+ 	while (len) {
+-		r =3D write(l_io_get_fd(io), data, len);
++		r =3D send(l_io_get_fd(io), data, len, MSG_NOSIGNAL);
+ 		if (r < 0) {
+ 			l_main_quit();
+ 			break;
 -- =
 
 2.19.1
 
 
---===============6376832057460555487==--
+--===============5598757605025550469==--
 
