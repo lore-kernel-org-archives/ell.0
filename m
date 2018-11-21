@@ -1,55 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============3623288055694157720=="
+Content-Type: multipart/mixed; boundary="===============5151471452945360475=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 07/16] asn1: Implement asn1_write_definite_length
-Date: Wed, 21 Nov 2018 16:08:54 +0100
-Message-ID: <20181121150903.24437-7-andrew.zaborowski@intel.com>
+Subject: [PATCH 08/16] cert: Fix l_cert_get_dn
+Date: Wed, 21 Nov 2018 16:08:55 +0100
+Message-ID: <20181121150903.24437-8-andrew.zaborowski@intel.com>
 In-Reply-To: <20181121150903.24437-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3623288055694157720==
+--===============5151471452945360475==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+The DistinguishedName type is a SEQUENCE, this was a copy&paste error.
 ---
- ell/asn1-private.h | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ ell/cert.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/ell/asn1-private.h b/ell/asn1-private.h
-index 0c5897a..bea9ea9 100644
---- a/ell/asn1-private.h
-+++ b/ell/asn1-private.h
-@@ -68,6 +68,22 @@ static inline int asn1_parse_definite_length(const uint8=
-_t **buf,
- 	return result;
- }
+diff --git a/ell/cert.c b/ell/cert.c
+index 1c95d0c..f0ce181 100644
+--- a/ell/cert.c
++++ b/ell/cert.c
+@@ -162,7 +162,7 @@ LIB_EXPORT const uint8_t *l_cert_get_dn(struct l_cert *=
+cert, size_t *out_len)
+ 		return NULL;
  =
 
-+static inline void asn1_write_definite_length(uint8_t **buf, size_t len)
-+{
-+	int n;
-+
-+	if (len < 0x80) {
-+		*(*buf)++ =3D len;
-+		return;
-+	}
-+
-+	for (n =3D 1; len >> (n * 8); n++);
-+	*(*buf)++ =3D 0x80 | n;
-+
-+	while (n--)
-+		*(*buf)++ =3D len >> (n * 8);
-+}
-+
- /* Return index'th element in a DER SEQUENCE */
- static inline const uint8_t *asn1_der_find_elem(const uint8_t *buf,
- 						size_t len_in, int index,
+ 	return asn1_der_find_elem_by_path(cert->asn1, cert->asn1_len,
+-						ASN1_ID_OID, out_len,
++						ASN1_ID_SEQUENCE, out_len,
+ 						X509_CERTIFICATE_POS,
+ 						X509_TBSCERTIFICATE_POS,
+ 						X509_TBSCERT_SUBJECT_DN_POS,
 -- =
 
 2.19.1
 
 
---===============3623288055694157720==--
+--===============5151471452945360475==--
 
