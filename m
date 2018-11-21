@@ -1,65 +1,218 @@
-Content-Type: multipart/mixed; boundary="===============1156478330104484317=="
+Content-Type: multipart/mixed; boundary="===============4863213457745671199=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 04/16] tls: Load local cert using l_pem_load_certificate_chain
-Date: Wed, 21 Nov 2018 16:08:51 +0100
-Message-ID: <20181121150903.24437-4-andrew.zaborowski@intel.com>
+Subject: [PATCH 05/16] pem: Return an l_key from l_pem_load_private_key
+Date: Wed, 21 Nov 2018 16:08:52 +0100
+Message-ID: <20181121150903.24437-5-andrew.zaborowski@intel.com>
 In-Reply-To: <20181121150903.24437-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1156478330104484317==
+--===============4863213457745671199==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This will allow to load the whole chain instead of just the first
-certificate in the file, if a certificate chain file is supplied
-although that's optional.  The certificate chain file is just a
-concatenation of PEM structures and the first one is the end-entity
-certificate so it is backwards compatible.  If a CA certificate
-is set with l_tls_set_cacert it need to also be the last certificate
-in the file or the issuer of the last certificate.
-
-Until now things worked because the certificate supplied can be directly
-signed by the supplied CA certificate and the two certificates then form
-the full chain but longer chains need to also be supported.
-
-With this tls_cert_load_file is only used by the unit tests.
-tls_cert_load_file is the only user of <ell/cert-private.h> in tls.c and
-also the only user of l_pem_load_certificate.
+Change l_pem_load_private_key to directly return the l_key object
+instead of the byte buffer (and length) so there's no need to call
+the l_key constructor seprately.
 ---
- ell/tls.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ ell/pem.c | 36 ++++++++++++++++++++++--------------
+ ell/pem.h |  6 ++++--
+ ell/tls.c | 18 +++++-------------
+ 3 files changed, 31 insertions(+), 29 deletions(-)
 
+diff --git a/ell/pem.c b/ell/pem.c
+index fee24d5..3482ea7 100644
+--- a/ell/pem.c
++++ b/ell/pem.c
+@@ -337,7 +337,6 @@ error:
+  * @filename: path string to the PEM file to load
+  * @passphrase: private key encryption passphrase or NULL for unencrypted
+  * @encrypted: receives indication whether the file was encrypted if non-N=
+ULL
+- * @len: receives the length of the returned buffer
+  *
+  * Load the PEM encoded RSA Private Key file at @filename.  If it is an
+  * encrypted private key and @passphrase was non-NULL, the file is
+@@ -346,20 +345,22 @@ error:
+  * success case and on error when NULL is returned.  This can be used to
+  * check if a passphrase is required without prior information.
+  *
+- * Returns: Buffer containing raw DER data for the private key or NULL, to
+- * be freed with l_free.
++ * Returns: An l_key object to be freed with an l_key_free* function,
++ * or NULL.
+  **/
+-LIB_EXPORT uint8_t *l_pem_load_private_key(const char *filename,
++LIB_EXPORT struct l_key *l_pem_load_private_key(const char *filename,
+ 						const char *passphrase,
+-						bool *encrypted, size_t *len)
++						bool *encrypted)
+ {
+ 	uint8_t *content;
+ 	char *label;
++	size_t len;
++	struct l_key *pkey =3D NULL;
+ =
+
+ 	if (encrypted)
+ 		*encrypted =3D false;
+ =
+
+-	content =3D l_pem_load_file(filename, 0, &label, len);
++	content =3D l_pem_load_file(filename, 0, &label, &len);
+ =
+
+ 	if (!content)
+ 		return NULL;
+@@ -388,7 +389,7 @@ LIB_EXPORT uint8_t *l_pem_load_private_key(const char *=
+filename,
+ 			goto err;
+ =
+
+ 		/* Technically this is BER, not limited to DER */
+-		key_info =3D asn1_der_find_elem(content, *len, 0, &tag,
++		key_info =3D asn1_der_find_elem(content, len, 0, &tag,
+ 						&key_info_len);
+ 		if (!key_info || tag !=3D ASN1_ID_SEQUENCE)
+ 			goto err;
+@@ -404,7 +405,7 @@ LIB_EXPORT uint8_t *l_pem_load_private_key(const char *=
+filename,
+ 				(data_len & 7) !=3D 0)
+ 			goto err;
+ =
+
+-		if (asn1_der_find_elem(content, *len, 2, &tag, &tmp_len))
++		if (asn1_der_find_elem(content, len, 2, &tag, &tmp_len))
+ 			goto err;
+ =
+
+ 		alg =3D pkcs5_cipher_from_alg_id(alg_id, alg_id_len, passphrase);
+@@ -420,8 +421,10 @@ LIB_EXPORT uint8_t *l_pem_load_private_key(const char =
+*filename,
+ 		}
+ =
+
+ 		l_cipher_free(alg);
++		memset(content, 0, len);
+ 		l_free(content);
+ 		content =3D decrypted;
++		len =3D data_len;
+ =
+
+ 		/*
+ 		 * Strip padding as defined in RFC8018 (for PKCS#5 v1) or
+@@ -436,7 +439,7 @@ LIB_EXPORT uint8_t *l_pem_load_private_key(const char *=
+filename,
+ 			if (content[data_len - 1 - i] !=3D content[data_len - 1])
+ 				goto err;
+ =
+
+-		*len =3D data_len - content[data_len - 1];
++		len =3D data_len - content[data_len - 1];
+ =
+
+ 		goto done;
+ 	}
+@@ -449,12 +452,17 @@ LIB_EXPORT uint8_t *l_pem_load_private_key(const char=
+ *filename,
+ 	 */
+ =
+
+ 	/* Label not known */
+-err:
+-	l_free(content);
+-	content =3D NULL;
++	goto err;
+ =
+
+ done:
+-	l_free(label);
++	pkey =3D l_key_new(L_KEY_RSA, content, len);
+ =
+
+-	return content;
++err:
++	if (content) {
++		memset(content, 0, len);
++		l_free(content);
++	}
++
++	l_free(label);
++	return pkey;
+ }
+diff --git a/ell/pem.h b/ell/pem.h
+index d381707..1d69ce9 100644
+--- a/ell/pem.h
++++ b/ell/pem.h
+@@ -27,6 +27,7 @@
+ extern "C" {
+ #endif
+ =
+
++#include <ell/key.h>
+ #include <ell/cert.h>
+ #include <ell/queue.h>
+ =
+
+@@ -39,8 +40,9 @@ uint8_t *l_pem_load_certificate(const char *filename, siz=
+e_t *len);
+ struct l_certchain *l_pem_load_certificate_chain(const char *filename);
+ struct l_queue *l_pem_load_certificate_list(const char *filename);
+ =
+
+-uint8_t *l_pem_load_private_key(const char *filename, const char *passphra=
+se,
+-				bool *encrypted, size_t *len);
++struct l_key *l_pem_load_private_key(const char *filename,
++					const char *passphrase,
++					bool *encrypted);
+ =
+
+ #ifdef __cplusplus
+ }
 diff --git a/ell/tls.c b/ell/tls.c
-index 4f29cec..d92854c 100644
+index d92854c..f1e308f 100644
 --- a/ell/tls.c
 +++ b/ell/tls.c
-@@ -2640,14 +2640,11 @@ LIB_EXPORT bool l_tls_set_auth_data(struct l_tls *t=
+@@ -2648,23 +2648,15 @@ LIB_EXPORT bool l_tls_set_auth_data(struct l_tls *t=
 ls, const char *cert_path,
  	}
  =
 
- 	if (cert_path) {
--		struct l_cert *cert =3D tls_cert_load_file(cert_path);
--
--		if (!cert) {
-+		tls->cert =3D l_pem_load_certificate_chain(cert_path);
-+		if (!tls->cert) {
- 			TLS_DEBUG("Error loading %s", cert_path);
- 			return false;
- 		}
--
--		tls->cert =3D certchain_new_from_leaf(cert);
- 	}
+ 	if (priv_key_path) {
+-		uint8_t *priv_key;
+ 		bool is_public =3D true;
  =
 
- 	if (priv_key_path) {
+-		priv_key =3D l_pem_load_private_key(priv_key_path,
++		tls->priv_key =3D l_pem_load_private_key(priv_key_path,
+ 							priv_key_passphrase,
+-							NULL,
+-							&tls->priv_key_size);
+-		TLS_DEBUG("l_pem_load_private_key returned %p, size %zi",
+-				priv_key, tls->priv_key_size);
+-
+-		if (!priv_key)
++							NULL);
++		if (!tls->priv_key) {
++			TLS_DEBUG("Error loading %s", priv_key_path);
+ 			return false;
+-
+-		tls->priv_key =3D l_key_new(L_KEY_RSA, priv_key,
+-						tls->priv_key_size);
+-		memset(priv_key, 0, tls->priv_key_size);
+-		l_free(priv_key);
++		}
+ =
+
+ 		if (!l_key_get_info(tls->priv_key, L_KEY_RSA_PKCS1_V1_5,
+ 					L_CHECKSUM_NONE, &tls->priv_key_size,
 -- =
 
 2.19.1
 
 
---===============1156478330104484317==--
+--===============4863213457745671199==--
 
