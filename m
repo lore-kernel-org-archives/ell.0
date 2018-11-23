@@ -1,57 +1,102 @@
-Content-Type: multipart/mixed; boundary="===============0023778147826993691=="
+Content-Type: multipart/mixed; boundary="===============7084963365713988399=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 02/16] cert: Accept lists of CA certificates instead of one
-Date: Wed, 21 Nov 2018 11:23:35 -0600
-Message-ID: <04ca0423-906a-afd2-2845-8168148d4d23@gmail.com>
-In-Reply-To: <20181121150903.24437-2-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/5] key: Implement l_keyring_link_nested
+Date: Fri, 23 Nov 2018 10:44:25 +0100
+Message-ID: <20181123094429.7190-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0023778147826993691==
+--===============7084963365713988399==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Allow linking and unlinking keyrings to/from other keyrings with
+l_keyring_link_nested (naming proposed by Mat) and
+l_keyring_unlink_nested.
+---
+ ell/ell.sym |  2 ++
+ ell/key.c   | 26 ++++++++++++++++++++++++++
+ ell/key.h   |  5 +++++
+ 3 files changed, 33 insertions(+)
 
-> -	/*
-> -	 * If a CA cert was supplied, restrict verify_ring now so
-> -	 * everything else in certchain is validated against the CA.
-> -	 * Otherwise, verify_ring will be restricted after the root of
-> -	 * certchain is added to verify_ring by
-> -	 * cert_verify_with_keyring().
-> -	 */
-> -	if (ca_ring && !l_keyring_restrict(verify_ring,
-> -						L_KEYRING_RESTRICT_ASYM_CHAIN,
-> -						ca_ring)) {
-> -		return false;
-> +			ca_key =3D l_cert_get_pubkey(ca);
-> +			if (!ca_key)
-> +				return false;
-> +
-> +			if (!l_keyring_link(ca_ring, ca_key)) {
-> +				l_key_free(ca_key);
-> +				return false;
-> +			}
-> +		}
-> +
-> +		if (!l_keyring_restrict(verify_ring,
-> +					L_KEYRING_RESTRICT_ASYM_CHAIN,
-> +					ca_ring))
-> +			return false;
->   	}
->   =
+diff --git a/ell/ell.sym b/ell/ell.sym
+index c2aafee..abd139f 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -310,6 +310,8 @@ global:
+ 	l_keyring_free_norevoke;
+ 	l_keyring_link;
+ 	l_keyring_unlink;
++	l_keyring_link_nested;
++	l_keyring_unlink_nested;
+ 	l_key_is_supported;
+ 	/* log */
+ 	l_log_set_ident;
+diff --git a/ell/key.c b/ell/key.c
+index 4bba559..7487d6f 100644
+--- a/ell/key.c
++++ b/ell/key.c
+@@ -640,6 +640,32 @@ LIB_EXPORT bool l_keyring_unlink(struct l_keyring *key=
+ring,
+ 	return error =3D=3D 0;
+ }
+ =
 
-> -	return certchain_verify_with_keyring(chain->leaf, verify_ring, ca_cert,
-> +	return certchain_verify_with_keyring(chain->leaf, verify_ring, ca_certs,
->   						ca_ring);
->   }
++bool l_keyring_link_nested(struct l_keyring *keyring,
++				const struct l_keyring *nested)
++{
++	long error;
++
++	if (unlikely(!keyring) || unlikely(!nested))
++		return false;
++
++	error =3D kernel_link_key(nested->serial, keyring->serial);
++
++	return error =3D=3D 0;
++}
++
++bool l_keyring_unlink_nested(struct l_keyring *keyring,
++				const struct l_keyring *nested)
++{
++	long error;
++
++	if (unlikely(!keyring) || unlikely(!nested))
++		return false;
++
++	error =3D kernel_unlink_key(nested->serial, keyring->serial);
++
++	return error =3D=3D 0;
++}
++
+ LIB_EXPORT bool l_key_is_supported(uint32_t features)
+ {
+ 	long result;
+diff --git a/ell/key.h b/ell/key.h
+index 263e12a..1529135 100644
+--- a/ell/key.h
++++ b/ell/key.h
+@@ -108,6 +108,11 @@ bool l_keyring_link(struct l_keyring *keyring, const s=
+truct l_key *key);
+ =
 
-So can we switch to a non-recursive version now?
+ bool l_keyring_unlink(struct l_keyring *keyring, const struct l_key *key);
+ =
 
-Regards,
--Denis
++bool l_keyring_link_nested(struct l_keyring *keyring,
++				const struct l_keyring *nested);
++bool l_keyring_unlink_nested(struct l_keyring *keyring,
++				const struct l_keyring *nested);
++
+ bool l_key_is_supported(uint32_t features);
+ =
 
---===============0023778147826993691==--
+ #ifdef __cplusplus
+-- =
+
+2.19.1
+
+
+--===============7084963365713988399==--
 
