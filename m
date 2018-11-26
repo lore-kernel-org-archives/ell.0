@@ -1,38 +1,83 @@
-Content-Type: multipart/mixed; boundary="===============3306678881701135519=="
+Content-Type: multipart/mixed; boundary="===============9017873331581194316=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 2/5] cert: Rewrite l_certchain_verify non-recursively
-Date: Mon, 26 Nov 2018 14:02:50 -0600
-Message-ID: <354a9e1b-5bdc-b23a-b849-c77a144e99dc@gmail.com>
-In-Reply-To: <20181123094429.7190-2-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 3/5] cert: Add comments about l_certchain_foreach_*
+Date: Mon, 26 Nov 2018 14:07:29 -0600
+Message-ID: <dd8a28c4-3875-1493-9a4e-7b19e760b8f5@gmail.com>
+In-Reply-To: <20181123094429.7190-3-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3306678881701135519==
+--===============9017873331581194316==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Hi Andrew,
+
 On 11/23/2018 03:44 AM, Andrew Zaborowski wrote:
-> Rewrite l_certchain_verify iterating over the certificates from root to
-> leaf using the double-linked list property and without using recursion to
-> simplify the logic.  At the same time make sure that while we link new
-> certificates to the keyring we also unlink the old ones, those that have
-> been used to verify previous certificates.   This should fix a long
-> standing issue where we didn't verify that each certificate in the chain
-> was trusted specifically by the immediately preceding one, only that it
-> was trusted by any CA whose certificate was already linked to keyring.
 > ---
->   ell/cert.c | 207 ++++++++++++++++++++++++++++++-----------------------
->   1 file changed, 117 insertions(+), 90 deletions(-)
+>   ell/cert.c | 10 ++++++++++
+>   1 file changed, 10 insertions(+)
 > =
 
+> diff --git a/ell/cert.c b/ell/cert.c
+> index 66433c2..7f0b694 100644
+> --- a/ell/cert.c
+> +++ b/ell/cert.c
+> @@ -253,6 +253,11 @@ LIB_EXPORT struct l_cert *l_certchain_get_leaf(struc=
+t l_certchain *chain)
+>   	return chain->leaf;
+>   }
+>   =
 
-Patches 2, 4, 5 applied, thanks.
+> +/*
+> + * Call @cb for each certificate in the chain starting from the leaf
+> + * certificate.  If a call returns @true, stop and return @true to
+> + * the user, otherwise return @false.
+> + */
+>   LIB_EXPORT bool l_certchain_foreach_from_leaf(struct l_certchain *chain,
+
+This is weird to me actually.  Generally any time we use 'foreach', it =
+
+means that the operation is performed on each node.  There are no =
+
+termination semantics.
+
+And what does the overall return value mean to the user?  How is it =
+
+useful in the first place?
+
+If you want early termination semantics, I would rewrite this as:
+
+void l_certchain_walk_from_leaf()
+and then l_certchain_foreach_cb_t -> l_certchain_walk_cb_t
+
+Alternatively, use void l_certchain_foreach_from_leaf & drop the =
+
+l_certchain_foreach_cb_t return value.
+
+>   						l_cert_foreach_cb_t cb,
+>   						void *user_data)
+> @@ -269,6 +274,11 @@ LIB_EXPORT bool l_certchain_foreach_from_leaf(struct=
+ l_certchain *chain,
+>   	return false;
+>   }
+>   =
+
+> +/*
+> + * Call @cb for each certificate in the chain starting from the root
+> + * certificate.  If a call returns @true, stop and return @true to
+> + * the user, otherwise return @false.
+> + */
+>   LIB_EXPORT bool l_certchain_foreach_from_ca(struct l_certchain *chain,
+>   						l_cert_foreach_cb_t cb,
+>   						void *user_data)
+> =
+
 
 Regards,
 -Denis
 
-
---===============3306678881701135519==--
+--===============9017873331581194316==--
 
