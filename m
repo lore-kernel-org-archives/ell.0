@@ -1,43 +1,119 @@
-Content-Type: multipart/mixed; boundary="===============6791686403504262925=="
+Content-Type: multipart/mixed; boundary="===============5409592614216554286=="
 MIME-Version: 1.0
-From: Jan Engelhardt <jengelh@inai.de>
-Subject: [PATCH] ell:: build: bump SO version of libell (fwd)
-Date: Mon, 26 Nov 2018 10:57:48 +0100
-Message-ID: <nycvar.YFH.7.76.1811261057340.25874@n3.vanv.qr>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH 1/5] key: Implement l_keyring_link_nested
+Date: Mon, 26 Nov 2018 10:35:11 -0800
+Message-ID: <alpine.OSX.2.21.1811261019340.9846@mjmartin-mac01.sea.intel.com>
+In-Reply-To: <20181123094429.7190-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6791686403504262925==
+--===============5409592614216554286==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Commit 0.13-7-g4a386a1 changed the ABI of l_signal_create. This
-warrants a bump in the SO version.
----
- Makefile.am | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index d115360..5a44f40 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -8,8 +8,8 @@ ACLOCAL_AMFLAGS =3D -I build-aux
- # Interfaces added:		CURRENT++ REVISION=3D0 AGE++
- # Interfaces removed:		CURRENT++ REVISION=3D0 AGE=3D0
- =
+Hi Andrew -
 
--ELL_CURRENT =3D 0
--ELL_REVISION =3D 2
-+ELL_CURRENT =3D 1
-+ELL_REVISION =3D 0
- ELL_AGE =3D 0
- =
+On Fri, 23 Nov 2018, Andrew Zaborowski wrote:
 
- pkginclude_HEADERS =3D ell/ell.h \
--- =
+> Allow linking and unlinking keyrings to/from other keyrings with
+> l_keyring_link_nested (naming proposed by Mat) and
+> l_keyring_unlink_nested.
+> ---
+> ell/ell.sym |  2 ++
+> ell/key.c   | 26 ++++++++++++++++++++++++++
+> ell/key.h   |  5 +++++
+> 3 files changed, 33 insertions(+)
+>
+> diff --git a/ell/ell.sym b/ell/ell.sym
+> index c2aafee..abd139f 100644
+> --- a/ell/ell.sym
+> +++ b/ell/ell.sym
+> @@ -310,6 +310,8 @@ global:
+> 	l_keyring_free_norevoke;
+> 	l_keyring_link;
+> 	l_keyring_unlink;
+> +	l_keyring_link_nested;
+> +	l_keyring_unlink_nested;
+> 	l_key_is_supported;
+> 	/* log */
+> 	l_log_set_ident;
+> diff --git a/ell/key.c b/ell/key.c
+> index 4bba559..7487d6f 100644
+> --- a/ell/key.c
+> +++ b/ell/key.c
+> @@ -640,6 +640,32 @@ LIB_EXPORT bool l_keyring_unlink(struct l_keyring *k=
+eyring,
+> 	return error =3D=3D 0;
+> }
+>
+> +bool l_keyring_link_nested(struct l_keyring *keyring,
+> +				const struct l_keyring *nested)
 
-2.19.1
+Still need LIB_EXPORT with these new functions.
 
---===============6791686403504262925==--
+Regards,
+Mat
+
+> +{
+> +	long error;
+> +
+> +	if (unlikely(!keyring) || unlikely(!nested))
+> +		return false;
+> +
+> +	error =3D kernel_link_key(nested->serial, keyring->serial);
+> +
+> +	return error =3D=3D 0;
+> +}
+> +
+> +bool l_keyring_unlink_nested(struct l_keyring *keyring,
+> +				const struct l_keyring *nested)
+> +{
+> +	long error;
+> +
+> +	if (unlikely(!keyring) || unlikely(!nested))
+> +		return false;
+> +
+> +	error =3D kernel_unlink_key(nested->serial, keyring->serial);
+> +
+> +	return error =3D=3D 0;
+> +}
+> +
+> LIB_EXPORT bool l_key_is_supported(uint32_t features)
+> {
+> 	long result;
+> diff --git a/ell/key.h b/ell/key.h
+> index 263e12a..1529135 100644
+> --- a/ell/key.h
+> +++ b/ell/key.h
+> @@ -108,6 +108,11 @@ bool l_keyring_link(struct l_keyring *keyring, const=
+ struct l_key *key);
+>
+> bool l_keyring_unlink(struct l_keyring *keyring, const struct l_key *key);
+>
+> +bool l_keyring_link_nested(struct l_keyring *keyring,
+> +				const struct l_keyring *nested);
+> +bool l_keyring_unlink_nested(struct l_keyring *keyring,
+> +				const struct l_keyring *nested);
+> +
+> bool l_key_is_supported(uint32_t features);
+>
+> #ifdef __cplusplus
+> -- =
+
+> 2.19.1
+>
+> _______________________________________________
+> ell mailing list
+> ell(a)lists.01.org
+> https://lists.01.org/mailman/listinfo/ell
+>
+
+--
+Mat Martineau
+Intel OTC
+
+--===============5409592614216554286==--
 
