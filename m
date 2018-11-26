@@ -1,35 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============7669531651508168775=="
+Content-Type: multipart/mixed; boundary="===============3306678881701135519=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/5] key: Implement l_keyring_link_nested
-Date: Mon, 26 Nov 2018 13:21:11 -0600
-Message-ID: <786baf3e-c3ee-d179-4f46-735033d80fc1@gmail.com>
-In-Reply-To: <20181123094429.7190-1-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 2/5] cert: Rewrite l_certchain_verify non-recursively
+Date: Mon, 26 Nov 2018 14:02:50 -0600
+Message-ID: <354a9e1b-5bdc-b23a-b849-c77a144e99dc@gmail.com>
+In-Reply-To: <20181123094429.7190-2-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7669531651508168775==
+--===============3306678881701135519==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 On 11/23/2018 03:44 AM, Andrew Zaborowski wrote:
-> Allow linking and unlinking keyrings to/from other keyrings with
-> l_keyring_link_nested (naming proposed by Mat) and
-> l_keyring_unlink_nested.
+> Rewrite l_certchain_verify iterating over the certificates from root to
+> leaf using the double-linked list property and without using recursion to
+> simplify the logic.  At the same time make sure that while we link new
+> certificates to the keyring we also unlink the old ones, those that have
+> been used to verify previous certificates.   This should fix a long
+> standing issue where we didn't verify that each certificate in the chain
+> was trusted specifically by the immediately preceding one, only that it
+> was trusted by any CA whose certificate was already linked to keyring.
 > ---
->   ell/ell.sym |  2 ++
->   ell/key.c   | 26 ++++++++++++++++++++++++++
->   ell/key.h   |  5 +++++
->   3 files changed, 33 insertions(+)
+>   ell/cert.c | 207 ++++++++++++++++++++++++++++++-----------------------
+>   1 file changed, 117 insertions(+), 90 deletions(-)
 > =
 
 
-Applied.  I added/amended the missing LIB_EXPORT bits in.
+Patches 2, 4, 5 applied, thanks.
 
 Regards,
 -Denis
 
 
---===============7669531651508168775==--
+--===============3306678881701135519==--
 
