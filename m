@@ -1,14 +1,15 @@
-Content-Type: multipart/mixed; boundary="===============6465377837841377710=="
+Content-Type: multipart/mixed; boundary="===============8753080280004023468=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 6/9] cert: Rename l_certchain_foreach functions
-Date: Tue, 27 Nov 2018 21:50:56 -0600
-Message-ID: <809aced3-6ff0-ad21-a678-3a506a82c0ba@gmail.com>
-In-Reply-To: <20181128023835.2081-6-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 4/9] tls: Pass the verified peer identity to "ready"
+ callback
+Date: Tue, 27 Nov 2018 22:16:38 -0600
+Message-ID: <7d1d5073-c998-371c-da4c-c1e9c83b7c38@gmail.com>
+In-Reply-To: <20181128023835.2081-4-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6465377837841377710==
+--===============8753080280004023468==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,48 +17,38 @@ Content-Transfer-Encoding: quoted-printable
 Hi Andrew,
 
 On 11/27/2018 08:38 PM, Andrew Zaborowski wrote:
-> Change the "foreach" to "walk" in l_certchain_foreach_from_leaf/_ca
-> and in l_cert_foreach_cb_t to not imply that the whole chain is always
-> traversed because we let the callbacks interrupt the iteration by
-> returning true.  This can be used for searches or trust verification, or
-> can be ignored if the whole chain is to be walked over.  Add comments
-> for the two functions affected.
-> ---
->   ell/cert.c  | 18 ++++++++++++++----
->   ell/cert.h  | 12 +++++-------
->   ell/ell.sym |  4 ++--
->   ell/tls.c   |  4 ++--
->   4 files changed, 23 insertions(+), 15 deletions(-)
+> Extract a human-readable peer identity string from the supplied
+> certificate and pass it to the ready callback provided by API user to
+> indicate that the peer has actually been authenticated.  For some users
+> it will only really matter whether the value is non-NULL meaning that
+> the peer is trusted by the locally configured CA, while for others,
+> such as web browsers it's useful to display a human-readable peer
+> identity to the user so they can see if a website is served by who they
+> think it belongs to.  If we got a peer certificate but user supplied no
+> CAs or peer couldn't be authenticated, don't bother to extract the
+> identity string and pass NULL.
 > =
 
-> diff --git a/ell/cert.c b/ell/cert.c
-> index 66433c2..0ecdfbb 100644
-> --- a/ell/cert.c
-> +++ b/ell/cert.c
-> @@ -253,8 +253,13 @@ LIB_EXPORT struct l_cert *l_certchain_get_leaf(struc=
-t l_certchain *chain)
->   	return chain->leaf;
->   }
->   =
+> Until now we'd always pass NULL (there was a TODO comment) because
+> we'd hoped we could at some point leverage the kernel's certificate
+> parser to extract the subject name.  The newly added
+> tls_get_peer_identity_str might also fit in cert.c instead of tls.c.
+> ---
+>   ell/tls.c | 70 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
+>   1 file changed, 67 insertions(+), 3 deletions(-)
+> =
 
-> -LIB_EXPORT bool l_certchain_foreach_from_leaf(struct l_certchain *chain,
-> -						l_cert_foreach_cb_t cb,
-> +/*
-> + * Call @cb for each certificate in the chain starting from the leaf
-> + * certificate.  If a call returns @true, stop and return @true to
-> + * the user, otherwise return @false.
-> + */
-> +LIB_EXPORT bool l_certchain_walk_from_leaf(struct l_certchain *chain,
-> +						l_cert_walk_cb_t cb,
 
-I still don't understand what use the return value could be to the =
+I went ahead and applied this and patch 5.  But really the more =
 
-caller.  You don't even use the return value, so that reinforces my view =
+interesting feature for us would be the certificate element name =
 
-that it is of dubious value.  Can we just make this return void?
+matching described in the appropriate iwd.git/TODO task.  But that one =
+
+is a whole other story...
 
 Regards,
 -Denis
 
---===============6465377837841377710==--
+--===============8753080280004023468==--
 
