@@ -1,66 +1,96 @@
-Content-Type: multipart/mixed; boundary="===============7718576135008094302=="
+Content-Type: multipart/mixed; boundary="===============0287320868381510557=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 4/9] tls: Pass the verified peer identity to "ready"
- callback
-Date: Wed, 28 Nov 2018 13:02:25 +0100
-Message-ID: <CAOq732LsuH+HEmpfwkK+sECQDFNEMFLvcq2QS6agEHro0CFh6Q@mail.gmail.com>
-In-Reply-To: <7d1d5073-c998-371c-da4c-c1e9c83b7c38@gmail.com>
+Subject: Re: [PATCH 1/9] tls: Drop local code to add hash OID, let kernel do it
+Date: Wed, 28 Nov 2018 13:14:46 +0100
+Message-ID: <CAOq732LDz9zo=5KHKAgq+rDn4eLxjkCbhnX9_9_9VXz5CrS4Uw@mail.gmail.com>
+In-Reply-To: <0820f66c-2460-2cc0-2697-c0b6fed96dad@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7718576135008094302==
+--===============0287320868381510557==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, 28 Nov 2018 at 05:24, Denis Kenzior <denkenz@gmail.com> wrote:
+On Wed, 28 Nov 2018 at 04:45, Denis Kenzior <denkenz@gmail.com> wrote:
 > On 11/27/2018 08:38 PM, Andrew Zaborowski wrote:
-> > Extract a human-readable peer identity string from the supplied
-> > certificate and pass it to the ready callback provided by API user to
-> > indicate that the peer has actually been authenticated.  For some users
-> > it will only really matter whether the value is non-NULL meaning that
-> > the peer is trusted by the locally configured CA, while for others,
-> > such as web browsers it's useful to display a human-readable peer
-> > identity to the user so they can see if a website is served by who they
-> > think it belongs to.  If we got a peer certificate but user supplied no
-> > CAs or peer couldn't be authenticated, don't bother to extract the
-> > identity string and pass NULL.
-> >
-> > Until now we'd always pass NULL (there was a TODO comment) because
-> > we'd hoped we could at some point leverage the kernel's certificate
-> > parser to extract the subject name.  The newly added
-> > tls_get_peer_identity_str might also fit in cert.c instead of tls.c.
+> > Drop tls.c code to build the PKCS#1 DigestInfo structure which basically
+> > consisted of prepending the signature hash algorithm's OID to the hash.
+> > Let the key API do it by setting the hash type in the l_key_sign and
+> > l_key_verify calls.  Slightly simplify the tls_rsa_sign and
+> > tls_rsa_verify code while doing this.
 > > ---
-> >   ell/tls.c | 70 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
-> >   1 file changed, 67 insertions(+), 3 deletions(-)
+> >   ell/tls.c | 164 ++++++++++++++++++------------------------------------
+> >   1 file changed, 53 insertions(+), 111 deletions(-)
 > >
 >
-> I went ahead and applied this and patch 5.  But really the more
-> interesting feature for us would be the certificate element name
-> matching described in the appropriate iwd.git/TODO task.  But that one
-> is a whole other story...
+> <snip>
+>
+> > @@ -1238,13 +1179,11 @@ static bool tls_send_rsa_client_key_xchg(struct=
+ l_tls *tls)
+> >   static ssize_t tls_rsa_sign(struct l_tls *tls, uint8_t *out, size_t l=
+en,
+> >                               tls_get_hash_t get_hash)
+> >   {
+> > -     ssize_t result;
+> > -     const struct tls_hash_algorithm *hash_type;
+> > -     uint8_t hash[HANDSHAKE_HASH_MAX_SIZE];
+> > +     ssize_t result =3D -EMSGSIZE;
+> > +     enum l_checksum_type sign_checksum_type;
+> >       uint8_t sign_input[HANDSHAKE_HASH_MAX_SIZE * 2 + 32];
+>
+> Does this need to be updated?
 
-So with this patch we will be able to already kind of do this,
-although maybe we need to pass more values for it to work better.  The
-logic in this patch is to use organizationName and if that is not
-available then commonName.  The TODO (is it really C8?) mentions
-matching on dNSName or commonName.  Maybe we should pass all the
-various strings and then separately a bool value (authenticated/not
-authenticated) although they're pointless if the peer was not
-authenticated.
+It could be reduced to max(HANDSHAKE_HASH_MAX_SIZE, 36) although
+HANDSHAKE_HASH_MAX_SIZE is now bigger than 36... for simplicity let's
+do HANDSHAKE_HASH_MAX_SIZE + 36.
 
-On the other hand the CA certificate is optional in iwd configs and
-until now we couldn't even check if peer identity was known so it's a
-little premature to worry about it having a specific suffix :)
+>
+> >       size_t sign_input_len;
+> > -     bool prepend_hash_type =3D false;
+> > -     size_t expected_bytes;
+> > +     uint8_t *ptr =3D out;
+> >
+> >       if (!tls->priv_key || !tls->priv_key_size) {
+> >               TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, TLS_ALERT_BAD_CE=
+RT,
+> > @@ -1253,54 +1192,49 @@ static ssize_t tls_rsa_sign(struct l_tls *tls, =
+uint8_t *out, size_t len,
+> >               return -ENOKEY;
+> >       }
+> >
+> > -     expected_bytes =3D tls->priv_key_size + 2;
+> > -
+> >       if (tls->negotiated_version >=3D TLS_V12) {
+> > -             hash_type =3D &tls_handshake_hash_data[tls->signature_has=
+h];
+> > -             get_hash(tls, hash_type->tls_id, hash, NULL, NULL);
+> > +             const struct tls_hash_algorithm *hash_type =3D
+> > +                     hash_type =3D &tls_handshake_hash_data[tls->signa=
+ture_hash];
+>
+> What is going on here?
 
-Also I'm not sure how effective this suffix matching actually is... if
-a trusted CA is issuing certificates to rogue subjects then that CA
-can no longer be trusted.   What if the CA issued a CA certificate?
-The subject could then fake any subject string they want.  Maybe it's
-the best we can do though.
+Oooh I don't know... I'll fix this.
+
+>
+> > +
+> > +             get_hash(tls, hash_type->tls_id, sign_input, NULL, NULL);
+> > +             sign_checksum_type =3D hash_type->l_id;
+> > +             sign_input_len =3D hash_type->length;
+> >
+> > -             pkcs1_write_digest_info(hash_type->l_id,
+> > -                                     sign_input, &sign_input_len,
+> > -                                     hash, hash_type->length);
+> > +             if (len < 2)
+> > +                     goto error;
+>
+> Why do we check this after generating the signature?
+
+Will move it sooner.
 
 Best regards
 
---===============7718576135008094302==--
+--===============0287320868381510557==--
 
