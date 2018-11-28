@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============4229416201093726665=="
+Content-Type: multipart/mixed; boundary="===============6465377837841377710=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 3/9] tls: Propagate errors to l_tls_prf_get_bytes
-Date: Tue, 27 Nov 2018 21:47:10 -0600
-Message-ID: <7cbdd0bb-7fdf-3ad1-3892-88316642f402@gmail.com>
-In-Reply-To: <20181128023835.2081-3-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 6/9] cert: Rename l_certchain_foreach functions
+Date: Tue, 27 Nov 2018 21:50:56 -0600
+Message-ID: <809aced3-6ff0-ad21-a678-3a506a82c0ba@gmail.com>
+In-Reply-To: <20181128023835.2081-6-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4229416201093726665==
+--===============6465377837841377710==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,20 +16,48 @@ Content-Transfer-Encoding: quoted-printable
 Hi Andrew,
 
 On 11/27/2018 08:38 PM, Andrew Zaborowski wrote:
-> Add bool return types to tls_prf_get_bytes, tls10_prf, tls12_prf so that
-> l_new_checksum errors can be reported.
+> Change the "foreach" to "walk" in l_certchain_foreach_from_leaf/_ca
+> and in l_cert_foreach_cb_t to not imply that the whole chain is always
+> traversed because we let the callbacks interrupt the iteration by
+> returning true.  This can be used for searches or trust verification, or
+> can be ignored if the whole chain is to be walked over.  Add comments
+> for the two functions affected.
 > ---
->   ell/tls-private.h |  4 ++--
->   ell/tls.c         | 38 ++++++++++++++++++++++++--------------
->   2 files changed, 26 insertions(+), 16 deletions(-)
+>   ell/cert.c  | 18 ++++++++++++++----
+>   ell/cert.h  | 12 +++++-------
+>   ell/ell.sym |  4 ++--
+>   ell/tls.c   |  4 ++--
+>   4 files changed, 23 insertions(+), 15 deletions(-)
 > =
 
+> diff --git a/ell/cert.c b/ell/cert.c
+> index 66433c2..0ecdfbb 100644
+> --- a/ell/cert.c
+> +++ b/ell/cert.c
+> @@ -253,8 +253,13 @@ LIB_EXPORT struct l_cert *l_certchain_get_leaf(struc=
+t l_certchain *chain)
+>   	return chain->leaf;
+>   }
+>   =
 
-Applied, thanks.
+> -LIB_EXPORT bool l_certchain_foreach_from_leaf(struct l_certchain *chain,
+> -						l_cert_foreach_cb_t cb,
+> +/*
+> + * Call @cb for each certificate in the chain starting from the leaf
+> + * certificate.  If a call returns @true, stop and return @true to
+> + * the user, otherwise return @false.
+> + */
+> +LIB_EXPORT bool l_certchain_walk_from_leaf(struct l_certchain *chain,
+> +						l_cert_walk_cb_t cb,
+
+I still don't understand what use the return value could be to the =
+
+caller.  You don't even use the return value, so that reinforces my view =
+
+that it is of dubious value.  Can we just make this return void?
 
 Regards,
 -Denis
 
-
---===============4229416201093726665==--
+--===============6465377837841377710==--
 
