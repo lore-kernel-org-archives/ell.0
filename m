@@ -1,151 +1,258 @@
-Content-Type: multipart/mixed; boundary="===============4115985506776647931=="
+Content-Type: multipart/mixed; boundary="===============5769589105695508680=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 6/9] cert: Rename l_certchain_foreach functions
-Date: Wed, 28 Nov 2018 03:38:32 +0100
-Message-ID: <20181128023835.2081-6-andrew.zaborowski@intel.com>
+Subject: [PATCH 7/9] cert: Optionally return error string from
+ l_certchain_verify
+Date: Wed, 28 Nov 2018 03:38:33 +0100
+Message-ID: <20181128023835.2081-7-andrew.zaborowski@intel.com>
 In-Reply-To: <20181128023835.2081-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4115985506776647931==
+--===============5769589105695508680==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Change the "foreach" to "walk" in l_certchain_foreach_from_leaf/_ca
-and in l_cert_foreach_cb_t to not imply that the whole chain is always
-traversed because we let the callbacks interrupt the iteration by
-returning true.  This can be used for searches or trust verification, or
-can be ignored if the whole chain is to be walked over.  Add comments
-for the two functions affected.
+Return a basic error string to the l_certchain_verify caller so it can
+be included in debug logs.
 ---
- ell/cert.c  | 18 ++++++++++++++----
- ell/cert.h  | 12 +++++-------
- ell/ell.sym |  4 ++--
- ell/tls.c   |  4 ++--
- 4 files changed, 23 insertions(+), 15 deletions(-)
+ ell/cert.c | 60 +++++++++++++++++++++++++++++++++++++++++++-----------
+ ell/cert.h |  3 ++-
+ ell/tls.c  |  7 ++++---
+ 3 files changed, 54 insertions(+), 16 deletions(-)
 
 diff --git a/ell/cert.c b/ell/cert.c
-index 66433c2..0ecdfbb 100644
+index 0ecdfbb..bd49831 100644
 --- a/ell/cert.c
 +++ b/ell/cert.c
-@@ -253,8 +253,13 @@ LIB_EXPORT struct l_cert *l_certchain_get_leaf(struct =
-l_certchain *chain)
- 	return chain->leaf;
- }
+@@ -23,6 +23,7 @@
+ #endif
  =
 
--LIB_EXPORT bool l_certchain_foreach_from_leaf(struct l_certchain *chain,
--						l_cert_foreach_cb_t cb,
-+/*
-+ * Call @cb for each certificate in the chain starting from the leaf
-+ * certificate.  If a call returns @true, stop and return @true to
-+ * the user, otherwise return @false.
-+ */
-+LIB_EXPORT bool l_certchain_walk_from_leaf(struct l_certchain *chain,
-+						l_cert_walk_cb_t cb,
- 						void *user_data)
- {
- 	struct l_cert *cert;
-@@ -269,8 +274,13 @@ LIB_EXPORT bool l_certchain_foreach_from_leaf(struct l=
-_certchain *chain,
+ #include <string.h>
++#include <stdio.h>
+ =
+
+ #include "private.h"
+ #include "key.h"
+@@ -309,17 +310,18 @@ LIB_EXPORT bool l_certchain_find(struct l_certchain *=
+chain,
+ 	 * Also nothing to do if the user already supplied a working
+ 	 * certificate chain.
+ 	 */
+-	if (l_certchain_verify(chain, ca_certs))
++	if (l_certchain_verify(chain, ca_certs, NULL))
+ 		return true;
+ =
+
+ 	/* Actual search for a chain to the CA cert is unimplemented, fail */
  	return false;
  }
  =
 
--LIB_EXPORT bool l_certchain_foreach_from_ca(struct l_certchain *chain,
--						l_cert_foreach_cb_t cb,
-+/*
-+ * Call @cb for each certificate in the chain starting from the root
-+ * certificate.  If a call returns @true, stop and return @true to
-+ * the user, otherwise return @false.
-+ */
-+LIB_EXPORT bool l_certchain_walk_from_ca(struct l_certchain *chain,
-+						l_cert_walk_cb_t cb,
- 						void *user_data)
+-static struct l_keyring *cert_set_to_keyring(struct l_queue *certs)
++static struct l_keyring *cert_set_to_keyring(struct l_queue *certs, char *=
+error)
  {
+ 	struct l_keyring *ring;
+ 	const struct l_queue_entry *entry;
++	int i =3D 1;
+ =
+
+ 	ring =3D l_keyring_new();
+ 	if (!ring)
+@@ -329,15 +331,23 @@ static struct l_keyring *cert_set_to_keyring(struct l=
+_queue *certs)
+ 		struct l_cert *cert =3D entry->data;
+ 		struct l_key *key =3D l_cert_get_pubkey(cert);
+ =
+
+-		if (!key)
++		if (!key) {
++			sprintf(error, "Can't get public key from certificate "
++				"%i / %i in certificate set", i,
++				l_queue_length(certs));
+ 			goto cleanup;
++		}
+ =
+
+ 		if (!l_keyring_link(ring, key)) {
+ 			l_key_free(key);
++			sprintf(error, "Can't link the public key from "
++				"certificate %i / %i to target keyring",
++				i, l_queue_length(certs));
+ 			goto cleanup;
+ 		}
+ =
+
+ 		l_key_free_norevoke(key);
++		i++;
+ 	}
+ =
+
+ 	return ring;
+@@ -386,21 +396,33 @@ static void cert_keyring_cleanup(struct l_keyring **p)
+ 	l_keyring_free(*p);
+ }
+ =
+
++#define RETURN_ERROR(msg, args...)	\
++	do {	\
++		if (error) {	\
++			*error =3D error_buf;	\
++			snprintf(error_buf, sizeof(error_buf), msg, ## args); \
++		}	\
++		return false;	\
++	} while (0)
++
+ LIB_EXPORT bool l_certchain_verify(struct l_certchain *chain,
+-					struct l_queue *ca_certs)
++					struct l_queue *ca_certs,
++					const char **error)
+ {
+ 	struct l_keyring *ca_ring =3D NULL;
+ 	L_AUTO_CLEANUP_VAR(struct l_keyring *, verify_ring,
+ 				cert_keyring_cleanup) =3D NULL;
  	struct l_cert *cert;
+ 	struct l_key *prev_key =3D NULL;
++	int verified =3D 0;
++	static char error_buf[200];
+ =
+
+ 	if (unlikely(!chain || !chain->leaf))
+-		return false;
++		RETURN_ERROR("Chain empty");
+ =
+
+ 	verify_ring =3D l_keyring_new();
+ 	if (!verify_ring)
+-		return false;
++		RETURN_ERROR("Can't create verify keyring");
+ =
+
+ 	cert =3D chain->ca;
+ =
+
+@@ -422,19 +444,23 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain=
+ *chain,
+ 	 * extension from being linked to a keyring.
+ 	 */
+ 	if (cert_is_in_set(cert, ca_certs)) {
++		verified++;
+ 		cert =3D cert->issued;
+ 		if (!cert)
+ 			return true;
+ =
+
+ 		prev_key =3D cert_try_link(cert, verify_ring);
+ 	} else if (ca_certs) {
+-		ca_ring =3D cert_set_to_keyring(ca_certs);
+-		if (!ca_ring)
++		ca_ring =3D cert_set_to_keyring(ca_certs, error_buf);
++		if (!ca_ring) {
++			if (error)
++				*error =3D error_buf;
+ 			return false;
++		}
+ =
+
+ 		if (!l_keyring_link_nested(verify_ring, ca_ring)) {
+ 			l_keyring_free(ca_ring);
+-			return false;
++			RETURN_ERROR("Can't link CA ring to verify ring");
+ 		}
+ 	} else
+ 		prev_key =3D cert_try_link(cert, verify_ring);
+@@ -447,7 +473,7 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain *=
+chain,
+ 				NULL)) {
+ 		l_key_free(prev_key);
+ 		l_keyring_free(ca_ring);
+-		return false;
++		RETURN_ERROR("Can't restrict verify keyring");
+ 	}
+ =
+
+ 	if (ca_ring) {
+@@ -474,10 +500,20 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain=
+ *chain,
+ 		l_key_free(prev_key);
+ 		prev_key =3D new_key;
+ 		cert =3D cert->issued;
++		verified++;
+ 	}
+ =
+
+-	if (!prev_key)
+-		return false;
++	if (!prev_key) {
++		int total =3D 0;
++
++		for (cert =3D chain->ca; cert; cert =3D cert->issued, total++);
++		RETURN_ERROR("Linking certificate %i / %i failed, root %s"
++				"verified against trusted CA(s) and the "
++				"following %i top certificates verified ok",
++				verified + 1, total,
++				ca_certs && verified ? "" : "not ",
++				verified ? verified - 1 : 0);
++	}
+ =
+
+ 	l_key_free(prev_key);
+ 	return true;
 diff --git a/ell/cert.h b/ell/cert.h
-index c1513f1..5205fa8 100644
+index 5205fa8..393b3a7 100644
 --- a/ell/cert.h
 +++ b/ell/cert.h
-@@ -38,7 +38,7 @@ enum l_cert_key_type {
- 	L_CERT_KEY_UNKNOWN,
- };
- =
-
--typedef bool (*l_cert_foreach_cb_t)(struct l_cert *cert, void *user_data);
-+typedef bool (*l_cert_walk_cb_t)(struct l_cert *cert, void *user_data);
- =
-
- struct l_cert *l_cert_new_from_der(const uint8_t *buf, size_t buf_len);
- void l_cert_free(struct l_cert *cert);
-@@ -51,12 +51,10 @@ struct l_key *l_cert_get_pubkey(struct l_cert *cert);
- void l_certchain_free(struct l_certchain *chain);
- =
-
- struct l_cert *l_certchain_get_leaf(struct l_certchain *chain);
--bool l_certchain_foreach_from_leaf(struct l_certchain *chain,
--					l_cert_foreach_cb_t cb,
--					void *user_data);
--bool l_certchain_foreach_from_ca(struct l_certchain *chain,
--					l_cert_foreach_cb_t cb,
--					void *user_data);
-+bool l_certchain_walk_from_leaf(struct l_certchain *chain,
-+				l_cert_walk_cb_t cb, void *user_data);
-+bool l_certchain_walk_from_ca(struct l_certchain *chain,
-+				l_cert_walk_cb_t cb, void *user_data);
+@@ -57,7 +57,8 @@ bool l_certchain_walk_from_ca(struct l_certchain *chain,
+ 				l_cert_walk_cb_t cb, void *user_data);
  =
 
  bool l_certchain_find(struct l_certchain *chain, struct l_queue *ca_certs);
- bool l_certchain_verify(struct l_certchain *chain, struct l_queue *ca_cert=
+-bool l_certchain_verify(struct l_certchain *chain, struct l_queue *ca_cert=
 s);
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 9cea0c1..b8f3730 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -445,8 +445,8 @@ global:
- 	l_cert_get_pubkey;
- 	l_certchain_free;
- 	l_certchain_get_leaf;
--	l_certchain_foreach_from_leaf;
--	l_certchain_foreach_from_ca;
-+	l_certchain_walk_from_leaf;
-+	l_certchain_walk_from_ca;
- 	l_certchain_find;
- 	l_certchain_verify;
- local:
++bool l_certchain_verify(struct l_certchain *chain, struct l_queue *ca_cert=
+s,
++			const char **error);
+ =
+
+ #ifdef __cplusplus
+ }
 diff --git a/ell/tls.c b/ell/tls.c
-index b13f551..ebf4b0c 100644
+index ebf4b0c..ade43d8 100644
 --- a/ell/tls.c
 +++ b/ell/tls.c
-@@ -961,7 +961,7 @@ static bool tls_send_certificate(struct l_tls *tls)
+@@ -1780,6 +1780,7 @@ static void tls_handle_certificate(struct l_tls *tls,
+ 	size_t der_len;
+ 	const uint8_t *der;
+ 	bool dummy;
++	const char *error_str;
+ =
+
+ 	if (len < 3)
+ 		goto decode_error;
+@@ -1823,11 +1824,11 @@ static void tls_handle_certificate(struct l_tls *tl=
+s,
+ 	 * Validate the certificate chain's consistency and validate it
+ 	 * against our CAs if we have any.
  	 */
+-	if (!l_certchain_verify(certchain, tls->ca_certs)) {
++	if (!l_certchain_verify(certchain, tls->ca_certs, &error_str)) {
+ 		TLS_DISCONNECT(TLS_ALERT_BAD_CERT, 0,
+ 				"Peer certchain verification failed "
+-				"consistency check%s", tls->ca_certs ?
+-				" or against local CA certs" : "");
++				"consistency check%s: %s", tls->ca_certs ?
++				" or against local CA certs" : "", error_str);
  =
 
- 	total =3D 0;
--	l_certchain_foreach_from_leaf(tls->cert, tls_cert_list_add_size, &total);
-+	l_certchain_walk_from_leaf(tls->cert, tls_cert_list_add_size, &total);
- =
-
- 	buf =3D l_malloc(128 + total);
- 	ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
-@@ -971,7 +971,7 @@ static bool tls_send_certificate(struct l_tls *tls)
- 	*ptr++ =3D total >> 16;
- 	*ptr++ =3D total >>  8;
- 	*ptr++ =3D total >>  0;
--	l_certchain_foreach_from_leaf(tls->cert, tls_cert_list_append, &ptr);
-+	l_certchain_walk_from_leaf(tls->cert, tls_cert_list_append, &ptr);
- =
-
- 	tls_tx_handshake(tls, TLS_CERTIFICATE, buf, ptr - buf);
- =
-
+ 		goto done;
+ 	}
 -- =
 
 2.19.1
 
 
---===============4115985506776647931==--
+--===============5769589105695508680==--
 
