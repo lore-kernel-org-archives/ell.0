@@ -1,68 +1,66 @@
-Content-Type: multipart/mixed; boundary="===============1490690600025033971=="
+Content-Type: multipart/mixed; boundary="===============7718576135008094302=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 6/9] cert: Rename l_certchain_foreach functions
-Date: Wed, 28 Nov 2018 12:42:14 +0100
-Message-ID: <CAOq732+oS8Vm2txvebU40ni=iLhahe9KbRq7moC9b42FpUzptw@mail.gmail.com>
-In-Reply-To: <809aced3-6ff0-ad21-a678-3a506a82c0ba@gmail.com>
+Subject: Re: [PATCH 4/9] tls: Pass the verified peer identity to "ready"
+ callback
+Date: Wed, 28 Nov 2018 13:02:25 +0100
+Message-ID: <CAOq732LsuH+HEmpfwkK+sECQDFNEMFLvcq2QS6agEHro0CFh6Q@mail.gmail.com>
+In-Reply-To: <7d1d5073-c998-371c-da4c-c1e9c83b7c38@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1490690600025033971==
+--===============7718576135008094302==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
-
-On Wed, 28 Nov 2018 at 04:51, Denis Kenzior <denkenz@gmail.com> wrote:
+On Wed, 28 Nov 2018 at 05:24, Denis Kenzior <denkenz@gmail.com> wrote:
 > On 11/27/2018 08:38 PM, Andrew Zaborowski wrote:
-> > Change the "foreach" to "walk" in l_certchain_foreach_from_leaf/_ca
-> > and in l_cert_foreach_cb_t to not imply that the whole chain is always
-> > traversed because we let the callbacks interrupt the iteration by
-> > returning true.  This can be used for searches or trust verification, or
-> > can be ignored if the whole chain is to be walked over.  Add comments
-> > for the two functions affected.
+> > Extract a human-readable peer identity string from the supplied
+> > certificate and pass it to the ready callback provided by API user to
+> > indicate that the peer has actually been authenticated.  For some users
+> > it will only really matter whether the value is non-NULL meaning that
+> > the peer is trusted by the locally configured CA, while for others,
+> > such as web browsers it's useful to display a human-readable peer
+> > identity to the user so they can see if a website is served by who they
+> > think it belongs to.  If we got a peer certificate but user supplied no
+> > CAs or peer couldn't be authenticated, don't bother to extract the
+> > identity string and pass NULL.
+> >
+> > Until now we'd always pass NULL (there was a TODO comment) because
+> > we'd hoped we could at some point leverage the kernel's certificate
+> > parser to extract the subject name.  The newly added
+> > tls_get_peer_identity_str might also fit in cert.c instead of tls.c.
 > > ---
-> >   ell/cert.c  | 18 ++++++++++++++----
-> >   ell/cert.h  | 12 +++++-------
-> >   ell/ell.sym |  4 ++--
-> >   ell/tls.c   |  4 ++--
-> >   4 files changed, 23 insertions(+), 15 deletions(-)
+> >   ell/tls.c | 70 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
+> >   1 file changed, 67 insertions(+), 3 deletions(-)
 > >
-> > diff --git a/ell/cert.c b/ell/cert.c
-> > index 66433c2..0ecdfbb 100644
-> > --- a/ell/cert.c
-> > +++ b/ell/cert.c
-> > @@ -253,8 +253,13 @@ LIB_EXPORT struct l_cert *l_certchain_get_leaf(str=
-uct l_certchain *chain)
-> >       return chain->leaf;
-> >   }
-> >
-> > -LIB_EXPORT bool l_certchain_foreach_from_leaf(struct l_certchain *chai=
-n,
-> > -                                             l_cert_foreach_cb_t cb,
-> > +/*
-> > + * Call @cb for each certificate in the chain starting from the leaf
-> > + * certificate.  If a call returns @true, stop and return @true to
-> > + * the user, otherwise return @false.
-> > + */
-> > +LIB_EXPORT bool l_certchain_walk_from_leaf(struct l_certchain *chain,
-> > +                                             l_cert_walk_cb_t cb,
 >
-> I still don't understand what use the return value could be to the
-> caller.
+> I went ahead and applied this and patch 5.  But really the more
+> interesting feature for us would be the certificate element name
+> matching described in the appropriate iwd.git/TODO task.  But that one
+> is a whole other story...
 
-The use would be to know if the search or verification succeeded (kind
-of like in l_queue_find, l_queue_remove_if although these also return
-the actual element)
+So with this patch we will be able to already kind of do this,
+although maybe we need to pass more values for it to work better.  The
+logic in this patch is to use organizationName and if that is not
+available then commonName.  The TODO (is it really C8?) mentions
+matching on dNSName or commonName.  Maybe we should pass all the
+various strings and then separately a bool value (authenticated/not
+authenticated) although they're pointless if the peer was not
+authenticated.
 
-> You don't even use the return value, so that reinforces my view
-> that it is of dubious value.  Can we just make this return void?
+On the other hand the CA certificate is optional in iwd configs and
+until now we couldn't even check if peer identity was known so it's a
+little premature to worry about it having a specific suffix :)
 
-Ok, can also be returned through user_data if needed.
+Also I'm not sure how effective this suffix matching actually is... if
+a trusted CA is issuing certificates to rogue subjects then that CA
+can no longer be trusted.   What if the CA issued a CA certificate?
+The subject could then fake any subject string they want.  Maybe it's
+the best we can do though.
 
 Best regards
 
---===============1490690600025033971==--
+--===============7718576135008094302==--
 
