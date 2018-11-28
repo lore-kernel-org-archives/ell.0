@@ -1,96 +1,185 @@
-Content-Type: multipart/mixed; boundary="===============0287320868381510557=="
+Content-Type: multipart/mixed; boundary="===============0038284902112732237=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 1/9] tls: Drop local code to add hash OID, let kernel do it
-Date: Wed, 28 Nov 2018 13:14:46 +0100
-Message-ID: <CAOq732LDz9zo=5KHKAgq+rDn4eLxjkCbhnX9_9_9VXz5CrS4Uw@mail.gmail.com>
-In-Reply-To: <0820f66c-2460-2cc0-2697-c0b6fed96dad@gmail.com>
+From: Luiz Augusto von Dentz <luiz.dentz@gmail.com>
+Subject: [PATCH 1/2] main: Add support for $NOTIFY_SOCKET
+Date: Wed, 28 Nov 2018 14:16:30 +0200
+Message-ID: <20181128121631.31642-1-luiz.dentz@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0287320868381510557==
+--===============0038284902112732237==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, 28 Nov 2018 at 04:45, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 11/27/2018 08:38 PM, Andrew Zaborowski wrote:
-> > Drop tls.c code to build the PKCS#1 DigestInfo structure which basically
-> > consisted of prepending the signature hash algorithm's OID to the hash.
-> > Let the key API do it by setting the hash type in the l_key_sign and
-> > l_key_verify calls.  Slightly simplify the tls_rsa_sign and
-> > tls_rsa_verify code while doing this.
-> > ---
-> >   ell/tls.c | 164 ++++++++++++++++++------------------------------------
-> >   1 file changed, 53 insertions(+), 111 deletions(-)
-> >
->
-> <snip>
->
-> > @@ -1238,13 +1179,11 @@ static bool tls_send_rsa_client_key_xchg(struct=
- l_tls *tls)
-> >   static ssize_t tls_rsa_sign(struct l_tls *tls, uint8_t *out, size_t l=
-en,
-> >                               tls_get_hash_t get_hash)
-> >   {
-> > -     ssize_t result;
-> > -     const struct tls_hash_algorithm *hash_type;
-> > -     uint8_t hash[HANDSHAKE_HASH_MAX_SIZE];
-> > +     ssize_t result =3D -EMSGSIZE;
-> > +     enum l_checksum_type sign_checksum_type;
-> >       uint8_t sign_input[HANDSHAKE_HASH_MAX_SIZE * 2 + 32];
->
-> Does this need to be updated?
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
 
-It could be reduced to max(HANDSHAKE_HASH_MAX_SIZE, 36) although
-HANDSHAKE_HASH_MAX_SIZE is now bigger than 36... for simplicity let's
-do HANDSHAKE_HASH_MAX_SIZE + 36.
+This adds support for sending states to the service manager using the
+socket set in $NOTIFY_SOCKET:
 
->
-> >       size_t sign_input_len;
-> > -     bool prepend_hash_type =3D false;
-> > -     size_t expected_bytes;
-> > +     uint8_t *ptr =3D out;
-> >
-> >       if (!tls->priv_key || !tls->priv_key_size) {
-> >               TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, TLS_ALERT_BAD_CE=
-RT,
-> > @@ -1253,54 +1192,49 @@ static ssize_t tls_rsa_sign(struct l_tls *tls, =
-uint8_t *out, size_t len,
-> >               return -ENOKEY;
-> >       }
-> >
-> > -     expected_bytes =3D tls->priv_key_size + 2;
-> > -
-> >       if (tls->negotiated_version >=3D TLS_V12) {
-> > -             hash_type =3D &tls_handshake_hash_data[tls->signature_has=
-h];
-> > -             get_hash(tls, hash_type->tls_id, hash, NULL, NULL);
-> > +             const struct tls_hash_algorithm *hash_type =3D
-> > +                     hash_type =3D &tls_handshake_hash_data[tls->signa=
-ture_hash];
->
-> What is going on here?
+https://www.freedesktop.org/software/systemd/man/sd_notify.html
+---
+ ell/main.c | 80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/main.h |  2 ++
+ 2 files changed, 82 insertions(+)
 
-Oooh I don't know... I'll fix this.
+diff --git a/ell/main.c b/ell/main.c
+index b1d12b6..7eedf1a 100644
+--- a/ell/main.c
++++ b/ell/main.c
+@@ -28,9 +28,12 @@
+ #include <errno.h>
+ #include <unistd.h>
+ #include <stdlib.h>
++#include <stddef.h>
+ #include <limits.h>
+ #include <signal.h>
+ #include <sys/epoll.h>
++#include <sys/socket.h>
++#include <sys/un.h>
+ =
 
->
-> > +
-> > +             get_hash(tls, hash_type->tls_id, sign_input, NULL, NULL);
-> > +             sign_checksum_type =3D hash_type->l_id;
-> > +             sign_input_len =3D hash_type->length;
-> >
-> > -             pkcs1_write_digest_info(hash_type->l_id,
-> > -                                     sign_input, &sign_input_len,
-> > -                                     hash, hash_type->length);
-> > +             if (len < 2)
-> > +                     goto error;
->
-> Why do we check this after generating the signature?
+ #include "signal.h"
+ #include "queue.h"
+@@ -59,6 +62,9 @@ static bool epoll_running;
+ static bool epoll_terminate;
+ static int idle_id;
+ =
 
-Will move it sooner.
++static char *notify_sock;
++static int notify_fd;
++
+ static struct l_queue *idle_list;
+ =
 
-Best regards
+ struct watch_data {
+@@ -324,6 +330,27 @@ static void idle_dispatch(void *data, void *user_data)
+ 	idle->flags &=3D ~IDLE_FLAG_DISPATCHING;
+ }
+ =
 
---===============0287320868381510557==--
++static inline void __attribute__ ((always_inline)) notify_socket(void)
++{
++	const char *sock;
++
++	/* check if NOTIFY_SOCKET has been set */
++	sock =3D getenv("NOTIFY_SOCKET");
++	if (!sock)
++		return;
++
++	/* check for abstract socket or absolute path */
++	if (sock[0] !=3D '@' && sock[0] !=3D '/')
++		return;
++
++	notify_sock =3D l_strdup(sock);
++
++	notify_fd =3D socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
++	if (notify_fd < 0)
++		notify_fd =3D 0;
++}
++
++
+ /**
+  * l_main_init:
+  *
+@@ -342,6 +369,8 @@ LIB_EXPORT bool l_main_init(void)
+ 	if (!create_epoll())
+ 		return false;
+ =
+
++	notify_socket();
++
+ 	epoll_terminate =3D false;
+ =
+
+ 	return true;
+@@ -438,6 +467,13 @@ LIB_EXPORT int l_main_run(void)
+ =
+
+ 	epoll_running =3D false;
+ =
+
++	if (notify_fd) {
++		close(notify_fd);
++		notify_fd =3D 0;
++		l_free(notify_sock);
++		notify_sock =3D NULL;
++	}
++
+ 	return EXIT_SUCCESS;
+ }
+ =
+
+@@ -570,3 +606,47 @@ LIB_EXPORT int l_main_get_epoll_fd(void)
+ {
+ 	return epoll_fd;
+ }
++
++/**
++ * l_main_sd_notify:
++ *
++ * Notify service manager about start-up completion and other service stat=
+us
++ * changes.
++ *
++ * Returns: On failure, these calls return a negative errno-style error co=
+de.
++ * If $NOTIFY_SOCKET was not set and hence no status message could be sent,
++ * -ENOCONN is returned.
++ **/
++LIB_EXPORT int l_main_sd_notify(const char *state)
++{
++	struct sockaddr_un addr;
++	struct msghdr msghdr;
++	struct iovec iovec;
++
++	if (!notify_fd)
++		return -ENOTCONN;
++
++	memset(&addr, 0, sizeof(addr));
++	addr.sun_family =3D AF_UNIX;
++	strncpy(addr.sun_path, notify_sock, sizeof(addr.sun_path) - 1);
++
++	if (addr.sun_path[0] =3D=3D '@')
++		addr.sun_path[0] =3D '\0';
++
++	memset(&iovec, 0, sizeof(iovec));
++	iovec.iov_base =3D (char *) state;
++	iovec.iov_len =3D strlen(state);
++
++	memset(&msghdr, 0, sizeof(msghdr));
++	msghdr.msg_name =3D &addr;
++	msghdr.msg_namelen =3D offsetof(struct sockaddr_un, sun_path) +
++							strlen(notify_sock);
++
++	if (msghdr.msg_namelen > sizeof(struct sockaddr_un))
++		msghdr.msg_namelen =3D sizeof(struct sockaddr_un);
++
++	msghdr.msg_iov =3D &iovec;
++	msghdr.msg_iovlen =3D 1;
++
++	return sendmsg(notify_fd, &msghdr, MSG_NOSIGNAL);
++}
+diff --git a/ell/main.h b/ell/main.h
+index 99b34ad..ffa40af 100644
+--- a/ell/main.h
++++ b/ell/main.h
+@@ -44,6 +44,8 @@ int l_main_run_with_signal(l_main_signal_cb_t callback, v=
+oid *user_data);
+ =
+
+ int l_main_get_epoll_fd();
+ =
+
++int l_main_sd_notify(const char *state);
++
+ #ifdef __cplusplus
+ }
+ #endif
+-- =
+
+2.17.2
+
+
+--===============0038284902112732237==--
 
