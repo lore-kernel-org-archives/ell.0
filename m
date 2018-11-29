@@ -1,88 +1,65 @@
-Content-Type: multipart/mixed; boundary="===============4085868149194514606=="
+Content-Type: multipart/mixed; boundary="===============5878571228110639803=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH 6/9] ecc: added P384 curve definition
-Date: Thu, 29 Nov 2018 14:08:05 -0800
-Message-ID: <20181129220808.22151-6-james.prestwood@linux.intel.com>
+Subject: [PATCH 7/9] unit: update test-ecdh with more random bytes
+Date: Thu, 29 Nov 2018 14:08:06 -0800
+Message-ID: <20181129220808.22151-7-james.prestwood@linux.intel.com>
 In-Reply-To: <20181129220808.22151-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4085868149194514606==
+--===============5878571228110639803==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+With the addition of P384, our wrapped l_getrandom needs enough random
+bytes to fill a P384 integer, 48 bytes.
 ---
- ell/ecc.c | 30 ++++++++++++++++++++++++++++++
- ell/ecc.h |  2 +-
- 2 files changed, 31 insertions(+), 1 deletion(-)
+ unit/test-ecdh.c | 24 +++++++++++++++++-------
+ 1 file changed, 17 insertions(+), 7 deletions(-)
 
-diff --git a/ell/ecc.c b/ell/ecc.c
-index 5d5e948..03a9610 100644
---- a/ell/ecc.c
-+++ b/ell/ecc.c
-@@ -1007,8 +1007,38 @@ static struct l_ecc_curve p256 =3D {
- 	.b =3D P256_CURVE_B,
- };
+diff --git a/unit/test-ecdh.c b/unit/test-ecdh.c
+index efc47de..e44c4b6 100644
+--- a/unit/test-ecdh.c
++++ b/unit/test-ecdh.c
+@@ -35,13 +35,23 @@ bool __real_l_getrandom(void *buf, size_t len);
  =
 
-+#define P384_CURVE_P {	0x00000000FFFFFFFFull, 0xFFFFFFFF00000000ull, \
-+			0xFFFFFFFFFFFFFFFEull, 0xFFFFFFFFFFFFFFFFull, \
-+			0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFFFFFFFFFFull }
-+#define P384_CURVE_GX {	0x3A545E3872760AB7ull, 0x5502F25DBF55296Cull, \
-+			0x59F741E082542A38ull, 0x6E1D3B628BA79B98ull, \
-+			0x8EB1C71EF320AD74ull, 0xAA87CA22BE8B0537ull }
-+#define P384_CURVE_GY {	0x7A431D7C90EA0E5Full, 0x0A60B1CE1D7E819Dull, \
-+			0xE9DA3113B5F0B8C0ull, 0xF8F41DBD289A147Cull, \
-+			0x5D9E98BF9292DC29ull, 0x3617DE4A96262C6Full }
-+#define P384_CURVE_N {	0xECEC196ACCC52973ull, 0x581A0DB248B0A77Aull, \
-+			0xC7634D81F4372DDFull, 0xFFFFFFFFFFFFFFFFull, \
-+			0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFFFFFFFFFFull }
-+#define P384_CURVE_B {	0x2A85C8EDD3EC2AEFull, 0xC656398D8A2ED19Dull, \
-+			0x0314088F5013875Aull, 0x181D9C6EFE814112ull, \
-+			0x988E056BE3F82D19ull, 0xB3312FA7E23EE7E4ull }
+ bool __wrap_l_getrandom(void *buf, size_t len)
+ {
+-	static const uint8_t random_buf[] =3D { 0x75, 0xc5, 0xfe, 0x3e, 0x53,
+-						0xcc, 0x33, 0x33, 0x64, 0xea,
+-						0xdd, 0xa1, 0xe6, 0x62, 0x7a,
+-						0xb1, 0x98, 0xa7, 0xa0, 0x1e,
+-						0xac, 0x4b, 0x1d, 0xb8, 0x71,
+-						0x5b, 0x1d, 0x00, 0x36, 0xd0,
+-						0x0f, 0xde };
++	/*
++	 * Note: we at least need enough bytes for the largest curve group,
++	 * currently P384
++	 */
++	static const uint8_t random_buf[] =3D { 0x0b, 0x34, 0x0f, 0x16, 0x02,
++						0x31, 0x88, 0xe1, 0x0e, 0x08,
++						0xb2, 0x5f, 0x03, 0x4c, 0x3c,
++						0xe8, 0x3d, 0xf4, 0xaa, 0xc5,
++						0x8d, 0x2b, 0x1f, 0x43, 0xb8,
++						0x0e, 0xf3, 0xed, 0x73, 0xd0,
++						0xd7, 0x8d, 0x77, 0x62, 0xaf,
++						0xa7, 0x37, 0xca, 0x20, 0x3f,
++						0xd8, 0xf5, 0x32, 0x64, 0x7e,
++						0xf6, 0x45, 0x46 };
 +
-+static struct l_ecc_curve p384 =3D {
-+	.group =3D 20,
-+	.ndigits =3D 6,
-+	.g =3D {
-+		.x =3D P384_CURVE_GX,
-+		.y =3D P384_CURVE_GY,
-+		.ndigits =3D 6
-+	},
-+	.p =3D P384_CURVE_P,
-+	.n =3D P384_CURVE_N,
-+	.b =3D P384_CURVE_B
-+};
-+
- static struct l_ecc_curve *curves[] =3D {
- 	&p256,
-+	&p384,
- };
++	if (len > sizeof(random_buf))
++		return false;
  =
 
- LIB_EXPORT struct l_ecc_curve *l_ecc_curve_get(unsigned int group)
-diff --git a/ell/ecc.h b/ell/ecc.h
-index 0601780..e1c137f 100644
---- a/ell/ecc.h
-+++ b/ell/ecc.h
-@@ -27,7 +27,7 @@
- extern "C" {
- #endif
- =
-
--#define L_ECC_MAX_DIGITS 4
-+#define L_ECC_MAX_DIGITS 6
- =
-
- struct l_ecc_curve;
- =
-
+ 	if (use_real_getrandom)
+ 		return __real_l_getrandom(buf, len);
 -- =
 
 2.17.1
 
 
---===============4085868149194514606==--
+--===============5878571228110639803==--
 
