@@ -1,127 +1,225 @@
-Content-Type: multipart/mixed; boundary="===============2320554460399211081=="
+Content-Type: multipart/mixed; boundary="===============6305594151340946954=="
 MIME-Version: 1.0
-From: Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Subject: [PATCH 2/2] main: Add support for $WATCHDOG_USEC
-Date: Wed, 28 Nov 2018 14:16:31 +0200
-Message-ID: <20181128121631.31642-2-luiz.dentz@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/2] main: Add support for $NOTIFY_SOCKET
+Date: Thu, 29 Nov 2018 12:01:15 -0600
+Message-ID: <ca8d1630-8f95-b84e-61a0-820d6dd8dbaf@gmail.com>
 In-Reply-To: <20181128121631.31642-1-luiz.dentz@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2320554460399211081==
+--===============6305594151340946954==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Hi Luiz,
 
-This adds handling to watchdog set by service manager by sending
-"WATCHDOG=3D1" to it in intervals shorter than what is set in
-$WATCHDOG_USEC.
----
- ell/main.c | 35 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 34 insertions(+), 1 deletion(-)
+On 11/28/2018 06:16 AM, Luiz Augusto von Dentz wrote:
+> From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+> =
 
-diff --git a/ell/main.c b/ell/main.c
-index 7eedf1a..a59de16 100644
---- a/ell/main.c
-+++ b/ell/main.c
-@@ -41,6 +41,7 @@
- #include "util.h"
- #include "main.h"
- #include "private.h"
-+#include "timeout.h"
- =
+> This adds support for sending states to the service manager using the
+> socket set in $NOTIFY_SOCKET:
+> =
 
- /**
-  * SECTION:main
-@@ -57,6 +58,8 @@
- #define WATCH_FLAG_DISPATCHING	1
- #define WATCH_FLAG_DESTROYED	2
- =
+> https://www.freedesktop.org/software/systemd/man/sd_notify.html
+> ---
+>   ell/main.c | 80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>   ell/main.h |  2 ++
+>   2 files changed, 82 insertions(+)
+> =
 
-+#define WATCHDOG_TRIGGER_FREQ	2
-+
- static int epoll_fd;
- static bool epoll_running;
- static bool epoll_terminate;
-@@ -65,6 +68,8 @@ static int idle_id;
- static char *notify_sock;
- static int notify_fd;
- =
+> diff --git a/ell/main.c b/ell/main.c
+> index b1d12b6..7eedf1a 100644
+> --- a/ell/main.c
+> +++ b/ell/main.c
+> @@ -28,9 +28,12 @@
+>   #include <errno.h>
+>   #include <unistd.h>
+>   #include <stdlib.h>
+> +#include <stddef.h>
+>   #include <limits.h>
+>   #include <signal.h>
+>   #include <sys/epoll.h>
+> +#include <sys/socket.h>
+> +#include <sys/un.h>
+>   =
 
-+static struct l_timeout *watchdog;
-+
- static struct l_queue *idle_list;
- =
+>   #include "signal.h"
+>   #include "queue.h"
+> @@ -59,6 +62,9 @@ static bool epoll_running;
+>   static bool epoll_terminate;
+>   static int idle_id;
+>   =
 
- struct watch_data {
-@@ -330,9 +335,20 @@ static void idle_dispatch(void *data, void *user_data)
- 	idle->flags &=3D ~IDLE_FLAG_DISPATCHING;
- }
- =
+> +static char *notify_sock;
+> +static int notify_fd;
+> +
+>   static struct l_queue *idle_list;
+>   =
 
-+static void watchdog_callback(struct l_timeout *timeout, void *user_data)
-+{
-+	int msec =3D L_PTR_TO_INT(user_data);
-+
-+	l_main_sd_notify("WATCHDOG=3D1");
-+
-+	l_timeout_modify_ms(timeout, msec);
-+}
-+
- static inline void __attribute__ ((always_inline)) notify_socket(void)
- {
- 	const char *sock;
-+	const char *watchdog_usec;
-+	int msec;
- =
+>   struct watch_data {
+> @@ -324,6 +330,27 @@ static void idle_dispatch(void *data, void *user_dat=
+a)
+>   	idle->flags &=3D ~IDLE_FLAG_DISPATCHING;
+>   }
+>   =
 
- 	/* check if NOTIFY_SOCKET has been set */
- 	sock =3D getenv("NOTIFY_SOCKET");
-@@ -346,8 +362,23 @@ static inline void __attribute__ ((always_inline)) not=
-ify_socket(void)
- 	notify_sock =3D l_strdup(sock);
- =
+> +static inline void __attribute__ ((always_inline)) notify_socket(void)
 
- 	notify_fd =3D socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
--	if (notify_fd < 0)
-+	if (notify_fd < 0) {
- 		notify_fd =3D 0;
-+		return;
-+	}
-+
-+	watchdog_usec =3D getenv("WATCHDOG_USEC");
-+	if (!watchdog_usec)
-+		return;
-+
-+	msec =3D atoi(watchdog_usec) / 1000;
-+	if (msec < 0)
-+		return;
-+
-+	msec /=3D WATCHDOG_TRIGGER_FREQ;
-+
-+	watchdog =3D l_timeout_create_ms(msec, watchdog_callback,
-+					L_INT_TO_PTR(msec), NULL);
- }
- =
+This is called once no?  Why does it need to be always_inline?
 
- =
+> +{
+> +	const char *sock;
+> +
+> +	/* check if NOTIFY_SOCKET has been set */
+> +	sock =3D getenv("NOTIFY_SOCKET");
+> +	if (!sock)
+> +		return;
+> +
+> +	/* check for abstract socket or absolute path */
+> +	if (sock[0] !=3D '@' && sock[0] !=3D '/')
+> +		return;
+> +
+> +	notify_sock =3D l_strdup(sock);
 
-@@ -472,6 +503,8 @@ LIB_EXPORT int l_main_run(void)
- 		notify_fd =3D 0;
- 		l_free(notify_sock);
- 		notify_sock =3D NULL;
-+		l_timeout_remove(watchdog);
-+		watchdog =3D NULL;
- 	}
- =
+Why don't you just bind the socket here and save book-keeping this variable.
 
- 	return EXIT_SUCCESS;
--- =
+> +
+> +	notify_fd =3D socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+> +	if (notify_fd < 0)
+> +		notify_fd =3D 0;
+> +}
+> +
+> +
 
-2.17.2
+Double empty line...
+
+>   /**
+>    * l_main_init:
+>    *
+> @@ -342,6 +369,8 @@ LIB_EXPORT bool l_main_init(void)
+>   	if (!create_epoll())
+>   		return false;
+>   =
+
+> +	notify_socket();
+> +
+
+Maybe create_sd_notify_socket to make things clearer?  I also wonder if =
+
+this needs to be behind #if SYSTEMD_SUPPORT or something...  Maybe it is =
+
+okay as is.
+
+>   	epoll_terminate =3D false;
+>   =
+
+>   	return true;
+> @@ -438,6 +467,13 @@ LIB_EXPORT int l_main_run(void)
+>   =
+
+>   	epoll_running =3D false;
+>   =
+
+> +	if (notify_fd) {
+> +		close(notify_fd);
+> +		notify_fd =3D 0;
+> +		l_free(notify_sock);
+> +		notify_sock =3D NULL;
+> +	}
+> +
+>   	return EXIT_SUCCESS;
+>   }
+>   =
+
+> @@ -570,3 +606,47 @@ LIB_EXPORT int l_main_get_epoll_fd(void)
+>   {
+>   	return epoll_fd;
+>   }
+> +
+> +/**
+> + * l_main_sd_notify:
+> + *
+> + * Notify service manager about start-up completion and other service st=
+atus
+> + * changes.
+> + *
+> + * Returns: On failure, these calls return a negative errno-style error =
+code.
+> + * If $NOTIFY_SOCKET was not set and hence no status message could be se=
+nt,
+> + * -ENOCONN is returned.
+
+Might be worthwhile to reference the freedesktop page here directly =
+
+instead of in the commit description
+
+> + **/
+> +LIB_EXPORT int l_main_sd_notify(const char *state)
+> +{
+> +	struct sockaddr_un addr;
+> +	struct msghdr msghdr;
+> +	struct iovec iovec;
+> +
+> +	if (!notify_fd)
+> +		return -ENOTCONN;
+> +
+> +	memset(&addr, 0, sizeof(addr));
+> +	addr.sun_family =3D AF_UNIX;
+> +	strncpy(addr.sun_path, notify_sock, sizeof(addr.sun_path) - 1);
+> +
+> +	if (addr.sun_path[0] =3D=3D '@')
+> +		addr.sun_path[0] =3D '\0';
+
+As mentioned before, why not bind() to the address in the first place?
+
+> +
+> +	memset(&iovec, 0, sizeof(iovec));
+> +	iovec.iov_base =3D (char *) state;
+> +	iovec.iov_len =3D strlen(state);
+> +
+> +	memset(&msghdr, 0, sizeof(msghdr));
+> +	msghdr.msg_name =3D &addr;
+> +	msghdr.msg_namelen =3D offsetof(struct sockaddr_un, sun_path) +
+> +							strlen(notify_sock);
+> +
+> +	if (msghdr.msg_namelen > sizeof(struct sockaddr_un))
+> +		msghdr.msg_namelen =3D sizeof(struct sockaddr_un);
+> +
+> +	msghdr.msg_iov =3D &iovec;
+> +	msghdr.msg_iovlen =3D 1;
+
+Then this can just become send()
+
+> +
+> +	return sendmsg(notify_fd, &msghdr, MSG_NOSIGNAL);
+
+This doesn't actually return a negative errno...
+
+> +}
+> diff --git a/ell/main.h b/ell/main.h
+> index 99b34ad..ffa40af 100644
+> --- a/ell/main.h
+> +++ b/ell/main.h
+> @@ -44,6 +44,8 @@ int l_main_run_with_signal(l_main_signal_cb_t callback,=
+ void *user_data);
+>   =
+
+>   int l_main_get_epoll_fd();
+>   =
+
+> +int l_main_sd_notify(const char *state);
+> +
+>   #ifdef __cplusplus
+>   }
+>   #endif
+> =
 
 
---===============2320554460399211081==--
+Regards,
+-Denis
+
+--===============6305594151340946954==--
 
