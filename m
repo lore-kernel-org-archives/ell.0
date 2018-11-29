@@ -1,232 +1,189 @@
-Content-Type: multipart/mixed; boundary="===============5772063585436945974=="
+Content-Type: multipart/mixed; boundary="===============6703466765882880607=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH 4/9] unit: added ECDH unit tests
-Date: Thu, 29 Nov 2018 14:08:03 -0800
-Message-ID: <20181129220808.22151-4-james.prestwood@linux.intel.com>
+Subject: [PATCH 5/9] ecc: implement P384 fast modulus
+Date: Thu, 29 Nov 2018 14:08:04 -0800
+Message-ID: <20181129220808.22151-5-james.prestwood@linux.intel.com>
 In-Reply-To: <20181129220808.22151-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5772063585436945974==
+--===============6703466765882880607==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This test was moved from IWD, with required changes to the API
+This algorithm is defined in an IEICE paper:
+
+"Simple Power Analysis on Fast Modular Reduction with Generalized Mersenne
+ Prime for Elliptic Curve Cryptosystems"
+
+Unlike the existing P192/P256 algorithms, a macro was written to deal with
+converting from 32 bit chunks into 64 bits. This also makes the algorithm
+much easier to read since the C values are used directly.
 ---
- Makefile.am      |   6 +-
- unit/test-ecdh.c | 166 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 171 insertions(+), 1 deletion(-)
- create mode 100644 unit/test-ecdh.c
+ ell/ecc.c | 129 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 129 insertions(+)
 
-diff --git a/Makefile.am b/Makefile.am
-index 69c3cea..dc16a2c 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -165,7 +165,8 @@ unit_tests =3D unit/test-unit \
- 			unit/test-pbkdf2 \
- 			unit/test-dhcp \
- 			unit/test-dir-watch \
--			unit/test-ecc
-+			unit/test-ecc \
-+			unit/test-ecdh
+diff --git a/ell/ecc.c b/ell/ecc.c
+index b3ddf30..5d5e948 100644
+--- a/ell/ecc.c
++++ b/ell/ecc.c
+@@ -455,6 +455,132 @@ static void vli_mmod_fast_256(uint64_t *result, const=
+ uint64_t *product,
+ 	}
+ }
  =
 
- dbus_tests =3D unit/test-hwdb \
- 			unit/test-dbus \
-@@ -286,6 +287,9 @@ unit_test_dir_watch_LDADD =3D ell/libell-private.la
- =
-
- unit_test_ecc_LDADD =3D ell/libell-private.la
- =
-
-+unit_test_ecdh_LDADD =3D ell/libell-private.la
-+unit_test_ecdh_LDFLAGS =3D -Wl,-wrap,l_getrandom
-+
- if MAINTAINER_MODE
- noinst_LTLIBRARIES +=3D unit/example-plugin.la
- endif
-diff --git a/unit/test-ecdh.c b/unit/test-ecdh.c
-new file mode 100644
-index 0000000..efc47de
---- /dev/null
-+++ b/unit/test-ecdh.c
-@@ -0,0 +1,166 @@
 +/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2018 Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
++ * The NIST algorithms define S values, which are comprised of 32 bit C va=
+lues
++ * of the original product we are trying to reduce. Since we are working w=
+ith
++ * 64 bit 'digits', we need to convert these C values into 64 bit chunks. =
+This
++ * macro mainly makes code readability easier since we can directly pass t=
+he
++ * two C indexes (h and l). Some of these C values are zero, which is also=
+ a
++ * value C index. In this case -1 should be passed to indicate zero.
 + */
++#define ECC_SET_S(prod, h, l) ({ 				\
++	uint64_t r =3D 0;						\
++	if (h =3D=3D -1) {						\
++		/* zero, don't do anything */			\
++	} else if (h & 1)					\
++		r |=3D (prod[h / 2] & 0xffffffff00000000ull);	\
++	else							\
++		r |=3D (prod[h / 2] << 32);			\
++	if (l =3D=3D -1) {						\
++		/* zero, don't do anything */			\
++	} else if (l & 1)					\
++		r |=3D (prod[l / 2] >> 32);			\
++	else							\
++		r |=3D (prod[l / 2] & 0xffffffff);		\
++	r;							\
++})
 +
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <string.h>
-+#include <assert.h>
-+#include <ell/ell.h>
-+
-+static bool use_real_getrandom =3D true;
-+
-+bool __wrap_l_getrandom(void *buf, size_t len);
-+bool __real_l_getrandom(void *buf, size_t len);
-+
-+bool __wrap_l_getrandom(void *buf, size_t len)
++static void vli_mmod_fast_384(uint64_t *result, const uint64_t *product,
++				const uint64_t *curve_prime, uint64_t *tmp)
 +{
-+	static const uint8_t random_buf[] =3D { 0x75, 0xc5, 0xfe, 0x3e, 0x53,
-+						0xcc, 0x33, 0x33, 0x64, 0xea,
-+						0xdd, 0xa1, 0xe6, 0x62, 0x7a,
-+						0xb1, 0x98, 0xa7, 0xa0, 0x1e,
-+						0xac, 0x4b, 0x1d, 0xb8, 0x71,
-+						0x5b, 0x1d, 0x00, 0x36, 0xd0,
-+						0x0f, 0xde };
++	int carry;
++	const unsigned int ndigits =3D 6;
 +
-+	if (use_real_getrandom)
-+		return __real_l_getrandom(buf, len);
++	/* t */
++	vli_set(result, product, ndigits);
 +
-+	memcpy(buf, random_buf, len);
++	/* s1 */
++	tmp[0] =3D 0;
++	tmp[1] =3D 0;
++	tmp[2] =3D ECC_SET_S(product, 22, 21);
++	tmp[3] =3D ECC_SET_S(product, -1, 23);
++	tmp[4] =3D 0;
++	tmp[5] =3D 0;
++	carry =3D vli_lshift(tmp, tmp, 1, ndigits);
++	carry +=3D vli_add(result, result, tmp, ndigits);
 +
-+	return true;
-+}
++	/* s2 */
++	tmp[0] =3D product[6];
++	tmp[1] =3D product[7];
++	tmp[2] =3D product[8];
++	tmp[3] =3D product[9];
++	tmp[4] =3D product[10];
++	tmp[5] =3D product[11];
++	carry +=3D vli_add(result, result, tmp, ndigits);
 +
-+/*
-+ * Tests the most basic case. Generate two full public keys and use to cre=
-ate
-+ * two identical shared secrets.
-+ */
-+static void test_basic(const void *data)
-+{
-+	struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
-+	uint8_t private1[32];
-+	uint8_t private2[32];
++	/* s3 */
++	tmp[0] =3D ECC_SET_S(product, 22, 21);
++	tmp[1] =3D ECC_SET_S(product, 12, 23);
++	tmp[2] =3D ECC_SET_S(product, 14, 13);
++	tmp[3] =3D ECC_SET_S(product, 16, 15);
++	tmp[4] =3D ECC_SET_S(product, 18, 17);
++	tmp[5] =3D ECC_SET_S(product, 20, 19);
++	carry +=3D vli_add(result, result, tmp, ndigits);
 +
-+	uint8_t public1[64];
-+	uint8_t public2[64];
++	/* s4 */
++	tmp[0] =3D ECC_SET_S(product, 23, -1);
++	tmp[1] =3D ECC_SET_S(product, 20, -1);
++	tmp[2] =3D ECC_SET_S(product, 13, 12);
++	tmp[3] =3D ECC_SET_S(product, 15, 14);
++	tmp[4] =3D ECC_SET_S(product, 17, 16);
++	tmp[5] =3D ECC_SET_S(product, 19, 18);
++	carry +=3D vli_add(result, result, tmp, ndigits);
 +
-+	uint8_t secret1[32];
-+	uint8_t secret2[32];
++	/* s5 */
++	tmp[0] =3D 0;
++	tmp[1] =3D 0;
++	tmp[2] =3D ECC_SET_S(product, 21, 20);
++	tmp[3] =3D ECC_SET_S(product, 23, 22);
++	tmp[4] =3D 0;
++	tmp[5] =3D 0;
++	carry +=3D vli_add(result, result, tmp, ndigits);
 +
-+	assert(l_ecdh_generate_key_pair(curve, private1, 32, public1, 64));
-+	assert(l_ecdh_generate_key_pair(curve, private2, 32, public2, 64));
++	/* s6 */
++	tmp[0] =3D ECC_SET_S(product, -1, 20);
++	tmp[1] =3D ECC_SET_S(product, 21, -1);
++	tmp[2] =3D ECC_SET_S(product, 23, 22);
++	tmp[3] =3D 0;
++	tmp[4] =3D 0;
++	tmp[5] =3D 0;
++	carry +=3D vli_add(result, result, tmp, ndigits);
 +
-+	assert(l_ecdh_generate_shared_secret(curve, private1, public2, 64,
-+						secret1, 32));
-+	assert(l_ecdh_generate_shared_secret(curve, private2, public1, 64,
-+						secret2, 32));
++	/* s7 */
++	tmp[0] =3D ECC_SET_S(product, 12, 23);
++	tmp[1] =3D ECC_SET_S(product, 14, 13);
++	tmp[2] =3D ECC_SET_S(product, 16, 15);
++	tmp[3] =3D ECC_SET_S(product, 18, 17);
++	tmp[4] =3D ECC_SET_S(product, 20, 19);
++	tmp[5] =3D ECC_SET_S(product, 22, 21);
++	carry -=3D vli_sub(result, result, tmp, ndigits);
 +
-+	assert(!memcmp(secret1, secret2, 32));
-+}
++	/* s8 */
++	tmp[0] =3D ECC_SET_S(product, 20, -1);
++	tmp[1] =3D ECC_SET_S(product, 22, 21);
++	tmp[2] =3D ECC_SET_S(product, -1, 23);
++	tmp[3] =3D 0;
++	tmp[4] =3D 0;
++	tmp[5] =3D 0;
++	carry -=3D vli_sub(result, result, tmp, ndigits);
 +
-+/*
-+ * Tests public key compliance. When generating the public keys, only spec=
-ify
-+ * half their length (32). This requires ECDH to compute the remainder of =
-the
-+ * public key when generating the shared secret.
-+ */
-+static void test_compliant_key(const void *data)
-+{
-+	struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
++	/* s9 */
++	tmp[0] =3D 0;
++	tmp[1] =3D ECC_SET_S(product, 23, -1);
++	tmp[2] =3D ECC_SET_S(product, -1, 23);
++	tmp[3] =3D 0;
++	tmp[4] =3D 0;
++	tmp[5] =3D 0;
++	carry -=3D vli_sub(result, result, tmp, ndigits);
 +
-+	uint8_t private1[32];
-+	uint8_t private2[32];
-+
-+	uint8_t public1[32];
-+	uint8_t public2[32];
-+
-+	uint8_t secret1[32];
-+	uint8_t secret2[32];
-+
-+	assert(l_ecdh_generate_key_pair(curve, private1, 32, public1, 32));
-+	assert(l_ecdh_generate_key_pair(curve, private2, 32, public2, 32));
-+
-+	assert(l_ecdh_generate_shared_secret(curve, private1, public2, 32,
-+						secret1, 32));
-+	assert(l_ecdh_generate_shared_secret(curve, private2, public1, 32,
-+						secret2, 32));
-+
-+	assert(!memcmp(secret1, secret2, 32));
-+}
-+
-+/*
-+ * Test vector from RFC 5114 - 256-bit Random ECP Group
-+ */
-+static void test_vectors(const void *data)
-+{
-+	struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
-+
-+	uint64_t a_secret[4] =3D { 0x867B7291D507A3AFull, 0x3FAF432A5ABCE59Eull,
-+				0xE96A8E337A128499ull, 0x814264145F2F56F2ull };
-+	uint64_t a_public[8] =3D { 0x5E8D3B4BA83AEB15ull, 0x7165BE50BC42AE4Aull,
-+				0xC9B5A8D4160D09E9ull, 0x2AF502F3BE8952F2ull,
-+				0xC0F5015ECE5EFD85ull, 0x6795BD4BFF6E6DE3ull,
-+				0x8681A0F9872D79D5ull, 0xEB0FAF4CA986C4D3ull };
-+
-+	uint64_t b_secret[4] =3D { 0xEE1B593761CF7F41ull, 0x19CE6BCCAD562B8Eull,
-+				0xDB95A200CC0AB26Aull, 0x2CE1788EC197E096ull };
-+	uint64_t b_public[8] =3D { 0xB3AB0715F6CE51B0ull, 0xAE06AAEA279FA775ull,
-+				0x5346E8DE6C2C8646ull, 0xB120DE4AA3649279ull,
-+				0x85C34DDE5708B2B6ull, 0x3727027092A84113ull,
-+				0xD8EC685FA3F071D8ull, 0x9F1B7EECE20D7B5Eull };
-+
-+	uint64_t shared_secret[4] =3D { 0x7F80D21C820C2788ull,
-+					0xF5811E9DC8EC8EEAull,
-+					0x93310412D19A08F1ull,
-+					0xDD0F5396219D1EA3ull };
-+
-+	uint64_t a_shared[4];
-+	uint64_t b_shared[4];
-+
-+	use_real_getrandom =3D false;
-+
-+	assert(l_ecdh_generate_shared_secret(curve, a_secret,
-+						(const void *) b_public,
-+						64, a_shared, 32));
-+	assert(l_ecdh_generate_shared_secret(curve, b_secret,
-+						(const void *) a_public,
-+						64, b_shared, 32));
-+
-+	assert(!memcmp(a_shared, shared_secret, 32));
-+	assert(!memcmp(b_shared, shared_secret, 32));
-+
-+	use_real_getrandom =3D true;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	l_test_init(&argc, &argv);
-+
-+	if (l_getrandom_is_supported()) {
-+		l_test_add("ECDH Basic", test_basic, NULL);
-+		l_test_add("ECDH Compliant key", test_compliant_key, NULL);
++	if (carry < 0) {
++		do {
++			carry +=3D vli_add(result, result, curve_prime, ndigits);
++		} while (carry < 0);
++	} else {
++		while (carry || _vli_cmp(curve_prime, result, ndigits) !=3D 1)
++			carry -=3D vli_sub(result, result, curve_prime, ndigits);
 +	}
-+
-+	l_test_add("ECDH test vector", test_vectors, NULL);
-+
-+	return l_test_run();
 +}
++
+ /* Computes result =3D product % curve_prime
+  *  from http://www.nsa.gov/ia/_files/nist-routines.pdf
+ */
+@@ -471,6 +597,9 @@ static bool vli_mmod_fast(uint64_t *result, uint64_t *p=
+roduct,
+ 	case 4:
+ 		vli_mmod_fast_256(result, product, curve_prime, tmp);
+ 		break;
++	case 6:
++		vli_mmod_fast_384(result, product, curve_prime, tmp);
++		break;
+ 	default:
+ 		return false;
+ 	}
 -- =
 
 2.17.1
 
 
---===============5772063585436945974==--
+--===============6703466765882880607==--
 
