@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============1877404788434234462=="
+Content-Type: multipart/mixed; boundary="===============4074884667578395102=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2 1/2] main: Add support for $NOTIFY_SOCKET
-Date: Fri, 30 Nov 2018 10:23:50 -0600
-Message-ID: <fdcce245-89d1-b7aa-6d1e-c8c82092106e@gmail.com>
-In-Reply-To: <20181130094402.22111-1-luiz.dentz@gmail.com>
+Subject: Re: [PATCH v2 2/2] main: Add support for $WATCHDOG_USEC
+Date: Fri, 30 Nov 2018 10:25:28 -0600
+Message-ID: <2bd49ad6-ae2f-5eb7-64f0-4317f4cfb146@gmail.com>
+In-Reply-To: <20181130094402.22111-2-luiz.dentz@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1877404788434234462==
+--===============4074884667578395102==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -19,66 +19,51 @@ On 11/30/2018 03:44 AM, Luiz Augusto von Dentz wrote:
 > From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
 > =
 
-> This adds support for sending states to the service manager using the
-> socket set in $NOTIFY_SOCKET:
-> =
-
-> https://www.freedesktop.org/software/systemd/man/sd_notify.html
+> This adds handling to watchdog set by service manager by sending
+> "WATCHDOG=3D1" to it in intervals shorter than what is set in
+> $WATCHDOG_USEC.
 > ---
->   ell/main.c | 71 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
->   ell/main.h |  2 ++
->   2 files changed, 73 insertions(+)
+>   ell/main.c | 32 ++++++++++++++++++++++++++++++++
+>   1 file changed, 32 insertions(+)
 > =
 
 
 <snip>
 
-> @@ -324,6 +329,40 @@ static void idle_dispatch(void *data, void *user_dat=
-a)
->   	idle->flags &=3D ~IDLE_FLAG_DISPATCHING;
+> @@ -359,7 +375,21 @@ static void create_sd_notify_socket(void)
+>   	if (bind(notify_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+>   		close(notify_fd);
+>   		notify_fd =3D 0;
+> +		return;
+>   	}
+> +
+> +	watchdog_usec =3D getenv("WATCHDOG_USEC");
+> +	if (!watchdog_usec)
+> +		return;
+> +
+> +	msec =3D atoi(watchdog_usec) / 1000;
+> +	if (msec < 0)
+
+So I changed this to if (msec < WATCHDOG_TRIGGER_FREQ), otherwise you =
+
+can end up with 0 for the msec value.  We might want to put an even =
+
+higher clamp value for this.
+
+> +		return;
+> +
+> +	msec /=3D WATCHDOG_TRIGGER_FREQ;
+> +
+> +	watchdog =3D l_timeout_create_ms(msec, watchdog_callback,
+> +					L_INT_TO_PTR(msec), NULL);
 >   }
 >   =
 
-> +static void create_sd_notify_socket(void)
-> +{
-> +	const char *sock;
-> +	struct sockaddr_un addr;
-> +
-> +	/* check if NOTIFY_SOCKET has been set */
-> +	sock =3D getenv("NOTIFY_SOCKET");
-> +	if (!sock)
-> +		return;
-> +
-> +	/* check for abstract socket or absolute path */
-> +	if (sock[0] !=3D '@' && sock[0] !=3D '/')
-> +		return;
-> +
-> +	notify_fd =3D socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-> +	if (notify_fd < 0) {
-> +		notify_fd =3D 0;
-> +		return;
-> +	}
-> +
-> +	memset(&addr, 0, sizeof(addr));
-> +	addr.sun_family =3D AF_UNIX;
-> +	strncpy(addr.sun_path, sock, sizeof(addr.sun_path) - 1);
-> +
-> +	if (addr.sun_path[0] =3D=3D '@')
-> +		addr.sun_path[0] =3D '\0';
-> +
-> +	if (bind(notify_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-> +		close(notify_fd);
-> +		notify_fd =3D 0;
-> +	}
-> +}
-> +
-> +
 
-I removed this double empty line and applied this patch, thanks.
+Applied, thanks.
 
 Regards,
 -Denis
 
-
---===============1877404788434234462==--
+--===============4074884667578395102==--
 
