@@ -1,82 +1,52 @@
-Content-Type: multipart/mixed; boundary="===============1995257653653951136=="
+Content-Type: multipart/mixed; boundary="===============6765755454452460806=="
 MIME-Version: 1.0
-From: James Prestwood <james.prestwood@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH 3/9] ecdh: moved ECDH from IWD
-Date: Mon, 03 Dec 2018 10:31:44 -0800
-Message-ID: <bb8e881bfcf957df7554b21278921cbffa79046e.camel@linux.intel.com>
-In-Reply-To: <08aa5ae9-b4e4-d4b8-1554-54070a411d95@gmail.com>
+Date: Mon, 03 Dec 2018 12:41:53 -0600
+Message-ID: <c9844035-63dc-fb09-0f48-c86b8934a2af@gmail.com>
+In-Reply-To: <bb8e881bfcf957df7554b21278921cbffa79046e.camel@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1995257653653951136==
+--===============6765755454452460806==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, 2018-11-29 at 21:38 -0600, Denis Kenzior wrote:
-> Hi James,
-> =
+Hi James,
 
-> =
+>> bool l_ecdh_generate_key_pair(const struct l_ecc_curve *curve,
+>> 				struct l_ecc_point *out_public,
+>> 				struct l_ecc_constant *out_private);
+>> ?
+> Yes it is just a point on the curve, but I don't think that most users
+> of this API need or care to know to that level of detail. Also,
 
-> > + * Generate a private/public key pair. All inputs are expected in
-> > little-endian.
-> > + */
-> > +bool l_ecdh_generate_key_pair(struct l_ecc_curve *curve, void
-> > *private,
-> > +					size_t priv_len, void *public,
-> > +					size_t pub_len);
-> =
+But if we pass in void * and a length, don't they have to care even to a =
 
-> Public is just a point on the curve right? So should this be
-> something like:
-> =
+greater degree?  I mean they need to know how many bytes they should =
 
-> bool l_ecdh_generate_key_pair(const struct l_ecc_curve *curve,
-> 				struct l_ecc_point *out_public,
-> 				struct l_ecc_constant *out_private);
-> ?
-Yes it is just a point on the curve, but I don't think that most users
-of this API need or care to know to that level of detail. Also,
-generating the shared secret supports compressed coordinates where only
-the X coordinate is given. In this case the half public key is coming
-from the network, so its much more convenient just feeding it that raw
-data that converting it to a point.
+pass in for example.  And then they must somehow *know* that they want a =
 
-> =
+compressed point or uncompressed and pass in the appropriate number of =
 
-> > +/*
-> > + * Generate a shared secret from a private/public key. All inputs
-> > are expected
-> > + * in little-endian.
-> > + */
-> > +bool l_ecdh_generate_shared_secret(struct l_ecc_curve *curve,
-> > +						const void *private,
-> > +						const void
-> > *other_public,
-> > +						size_t pub_len, void
-> > *secret,
-> > +						size_t secret_len);
-> =
+bytes. And then do the conversion to network order.
 
-> Similarly here maybe:
-> =
+You could just make ecc_point take care of all these details.
 
-> struct l_ecc_point *other_public =3D l_ecc_point_new(curve, data, len);
-> =
+> generating the shared secret supports compressed coordinates where only
+> the X coordinate is given. In this case the half public key is coming
+> from the network, so its much more convenient just feeding it that raw
+> data that converting it to a point.
 
-> bool l_ecdh_generate_shared_secret(struct l_ecc_constant *private,
-> 				struct l_ecc_point *other_public,
-> 				void *out_secret,
-> 				size_t out_secret_len);
-> =
+You still need to validate what is coming over the network and convert =
 
-> ?
-> =
+it from network byte order.  The constructor for ecc_point could do this =
 
-> Regards,
-> -Denis
+for you.
 
+Regards,
+-Denis
 
---===============1995257653653951136==--
+--===============6765755454452460806==--
 
