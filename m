@@ -1,104 +1,82 @@
-Content-Type: multipart/mixed; boundary="===============2011864826110383261=="
+Content-Type: multipart/mixed; boundary="===============1995257653653951136=="
 MIME-Version: 1.0
-From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH v2] build: Add -ldl to LIBS as needed.
-Date: Fri, 30 Nov 2018 10:35:04 -0800
-Message-ID: <20181130183504.21986-1-ossama.othman@intel.com>
-In-Reply-To: <20181129214610.30694-1-ossama.othman@intel.com>
+From: James Prestwood <james.prestwood@linux.intel.com>
+Subject: Re: [PATCH 3/9] ecdh: moved ECDH from IWD
+Date: Mon, 03 Dec 2018 10:31:44 -0800
+Message-ID: <bb8e881bfcf957df7554b21278921cbffa79046e.camel@linux.intel.com>
+In-Reply-To: <08aa5ae9-b4e4-d4b8-1554-54070a411d95@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2011864826110383261==
+--===============1995257653653951136==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-ELL requires the libdl library but does not add it to the LIBS build
-variable.  Add it to LIBS only if it is required to resolve dlopen()
-and related functions at link-time so that the libdl dependency will
-be embedded into the libell shared library binary:
+On Thu, 2018-11-29 at 21:38 -0600, Denis Kenzior wrote:
+> Hi James,
+> =
 
-Pre-change:
-$ ldd ell/.libs/libell.so.0.0.2
-        linux-vdso.so.1 (0x00007ffec6fd2000)
-        libc.so.6 =3D> /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb7db3bf000)
-        /lib64/ld-linux-x86-64.so.2 (0x00007fb7db9f5000)
+> =
 
-Post-change:
-$ ldd ell/.libs/libell.so.0.0.2
-        linux-vdso.so.1 (0x00007fffb95d1000)
-        libdl.so.2 =3D> /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f02bef2f00=
-0)
-        libc.so.6 =3D> /lib/x86_64-linux-gnu/libc.so.6 (0x00007f02beb3e000)
-        /lib64/ld-linux-x86-64.so.2 (0x00007f02bf378000)
+> > + * Generate a private/public key pair. All inputs are expected in
+> > little-endian.
+> > + */
+> > +bool l_ecdh_generate_key_pair(struct l_ecc_curve *curve, void
+> > *private,
+> > +					size_t priv_len, void *public,
+> > +					size_t pub_len);
+> =
 
-This also obviates the need to explicitly add libdl to LDFLAGS for the
-ELL plugin unit test.
+> Public is just a point on the curve right? So should this be
+> something like:
+> =
 
-Lastly, only add "-ldl" to the private library flags in ELL's
-pkg-config file (ell.pc) since it is an ELL dependency that is only
-exposed to the user if the platform in question doesn't support
-inter-library dependencies, or when linking against the static ELL
-library, e.g.:
+> bool l_ecdh_generate_key_pair(const struct l_ecc_curve *curve,
+> 				struct l_ecc_point *out_public,
+> 				struct l_ecc_constant *out_private);
+> ?
+Yes it is just a point on the curve, but I don't think that most users
+of this API need or care to know to that level of detail. Also,
+generating the shared secret supports compressed coordinates where only
+the X coordinate is given. In this case the half public key is coming
+from the network, so its much more convenient just feeding it that raw
+data that converting it to a point.
 
-$ pkg-config --libs ell
--L/usr/local/lib -lell
+> =
 
-$ pkg-config --static --libs ell
--L/usr/local/lib -lell -ldl
----
- Makefile.am   | 2 +-
- configure.ac  | 2 +-
- ell/ell.pc.in | 3 ++-
- 3 files changed, 4 insertions(+), 3 deletions(-)
+> > +/*
+> > + * Generate a shared secret from a private/public key. All inputs
+> > are expected
+> > + * in little-endian.
+> > + */
+> > +bool l_ecdh_generate_shared_secret(struct l_ecc_curve *curve,
+> > +						const void *private,
+> > +						const void
+> > *other_public,
+> > +						size_t pub_len, void
+> > *secret,
+> > +						size_t secret_len);
+> =
 
-diff --git a/Makefile.am b/Makefile.am
-index d115360..bd276eb 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -215,7 +215,7 @@ unit_test_io_LDADD =3D ell/libell-private.la
- unit_test_ringbuf_LDADD =3D ell/libell-private.la
- =
+> Similarly here maybe:
+> =
 
- unit_test_plugin_LDFLAGS =3D -Wl,-export-dynamic
--unit_test_plugin_LDADD =3D ell/libell-private.la -ldl
-+unit_test_plugin_LDADD =3D ell/libell-private.la
- =
+> struct l_ecc_point *other_public =3D l_ecc_point_new(curve, data, len);
+> =
 
- unit_test_checksum_LDADD =3D ell/libell-private.la
- =
+> bool l_ecdh_generate_shared_secret(struct l_ecc_constant *private,
+> 				struct l_ecc_point *other_public,
+> 				void *out_secret,
+> 				size_t out_secret_len);
+> =
 
-diff --git a/configure.ac b/configure.ac
-index 5a962ac..487bff6 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -106,7 +106,7 @@ AC_CHECK_FUNC(timerfd_create, dummy=3Dyes,
- AC_CHECK_FUNC(epoll_create, dummy=3Dyes,
- 			AC_MSG_ERROR(epoll support is required))
- =
+> ?
+> =
 
--AC_CHECK_LIB(dl, dlopen, dummy=3Dyes,
-+AC_SEARCH_LIBS(dlopen, dl, dummy=3Dyes,
- 			AC_MSG_ERROR(dynamic linking loader is required))
- =
-
- AC_CHECK_HEADERS(linux/types.h linux/if_alg.h)
-diff --git a/ell/ell.pc.in b/ell/ell.pc.in
-index 4fc933b..d9aae8d 100644
---- a/ell/ell.pc.in
-+++ b/ell/ell.pc.in
-@@ -6,5 +6,6 @@ includedir=3D@includedir@
- Name: ELL
- Description: Embedded Linux library
- Version: @VERSION@
--Libs: -L${libdir} -lell -ldl
-+Libs: -L${libdir} -lell
-+Libs.private: @LIBS@
- Cflags: -I${includedir}
--- =
-
-2.17.1
+> Regards,
+> -Denis
 
 
---===============2011864826110383261==--
+--===============1995257653653951136==--
 
