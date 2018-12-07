@@ -1,51 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============3011648191526128681=="
+Content-Type: multipart/mixed; boundary="===============3503802919829049143=="
 MIME-Version: 1.0
 From: Brian Gix <brian.gix@intel.com>
-Subject: [PATCH 1/2] dbus: fix strict compiler warnings for strncpy
-Date: Fri, 07 Dec 2018 10:37:09 -0800
-Message-ID: <20181207183710.20822-2-brian.gix@intel.com>
+Subject: [PATCH 2/2] log: Fix strict compiler warning for strncpy
+Date: Fri, 07 Dec 2018 10:37:10 -0800
+Message-ID: <20181207183710.20822-3-brian.gix@intel.com>
 In-Reply-To: <20181207183710.20822-1-brian.gix@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3011648191526128681==
+--===============3503802919829049143==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/dbus.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ ell/log.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 55aee0e..5664f85 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -1128,7 +1128,7 @@ static struct l_dbus *setup_unix(char *params)
- 		}
+diff --git a/ell/log.c b/ell/log.c
+index bc1be9f..f3f4b0c 100644
+--- a/ell/log.c
++++ b/ell/log.c
+@@ -86,7 +86,7 @@ static int open_log(const char *path)
  =
 
- 		addr.sun_path[0] =3D '\0';
--		strncpy(addr.sun_path + 1, path, len);
-+		strncpy(addr.sun_path + 1, path, sizeof(addr.sun_path) - 2);
- 		len++;
- 	} else {
- 		if (len > sizeof(addr.sun_path)) {
-@@ -1136,7 +1136,7 @@ static struct l_dbus *setup_unix(char *params)
- 			return NULL;
- 		}
+ 	memset(&addr, 0, sizeof(addr));
+ 	addr.sun_family =3D AF_UNIX;
+-	strncpy(addr.sun_path, path, sizeof(addr.sun_path));
++	strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
  =
 
--		strncpy(addr.sun_path, path, len);
-+		strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
- 	}
- =
-
- 	if (connect(fd, (struct sockaddr *) &addr,
+ 	if (connect(log_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+ 		close_log();
 -- =
 
 2.17.2
 
 
---===============3011648191526128681==--
+--===============3503802919829049143==--
 
