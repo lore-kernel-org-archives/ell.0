@@ -1,226 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============3501273639832463152=="
+Content-Type: multipart/mixed; boundary="===============4143513016965852501=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH v4 4/5] unit: moved ECDH unit tests from IWD
-Date: Fri, 07 Dec 2018 12:30:08 -0800
-Message-ID: <20181207203009.5843-4-james.prestwood@linux.intel.com>
+Subject: [PATCH v4 5/5] gitignore: added ecc/ecdh unit tests
+Date: Fri, 07 Dec 2018 12:30:09 -0800
+Message-ID: <20181207203009.5843-5-james.prestwood@linux.intel.com>
 In-Reply-To: <20181207203009.5843-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3501273639832463152==
+--===============4143513016965852501==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- Makefile.am      |   6 +-
- unit/test-ecdh.c | 163 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 168 insertions(+), 1 deletion(-)
- create mode 100644 unit/test-ecdh.c
+ .gitignore | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Makefile.am b/Makefile.am
-index 238fd90..307e752 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -164,7 +164,8 @@ unit_tests =3D unit/test-unit \
- 			unit/test-pbkdf2 \
- 			unit/test-dhcp \
- 			unit/test-dir-watch \
--			unit/test-ecc
-+			unit/test-ecc \
-+			unit/test-ecdh
- =
-
- dbus_tests =3D unit/test-hwdb \
- 			unit/test-dbus \
-@@ -285,6 +286,9 @@ unit_test_dir_watch_LDADD =3D ell/libell-private.la
- =
-
- unit_test_ecc_LDADD =3D ell/libell-private.la
- =
-
-+unit_test_ecdh_LDADD =3D ell/libell-private.la
-+unit_test_ecdh_LDFLAGS =3D -Wl,-wrap,l_getrandom
-+
- if MAINTAINER_MODE
- noinst_LTLIBRARIES +=3D unit/example-plugin.la
- endif
-diff --git a/unit/test-ecdh.c b/unit/test-ecdh.c
-new file mode 100644
-index 0000000..01059d2
---- /dev/null
-+++ b/unit/test-ecdh.c
-@@ -0,0 +1,163 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2018 Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <string.h>
-+#include <assert.h>
-+#include <ell/ell.h>
-+
-+#include "ell/ecc-private.h"
-+
-+static bool use_real_getrandom =3D true;
-+
-+bool __wrap_l_getrandom(void *buf, size_t len);
-+bool __real_l_getrandom(void *buf, size_t len);
-+
-+bool __wrap_l_getrandom(void *buf, size_t len)
-+{
-+	static const uint8_t random_buf[] =3D { 0x75, 0xc5, 0xfe, 0x3e, 0x53,
-+						0xcc, 0x33, 0x33, 0x64, 0xea,
-+						0xdd, 0xa1, 0xe6, 0x62, 0x7a,
-+						0xb1, 0x98, 0xa7, 0xa0, 0x1e,
-+						0xac, 0x4b, 0x1d, 0xb8, 0x71,
-+						0x5b, 0x1d, 0x00, 0x36, 0xd0,
-+						0x0f, 0xde };
-+
-+	if (use_real_getrandom)
-+		return __real_l_getrandom(buf, len);
-+
-+	memcpy(buf, random_buf, len);
-+
-+	return true;
-+}
-+
-+/*
-+ * Tests the most basic case. Generate two full public keys and use to cre=
-ate
-+ * two identical shared secrets.
-+ */
-+static void test_basic(const void *data)
-+{
-+	const struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
-+
-+	struct l_ecc_constant *private1;
-+	struct l_ecc_constant *private2;
-+
-+	struct l_ecc_point *public1;
-+	struct l_ecc_point *public2;
-+
-+	struct l_ecc_constant *secret1;
-+	struct l_ecc_constant *secret2;
-+
-+	assert(l_ecdh_generate_key_pair(curve, &private1, &public1));
-+	assert(l_ecdh_generate_key_pair(curve, &private2, &public2));
-+
-+	assert(l_ecdh_generate_shared_secret(curve, private1, public2, &secret1));
-+	assert(l_ecdh_generate_shared_secret(curve, private2, public1, &secret2));
-+
-+	assert(!memcmp(secret1->c, secret2->c, 32));
-+
-+	l_ecc_constant_free(private1);
-+	l_ecc_constant_free(private2);
-+	l_ecc_point_free(public1);
-+	l_ecc_point_free(public2);
-+	l_ecc_constant_free(secret1);
-+	l_ecc_constant_free(secret2);
-+}
-+
-+/*
-+ * Test vector from RFC 5114 - 256-bit Random ECP Group
-+ */
-+static void test_vector_p256(const void *data)
-+{
-+	const struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
-+
-+	uint64_t a_sec_buf[4] =3D { 0x867B7291D507A3AFull, 0x3FAF432A5ABCE59Eull,
-+				0xE96A8E337A128499ull, 0x814264145F2F56F2ull };
-+	uint64_t a_pub_buf[8] =3D { 0x5E8D3B4BA83AEB15ull, 0x7165BE50BC42AE4Aull,
-+				0xC9B5A8D4160D09E9ull, 0x2AF502F3BE8952F2ull,
-+				0xC0F5015ECE5EFD85ull, 0x6795BD4BFF6E6DE3ull,
-+				0x8681A0F9872D79D5ull, 0xEB0FAF4CA986C4D3ull };
-+
-+	uint64_t b_sec_buf[4] =3D { 0xEE1B593761CF7F41ull, 0x19CE6BCCAD562B8Eull,
-+				0xDB95A200CC0AB26Aull, 0x2CE1788EC197E096ull };
-+	uint64_t b_pub_buf[8] =3D { 0xB3AB0715F6CE51B0ull, 0xAE06AAEA279FA775ull,
-+				0x5346E8DE6C2C8646ull, 0xB120DE4AA3649279ull,
-+				0x85C34DDE5708B2B6ull, 0x3727027092A84113ull,
-+				0xD8EC685FA3F071D8ull, 0x9F1B7EECE20D7B5Eull };
-+
-+	uint64_t ss_buf[4] =3D { 0x7F80D21C820C2788ull,
-+					0xF5811E9DC8EC8EEAull,
-+					0x93310412D19A08F1ull,
-+					0xDD0F5396219D1EA3ull };
-+
-+	struct l_ecc_constant *a_shared;
-+	struct l_ecc_constant *b_shared;
-+
-+	struct l_ecc_constant *a_secret =3D _ecc_constant_new(curve, a_sec_buf,
-+							sizeof(a_sec_buf));
-+	struct l_ecc_point *a_public =3D l_ecc_point_new(curve);
-+
-+	struct l_ecc_constant *b_secret =3D _ecc_constant_new(curve, b_sec_buf,
-+							sizeof(b_sec_buf));
-+	struct l_ecc_point *b_public =3D l_ecc_point_new(curve);
-+
-+	memcpy(a_public->x, a_pub_buf, 32);
-+	memcpy(a_public->y, a_pub_buf + 4, 32);
-+	a_public->ndigits =3D 4;
-+	memcpy(b_public->x, b_pub_buf, 32);
-+	memcpy(b_public->y, b_pub_buf + 4, 32);
-+	b_public->ndigits =3D 4;
-+
-+	use_real_getrandom =3D false;
-+
-+	assert(l_ecdh_generate_shared_secret(curve, a_secret, b_public,
-+						&a_shared));
-+	assert(l_ecdh_generate_shared_secret(curve, b_secret, a_public,
-+						&b_shared));
-+
-+	assert(!memcmp(a_shared->c, ss_buf, 32));
-+	assert(!memcmp(b_shared->c, ss_buf, 32));
-+
-+	use_real_getrandom =3D true;
-+
-+	l_ecc_constant_free(a_secret);
-+	l_ecc_constant_free(b_secret);
-+	l_ecc_point_free(a_public);
-+	l_ecc_point_free(b_public);
-+	l_ecc_constant_free(a_shared);
-+	l_ecc_constant_free(b_shared);
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	l_test_init(&argc, &argv);
-+
-+	if (l_getrandom_is_supported())
-+		l_test_add("ECDH Basic", test_basic, NULL);
-+
-+	l_test_add("ECDH test vector P256", test_vector_p256, NULL);
-+
-+	return l_test_run();
-+}
+diff --git a/.gitignore b/.gitignore
+index 16725f5..75ab7b2 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -56,6 +56,8 @@ unit/test-key
+ unit/test-pbkdf2
+ unit/test-dhcp
+ unit/test-dir-watch
++unit/test-ecc
++unit/test-ecdh
+ unit/cert-*.pem
+ unit/cert-*.csr
+ unit/cert-*.srl
 -- =
 
 2.17.1
 
 
---===============3501273639832463152==--
+--===============4143513016965852501==--
 
