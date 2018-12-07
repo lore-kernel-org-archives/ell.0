@@ -1,65 +1,57 @@
-Content-Type: multipart/mixed; boundary="===============5817231563097932030=="
+Content-Type: multipart/mixed; boundary="===============2880122266999466078=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH v3 3/5] ecdh: moved ECDH from IWD
-Date: Fri, 07 Dec 2018 09:11:29 -0800
-Message-ID: <20181207171131.5741-3-james.prestwood@linux.intel.com>
+Subject: [PATCH v3 4/5] unit: moved ECDH unit tests from IWD
+Date: Fri, 07 Dec 2018 09:11:30 -0800
+Message-ID: <20181207171131.5741-4-james.prestwood@linux.intel.com>
 In-Reply-To: <20181207171131.5741-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5817231563097932030==
+--===============2880122266999466078==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Moved the ECDH implementation from IWD. API changes were made to utilize
-l_ecc_point/l_ecc_constant types, as well as the curve object. Some sanity
-checks were also added to ensure random keys were within the allowable rang=
-e.
 ---
- Makefile.am |   7 +++-
- ell/ecdh.c  | 106 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/ecdh.h  |  51 +++++++++++++++++++++++++
- ell/ell.h   |   1 +
- 4 files changed, 163 insertions(+), 2 deletions(-)
- create mode 100644 ell/ecdh.c
- create mode 100644 ell/ecdh.h
+ Makefile.am      |   6 +-
+ unit/test-ecdh.c | 163 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 168 insertions(+), 1 deletion(-)
+ create mode 100644 unit/test-ecdh.c
 
 diff --git a/Makefile.am b/Makefile.am
-index f33f992..69c3cea 100644
+index 69c3cea..dc16a2c 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -50,7 +50,8 @@ pkginclude_HEADERS =3D ell/ell.h \
- 			ell/net.h \
- 			ell/dhcp.h \
- 			ell/cert.h \
--			ell/ecc.h
-+			ell/ecc.h \
-+			ell/ecdh.h
+@@ -165,7 +165,8 @@ unit_tests =3D unit/test-unit \
+ 			unit/test-pbkdf2 \
+ 			unit/test-dhcp \
+ 			unit/test-dir-watch \
+-			unit/test-ecc
++			unit/test-ecc \
++			unit/test-ecdh
  =
 
- lib_LTLIBRARIES =3D ell/libell.la
+ dbus_tests =3D unit/test-hwdb \
+ 			unit/test-dbus \
+@@ -286,6 +287,9 @@ unit_test_dir_watch_LDADD =3D ell/libell-private.la
  =
 
-@@ -116,7 +117,9 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/cert-private.h \
- 			ell/ecc-private.h \
- 			ell/ecc.h \
--			ell/ecc.c
-+			ell/ecc.c \
-+			ell/ecdh.h \
-+			ell/ecdh.c
+ unit_test_ecc_LDADD =3D ell/libell-private.la
  =
 
- ell_libell_la_LDFLAGS =3D -no-undefined \
- 			-Wl,--version-script=3D$(top_srcdir)/ell/ell.sym \
-diff --git a/ell/ecdh.c b/ell/ecdh.c
++unit_test_ecdh_LDADD =3D ell/libell-private.la
++unit_test_ecdh_LDFLAGS =3D -Wl,-wrap,l_getrandom
++
+ if MAINTAINER_MODE
+ noinst_LTLIBRARIES +=3D unit/example-plugin.la
+ endif
+diff --git a/unit/test-ecdh.c b/unit/test-ecdh.c
 new file mode 100644
-index 0000000..97bfa49
+index 0000000..01059d2
 --- /dev/null
-+++ b/ell/ecdh.c
-@@ -0,0 +1,106 @@
++++ b/unit/test-ecdh.c
+@@ -0,0 +1,163 @@
 +/*
 + *
 + *  Embedded Linux library
@@ -83,165 +75,152 @@ index 0000000..97bfa49
 + *
 + */
 +
-+#include <stdint.h>
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
 +
-+#include "private.h"
-+#include "ecc-private.h"
-+#include "ecc.h"
-+#include "ecdh.h"
-+#include "random.h"
++#include <string.h>
++#include <assert.h>
++#include <ell/ell.h>
 +
-+/*
-+ * Some sane maximum for calculating the public key. This *shouldn't* ever=
- be
-+ * reached in normal conditions.
-+ */
-+#define ECDH_MAX_ITERATIONS 20
++#include "ell/ecc-private.h"
 +
-+/*
-+ * IETF draft-jivsov-ecc-compact-00 Section 4.2.1
-+ *
-+ * The following algorithm calculates a key pair {k, Q=3Dk*G=3D(x,y)}, whe=
-re k is
-+ * the private key and Q=3D(x,y) is the public key.
-+ *
-+ * Black box generation:
-+ *     1. Generate a key pair {k, Q=3Dk*G=3D(x,y)} with KG
-+ *     2. if( y !=3D min(y,p-y) ) goto step 1
-+ *     3. output {k, Q=3D(x,y)} as a key pair
-+ */
-+LIB_EXPORT bool l_ecdh_generate_key_pair(const struct l_ecc_curve *curve,
-+					struct l_ecc_constant **private,
-+					struct l_ecc_point **public)
++static bool use_real_getrandom =3D true;
++
++bool __wrap_l_getrandom(void *buf, size_t len);
++bool __real_l_getrandom(void *buf, size_t len);
++
++bool __wrap_l_getrandom(void *buf, size_t len)
 +{
-+	bool compliant =3D false;
-+	int iter =3D 0;
-+	uint64_t p2[L_ECC_MAX_DIGITS];
++	static const uint8_t random_buf[] =3D { 0x75, 0xc5, 0xfe, 0x3e, 0x53,
++						0xcc, 0x33, 0x33, 0x64, 0xea,
++						0xdd, 0xa1, 0xe6, 0x62, 0x7a,
++						0xb1, 0x98, 0xa7, 0xa0, 0x1e,
++						0xac, 0x4b, 0x1d, 0xb8, 0x71,
++						0x5b, 0x1d, 0x00, 0x36, 0xd0,
++						0x0f, 0xde };
 +
-+	_ecc_calculate_p2(curve, p2);
++	if (use_real_getrandom)
++		return __real_l_getrandom(buf, len);
 +
-+	*public =3D l_ecc_point_new(curve);
-+
-+	while (!compliant && iter++ < ECDH_MAX_ITERATIONS) {
-+		*private =3D l_ecc_constant_new_random(curve);
-+
-+		_ecc_point_mult(*public, &curve->g, (*private)->c,
-+					NULL, curve->p);
-+
-+		/* ensure public key is compliant */
-+		if (_vli_cmp((*public)->y, p2, curve->ndigits) >=3D 0) {
-+			compliant =3D true;
-+			break;
-+		}
-+
-+		l_ecc_constant_free(*private);
-+	}
-+
-+	if (!compliant) {
-+		l_ecc_point_free(*public);
-+		return false;
-+	}
++	memcpy(buf, random_buf, len);
 +
 +	return true;
 +}
 +
-+LIB_EXPORT bool l_ecdh_generate_shared_secret(const struct l_ecc_curve *cu=
-rve,
-+					const struct l_ecc_constant *private,
-+					const struct l_ecc_point *other_public,
-+					struct l_ecc_constant **secret)
++/*
++ * Tests the most basic case. Generate two full public keys and use to cre=
+ate
++ * two identical shared secrets.
++ */
++static void test_basic(const void *data)
 +{
-+	struct l_ecc_constant *z;
-+	struct l_ecc_point *product;
++	const struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
 +
-+	if (unlikely(!curve))
-+		return false;
++	struct l_ecc_constant *private1;
++	struct l_ecc_constant *private2;
 +
-+	z =3D l_ecc_constant_new_random(curve);
++	struct l_ecc_point *public1;
++	struct l_ecc_point *public2;
 +
-+	product =3D l_ecc_point_new(curve);
++	struct l_ecc_constant *secret1;
++	struct l_ecc_constant *secret2;
 +
-+	_ecc_point_mult(product, other_public, private->c, z->c, curve->p);
++	assert(l_ecdh_generate_key_pair(curve, &private1, &public1));
++	assert(l_ecdh_generate_key_pair(curve, &private2, &public2));
 +
-+	*secret =3D _ecc_constant_new(curve, product->x, curve->ndigits * 8);
++	assert(l_ecdh_generate_shared_secret(curve, private1, public2, &secret1));
++	assert(l_ecdh_generate_shared_secret(curve, private2, public1, &secret2));
 +
-+	l_ecc_point_free(product);
-+	l_ecc_constant_free(z);
++	assert(!memcmp(secret1->c, secret2->c, 32));
 +
-+	return true;
++	l_ecc_constant_free(private1);
++	l_ecc_constant_free(private2);
++	l_ecc_point_free(public1);
++	l_ecc_point_free(public2);
++	l_ecc_constant_free(secret1);
++	l_ecc_constant_free(secret2);
 +}
-diff --git a/ell/ecdh.h b/ell/ecdh.h
-new file mode 100644
-index 0000000..51e80ca
---- /dev/null
-+++ b/ell/ecdh.h
-@@ -0,0 +1,51 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2018 Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+#ifndef __ELL_ECDH_H
-+#define __ELL_ECDH_H
-+
-+#ifdef __cplusplus
-+extern "C" {
-+#endif
-+
-+#include "ecc.h"
 +
 +/*
-+ * Generate a private/public key pair. private/public are out parameters a=
-nd
-+ * must be freed.
++ * Test vector from RFC 5114 - 256-bit Random ECP Group
 + */
-+bool l_ecdh_generate_key_pair(const struct l_ecc_curve *curve,
-+					struct l_ecc_constant **private,
-+					struct l_ecc_point **public);
-+/*
-+ * Generate a shared secret from a private/public key. secret is an out
-+ * parameters and must be freed.
-+ */
-+bool l_ecdh_generate_shared_secret(const struct l_ecc_curve *curve,
-+					const struct l_ecc_constant *private,
-+					const struct l_ecc_point *other_public,
-+					struct l_ecc_constant **secret);
++static void test_vector_p256(const void *data)
++{
++	const struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
 +
-+#ifdef __cplusplus
++	uint64_t a_sec_buf[4] =3D { 0x867B7291D507A3AFull, 0x3FAF432A5ABCE59Eull,
++				0xE96A8E337A128499ull, 0x814264145F2F56F2ull };
++	uint64_t a_pub_buf[8] =3D { 0x5E8D3B4BA83AEB15ull, 0x7165BE50BC42AE4Aull,
++				0xC9B5A8D4160D09E9ull, 0x2AF502F3BE8952F2ull,
++				0xC0F5015ECE5EFD85ull, 0x6795BD4BFF6E6DE3ull,
++				0x8681A0F9872D79D5ull, 0xEB0FAF4CA986C4D3ull };
++
++	uint64_t b_sec_buf[4] =3D { 0xEE1B593761CF7F41ull, 0x19CE6BCCAD562B8Eull,
++				0xDB95A200CC0AB26Aull, 0x2CE1788EC197E096ull };
++	uint64_t b_pub_buf[8] =3D { 0xB3AB0715F6CE51B0ull, 0xAE06AAEA279FA775ull,
++				0x5346E8DE6C2C8646ull, 0xB120DE4AA3649279ull,
++				0x85C34DDE5708B2B6ull, 0x3727027092A84113ull,
++				0xD8EC685FA3F071D8ull, 0x9F1B7EECE20D7B5Eull };
++
++	uint64_t ss_buf[4] =3D { 0x7F80D21C820C2788ull,
++					0xF5811E9DC8EC8EEAull,
++					0x93310412D19A08F1ull,
++					0xDD0F5396219D1EA3ull };
++
++	struct l_ecc_constant *a_shared;
++	struct l_ecc_constant *b_shared;
++
++	struct l_ecc_constant *a_secret =3D _ecc_constant_new(curve, a_sec_buf,
++							sizeof(a_sec_buf));
++	struct l_ecc_point *a_public =3D l_ecc_point_new(curve);
++
++	struct l_ecc_constant *b_secret =3D _ecc_constant_new(curve, b_sec_buf,
++							sizeof(b_sec_buf));
++	struct l_ecc_point *b_public =3D l_ecc_point_new(curve);
++
++	memcpy(a_public->x, a_pub_buf, 32);
++	memcpy(a_public->y, a_pub_buf + 4, 32);
++	a_public->ndigits =3D 4;
++	memcpy(b_public->x, b_pub_buf, 32);
++	memcpy(b_public->y, b_pub_buf + 4, 32);
++	b_public->ndigits =3D 4;
++
++	use_real_getrandom =3D false;
++
++	assert(l_ecdh_generate_shared_secret(curve, a_secret, b_public,
++						&a_shared));
++	assert(l_ecdh_generate_shared_secret(curve, b_secret, a_public,
++						&b_shared));
++
++	assert(!memcmp(a_shared->c, ss_buf, 32));
++	assert(!memcmp(b_shared->c, ss_buf, 32));
++
++	use_real_getrandom =3D true;
++
++	l_ecc_constant_free(a_secret);
++	l_ecc_constant_free(b_secret);
++	l_ecc_point_free(a_public);
++	l_ecc_point_free(b_public);
++	l_ecc_constant_free(a_shared);
++	l_ecc_constant_free(b_shared);
 +}
-+#endif
 +
-+#endif /* __ELL_ECDH_H */
-diff --git a/ell/ell.h b/ell/ell.h
-index 7bc26bc..aab6417 100644
---- a/ell/ell.h
-+++ b/ell/ell.h
-@@ -58,3 +58,4 @@
- #include <ell/dhcp.h>
- #include <ell/cert.h>
- #include <ell/ecc.h>
-+#include <ell/ecdh.h>
++int main(int argc, char *argv[])
++{
++	l_test_init(&argc, &argv);
++
++	if (l_getrandom_is_supported())
++		l_test_add("ECDH Basic", test_basic, NULL);
++
++	l_test_add("ECDH test vector P256", test_vector_p256, NULL);
++
++	return l_test_run();
++}
 -- =
 
 2.17.1
 
 
---===============5817231563097932030==--
+--===============2880122266999466078==--
 
