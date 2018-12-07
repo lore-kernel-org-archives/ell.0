@@ -1,41 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============3503802919829049143=="
+Content-Type: multipart/mixed; boundary="===============8571711790686224635=="
 MIME-Version: 1.0
-From: Brian Gix <brian.gix@intel.com>
-Subject: [PATCH 2/2] log: Fix strict compiler warning for strncpy
-Date: Fri, 07 Dec 2018 10:37:10 -0800
-Message-ID: <20181207183710.20822-3-brian.gix@intel.com>
+From: Marcel Holtmann <marcel@holtmann.org>
+Subject: Re: [PATCH 0/2] Fix strict strncpy compiler warnings when building in
+ BlueZ
+Date: Fri, 07 Dec 2018 19:51:38 +0100
+Message-ID: <8AED0788-C043-4946-A884-031513B649EE@holtmann.org>
 In-Reply-To: <20181207183710.20822-1-brian.gix@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3503802919829049143==
+--===============8571711790686224635==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/log.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Hi Brian,
 
-diff --git a/ell/log.c b/ell/log.c
-index bc1be9f..f3f4b0c 100644
---- a/ell/log.c
-+++ b/ell/log.c
-@@ -86,7 +86,7 @@ static int open_log(const char *path)
- =
+> Fixes two new strict compiler warnings in bluez for strncpy
+> =
 
- 	memset(&addr, 0, sizeof(addr));
- 	addr.sun_family =3D AF_UNIX;
--	strncpy(addr.sun_path, path, sizeof(addr.sun_path));
-+	strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
- =
+> Brian Gix (2):
+>  dbus: fix strict compiler warnings for strncpy
+>  log: Fix strict compiler warning for strncpy
+> =
 
- 	if (connect(log_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
- 		close_log();
--- =
+> ell/dbus.c | 4 ++--
+> ell/log.c  | 2 +-
+> 2 files changed, 3 insertions(+), 3 deletions(-)
 
-2.17.2
+both patches have been applied.
+
+Regards
+
+Marcel
 
 
---===============3503802919829049143==--
+--===============8571711790686224635==--
 
