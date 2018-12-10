@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============4795061110297515737=="
+Content-Type: multipart/mixed; boundary="===============7685112784924374813=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
 Subject: Re: [PATCH v4 1/5] ecc: moved ecc from IWD into ell
-Date: Mon, 10 Dec 2018 08:47:34 -0800
-Message-ID: <14d4957d39a5a5e2302e5753b0699f47333834d8.camel@linux.intel.com>
+Date: Mon, 10 Dec 2018 09:02:58 -0800
+Message-ID: <9088b0e85d403abc2e1bfd8ed898e94b7d8d3baf.camel@linux.intel.com>
 In-Reply-To: <FAE891F7-EA35-4A4E-B6E3-9AD9BB029057@holtmann.org>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4795061110297515737==
+--===============7685112784924374813==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -47,6 +47,18 @@ On Mon, 2018-12-10 at 12:19 +0100, Marcel Holtmann wrote:
 > to send patches to micro-ecc since it will not build as simple as
 > their README might indicate. Minor details, but they didn=E2=80=99t really
 > test it enough.
+
+Are you hinting that you would rather use uECC than this
+implementation? Just looking at a quick glance it would appear uECC
+does not support P384/P521. It also appears that it only supports ECC
+to the extent of supporting ECDH. Essentially missing point addition,
+integer exponentiation, legendre, (maybe more?). All of these
+operations I have added to the existing implementation in IWD.
+
+Im not saying the same additions couldn't be done for uECC (assuming
+the maintainer is ok with it), just driving home that uECC will not be
+a "drop in" replacement for what we already have.
+
 > =
 
 > > > Lets go back one step and tell me what this is based on? Is this
@@ -73,12 +85,6 @@ On Mon, 2018-12-10 at 12:19 +0100, Marcel Holtmann wrote:
 > Do we want the ECC curve really as struct? Or are we going to have an
 > enum or have them as pre-defined exported symbols. It kind seems
 > pointless have the curves allocated.
-
-The curves aren't allocated, l_ecc_curve_get() just returns the static
-struct in the curve list. I did it this way so all the API's that take
-a curve had direct acccess to all the curve variables (rather than
-looking up by group number every time).
-
 > =
 
 > Regards
@@ -89,5 +95,5 @@ looking up by group number every time).
 
 
 
---===============4795061110297515737==--
+--===============7685112784924374813==--
 
