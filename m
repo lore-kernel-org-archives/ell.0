@@ -1,13 +1,13 @@
-Content-Type: multipart/mixed; boundary="===============4955919344077946994=="
+Content-Type: multipart/mixed; boundary="===============8306051034835238504=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH v5 1/4] ecc: moved ecc from IWD into ell
-Date: Tue, 11 Dec 2018 14:37:06 -0800
-Message-ID: <20181211223709.31531-1-james.prestwood@linux.intel.com>
+Subject: [PATCH v6 1/4] ecc: moved ecc from IWD into ell
+Date: Tue, 11 Dec 2018 15:15:31 -0800
+Message-ID: <20181211231534.22832-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4955919344077946994==
+--===============8306051034835238504==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -33,11 +33,6 @@ parameters).
 For now, the API set is limited to only what ECDH requires, but future
 patches will add a full set of operations needed for other ECC
 protocols.
-
-v5:
- - Changed L_ECC_SCALAR_MAX_BYTES to match l_ecc_scalar change
- - Removed l_ecc_valid_point (full points are now verified in constructor)
- - scalars/points now hold pointer to curve, and ndigits was removed
 ---
  Makefile.am        |   9 +-
  ell/ecc-external.c | 934 +++++++++++++++++++++++++++++++++++++++++++++
@@ -1610,11 +1605,11 @@ index 4b0eac4..7bc26bc 100644
  #include <ell/cert.h>
 +#include <ell/ecc.h>
 diff --git a/ell/ell.sym b/ell/ell.sym
-index 9cea0c1..38f0eb4 100644
+index b8f3730..f27d1c5 100644
 --- a/ell/ell.sym
 +++ b/ell/ell.sym
 @@ -449,6 +449,16 @@ global:
- 	l_certchain_foreach_from_ca;
+ 	l_certchain_walk_from_ca;
  	l_certchain_find;
  	l_certchain_verify;
 +	l_ecc_curve_get;
@@ -1635,5 +1630,5 @@ index 9cea0c1..38f0eb4 100644
 2.17.1
 
 
---===============4955919344077946994==--
+--===============8306051034835238504==--
 
