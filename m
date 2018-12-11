@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============8917486347874799405=="
+Content-Type: multipart/mixed; boundary="===============6559360296059362354=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
 Subject: [PATCH v5 2/4] unit: moved ECC unit tests from IWD
-Date: Mon, 10 Dec 2018 09:31:20 -0800
-Message-ID: <20181210173122.28292-2-james.prestwood@linux.intel.com>
-In-Reply-To: <20181210173122.28292-1-james.prestwood@linux.intel.com>
+Date: Tue, 11 Dec 2018 14:37:07 -0800
+Message-ID: <20181211223709.31531-2-james.prestwood@linux.intel.com>
+In-Reply-To: <20181211223709.31531-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8917486347874799405==
+--===============6559360296059362354==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -48,7 +48,7 @@ index f6ac643..061a36f 100644
  endif
 diff --git a/unit/test-ecc.c b/unit/test-ecc.c
 new file mode 100644
-index 0000000..a13f34d
+index 0000000..7056915
 --- /dev/null
 +++ b/unit/test-ecc.c
 @@ -0,0 +1,346 @@
@@ -276,7 +276,7 @@ f",
 +	struct l_ecc_point point1, point2, point_ret;
 +	const struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
 +
-+	point_ret.ndigits =3D 4;
++	point_ret.curve =3D curve;
 +
 +	memset(result, 0, sizeof(result));
 +
@@ -298,7 +298,7 @@ f",
 +	if (data->ax) {
 +		HEX2BUF(data->ax, point1.x);
 +		_ecc_be2native(point1.x, point1.x, curve->ndigits);
-+		point1.ndigits =3D curve->ndigits;
++		point1.curve =3D curve;
 +	}
 +
 +	if (data->ay) {
@@ -309,7 +309,7 @@ f",
 +	if (data->bx) {
 +		HEX2BUF(data->bx, point2.x);
 +		_ecc_be2native(point2.x, point2.x, curve->ndigits);
-+		point2.ndigits =3D curve->ndigits;
++		point2.curve =3D curve;
 +	}
 +
 +	if (data->by) {
@@ -345,14 +345,14 @@ f",
 +		break;
 +	}
 +	case TEST_POINT_ADD:
-+		assert(l_ecc_valid_point(curve, &point1) =3D=3D true);
-+		assert(l_ecc_valid_point(curve, &point2) =3D=3D true);
++		//assert(l_ecc_valid_point(curve, &point1) =3D=3D true);
++		//assert(l_ecc_valid_point(curve, &point2) =3D=3D true);
 +
 +		_ecc_point_add(&point_ret, &point1, &point2, curve->p);
 +
 +		break;
 +	case TEST_SCALAR_MULT:
-+		assert(l_ecc_valid_point(curve, &point1) =3D=3D true);
++		//assert(l_ecc_valid_point(curve, &point1) =3D=3D true);
 +
 +		_ecc_point_mult(&point_ret, &point1, scalar, NULL, curve->p);
 +
@@ -375,7 +375,7 @@ f",
 +
 +		assert(memcmp(checkx, point_ret.x, 32) =3D=3D 0);
 +		assert(memcmp(checky, point_ret.y, 32) =3D=3D 0);
-+		assert(l_ecc_valid_point(curve, &point_ret) =3D=3D true);
++		//assert(l_ecc_valid_point(curve, &point_ret) =3D=3D true);
 +	}
 +}
 +
@@ -405,5 +405,5 @@ f",
 2.17.1
 
 
---===============8917486347874799405==--
+--===============6559360296059362354==--
 
