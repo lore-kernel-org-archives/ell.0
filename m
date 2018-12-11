@@ -1,57 +1,71 @@
-Content-Type: multipart/mixed; boundary="===============6559360296059362354=="
+Content-Type: multipart/mixed; boundary="===============0851253615157483467=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH v5 2/4] unit: moved ECC unit tests from IWD
-Date: Tue, 11 Dec 2018 14:37:07 -0800
-Message-ID: <20181211223709.31531-2-james.prestwood@linux.intel.com>
+Subject: [PATCH v5 4/4] unit: moved ECDH unit tests from IWD
+Date: Tue, 11 Dec 2018 14:37:09 -0800
+Message-ID: <20181211223709.31531-4-james.prestwood@linux.intel.com>
 In-Reply-To: <20181211223709.31531-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6559360296059362354==
+--===============0851253615157483467==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The test was just modified to use the new l_ecc API's
 ---
- Makefile.am     |   5 +-
- unit/test-ecc.c | 346 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 350 insertions(+), 1 deletion(-)
- create mode 100644 unit/test-ecc.c
+ .gitignore       |   2 +
+ Makefile.am      |   6 +-
+ unit/test-ecdh.c | 161 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 168 insertions(+), 1 deletion(-)
+ create mode 100644 unit/test-ecdh.c
 
+diff --git a/.gitignore b/.gitignore
+index 16725f5..75ab7b2 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -56,6 +56,8 @@ unit/test-key
+ unit/test-pbkdf2
+ unit/test-dhcp
+ unit/test-dir-watch
++unit/test-ecc
++unit/test-ecdh
+ unit/cert-*.pem
+ unit/cert-*.csr
+ unit/cert-*.srl
 diff --git a/Makefile.am b/Makefile.am
-index f6ac643..061a36f 100644
+index 821ddc8..8401972 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -162,7 +162,8 @@ unit_tests =3D unit/test-unit \
- 			unit/test-uuid \
+@@ -165,7 +165,8 @@ unit_tests =3D unit/test-unit \
  			unit/test-pbkdf2 \
  			unit/test-dhcp \
--			unit/test-dir-watch
-+			unit/test-dir-watch \
-+			unit/test-ecc
+ 			unit/test-dir-watch \
+-			unit/test-ecc
++			unit/test-ecc \
++			unit/test-ecdh
  =
 
  dbus_tests =3D unit/test-hwdb \
  			unit/test-dbus \
-@@ -281,6 +282,8 @@ unit_test_dhcp_LDADD =3D ell/libell-private.la
+@@ -286,6 +287,9 @@ unit_test_dir_watch_LDADD =3D ell/libell-private.la
  =
 
- unit_test_dir_watch_LDADD =3D ell/libell-private.la
+ unit_test_ecc_LDADD =3D ell/libell-private.la
  =
 
-+unit_test_ecc_LDADD =3D ell/libell-private.la
++unit_test_ecdh_LDADD =3D ell/libell-private.la
++unit_test_ecdh_LDFLAGS =3D -Wl,-wrap,l_getrandom
 +
  if MAINTAINER_MODE
  noinst_LTLIBRARIES +=3D unit/example-plugin.la
  endif
-diff --git a/unit/test-ecc.c b/unit/test-ecc.c
+diff --git a/unit/test-ecdh.c b/unit/test-ecdh.c
 new file mode 100644
-index 0000000..7056915
+index 0000000..3f9e949
 --- /dev/null
-+++ b/unit/test-ecc.c
-@@ -0,0 +1,346 @@
++++ b/unit/test-ecdh.c
+@@ -0,0 +1,161 @@
 +/*
 + *
 + *  Embedded Linux library
@@ -81,322 +95,137 @@ index 0000000..7056915
 +
 +#include <string.h>
 +#include <assert.h>
-+
 +#include <ell/ell.h>
-+#include "ell/ecc.h"
++
 +#include "ell/ecc-private.h"
 +
-+#define HEX2BUF(s, buf) { \
-+	unsigned char *tmp =3D l_util_from_hexstring(s, NULL); \
-+	memcpy(buf, tmp, curve->ndigits * 8); \
-+	l_free(tmp); \
++static bool use_real_getrandom =3D true;
++
++bool __wrap_l_getrandom(void *buf, size_t len);
++bool __real_l_getrandom(void *buf, size_t len);
++
++bool __wrap_l_getrandom(void *buf, size_t len)
++{
++	static const uint8_t random_buf[] =3D { 0x75, 0xc5, 0xfe, 0x3e, 0x53,
++						0xcc, 0x33, 0x33, 0x64, 0xea,
++						0xdd, 0xa1, 0xe6, 0x62, 0x7a,
++						0xb1, 0x98, 0xa7, 0xa0, 0x1e,
++						0xac, 0x4b, 0x1d, 0xb8, 0x71,
++						0x5b, 0x1d, 0x00, 0x36, 0xd0,
++						0x0f, 0xde };
++
++	if (use_real_getrandom)
++		return __real_l_getrandom(buf, len);
++
++	memcpy(buf, random_buf, len);
++
++	return true;
 +}
 +
-+#define CURVE_P_32_STR "ffffffffffffffffffffffff00000000"\
-+			"000000000000000001000000ffffffff"
-+
-+enum ecc_test_type {
-+	TEST_ADD =3D 0,
-+	TEST_SUB,
-+	TEST_MULT,
-+	TEST_INV,
-+	TEST_EXP,
-+	TEST_POINT_ADD,
-+	TEST_SCALAR_MULT,
-+	TEST_LEGENDRE,
-+};
-+
-+struct ecc_test_data {
-+	enum ecc_test_type type;
-+	/* basic math arguments/result */
-+	char *a;
-+	char *b;
-+	char *qr;
-+	char *qnr;
-+	char *r;
-+	bool is_residue;
-+	char *mod;
-+	char *result;
-+	int lres;
-+	/* point operations */
-+	char *scalar;
-+	char *ax, *ay;
-+	char *bx, *by;
-+	char *rx, *ry;
-+};
-+
-+/* (a + b) mod c */
-+struct ecc_test_data add_test =3D {
-+	.type =3D TEST_ADD,
-+	.a =3D "cae1d5624344984073fd955a72d4ebacedc084679333e4beebff94869e9f6ca8",
-+	.b =3D "93a02ae89d15e38a33bf3fea4c99937825b279fa8fa81dded1ccb687cec88461",
-+	.mod =3D CURVE_P_32_STR,
-+	.result =3D "5e82004ae05a7bcaa7bcd545bf6e7f25"
-+			"1372fe6222dc029dbccc4b0d6d67f10a"
-+};
-+
-+/* (a - b) mod c */
-+struct ecc_test_data sub_test =3D {
-+	.type =3D TEST_SUB,
-+	.a =3D "cae1d5624344984073fd955a72d4ebacedc084679333e4beebff94869e9f6ca8",
-+	.b =3D "93a02ae89d15e38a33bf3fea4c99937825b279fa8fa81dded1ccb687cec88461",
-+	.mod =3D CURVE_P_32_STR,
-+	.result =3D "3741aa79a62eb4b6403e5570263b5834"
-+			"c80e0a6d038bc6e01a32ddfecfd6e847"
-+};
-+
-+/* (a * b) mod c */
-+struct ecc_test_data mult_test =3D {
-+	.type =3D TEST_MULT,
-+	.a =3D "cae1d5624344984073fd955a72d4ebacedc084679333e4beebff94869e9f6ca8",
-+	.b =3D "93a02ae89d15e38a33bf3fea4c99937825b279fa8fa81dded1ccb687cec88461",
-+	.mod =3D CURVE_P_32_STR,
-+	.result =3D "a31ff5c7d65d8bd806b0407f27d1f1bc"
-+			"2c072e28c19720f6a654a75efc2faab5"
-+
-+};
-+
-+/* (a^-1) mod c */
-+struct ecc_test_data inv_test =3D {
-+	.type =3D TEST_INV,
-+	.a =3D "cae1d5624344984073fd955a72d4ebacedc084679333e4beebff94869e9f6ca8",
-+	.mod =3D CURVE_P_32_STR,
-+	.result =3D "48faaac115571047ead565911fc334fd"
-+			"633c986755e87ab10fd79a4453a60bc5"
-+
-+};
-+
-+/* (a^-1) mod c */
-+struct ecc_test_data inv_test2 =3D {
-+	.type =3D TEST_INV,
-+	.a =3D "698e5c10b63a9c79a9720b3f7f4d2f5c9fbb31daf93ac0f8fa8ca5cde8234418",
-+	.mod =3D CURVE_P_32_STR,
-+	.result =3D "5fd113c3b6053c38e54e5917826c8520"
-+			"c5a0708a8a47345edbb7fc1d67d9b42b"
-+
-+};
-+
-+/* (a ^ b) mod c */
-+struct ecc_test_data exp_test =3D {
-+	.type =3D TEST_EXP,
-+	.a =3D "cae1d5624344984073fd955a72d4ebacedc084679333e4beebff94869e9f6ca8",
-+	.b =3D "93a02ae89d15e38a33bf3fea4c99937825b279fa8fa81dded1ccb687cec88461",
-+	.mod =3D CURVE_P_32_STR,
-+	.result =3D "e7488e3a4d56938bbddc2a615c768d48"
-+			"9e5634aced9ceee37249fae1caa36fec"
-+
-+};
-+
-+struct ecc_test_data legendre_test1 =3D {
-+	.type =3D TEST_LEGENDRE,
-+	.a =3D "b59c0c366aa89ba229f857190497261d5a0a7a0a774caa72aef041ff00092447",
-+	.mod =3D "ffffffff00000001000000000000000000000000fffffffffffffffffffffff=
-f",
-+	.lres =3D -1
-+};
-+
-+struct ecc_test_data legendre_test2 =3D {
-+	.type =3D TEST_LEGENDRE,
-+	.a =3D "1214f9607d348c998b3fba332d884d65945561fd007ff56d8bf603148d74d2e4",
-+	.mod =3D "ffffffff000000010000000000000000"
-+			"00000000ffffffffffffffffffffffff",
-+	.lres =3D 1
-+};
-+
-+struct ecc_test_data legendre_test3 =3D {
-+	.type =3D TEST_LEGENDRE,
-+	.a =3D "282d751c898bfc593b1d21b6812df48e3ec811f40349b30b7294575c47b871d8",
-+	.mod =3D "ffffffff000000010000000000000000"
-+			"00000000ffffffffffffffffffffffff",
-+	.lres =3D 1
-+};
-+
-+struct ecc_test_data legendre_test4 =3D {
-+	.type =3D TEST_LEGENDRE,
-+	.a =3D "0694ccde1db3d02faa26856678bd9358ecc0d82791405eb3892a8b4f07f1e5d6",
-+	.mod =3D "ffffffff000000010000000000000000"
-+			"00000000ffffffffffffffffffffffff",
-+	.lres =3D -1
-+};
-+
-+struct ecc_test_data legendre_test5 =3D {
-+	.type =3D TEST_LEGENDRE,
-+	.a =3D "92247f96df65a6d04af0c57318e999fd493c42864d156f7e5bba75c964f3c6b0",
-+	.mod =3D "ffffffff000000010000000000000000"
-+			"00000000ffffffffffffffffffffffff",
-+	.lres =3D 1
-+};
-+
-+struct ecc_test_data legendre_test6 =3D {
-+	.type =3D TEST_LEGENDRE,
-+	.a =3D "084f7eb6ed8021d095787fd401b0f19b13937dc23f7c84dfe69bb9a204bb3768",
-+	.mod =3D "ffffffff000000010000000000000000"
-+			"00000000ffffffffffffffffffffffff",
-+	.lres =3D -1
-+};
-+
-+struct ecc_test_data point_add_test =3D {
-+	.type =3D TEST_POINT_ADD,
-+	.ax =3D "d36b6768a3279fbe23a5bf5cc19b13354"
-+		"fa2c6d6fd9de467d62db007c39452df",
-+	.ay =3D "4d601e7be3efd7f357452de7584274c54"
-+		"c18ddb0ef2f0f4cf43375152a9780c4",
-+	.bx =3D "c833c5d3ab916ed37f16597ace5dcf41f"
-+		"080891c0c41b6ce561705bd736a29e0",
-+	.by =3D "9d266e5ba8ba3e8d9679238f44a376b05"
-+		"133df0510a7b8e6e7dd3a654d40a04a",
-+	.rx =3D "24c4ede340dbdd144ccaaea67e5b1fca"
-+		"87b3aa26dc11114fcd12186318533101",
-+	.ry =3D "1d96391fb2942bf286e9251c257b960e"
-+		"7d23d4caff4b6fc898aff87e1f6f5514"
-+
-+};
-+
-+struct ecc_test_data point_mult_test =3D {
-+	.type =3D TEST_SCALAR_MULT,
-+	.ax =3D "768bc2f17fbf4e49282fbd4068994562b"
-+		"fc7145306762c26a90be1e9c346ac67",
-+	.ay =3D "93a02ae89d15e38a33bf3fea4c9993782"
-+		"5b279fa8fa81dded1ccb687cec88461",
-+	.scalar =3D "7521d940aa073c1675114ed27b866561"
-+		"9c826cac8eaa341f70d61b43ad32058b",
-+	.rx =3D "d4c80de349966df5542c984e80885d36"
-+		"a965ceb74ffe6a0fdc8343184dedfe66",
-+	.ry =3D "6d3a1ac3d1d392413286a0e00e94b01e"
-+		"ae8423c7f53b9d39cc7fc9c3a5880f3b"
-+
-+};
-+
-+static void run_test_p256(const void *arg)
++/*
++ * Tests the most basic case. Generate two full public keys and use to cre=
+ate
++ * two identical shared secrets.
++ */
++static void test_basic(const void *data)
 +{
-+	const struct ecc_test_data *data =3D arg;
-+	uint64_t a[L_ECC_MAX_DIGITS], b[L_ECC_MAX_DIGITS], mod[L_ECC_MAX_DIGITS],
-+			scalar[L_ECC_MAX_DIGITS], result[L_ECC_MAX_DIGITS],
-+			check[L_ECC_MAX_DIGITS];
-+	struct l_ecc_point point1, point2, point_ret;
 +	const struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
 +
-+	point_ret.curve =3D curve;
++	struct l_ecc_scalar *private1;
++	struct l_ecc_scalar *private2;
 +
-+	memset(result, 0, sizeof(result));
++	struct l_ecc_point *public1;
++	struct l_ecc_point *public2;
 +
-+	if (data->a) {
-+		HEX2BUF(data->a, a);
-+		_ecc_be2native(a, a, curve->ndigits);
-+	}
++	struct l_ecc_scalar *secret1;
++	struct l_ecc_scalar *secret2;
 +
-+	if (data->b) {
-+		HEX2BUF(data->b, b);
-+		_ecc_be2native(b, b, curve->ndigits);
-+	}
++	assert(l_ecdh_generate_key_pair(curve, &private1, &public1));
++	assert(l_ecdh_generate_key_pair(curve, &private2, &public2));
 +
-+	if (data->mod) {
-+		HEX2BUF(data->mod, mod);
-+		_ecc_be2native(mod, mod, curve->ndigits);
-+	}
++	assert(l_ecdh_generate_shared_secret(curve, private1, public2, &secret1));
++	assert(l_ecdh_generate_shared_secret(curve, private2, public1, &secret2));
 +
-+	if (data->ax) {
-+		HEX2BUF(data->ax, point1.x);
-+		_ecc_be2native(point1.x, point1.x, curve->ndigits);
-+		point1.curve =3D curve;
-+	}
++	assert(!memcmp(secret1->c, secret2->c, 32));
 +
-+	if (data->ay) {
-+		HEX2BUF(data->ay, point1.y);
-+		_ecc_be2native(point1.y, point1.y, curve->ndigits);
-+	}
++	l_ecc_scalar_free(private1);
++	l_ecc_scalar_free(private2);
++	l_ecc_point_free(public1);
++	l_ecc_point_free(public2);
++	l_ecc_scalar_free(secret1);
++	l_ecc_scalar_free(secret2);
++}
 +
-+	if (data->bx) {
-+		HEX2BUF(data->bx, point2.x);
-+		_ecc_be2native(point2.x, point2.x, curve->ndigits);
-+		point2.curve =3D curve;
-+	}
++/*
++ * Test vector from RFC 5114 - 256-bit Random ECP Group
++ */
++static void test_vector_p256(const void *data)
++{
++	const struct l_ecc_curve *curve =3D l_ecc_curve_get(19);
 +
-+	if (data->by) {
-+		HEX2BUF(data->by, point2.y);
-+		_ecc_be2native(point2.y, point2.y, curve->ndigits);
-+	}
++	uint64_t a_sec_buf[4] =3D { 0x867B7291D507A3AFull, 0x3FAF432A5ABCE59Eull,
++				0xE96A8E337A128499ull, 0x814264145F2F56F2ull };
++	uint64_t a_pub_buf[8] =3D { 0x5E8D3B4BA83AEB15ull, 0x7165BE50BC42AE4Aull,
++				0xC9B5A8D4160D09E9ull, 0x2AF502F3BE8952F2ull,
++				0xC0F5015ECE5EFD85ull, 0x6795BD4BFF6E6DE3ull,
++				0x8681A0F9872D79D5ull, 0xEB0FAF4CA986C4D3ull };
 +
-+	if (data->scalar) {
-+		HEX2BUF(data->scalar, scalar);
-+		_ecc_be2native(scalar, scalar, curve->ndigits);
-+	}
++	uint64_t b_sec_buf[4] =3D { 0xEE1B593761CF7F41ull, 0x19CE6BCCAD562B8Eull,
++				0xDB95A200CC0AB26Aull, 0x2CE1788EC197E096ull };
++	uint64_t b_pub_buf[8] =3D { 0xB3AB0715F6CE51B0ull, 0xAE06AAEA279FA775ull,
++				0x5346E8DE6C2C8646ull, 0xB120DE4AA3649279ull,
++				0x85C34DDE5708B2B6ull, 0x3727027092A84113ull,
++				0xD8EC685FA3F071D8ull, 0x9F1B7EECE20D7B5Eull };
 +
-+	switch (data->type) {
-+	case TEST_ADD:
-+		_vli_mod_add(result, a, b, mod, curve->ndigits);
-+		break;
-+	case TEST_SUB:
-+		_vli_mod_sub(result, a, b, mod, curve->ndigits);
-+		break;
-+	case TEST_MULT:
-+		_vli_mod_mult_fast(result, a, b, mod, curve->ndigits);
-+		break;
-+	case TEST_INV:
-+		_vli_mod_inv(result, a, mod, curve->ndigits);
-+		break;
-+	case TEST_EXP:
-+		_vli_mod_exp(result, a, b, mod, curve->ndigits);
-+		break;
-+	case TEST_LEGENDRE:
-+	{
-+		int lres =3D _vli_legendre(a, mod, curve->ndigits);
-+		assert(data->lres =3D=3D lres);
-+		break;
-+	}
-+	case TEST_POINT_ADD:
-+		//assert(l_ecc_valid_point(curve, &point1) =3D=3D true);
-+		//assert(l_ecc_valid_point(curve, &point2) =3D=3D true);
++	uint64_t ss_buf[4] =3D { 0x7F80D21C820C2788ull,
++					0xF5811E9DC8EC8EEAull,
++					0x93310412D19A08F1ull,
++					0xDD0F5396219D1EA3ull };
 +
-+		_ecc_point_add(&point_ret, &point1, &point2, curve->p);
++	struct l_ecc_scalar *a_shared;
++	struct l_ecc_scalar *b_shared;
 +
-+		break;
-+	case TEST_SCALAR_MULT:
-+		//assert(l_ecc_valid_point(curve, &point1) =3D=3D true);
++	struct l_ecc_scalar *a_secret =3D _ecc_constant_new(curve, a_sec_buf,
++							sizeof(a_sec_buf));
++	struct l_ecc_point *a_public =3D l_ecc_point_new(curve);
 +
-+		_ecc_point_mult(&point_ret, &point1, scalar, NULL, curve->p);
++	struct l_ecc_scalar *b_secret =3D _ecc_constant_new(curve, b_sec_buf,
++							sizeof(b_sec_buf));
++	struct l_ecc_point *b_public =3D l_ecc_point_new(curve);
 +
-+		break;
-+	}
++	memcpy(a_public->x, a_pub_buf, 32);
++	memcpy(a_public->y, a_pub_buf + 4, 32);
++	memcpy(b_public->x, b_pub_buf, 32);
++	memcpy(b_public->y, b_pub_buf + 4, 32);
 +
-+	if (data->type <=3D TEST_EXP) {
-+		HEX2BUF(data->result, check);
-+		_ecc_native2be(check, check, curve->ndigits);
++	use_real_getrandom =3D false;
 +
-+		assert(memcmp(result, check, 32) =3D=3D 0);
-+	} else if (data->type <=3D TEST_SCALAR_MULT) {
-+		uint64_t checkx[L_ECC_MAX_DIGITS];
-+		uint64_t checky[L_ECC_MAX_DIGITS];
++	assert(l_ecdh_generate_shared_secret(curve, a_secret, b_public,
++						&a_shared));
++	assert(l_ecdh_generate_shared_secret(curve, b_secret, a_public,
++						&b_shared));
 +
-+		HEX2BUF(data->rx, checkx);
-+		_ecc_native2be(checkx, checkx, curve->ndigits);
-+		HEX2BUF(data->ry, checky);
-+		_ecc_native2be(checky, checky, curve->ndigits);
++	assert(!memcmp(a_shared->c, ss_buf, 32));
++	assert(!memcmp(b_shared->c, ss_buf, 32));
 +
-+		assert(memcmp(checkx, point_ret.x, 32) =3D=3D 0);
-+		assert(memcmp(checky, point_ret.y, 32) =3D=3D 0);
-+		//assert(l_ecc_valid_point(curve, &point_ret) =3D=3D true);
-+	}
++	use_real_getrandom =3D true;
++
++	l_ecc_scalar_free(a_secret);
++	l_ecc_scalar_free(b_secret);
++	l_ecc_point_free(a_public);
++	l_ecc_point_free(b_public);
++	l_ecc_scalar_free(a_shared);
++	l_ecc_scalar_free(b_shared);
 +}
 +
 +int main(int argc, char *argv[])
 +{
 +	l_test_init(&argc, &argv);
 +
-+	l_test_add("ECC add test", run_test_p256, &add_test);
-+	l_test_add("ECC sub test", run_test_p256, &sub_test);
-+	l_test_add("ECC mult test", run_test_p256, &mult_test);
-+	l_test_add("ECC inv test", run_test_p256, &inv_test);
-+	l_test_add("ECC inv test", run_test_p256, &inv_test2);
-+	l_test_add("ECC exp test", run_test_p256, &exp_test);
-+	l_test_add("ECC point add test", run_test_p256, &point_add_test);
-+	l_test_add("ECC point mult test", run_test_p256, &point_mult_test);
-+	l_test_add("ECC legendre", run_test_p256, &legendre_test1);
-+	l_test_add("ECC legendre", run_test_p256, &legendre_test2);
-+	l_test_add("ECC legendre", run_test_p256, &legendre_test3);
-+	l_test_add("ECC legendre", run_test_p256, &legendre_test4);
-+	l_test_add("ECC legendre", run_test_p256, &legendre_test5);
-+	l_test_add("ECC legendre", run_test_p256, &legendre_test6);
++	if (l_getrandom_is_supported())
++		l_test_add("ECDH Basic", test_basic, NULL);
++
++	l_test_add("ECDH test vector P256", test_vector_p256, NULL);
 +
 +	return l_test_run();
 +}
@@ -405,5 +234,5 @@ f",
 2.17.1
 
 
---===============6559360296059362354==--
+--===============0851253615157483467==--
 
