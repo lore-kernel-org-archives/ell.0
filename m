@@ -1,87 +1,113 @@
-Content-Type: multipart/mixed; boundary="===============5841921150929475358=="
+Content-Type: multipart/mixed; boundary="===============8153431576297949545=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH 2/3] ecc: added P384 curve definition
-Date: Tue, 11 Dec 2018 16:28:59 -0800
-Message-ID: <20181212002900.11739-3-james.prestwood@linux.intel.com>
+Subject: [PATCH 3/3] unit: added P384 unit tests
+Date: Tue, 11 Dec 2018 16:29:00 -0800
+Message-ID: <20181212002900.11739-4-james.prestwood@linux.intel.com>
 In-Reply-To: <20181212002900.11739-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5841921150929475358==
+--===============8153431576297949545==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/ecc.c | 30 ++++++++++++++++++++++++++++++
- ell/ecc.h |  2 +-
- 2 files changed, 31 insertions(+), 1 deletion(-)
+ unit/test-ecdh.c | 66 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 66 insertions(+)
 
-diff --git a/ell/ecc.c b/ell/ecc.c
-index 05e2098..9421cd7 100644
---- a/ell/ecc.c
-+++ b/ell/ecc.c
-@@ -36,8 +36,38 @@ static struct l_ecc_curve p256 =3D {
- 	.b =3D P256_CURVE_B,
- };
+diff --git a/unit/test-ecdh.c b/unit/test-ecdh.c
+index 3f9e949..cc0f3a8 100644
+--- a/unit/test-ecdh.c
++++ b/unit/test-ecdh.c
+@@ -148,6 +148,71 @@ static void test_vector_p256(const void *data)
+ 	l_ecc_scalar_free(b_shared);
+ }
  =
 
-+#define P384_CURVE_P {	0x00000000FFFFFFFFull, 0xFFFFFFFF00000000ull, \
-+			0xFFFFFFFFFFFFFFFEull, 0xFFFFFFFFFFFFFFFFull, \
-+			0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFFFFFFFFFFull }
-+#define P384_CURVE_GX {	0x3A545E3872760AB7ull, 0x5502F25DBF55296Cull, \
-+			0x59F741E082542A38ull, 0x6E1D3B628BA79B98ull, \
-+			0x8EB1C71EF320AD74ull, 0xAA87CA22BE8B0537ull }
-+#define P384_CURVE_GY {	0x7A431D7C90EA0E5Full, 0x0A60B1CE1D7E819Dull, \
-+			0xE9DA3113B5F0B8C0ull, 0xF8F41DBD289A147Cull, \
-+			0x5D9E98BF9292DC29ull, 0x3617DE4A96262C6Full }
-+#define P384_CURVE_N {	0xECEC196ACCC52973ull, 0x581A0DB248B0A77Aull, \
-+			0xC7634D81F4372DDFull, 0xFFFFFFFFFFFFFFFFull, \
-+			0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFFFFFFFFFFull }
-+#define P384_CURVE_B {	0x2A85C8EDD3EC2AEFull, 0xC656398D8A2ED19Dull, \
-+			0x0314088F5013875Aull, 0x181D9C6EFE814112ull, \
-+			0x988E056BE3F82D19ull, 0xB3312FA7E23EE7E4ull }
++/*
++ * Test vector from RFC 5114 - 384-bit Random ECP Group
++ */
++static void test_vector_p384(const void *data)
++{
++	const struct l_ecc_curve *curve =3D l_ecc_curve_get(20);
 +
-+static struct l_ecc_curve p384 =3D {
-+	.group =3D 20,
-+	.ndigits =3D 6,
-+	.g =3D {
-+		.x =3D P384_CURVE_GX,
-+		.y =3D P384_CURVE_GY,
-+		.curve =3D &p384
-+	},
-+	.p =3D P384_CURVE_P,
-+	.n =3D P384_CURVE_N,
-+	.b =3D P384_CURVE_B
-+};
++	uint64_t a_sec_buf[6] =3D { 0x86F05FEADB9376F1ull, 0xD706A90CBCB5DF29ull,
++				0xD709EE7A7962A156ull, 0x5DFD8A7965571C48ull,
++				0x44DD14E9FD126071ull, 0xD27335EA71664AF2ull };
++	uint64_t a_pub_buf[12] =3D { 0x7D016FE27A8B8C66ull, 0x7E6A8EA9D1FD7742ull,
++				0x0EE6B0403D627954ull, 0xE057AB62F82054D1ull,
++				0xDA4C6D9074417D05ull, 0x793148F1787634D5ull,
++				0xBACED214A1A1D128ull, 0x8F7A685923DE3B67ull,
++				0x6B8F398BB29E4236ull, 0xC947392E94F4C3F0ull,
++				0xF480F4FB4CD40504ull, 0xC6C41294331D23E6ull };
++	uint64_t b_sec_buf[6] =3D { 0x2C4A6C768BCD94D2ull, 0x9BE52E00C194A413ull,
++				0x1F80231121CCE3D3ull, 0x3B6125262C36A7DFull,
++				0x9C0F00D456C2F702ull, 0x52D1791FDB4B70F8ull };
++	uint64_t b_pub_buf[12] =3D { 0x223F12B5A1ABC120ull, 0x789D72A84865AE2Full,
++				0x4ABC17647B6B9999ull, 0x5B36DB65915359B4ull,
++				0xF74B8D4EFB708B3Dull, 0x5CD42AB9C41B5347ull,
++				0xE035B0EDF36755DEull, 0x40BDE8723415A8ECull,
++				0x0CECA16356CA9332ull, 0x8F6D5B348C0FA4D8ull,
++				0xA3A8BFAC46B404BDull, 0xE171458FEAA939AAull };
++	uint64_t ss_buf[6] =3D {
++				0xDE159A58028ABC0Eull, 0x27AA8A4540884C37ull,
++				0x59D926EB1B8456E4ull, 0xCAE53160137D904Cull,
++				0x55981B110575E0A8ull, 0x5EA1FC4AF7256D20ull };
++	struct l_ecc_scalar *a_shared;
++	struct l_ecc_scalar *b_shared;
 +
- static struct l_ecc_curve *curves[] =3D {
- 	&p256,
-+	&p384,
- };
++	struct l_ecc_scalar *a_secret =3D _ecc_constant_new(curve, a_sec_buf,
++							sizeof(a_sec_buf));
++	struct l_ecc_point *a_public =3D l_ecc_point_new(curve);
++
++	struct l_ecc_scalar *b_secret =3D _ecc_constant_new(curve, b_sec_buf,
++							sizeof(b_sec_buf));
++	struct l_ecc_point *b_public =3D l_ecc_point_new(curve);
++
++	memcpy(a_public->x, a_pub_buf, 48);
++	memcpy(a_public->y, a_pub_buf + 6, 48);
++	memcpy(b_public->x, b_pub_buf, 48);
++	memcpy(b_public->y, b_pub_buf + 6, 48);
++
++	use_real_getrandom =3D false;
++
++	assert(l_ecdh_generate_shared_secret(curve, a_secret, b_public,
++						&a_shared));
++	assert(l_ecdh_generate_shared_secret(curve, b_secret, a_public,
++						&b_shared));
++
++	assert(!memcmp(a_shared->c, ss_buf, 48));
++	assert(!memcmp(b_shared->c, ss_buf, 48));
++
++	use_real_getrandom =3D true;
++
++	l_ecc_scalar_free(a_secret);
++	l_ecc_scalar_free(b_secret);
++	l_ecc_point_free(a_public);
++	l_ecc_point_free(b_public);
++	l_ecc_scalar_free(a_shared);
++	l_ecc_scalar_free(b_shared);
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -156,6 +221,7 @@ int main(int argc, char *argv[])
+ 		l_test_add("ECDH Basic", test_basic, NULL);
  =
 
- LIB_EXPORT const struct l_ecc_curve *l_ecc_curve_get(unsigned int group)
-diff --git a/ell/ecc.h b/ell/ecc.h
-index 2d207af..40c7d47 100644
---- a/ell/ecc.h
-+++ b/ell/ecc.h
-@@ -27,7 +27,7 @@
- extern "C" {
- #endif
+ 	l_test_add("ECDH test vector P256", test_vector_p256, NULL);
++	l_test_add("ECDH test vector P384", test_vector_p384, NULL);
  =
 
--#define L_ECC_MAX_DIGITS 4
-+#define L_ECC_MAX_DIGITS 6
- #define L_ECC_SCALAR_MAX_BYTES		L_ECC_MAX_DIGITS * 8
- #define L_ECC_POINT_MAX_BYTES		L_ECC_SCALAR_MAX_BYTES * 2
- =
-
+ 	return l_test_run();
+ }
 -- =
 
 2.17.1
 
 
---===============5841921150929475358==--
+--===============8153431576297949545==--
 
