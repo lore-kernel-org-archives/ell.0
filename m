@@ -1,104 +1,319 @@
-Content-Type: multipart/mixed; boundary="===============4592732034665159815=="
+Content-Type: multipart/mixed; boundary="===============0812257188133725525=="
 MIME-Version: 1.0
-From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: ECC API proposal (for EAP-PWD/SAE)
-Date: Wed, 12 Dec 2018 09:15:32 -0800
-Message-ID: <27d5494c8c8cbb0aa72fd8a35a509a207d47a224.camel@linux.intel.com>
+From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
+Subject: [PATCH] gpio: add simple get/set helpers for GPIO lines
+Date: Thu, 13 Dec 2018 15:08:02 +0100
+Message-ID: <20181213140802.116299-1-martin@geanix.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4592732034665159815==
+--===============0812257188133725525==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi All,
+The Linux kernel GPIO api operates with chips, lines, handles, and
+events.
 
-I thought this may be an easier medium for disussion about the new ECC
-API's required for PWD/SAE rather than a full patch set. Since OWE only
-needs ECDH, the ELL ECDH/ECC API's were reletively limited, mostly
-creation of points/scalars and getting the data back out into a buffer.
-PWD/SAE are a bit more involved. Here is my API proposal for adding the
-functionailty we need for PWD/SAE (plus some explanation). Note these
-are in addition to what was just merged.
+The chip and line structures represent info about gpio chips, and
+gpio lines, respectively. They are used to e.g. lookup a line with a
+certain name, and/or line flags.
 
-Both PWD/SAE require adding two scalar values together, to produce
-another scalar. In both cases this addition is mod N (order). We could
-hide this by having a single API that created two scalars, and added
-them together to create the added scalar, where all three scalars would
-be out parameters. I decided to not go this route because the code
-itself is easier to follow next to the RFC when we have a simpler 'add'
-function.
+The handle structure is used to "obtain" a handle to one or more gpio
+lines on a chip. Until the file descriptor in this handle is closed, the
+gpio lines cannot be used by others. The same file descriptor is used
+when setting or getting the line values (one can also set the initial
+value when obtaining handles for output lines).
 
-bool l_ecc_scalar_add(struct l_ecc_scalar *ret, struct l_ecc_scalar *a,
-                                struct l_ecc_scalar *b);
+The event structure is used to get a file descriptor that can be used
+with select/poll to wait for changes in line levels.
 
-Point multiply/add/inverse are needed for both PWD/SAE.
+This commit add simple support for setting and getting the value for a
+single gpio line. It does so by obtaining a line handle to get/set the
+value, and then release the handle immediately again.
 
-bool l_ecc_point_multiply(struct l_ecc_point *ret,
-                                struct l_ecc_scalar *scalar,
-                                struct l_ecc_point *point);
-bool l_ecc_point_add(struct l_ecc_point *ret, struct l_ecc_point *a,
-                                struct l_ecc_point *b);
-bool l_ecc_point_inverse(struct l_ecc_point *p);
+Functionality that could be implemented, but is postponed until the need
+arises includes:
 
-This is all that is needed for EAP-PWD. If this is more or less ok I
-can go ahead and submit this portion of the patch for review.
+ * looking up a gpio line by its name
+ * setting/getting multiple gpio lines with a single function
+ * waiting for events
+ * holding on to handles
 
-=3D=3D=3D=3D=3D=3D Below are operations ONLY required for SAE =3D=3D=3D=3D=
-=3D=3D=3D=3D
+Some of the above probably require adding structures to represent gpio
+lines and events, while handles should be private to the class.
+---
 
-SAE has a "blinding" technique when computing the X/Y coordinate for
-the password element . Without going into details, it requires creating
-two special scalars (residue/non-residue). These scalars are then
-inputted into an algorithm which decides if the X value is valid. Per
-the spec, these two scalars must be created outside the 'blinding'
-loop. This is why we need this scalar constructor ('residue' would be
-true/false for residue/non-residue).
-struct l_ecc_scalar *l_ecc_scalar_new_residue(const struct l_ecc_curve
-*curve,
-                                                        bool residue);
+Changes since RFC:
+ * added gpio.h to ell.h
+ * changed copyright to Geanix
+ * open gpiochip in l_gpio_chip_new()
+ * open gpiochip read-only
+ * added input checks
+ * clear ioctl structs with memset instead of =3D {0}
+ * reorder error-paths
 
-This simply verifies that the calculated X 'value' is a quadradic
-residue, aka it is a valid X coordinate. EAP-PWD achieves the same
-affect by just solving for the Y coordinate, but the SAE spec requires
-this technique specifically.
+ Makefile.am |   6 ++-
+ ell/ell.h   |   1 +
+ ell/ell.sym |   5 ++
+ ell/gpio.c  | 135 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/gpio.h  |  47 ++++++++++++++++++
+ 5 files changed, 192 insertions(+), 2 deletions(-)
+ create mode 100644 ell/gpio.c
+ create mode 100644 ell/gpio.h
 
-bool l_ecc_scalar_is_quadradic_residue(struct l_ecc_scalar *value,
-                                struct l_ecc_scalar *qr,
-                                struct l_ecc_scalar *qnr);
+diff --git a/Makefile.am b/Makefile.am
+index 8401972..0ecb9a1 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -51,7 +51,8 @@ pkginclude_HEADERS =3D ell/ell.h \
+ 			ell/dhcp.h \
+ 			ell/cert.h \
+ 			ell/ecc.h \
+-			ell/ecdh.h
++			ell/ecdh.h \
++			ell/gpio.h
+ =
 
-The SAE spec requires using the curve prime as an input into a KDF.
+ lib_LTLIBRARIES =3D ell/libell.la
+ =
 
-ssize_t l_ecc_curve_get_prime(const struct l_ecc_curve *curve, void
-*buf,
-                                size_t len);
+@@ -119,7 +120,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
+ 			ell/ecc.h \
+ 			ell/ecc-external.c \
+ 			ell/ecc.c \
+-			ell/ecdh.c
++			ell/ecdh.c \
++			ell/gpio.c
+ =
 
-These two could actually be benefitial in PWD as well. SAE says that
-any received scalar/point from the other peer must be checked that they
-do not match our own scalar/point. This prevents replay attacks. EAP-
-PWD may also benefit from the same checks.
+ ell_libell_la_LDFLAGS =3D -no-undefined \
+ 			-Wl,--version-script=3D$(top_srcdir)/ell/ell.sym \
+diff --git a/ell/ell.h b/ell/ell.h
+index aab6417..fb1dd79 100644
+--- a/ell/ell.h
++++ b/ell/ell.h
+@@ -59,3 +59,4 @@
+ #include <ell/cert.h>
+ #include <ell/ecc.h>
+ #include <ell/ecdh.h>
++#include <ell/gpio.h>
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 841bc49..c8fe5b5 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -463,6 +463,11 @@ global:
+ 	/* ecdh */
+ 	l_ecdh_generate_key_pair;
+ 	l_ecdh_generate_shared_secret;
++	/* gpio */
++	l_gpio_chip_new;
++	l_gpio_chip_free;
++	l_gpio_chip_get_line_value;
++	l_gpio_chip_set_line_value;
+ local:
+ 	*;
+ };
+diff --git a/ell/gpio.c b/ell/gpio.c
+new file mode 100644
+index 0000000..5dc3440
+--- /dev/null
++++ b/ell/gpio.c
+@@ -0,0 +1,135 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2018 Geanix. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <sys/ioctl.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <linux/gpio.h>
++
++#include "util.h"
++#include "gpio.h"
++#include "private.h"
++
++struct l_gpio_chip {
++	int fd;
++};
++
++LIB_EXPORT struct l_gpio_chip *l_gpio_chip_new(const char *name)
++{
++	struct l_gpio_chip *chip;
++	char *path;
++
++	if (!name)
++		return NULL;
++
++	chip =3D l_new(struct l_gpio_chip, 1);
++
++	path =3D l_strdup_printf("/dev/%s", name);
++	chip->fd =3D open(path, O_RDONLY | O_CLOEXEC);
++	l_free(path);
++
++	if (chip->fd < 0) {
++		l_free(chip);
++		return NULL;
++	}
++
++	return chip;
++}
++
++LIB_EXPORT void l_gpio_chip_free(struct l_gpio_chip *chip)
++{
++	if (!chip)
++		return;
++
++	if (chip->fd >=3D 0)
++		close(chip->fd);
++
++	l_free(chip);
++}
++
++LIB_EXPORT bool l_gpio_chip_get_line_value(struct l_gpio_chip *chip,
++						uint32_t line, bool *value)
++{
++	struct gpiohandle_request req;
++	struct gpiohandle_data data;
++	int ret;
++
++	if (!chip)
++		return false;
++
++	if (chip->fd < 0)
++		return false;
++
++	memset(&req, 0, sizeof(req));
++	req.lineoffsets[0] =3D line;
++	req.lines =3D 1;
++	req.flags =3D GPIOHANDLE_REQUEST_INPUT;
++
++	ret =3D ioctl(chip->fd, GPIO_GET_LINEHANDLE_IOCTL, &req);
++	if (ret < 0 || req.fd <=3D 0)
++		return false;
++
++	memset(&data, 0, sizeof(data));
++
++	ret =3D ioctl(req.fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data);
++
++	close(req.fd);
++
++	if (ret < 0)
++		return false;
++
++	if (value)
++		*value =3D !!data.values[0];
++
++	return true;
++}
++
++LIB_EXPORT bool l_gpio_chip_set_line_value(struct l_gpio_chip *chip,
++						uint32_t line, bool value)
++{
++	struct gpiohandle_request req;
++	int ret;
++
++	if (!chip)
++		return false;
++
++	if (chip->fd < 0)
++		return false;
++
++	memset(&req, 0, sizeof(req));
++	req.lineoffsets[0] =3D line;
++	req.lines =3D 1;
++	req.flags =3D GPIOHANDLE_REQUEST_OUTPUT;
++	req.default_values[0] =3D value;
++
++	ret =3D ioctl(chip->fd, GPIO_GET_LINEHANDLE_IOCTL, &req);
++	if (ret < 0 || req.fd <=3D 0)
++		return false;
++
++	close(req.fd);
++
++	return true;
++}
+diff --git a/ell/gpio.h b/ell/gpio.h
+new file mode 100644
+index 0000000..06abc77
+--- /dev/null
++++ b/ell/gpio.h
+@@ -0,0 +1,47 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2011-2018  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifndef __ELL_GPIO_H
++#define __ELL_GPIO_H
++
++#include <stdint.h>
++#include <stdbool.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++struct l_gpio_chip;
++
++struct l_gpio_chip *l_gpio_chip_new(const char *name);
++void l_gpio_chip_free(struct l_gpio_chip *chip);
++
++bool l_gpio_chip_get_line_value(struct l_gpio_chip *chip, uint32_t line,
++				bool *value);
++bool l_gpio_chip_set_line_value(struct l_gpio_chip *chip, uint32_t line,
++				bool value);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* __ELL_GPIO_H */
+-- =
 
-bool l_ecc_scalars_are_equal(struct l_ecc_scalar *a, struct
-l_ecc_scalar *b);
-
-bool l_ecc_points_are_equal(struct l_ecc_point *a, struct l_ecc_point
-*b);
-
-I will admit the SAE API's are pretty special purpose to SAE, but I do
-this this is the better of the 2 options. The other option is moving
-the entire 'blinding' loop into ELL, which would avoid the need for
-l_ecc_scalar_new_residue/l_ecc_scalar_is_quadradic_residue, but would
-also require moving 2 separate KDFs into ELL, both of which are used
-commonly in IWD. In the end it would remove 2 SAE specific API's, in
-favor of a single SAE specific algorithm, plus additional API's to
-expose the two KDF's.
-
-Your thoughts/ideas are welcome.
-
-Thanks,
-James
+2.20.0
 
 
---===============4592732034665159815==--
+--===============0812257188133725525==--
 
