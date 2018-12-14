@@ -1,310 +1,369 @@
-Content-Type: multipart/mixed; boundary="===============3284667317525047401=="
+Content-Type: multipart/mixed; boundary="===============1777840062731691916=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 9/9] unit: Test many TLS cipher suite and version combinations
-Date: Thu, 13 Dec 2018 20:57:46 +0100
-Message-ID: <20181213195746.32144-9-andrew.zaborowski@intel.com>
-In-Reply-To: <20181213195746.32144-1-andrew.zaborowski@intel.com>
+From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
+Subject: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
+Date: Fri, 14 Dec 2018 14:13:13 +0100
+Message-ID: <20181214131313.125541-1-martin@geanix.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3284667317525047401==
+--===============1777840062731691916==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+The Linux kernel GPIO api operates with chips, lines, handles, and
+events.
+
+The chip and line structures represent info about gpio chips, and
+gpio lines, respectively. They are used to e.g. lookup a line with a
+certain name, and/or line flags.
+
+The handle structure is used to "obtain" a handle to one or more gpio
+lines on a chip. Until the file descriptor in this handle is closed, the
+gpio lines cannot be used by others. The same file descriptor is used
+when setting or getting the line values (one can also set the initial
+value when obtaining handles for output lines).
+
+The event structure is used to get a file descriptor that can be used
+with select/poll to wait for changes in line levels.
+
+This commit add simple support for setting and getting the value for a
+single gpio line. It does so by obtaining a line handle to get/set the
+value, and then release the handle immediately again.
+
+Functionality that could be implemented, but is postponed until the need
+arises includes:
+
+ * looking up a gpio line by its name
+ * setting/getting multiple gpio lines with a single function
+ * waiting for events
+ * holding on to handles
+
+Some of the above probably require adding structures to represent gpio
+lines and events, while handles should be private to the class.
 ---
- unit/test-tls.c | 147 +++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 139 insertions(+), 8 deletions(-)
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index 2b5d16b..8c1bc01 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -302,11 +302,16 @@ struct tls_conn_test {
- 	const char *server_key_passphrase;
- 	const char *server_ca_cert_path;
- 	const char *server_expect_identity;
-+	const char **server_cipher_suites;
- 	const char *client_cert_path;
- 	const char *client_key_path;
- 	const char *client_key_passphrase;
- 	const char *client_ca_cert_path;
- 	const char *client_expect_identity;
-+	const char **client_cipher_suites;
-+	bool expect_alert;
-+	bool expect_client_start_fail;
-+	enum l_tls_alert_desc alert_desc;
+Changes since v1:
+ * added gpiochip info and corresponding getters
+ * changed "line" to "line_num" a few places
+
+Changes since RFC:
+ * added gpio.h to ell.h
+ * changed copyright to Geanix
+ * open gpiochip in l_gpio_chip_new()
+ * open gpiochip read-only
+ * added input checks
+ * clear ioctl structs with memset instead of =3D {0}
+ * reorder error-paths
+
+ Makefile.am |   6 +-
+ ell/ell.h   |   1 +
+ ell/ell.sym |   7 +++
+ ell/gpio.c  | 175 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/gpio.h  |  49 +++++++++++++++
+ 5 files changed, 236 insertions(+), 2 deletions(-)
+ create mode 100644 ell/gpio.c
+ create mode 100644 ell/gpio.h
+
+diff --git a/Makefile.am b/Makefile.am
+index 8401972..0ecb9a1 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -51,7 +51,8 @@ pkginclude_HEADERS =3D ell/ell.h \
+ 			ell/dhcp.h \
+ 			ell/cert.h \
+ 			ell/ecc.h \
+-			ell/ecdh.h
++			ell/ecdh.h \
++			ell/gpio.h
+ =
+
+ lib_LTLIBRARIES =3D ell/libell.la
+ =
+
+@@ -119,7 +120,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
+ 			ell/ecc.h \
+ 			ell/ecc-external.c \
+ 			ell/ecc.c \
+-			ell/ecdh.c
++			ell/ecdh.c \
++			ell/gpio.c
+ =
+
+ ell_libell_la_LDFLAGS =3D -no-undefined \
+ 			-Wl,--version-script=3D$(top_srcdir)/ell/ell.sym \
+diff --git a/ell/ell.h b/ell/ell.h
+index aab6417..fb1dd79 100644
+--- a/ell/ell.h
++++ b/ell/ell.h
+@@ -59,3 +59,4 @@
+ #include <ell/cert.h>
+ #include <ell/ecc.h>
+ #include <ell/ecdh.h>
++#include <ell/gpio.h>
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 841bc49..793e4c3 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -463,6 +463,13 @@ global:
+ 	/* ecdh */
+ 	l_ecdh_generate_key_pair;
+ 	l_ecdh_generate_shared_secret;
++	/* gpio */
++	l_gpio_chip_new;
++	l_gpio_chip_free;
++	l_gpio_chip_get_label;
++	l_gpio_chip_get_num_lines;
++	l_gpio_chip_get_line_value;
++	l_gpio_chip_set_line_value;
+ local:
+ 	*;
  };
- =
-
- static const struct tls_conn_test tls_conn_test_no_auth =3D {
-@@ -362,6 +367,63 @@ static const struct tls_conn_test tls_conn_test_full_a=
-uth =3D {
- 	.client_expect_identity =3D "Foo Example Organization",
- };
- =
-
-+static const struct tls_conn_test tls_conn_test_bad_server_suite =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "Bar Example Organization",
-+	.server_cipher_suites =3D (const char *[]) { "UNKNOWN", NULL },
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "Foo Example Organization",
-+	.expect_alert =3D true,
-+	.alert_desc =3D TLS_ALERT_INTERNAL_ERROR,
+diff --git a/ell/gpio.c b/ell/gpio.c
+new file mode 100644
+index 0000000..83032f9
+--- /dev/null
++++ b/ell/gpio.c
+@@ -0,0 +1,175 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2018 Geanix. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <unistd.h>
++#include <sys/ioctl.h>
++#include <fcntl.h>
++#include <linux/gpio.h>
++
++#include "util.h"
++#include "gpio.h"
++#include "private.h"
++
++struct l_gpio_chip {
++	int fd;
++	char *label;
++	uint32_t num_lines;
 +};
 +
-+static const struct tls_conn_test tls_conn_test_bad_client_suite =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "Bar Example Organization",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "Foo Example Organization",
-+	.client_cipher_suites =3D (const char *[]) { "UNKNOWN", NULL },
-+	.expect_client_start_fail =3D true,
-+};
++LIB_EXPORT struct l_gpio_chip *l_gpio_chip_new(const char *chip_name)
++{
++	struct l_gpio_chip *chip;
++	struct gpiochip_info info;
++	char *path;
++	int ret;
 +
-+static const struct tls_conn_test tls_conn_test_suite_mismatch =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "Bar Example Organization",
-+	.server_cipher_suites =3D
-+		(const char *[]) { "TLS_RSA_WITH_AES_128_CBC_SHA256", NULL },
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "Foo Example Organization",
-+	.client_cipher_suites =3D
-+		(const char *[]) { "TLS_RSA_WITH_AES_256_CBC_SHA256", NULL },
-+	.expect_alert =3D true,
-+	.alert_desc =3D TLS_ALERT_INSUFFICIENT_SECURITY,
-+};
++	if (!chip_name)
++		return NULL;
 +
-+static const struct tls_conn_test tls_conn_test_version_mismatch =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "Bar Example Organization",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "Foo Example Organization",
-+	.expect_alert =3D true,
-+	.alert_desc =3D TLS_ALERT_PROTOCOL_VERSION,
-+};
++	chip =3D l_new(struct l_gpio_chip, 1);
 +
- #define identity_compare(a, b) ((!(a) && !(b)) || ((a) && (b) && !strcmp(a=
-, b)))
- =
-
- struct tls_test_state {
-@@ -378,6 +440,9 @@ struct tls_test_state {
- 	const char *send_data;
- 	const char *expect_data;
- 	const char *expect_peer;
++	path =3D l_strdup_printf("/dev/%s", chip_name);
++	chip->fd =3D open(path, O_RDONLY | O_CLOEXEC);
++	l_free(path);
 +
-+	bool expect_alert;
-+	enum l_tls_alert_desc alert_desc;
- };
- =
-
- static void tls_test_new_data(const uint8_t *data, size_t len, void *user_=
-data)
-@@ -411,6 +476,7 @@ static void tls_test_ready(const char *peer_identity, v=
-oid *user_data)
- 	struct tls_test_state *s =3D user_data;
- =
-
- 	assert(!s->ready);
-+	assert(!s->expect_alert);
- 	assert((!s->expect_peer && !peer_identity) ||
- 			(s->expect_peer && peer_identity &&
- 			 !strcmp(s->expect_peer, peer_identity)));
-@@ -423,7 +489,11 @@ static void tls_test_ready(const char *peer_identity, =
-void *user_data)
- static void tls_test_disconnected(enum l_tls_alert_desc reason, bool remot=
-e,
- 					void *user_data)
- {
--	assert(false);
-+	struct tls_test_state *s =3D user_data;
++	if (chip->fd < 0) {
++		l_free(chip);
++		return NULL;
++	}
 +
-+	assert(s->expect_alert);
-+	assert(reason =3D=3D s->alert_desc);
-+	s->success =3D true;
- }
- =
-
- static void tls_debug_cb(const char *str, void *user_data)
-@@ -431,11 +501,10 @@ static void tls_debug_cb(const char *str, void *user_=
-data)
- 	l_info("%s %s", (const char *) user_data, str);
- }
- =
-
--static void test_tls_with_ver(const void *data,
-+static void test_tls_with_ver(const struct tls_conn_test *test,
- 				uint16_t server_ver, uint16_t client_ver)
- {
- 	bool auth_ok;
--	const struct tls_conn_test *test =3D data;
- 	struct tls_test_state s[2] =3D {
- 		{
- 			.ready =3D false,
-@@ -445,6 +514,8 @@ static void test_tls_with_ver(const void *data,
- 			.send_data =3D "server to client",
- 			.expect_data =3D "client to server",
- 			.expect_peer =3D test->server_expect_identity,
-+			.expect_alert =3D test->expect_alert,
-+			.alert_desc =3D test->alert_desc,
- 		},
- 		{
- 			.ready =3D false,
-@@ -454,6 +525,8 @@ static void test_tls_with_ver(const void *data,
- 			.send_data =3D "client to server",
- 			.expect_data =3D "server to client",
- 			.expect_peer =3D test->client_expect_identity,
-+			.expect_alert =3D test->expect_alert,
-+			.alert_desc =3D test->alert_desc,
- 		},
- 	};
- =
-
-@@ -473,6 +546,12 @@ static void test_tls_with_ver(const void *data,
- 	if (client_ver)
- 		l_tls_set_version_range(s[1].tls, client_ver, client_ver);
- =
-
-+	if (test->server_cipher_suites)
-+		l_tls_set_cipher_suites(s[0].tls, test->server_cipher_suites);
++	memset(&info, 0, sizeof(info));
 +
-+	if (test->client_cipher_suites)
-+		l_tls_set_cipher_suites(s[1].tls, test->client_cipher_suites);
++	ret =3D ioctl(chip->fd, GPIO_GET_CHIPINFO_IOCTL, &info);
++	if (ret < 0) {
++		l_free(chip);
++		return NULL;
++	}
 +
- 	if (getenv("TLS_SERVER_DEBUG"))
- 		l_tls_set_debug(s[0].tls, tls_debug_cb, "server", NULL);
- =
-
-@@ -491,9 +570,12 @@ static void test_tls_with_ver(const void *data,
- 	assert(l_tls_set_cacert(s[1].tls, test->client_ca_cert_path));
- =
-
- 	assert(l_tls_start(s[0].tls));
--	assert(l_tls_start(s[1].tls));
-+	assert(!!l_tls_start(s[1].tls) =3D=3D !test->expect_client_start_fail);
- =
-
--	while (1) {
-+	if (test->expect_client_start_fail)
-+		goto done;
++	if (info.label)
++		chip->label =3D l_strndup(info.label, sizeof(info.label));
 +
-+	while (!(test->expect_alert && s[0].success && s[1].success)) {
- 		if (s[0].raw_buf_len) {
- 			l_tls_handle_rx(s[1].tls, s[0].raw_buf,
- 					s[0].raw_buf_len);
-@@ -508,24 +590,60 @@ static void test_tls_with_ver(const void *data,
- =
-
- 	assert(s[0].success && s[1].success);
- =
-
-+done:
- 	l_tls_free(s[0].tls);
- 	l_tls_free(s[1].tls);
- }
- =
-
- static void test_tls_test(const void *data)
- {
-+	const struct tls_conn_test *test =3D data;
++	chip->num_lines =3D info.lines;
 +
- 	/*
- 	 * 1.2 should get negotiated in the first case.  If the three
- 	 * scenarios succeed that's already good but can be checked with:
- 	 * $ TLS_DEBUG=3D1 unit/test-tls 2>&1 | grep "Negotiated"
- 	 */
--	test_tls_with_ver(data, 0, 0);
--	test_tls_with_ver(data, 0, L_TLS_V11);
--	test_tls_with_ver(data, L_TLS_V10, 0);
-+	test_tls_with_ver(test, 0, 0);
-+	test_tls_with_ver(test, 0, L_TLS_V11);
-+	test_tls_with_ver(test, L_TLS_V10, 0);
++	return chip;
 +}
 +
-+static void test_tls_version_mismatch_test(const void *data)
++LIB_EXPORT void l_gpio_chip_free(struct l_gpio_chip *chip)
 +{
-+	test_tls_with_ver(&tls_conn_test_version_mismatch,
-+				L_TLS_V11, L_TLS_V12);
-+	test_tls_with_ver(&tls_conn_test_version_mismatch,
-+				L_TLS_V12, L_TLS_V10);
-+	test_tls_with_ver(&tls_conn_test_version_mismatch,
-+				L_TLS_V10, L_TLS_V11);
++	if (!chip)
++		return;
++
++	if (chip->fd >=3D 0)
++		close(chip->fd);
++
++	l_free(chip->label);
++	l_free(chip);
 +}
 +
-+static void test_tls_suite_test(const void *data)
++LIB_EXPORT const char *l_gpio_chip_get_label(struct l_gpio_chip *chip)
 +{
-+	const char *suite_name =3D data;
-+	const char *client_cipher_suites[] =3D { suite_name, NULL };
-+	struct tls_conn_test test =3D tls_conn_test_full_auth;
++	if (!chip)
++		return NULL;
 +
-+	test.client_cipher_suites =3D client_cipher_suites;
-+	test_tls_with_ver(&test, 0, 0);
- }
- =
-
- int main(int argc, char *argv[])
- {
-+	const char *suite_names[] =3D {
-+		"TLS_RSA_WITH_RC4_128_MD5",
-+		"TLS_RSA_WITH_RC4_128_SHA",
-+		"TLS_RSA_WITH_3DES_EDE_CBC_SHA",
-+		"TLS_RSA_WITH_AES_128_CBC_SHA",
-+		"TLS_RSA_WITH_AES_256_CBC_SHA",
-+		"TLS_RSA_WITH_AES_128_CBC_SHA256",
-+		"TLS_RSA_WITH_AES_256_CBC_SHA256",
-+		"TLS_RSA_WITH_AES_128_GCM_SHA256",
-+		"TLS_RSA_WITH_AES_256_GCM_SHA384",
-+		NULL
-+	}, **name;
++	return chip->label;
++}
 +
- 	l_test_init(&argc, &argv);
- =
-
- 	if (!l_checksum_is_supported(L_CHECKSUM_MD5, false) ||
-@@ -584,6 +702,19 @@ int main(int argc, char *argv[])
- 	l_test_add("TLS connection full auth", test_tls_test,
- 			&tls_conn_test_full_auth);
- =
-
-+	l_test_add("TLS connection bad server cipher suite", test_tls_test,
-+			&tls_conn_test_bad_server_suite);
-+	l_test_add("TLS connection bad client cipher suite", test_tls_test,
-+			&tls_conn_test_bad_client_suite);
-+	l_test_add("TLS connection cipher suite mismatch", test_tls_test,
-+			&tls_conn_test_suite_mismatch);
++LIB_EXPORT uint32_t l_gpio_chip_get_num_lines(struct l_gpio_chip *chip)
++{
++	if (!chip)
++		return 0;
 +
-+	l_test_add("TLS connection version mismatch",
-+			test_tls_version_mismatch_test, NULL);
++	return chip->num_lines;
++}
 +
-+	for (name =3D suite_names; *name; name++)
-+		l_test_add(*name, test_tls_suite_test, *name);
++LIB_EXPORT bool l_gpio_chip_get_line_value(struct l_gpio_chip *chip,
++						uint32_t line_num, bool *value)
++{
++	struct gpiohandle_request req;
++	struct gpiohandle_data data;
++	int ret;
 +
- done:
- 	return l_test_run();
- }
++	if (!chip)
++		return false;
++
++	if (line_num >=3D chip->num_lines)
++		return false;
++
++	if (chip->fd < 0)
++		return false;
++
++	memset(&req, 0, sizeof(req));
++	req.lineoffsets[0] =3D line_num;
++	req.lines =3D 1;
++	req.flags =3D GPIOHANDLE_REQUEST_INPUT;
++
++	ret =3D ioctl(chip->fd, GPIO_GET_LINEHANDLE_IOCTL, &req);
++	if (ret < 0 || req.fd <=3D 0)
++		return false;
++
++	memset(&data, 0, sizeof(data));
++
++	ret =3D ioctl(req.fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data);
++
++	close(req.fd);
++
++	if (ret < 0)
++		return false;
++
++	if (value)
++		*value =3D !!data.values[0];
++
++	return true;
++}
++
++LIB_EXPORT bool l_gpio_chip_set_line_value(struct l_gpio_chip *chip,
++						uint32_t line_num, bool value)
++{
++	struct gpiohandle_request req;
++	int ret;
++
++	if (!chip)
++		return false;
++
++	if (line_num >=3D chip->num_lines)
++		return false;
++
++	if (chip->fd < 0)
++		return false;
++
++	memset(&req, 0, sizeof(req));
++	req.lineoffsets[0] =3D line_num;
++	req.lines =3D 1;
++	req.flags =3D GPIOHANDLE_REQUEST_OUTPUT;
++	req.default_values[0] =3D value;
++
++	ret =3D ioctl(chip->fd, GPIO_GET_LINEHANDLE_IOCTL, &req);
++	if (ret < 0 || req.fd <=3D 0)
++		return false;
++
++	close(req.fd);
++
++	return true;
++}
+diff --git a/ell/gpio.h b/ell/gpio.h
+new file mode 100644
+index 0000000..9f4ae6a
+--- /dev/null
++++ b/ell/gpio.h
+@@ -0,0 +1,49 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2011-2018  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifndef __ELL_GPIO_H
++#define __ELL_GPIO_H
++
++#include <stdint.h>
++#include <stdbool.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++struct l_gpio_chip;
++
++struct l_gpio_chip *l_gpio_chip_new(const char *chip_name);
++void l_gpio_chip_free(struct l_gpio_chip *chip);
++
++const char *l_gpio_chip_get_label(struct l_gpio_chip *chip);
++uint32_t l_gpio_chip_get_num_lines(struct l_gpio_chip *chip);
++bool l_gpio_chip_get_line_value(struct l_gpio_chip *chip, uint32_t line_nu=
+m,
++				bool *value);
++bool l_gpio_chip_set_line_value(struct l_gpio_chip *chip, uint32_t line_nu=
+m,
++				bool value);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* __ELL_GPIO_H */
 -- =
 
-2.19.1
+2.20.0
 
 
---===============3284667317525047401==--
+--===============1777840062731691916==--
 
