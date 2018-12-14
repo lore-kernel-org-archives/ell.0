@@ -1,77 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============8130770641544012467=="
+Content-Type: multipart/mixed; boundary="===============4415879270649459135=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
-Date: Fri, 14 Dec 2018 11:18:44 -0600
-Message-ID: <0ae81caf-99ef-91c3-8fb7-a673024ba19e@gmail.com>
-In-Reply-To: <cd28668a-5046-0f7a-1efe-ced22be4adcf@geanix.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 3/9] tls: Add TLS version number printf macros
+Date: Fri, 14 Dec 2018 19:48:18 +0100
+Message-ID: <CAOq732JaQFAm7-t2DJV5F40o1QTN19tignU_hWRANMHi1nex-g@mail.gmail.com>
+In-Reply-To: <ab96eccf-b6bf-dfd8-e8a2-545207d8aa19@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8130770641544012467==
+--===============4415879270649459135==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Martin,
+Hi Denis,
 
-> I am not sure if the l_gpio_chip_{set,get}_line_value() functions are =
+On Fri, 14 Dec 2018 at 16:53, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 12/13/2018 01:57 PM, Andrew Zaborowski wrote:
+> > ---
+> >   ell/tls-private.h |  3 +++
+> >   ell/tls.c         | 17 +++++++++++------
+> >   2 files changed, 14 insertions(+), 6 deletions(-)
+> >
+>
+> ell/tls.c: In function =E2=80=98tls_cipher_suite_is_compatible=E2=80=99:
+> ell/tls.c:540:34: error: =E2=80=98L_TLS_V12=E2=80=99 undeclared (first us=
+e in this
+> function); did you mean =E2=80=98TLS_V12=E2=80=99?
+>     if (negotiated && negotiated < L_TLS_V12) {
+>                                    ^~~~~~~~~
+>                                    TLS_V12
+> ell/tls.c:540:34: note: each undeclared identifier is reported only once
+> for each function it appears in
+>
+> I know we allow breaking compilation if unavoidable, but I think here
+> this can be easily avoided.
 
-> the right approach.
-> =
+Ah indeed, I try to not break compilation if possible, will fix this patch.
 
-> I am working on a (ofono) user for this class, where I need to lookup a =
+Best regards
 
-> line, and store it in a private data structure. With the l_gpio_chip + =
-
-> line number approach I need to have two gpio-related members in my =
-
-> private struct.
-> =
-
-
-Never worked with GPIOs, so this may be a silly question, but...
-
-How does one figure out the line number that is needed?  You just have =
-
-to know based on some docs?
-
-> If we instead required callers to first create a l_gpio_chip instance, =
-
-> and use that to get l_gpio_line instances, then we could store a =
-
-> reference to the chip in the line instance, which would make it simpler =
-
-> for users to keep a reference to line.
-
-Possible, but the question is how does the kernel behave...
-
-> =
-
-> That creates a new set of problems though, where l_gpio_line instances =
-
-> can get dangling references to freed l_gpio_chip instances. Maybe a list =
-
-> of references to "child" lines in l_gpio_chip could be maintained and =
-
-> freed when freeing the l_gpio_chip "parent".
-> =
-
-
-You have the main /dev/chip file descriptor and you have a file =
-
-descriptor returned from the GPIO_GET_LINEHANDLE_IOCTL.  What happens to =
-
-the fds returned by GPIO_GET_LINEHANDLE_IOCTL if the main /dev/chip fd =
-
-is closed?
-
-There's no hotplug/unplug with gpio devices right?  So you can count of =
-
-the /dev/chip & fd to be owned exlusively by the ell client?
-
-Regards,
--Denis
-
---===============8130770641544012467==--
+--===============4415879270649459135==--
 
