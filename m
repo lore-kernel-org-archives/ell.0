@@ -1,587 +1,163 @@
-Content-Type: multipart/mixed; boundary="===============2490034465039754085=="
+Content-Type: multipart/mixed; boundary="===============2837470848964976201=="
 MIME-Version: 1.0
 From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
-Subject: [PATCHv3] gpio: add simple get/set helpers for GPIO lines
-Date: Mon, 17 Dec 2018 22:30:03 +0100
-Message-ID: <20181217213003.29260-1-martin@geanix.com>
+Subject: Re: [PATCHv3] gpio: add simple get/set helpers for GPIO lines
+Date: Mon, 17 Dec 2018 23:01:27 +0100
+Message-ID: <3dab5182-77b0-8ef0-bf41-30dabddb00c0@geanix.com>
+In-Reply-To: <20181217213003.29260-1-martin@geanix.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2490034465039754085==
+--===============2837470848964976201==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The Linux kernel GPIO api operates with chips, lines, handles, and
-events.
+Hi,
 
-The chip and line structures represent info about gpio chips, and
-gpio lines, respectively. They are used to e.g. lookup a line with a
-certain name, and/or line flags.
+On 17/12/2018 22.30, Martin Hundeb=C3=B8ll wrote:
+> The Linux kernel GPIO api operates with chips, lines, handles, and
+> events.
+> =
 
-The handle structure is used to "obtain" a handle to one or more gpio
-lines on a chip. Until the file descriptor in this handle is closed, the
-gpio lines cannot be used by others. The same file descriptor is used
-when setting or getting the line values (one can also set the initial
-value when obtaining handles for output lines).
+> The chip and line structures represent info about gpio chips, and
+> gpio lines, respectively. They are used to e.g. lookup a line with a
+> certain name, and/or line flags.
+> =
 
-The event structure is used to get a file descriptor that can be used
-with select/poll to wait for changes in line levels.
+> The handle structure is used to "obtain" a handle to one or more gpio
+> lines on a chip. Until the file descriptor in this handle is closed, the
+> gpio lines cannot be used by others. The same file descriptor is used
+> when setting or getting the line values (one can also set the initial
+> value when obtaining handles for output lines).
+> =
 
-This commit adds simple support for setting and getting the value for a
-single gpio line. It does so by obtaining a line handle to get/set the
-value, and then release the handle immediately again.
+> The event structure is used to get a file descriptor that can be used
+> with select/poll to wait for changes in line levels.
+> =
 
-Both the l_gpio_chip and l_gpio_line structures reference an internal
-gpio structure that holds the file descriptor to the open
-/dev/gpiochipX character device. This file descriptor is used by
-l_gpio_chip to lookup line info, and by l_gpio_line to request a virtual
-file descriptor used to get and set line values.
+> This commit adds simple support for setting and getting the value for a
+> single gpio line. It does so by obtaining a line handle to get/set the
+> value, and then release the handle immediately again.
+> =
 
-Functionality that could be implemented, but is postponed until the need
-arises includes:
+> Both the l_gpio_chip and l_gpio_line structures reference an internal
+> gpio structure that holds the file descriptor to the open
+> /dev/gpiochipX character device. This file descriptor is used by
+> l_gpio_chip to lookup line info, and by l_gpio_line to request a virtual
+> file descriptor used to get and set line values.
+> =
 
- * setting/getting multiple gpio lines with a single function
- * waiting for events
- * holding on to handles
+> Functionality that could be implemented, but is postponed until the need
+> arises includes:
+> =
 
-Some of the above probably require adding structures to represent
-multiple gpio lines and events, while handles should be private to the
-class.
+>   * setting/getting multiple gpio lines with a single function
+>   * waiting for events
+>   * holding on to handles
+> =
 
----
+> Some of the above probably require adding structures to represent
+> multiple gpio lines and events, while handles should be private to the
+> class.
 
-Changes since v2:
- * added internal reference counted structure to hold primary fd
- * added l_gpio_line structure to represent a single line
- * added function to lookup gpio line by label
+I have attached a small find/get/set gpio util, that I use for testing =
 
-Changes since v1:
- * added gpiochip info and corresponding getters
- * changed "line" to "line_num" a few places
+my patch. It uses most of the API.
 
-Changes since RFC:
- * added gpio.h to ell.h
- * changed copyright to Geanix
- * open gpiochip in l_gpio_chip_new()
- * open gpiochip read-only
- * added input checks
- * clear ioctl structs with memset instead of =3D {0} =
+I am not really sure how to implement unit tests for the gpio interface, =
 
- * reorder error-paths
+though.
 
- Makefile.am |   6 +-
- ell/ell.h   |   1 +
- ell/ell.sym |  15 +++
- ell/gpio.c  | 360 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/gpio.h  |  59 +++++++++
- 5 files changed, 439 insertions(+), 2 deletions(-)
- create mode 100644 ell/gpio.c
- create mode 100644 ell/gpio.h
+// Martin
 
-diff --git a/Makefile.am b/Makefile.am
-index 8401972..0ecb9a1 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -51,7 +51,8 @@ pkginclude_HEADERS =3D ell/ell.h \
- 			ell/dhcp.h \
- 			ell/cert.h \
- 			ell/ecc.h \
--			ell/ecdh.h
-+			ell/ecdh.h \
-+			ell/gpio.h
- =
+--===============2837470848964976201==
+Content-Type: text/x-csrc
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="gpio.c"
 
- lib_LTLIBRARIES =3D ell/libell.la
- =
+I2RlZmluZSBfR05VX1NPVVJDRQojaW5jbHVkZSA8c3RkaW8uaD4KI2luY2x1ZGUgPHN0ZGxpYi5o
+PgojaW5jbHVkZSA8c3RyaW5nLmg+CiNpbmNsdWRlIDxlcnJuby5oPgojaW5jbHVkZSA8ZWxsL2dw
+aW8uaD4KCnN0YXRpYyBpbnQgcHJpbnRfdXNhZ2Uodm9pZCkKewoJZnByaW50ZihzdGRlcnIsCgkJ
+InVzYWdlOiAlcyBmaW5kIDxuYW1lPlxuIgoJCSIgICAgICAgJXMgZ2V0ICg8Y2hpcD4gPGxpbmU+
+fDxuYW1lPilcbiIKCQkiICAgICAgICVzIHNldCAoPGNoaXA+IDxsaW5lPnw8bmFtZT4pIDx2YWx1
+ZT5cbiIKCQkiICAgICAgICVzIGNoaXAgPGNoaXA+XG4iCgkJIiAgICAgICAlcyBsaW5lIDxjaGlw
+PiA8bGluZT5cbiIsCgkJcHJvZ3JhbV9pbnZvY2F0aW9uX3Nob3J0X25hbWUsIHByb2dyYW1faW52
+b2NhdGlvbl9zaG9ydF9uYW1lLAoJCXByb2dyYW1faW52b2NhdGlvbl9zaG9ydF9uYW1lLCBwcm9n
+cmFtX2ludm9jYXRpb25fc2hvcnRfbmFtZSwKCQlwcm9ncmFtX2ludm9jYXRpb25fc2hvcnRfbmFt
+ZSk7CgoJcmV0dXJuIEVYSVRfRkFJTFVSRTsKfQoKc3RhdGljIGludCBmaW5kKGludCBhcmdjLCBj
+aGFyICoqYXJndikKewoJc3RydWN0IGxfZ3Bpb19jaGlwICpjaGlwOwoJc3RydWN0IGxfZ3Bpb19s
+aW5lICpsaW5lOwoKCWlmIChhcmdjICE9IDIpCgkJcmV0dXJuIHByaW50X3VzYWdlKCk7CgoJbGlu
+ZSA9IGxfZ3Bpb19maW5kX2xpbmUoYXJndlsxXSk7CglpZiAoIWxpbmUpCgkJcmV0dXJuIEVYSVRf
+RkFJTFVSRTsKCgljaGlwID0gbF9ncGlvX2xpbmVfZ2V0X2NoaXAobGluZSk7CglpZiAoIWNoaXAp
+IHsKCQlsX2dwaW9fbGluZV9mcmVlKGxpbmUpOwoJCXJldHVybiBFWElUX0ZBSUxVUkU7Cgl9CgoJ
+cHJpbnRmKCJjaGlwOiAlc1xuIiwgbF9ncGlvX2NoaXBfZ2V0X25hbWUoY2hpcCkpOwoJcHJpbnRm
+KCJsaW5lOiAldVxuIiwgbF9ncGlvX2xpbmVfZ2V0X251bShsaW5lKSk7CgoJbF9ncGlvX2xpbmVf
+ZnJlZShsaW5lKTsKCWxfZ3Bpb19jaGlwX2ZyZWUoY2hpcCk7CgoJcmV0dXJuIEVYSVRfU1VDQ0VT
+UzsKfQoKc3RhdGljIGludCBnZXQoaW50IGFyZ2MsIGNoYXIgKiphcmd2KQp7CglzdHJ1Y3QgbF9n
+cGlvX2NoaXAgKmNoaXA7CglzdHJ1Y3QgbF9ncGlvX2xpbmUgKmxpbmU7Cglib29sIHZhbHVlOwoK
+CWlmIChhcmdjID09IDIpIHsKCQlsaW5lID0gbF9ncGlvX2ZpbmRfbGluZShhcmd2WzFdKTsKCQlp
+ZiAoIWxpbmUpCgkJCXJldHVybiBFWElUX0ZBSUxVUkU7CgoJCWNoaXAgPSBsX2dwaW9fbGluZV9n
+ZXRfY2hpcChsaW5lKTsKCQlpZiAoIWNoaXApIHsKCQkJbF9ncGlvX2xpbmVfZnJlZShsaW5lKTsK
+CQkJcmV0dXJuIEVYSVRfRkFJTFVSRTsKCQl9Cgl9IGVsc2UgaWYgKGFyZ2MgPT0gMykgewoJCWNo
+YXIgKmNoaXBfbmFtZTsKCQl1aW50MzJfdCBsaW5lX251bTsKCgkJY2hpcF9uYW1lID0gYXJndlsx
+XTsKCQlsaW5lX251bSA9IHN0cnRvdWwoYXJndlsyXSwgTlVMTCwgMCk7CgoJCWNoaXAgPSBsX2dw
+aW9fY2hpcF9uZXcoY2hpcF9uYW1lKTsKCQlpZiAoIWNoaXApCgkJCXJldHVybiBFWElUX0ZBSUxV
+UkU7CgoJCWxpbmUgPSBsX2dwaW9fY2hpcF9nZXRfbGluZShjaGlwLCBsaW5lX251bSk7CgkJaWYg
+KCFsaW5lKSB7CgkJCWxfZ3Bpb19jaGlwX2ZyZWUoY2hpcCk7CgkJCXJldHVybiBFWElUX0ZBSUxV
+UkU7CgkJfQoJfSBlbHNlIHsKCQlyZXR1cm4gcHJpbnRfdXNhZ2UoKTsKCX0KCglwcmludGYoImNo
+aXA6ICVzXG4iLCBsX2dwaW9fY2hpcF9nZXRfbmFtZShjaGlwKSk7CglwcmludGYoImxpbmU6ICV1
+XG4iLCBsX2dwaW9fbGluZV9nZXRfbnVtKGxpbmUpKTsKCglpZiAoIWxfZ3Bpb19saW5lX2dldF92
+YWx1ZShsaW5lLCAmdmFsdWUpKSB7CgkJbF9ncGlvX2xpbmVfZnJlZShsaW5lKTsKCQlsX2dwaW9f
+Y2hpcF9mcmVlKGNoaXApOwoJCXJldHVybiBFWElUX0ZBSUxVUkU7Cgl9CgoJcHJpbnRmKCJ2YWw6
+ICAlaGh1XG4iLCB2YWx1ZSk7CgoJbF9ncGlvX2xpbmVfZnJlZShsaW5lKTsKCWxfZ3Bpb19jaGlw
+X2ZyZWUoY2hpcCk7CgoJcmV0dXJuIEVYSVRfU1VDQ0VTUzsKfQoKc3RhdGljIGludCBzZXQoaW50
+IGFyZ2MsIGNoYXIgKiphcmd2KQp7CglzdHJ1Y3QgbF9ncGlvX2NoaXAgKmNoaXA7CglzdHJ1Y3Qg
+bF9ncGlvX2xpbmUgKmxpbmU7Cgl1aW50OF90IHZhbHVlID0gMTsKCglpZiAoYXJnYyA9PSAzKSB7
+CgkJbGluZSA9IGxfZ3Bpb19maW5kX2xpbmUoYXJndlsxXSk7CgkJaWYgKCFsaW5lKQoJCQlyZXR1
+cm4gRVhJVF9GQUlMVVJFOwoKCQljaGlwID0gbF9ncGlvX2xpbmVfZ2V0X2NoaXAobGluZSk7CgkJ
+aWYgKCFjaGlwKSB7CgkJCWxfZ3Bpb19saW5lX2ZyZWUobGluZSk7CgkJCXJldHVybiBFWElUX0ZB
+SUxVUkU7CgkJfQoKCQl2YWx1ZSA9IHN0cnRvbChhcmd2WzJdLCBOVUxMLCAwKTsKCX0gZWxzZSBp
+ZiAoYXJnYyA9PSA0KSB7CgkJY2hhciAqY2hpcF9uYW1lOwoJCXVpbnQzMl90IGxpbmVfbnVtOwoK
+CQljaGlwX25hbWUgPSBhcmd2WzFdOwoJCWxpbmVfbnVtID0gc3RydG91bChhcmd2WzJdLCBOVUxM
+LCAwKTsKCQl2YWx1ZSA9IHN0cnRvbChhcmd2WzNdLCBOVUxMLCAwKTsKCgkJY2hpcCA9IGxfZ3Bp
+b19jaGlwX25ldyhjaGlwX25hbWUpOwoJCWlmICghY2hpcCkKCQkJcmV0dXJuIEVYSVRfRkFJTFVS
+RTsKCgkJbGluZSA9IGxfZ3Bpb19jaGlwX2dldF9saW5lKGNoaXAsIGxpbmVfbnVtKTsKCQlpZiAo
+IWxpbmUpIHsKCQkJbF9ncGlvX2NoaXBfZnJlZShjaGlwKTsKCQkJcmV0dXJuIEVYSVRfRkFJTFVS
+RTsKCQl9Cgl9IGVsc2UgewoJCXJldHVybiBwcmludF91c2FnZSgpOwoJfQoKCXByaW50ZigiY2hp
+cDogJXNcbiIsIGxfZ3Bpb19jaGlwX2dldF9uYW1lKGNoaXApKTsKCXByaW50ZigibGluZTogJXVc
+biIsIGxfZ3Bpb19saW5lX2dldF9udW0obGluZSkpOwoKCWlmICghbF9ncGlvX2xpbmVfc2V0X3Zh
+bHVlKGxpbmUsIHZhbHVlKSkgewoJCWxfZ3Bpb19jaGlwX2ZyZWUoY2hpcCk7CgkJbF9ncGlvX2xp
+bmVfZnJlZShsaW5lKTsKCQlyZXR1cm4gRVhJVF9GQUlMVVJFOwoJfQoKCXByaW50ZigidmFsOiAg
+JWhodVxuIiwgdmFsdWUpOwoKCWxfZ3Bpb19jaGlwX2ZyZWUoY2hpcCk7CglsX2dwaW9fbGluZV9m
+cmVlKGxpbmUpOwoKCXJldHVybiBFWElUX1NVQ0NFU1M7Cn0KCnN0YXRpYyBpbnQgY2hpcChpbnQg
+YXJnYywgY2hhciAqKmFyZ3YpCnsKCXN0cnVjdCBsX2dwaW9fY2hpcCAqY2hpcDsKCglpZiAoYXJn
+YyAhPSAyKQoJCXJldHVybiBwcmludF91c2FnZSgpOwoKCWNoaXAgPSBsX2dwaW9fY2hpcF9uZXco
+YXJndlsxXSk7CglpZiAoIWNoaXApCgkJcmV0dXJuIEVYSVRfRkFJTFVSRTsKCglwcmludGYoImNo
+aXA6ICAlc1xuIiwgbF9ncGlvX2NoaXBfZ2V0X25hbWUoY2hpcCkpOwoJcHJpbnRmKCJsYWJlbDog
+JXNcbiIsIGxfZ3Bpb19jaGlwX2dldF9sYWJlbChjaGlwKSk7CglwcmludGYoImxpbmVzOiAldVxu
+IiwgbF9ncGlvX2NoaXBfZ2V0X251bV9saW5lcyhjaGlwKSk7CgoJbF9ncGlvX2NoaXBfZnJlZShj
+aGlwKTsKCglyZXR1cm4gRVhJVF9GQUlMVVJFOwp9CgpzdGF0aWMgaW50IGxpbmUoaW50IGFyZ2Ms
+IGNoYXIgKiphcmd2KQp7CglzdHJ1Y3QgbF9ncGlvX2NoaXAgKmNoaXA7CglzdHJ1Y3QgbF9ncGlv
+X2xpbmUgKmxpbmU7Cgl1aW50MzJfdCBsaW5lX251bTsKCglpZiAoYXJnYyAhPSAzKQoJCXJldHVy
+biBwcmludF91c2FnZSgpOwoKCWNoaXAgPSBsX2dwaW9fY2hpcF9uZXcoYXJndlsxXSk7CglpZiAo
+IWNoaXApCgkJcmV0dXJuIEVYSVRfRkFJTFVSRTsKCglsaW5lX251bSA9IHN0cnRvdWwoYXJndlsy
+XSwgTlVMTCwgMCk7CglsaW5lID0gbF9ncGlvX2NoaXBfZ2V0X2xpbmUoY2hpcCwgbGluZV9udW0p
+OwoJaWYgKCFsaW5lKSB7CgkJbF9ncGlvX2NoaXBfZnJlZShjaGlwKTsKCQlyZXR1cm4gRVhJVF9G
+QUlMVVJFOwoJfQoKCXByaW50ZigiY2hpcDogICVzXG4iLCBsX2dwaW9fY2hpcF9nZXRfbmFtZShj
+aGlwKSk7CglwcmludGYoImxpbmU6ICAldVxuIiwgbF9ncGlvX2xpbmVfZ2V0X251bShsaW5lKSk7
+CglwcmludGYoImxhYmVsOiAlc1xuIiwgbF9ncGlvX2xpbmVfZ2V0X2xhYmVsKGxpbmUpKTsKCgls
+X2dwaW9fY2hpcF9mcmVlKGNoaXApOwoJbF9ncGlvX2xpbmVfZnJlZShsaW5lKTsKCglyZXR1cm4g
+RVhJVF9TVUNDRVNTOwp9CgppbnQgbWFpbihpbnQgYXJnYywgY2hhciAqKmFyZ3YpCnsKCWNvbnN0
+IGNoYXIgKmNtZDsKCglpZiAoYXJnYyA8IDIpCgkJcmV0dXJuIHByaW50X3VzYWdlKCk7CgoJY21k
+ID0gYXJndlsxXTsKCWFyZ2MtLTsKCWFyZ3YrKzsKCglpZiAoc3RyY21wKGNtZCwgImdldCIpID09
+IDApCgkJcmV0dXJuIGdldChhcmdjLCBhcmd2KTsKCWVsc2UgaWYgKHN0cmNtcChjbWQsICJzZXQi
+KSA9PSAwKQoJCXJldHVybiBzZXQoYXJnYywgYXJndik7CgllbHNlIGlmIChzdHJjbXAoY21kLCAi
+ZmluZCIpID09IDApCgkJcmV0dXJuIGZpbmQoYXJnYywgYXJndik7CgllbHNlIGlmIChzdHJjbXAo
+Y21kLCAiY2hpcCIpID09IDApCgkJcmV0dXJuIGNoaXAoYXJnYywgYXJndik7CgllbHNlIGlmIChz
+dHJjbXAoY21kLCAibGluZSIpID09IDApCgkJcmV0dXJuIGxpbmUoYXJnYywgYXJndik7CgllbHNl
+CgkJcmV0dXJuIHByaW50X3VzYWdlKCk7Cn0K
 
-@@ -119,7 +120,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/ecc.h \
- 			ell/ecc-external.c \
- 			ell/ecc.c \
--			ell/ecdh.c
-+			ell/ecdh.c \
-+			ell/gpio.c
- =
-
- ell_libell_la_LDFLAGS =3D -no-undefined \
- 			-Wl,--version-script=3D$(top_srcdir)/ell/ell.sym \
-diff --git a/ell/ell.h b/ell/ell.h
-index aab6417..fb1dd79 100644
---- a/ell/ell.h
-+++ b/ell/ell.h
-@@ -59,3 +59,4 @@
- #include <ell/cert.h>
- #include <ell/ecc.h>
- #include <ell/ecdh.h>
-+#include <ell/gpio.h>
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 841bc49..057626c 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -463,6 +463,21 @@ global:
- 	/* ecdh */
- 	l_ecdh_generate_key_pair;
- 	l_ecdh_generate_shared_secret;
-+	/* gpio */
-+	l_gpio_chip_new;
-+	l_gpio_chip_free;
-+	l_gpio_chip_get_name;
-+	l_gpio_chip_get_label;
-+	l_gpio_chip_get_num_lines;
-+	l_gpio_chip_get_line;
-+	l_gpio_chip_find_line;
-+	l_gpio_line_free;
-+	l_gpio_line_get_label;
-+	l_gpio_line_get_num;
-+	l_gpio_line_get_chip;
-+	l_gpio_line_set_value;
-+	l_gpio_line_get_value;
-+	l_gpio_find_line;
- local:
- 	*;
- };
-diff --git a/ell/gpio.c b/ell/gpio.c
-new file mode 100644
-index 0000000..b1a6548
---- /dev/null
-+++ b/ell/gpio.c
-@@ -0,0 +1,360 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2018 Geanix. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <string.h>
-+#include <unistd.h>
-+#include <sys/ioctl.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+#include <fcntl.h>
-+#include <dirent.h>
-+#include <linux/gpio.h>
-+
-+#include "util.h"
-+#include "gpio.h"
-+#include "private.h"
-+
-+struct gpio_priv {
-+	int fd;
-+	size_t refcount;
-+};
-+
-+struct l_gpio_chip {
-+	struct gpio_priv *priv;
-+	char *name;
-+	char *label;
-+	uint32_t num_lines;
-+};
-+
-+struct l_gpio_line {
-+	struct gpio_priv *priv;
-+	char *label;
-+	uint32_t num;
-+};
-+
-+static struct gpio_priv *gpio_get(struct gpio_priv *priv)
-+{
-+	priv->refcount++;
-+
-+	return priv;
-+}
-+
-+static void gpio_put(struct gpio_priv *priv)
-+{
-+	if (!priv)
-+		return;
-+
-+	if (--priv->refcount > 0)
-+		return;
-+
-+	if (priv->fd >=3D 0)
-+		close(priv->fd);
-+
-+	l_free(priv);
-+}
-+
-+static struct l_gpio_chip *gpio_get_chip(struct gpio_priv *priv)
-+{
-+	struct l_gpio_chip *chip;
-+	struct gpiochip_info info;
-+
-+	if (!priv)
-+		return NULL;
-+
-+	memset(&info, 0, sizeof(info));
-+
-+	if(ioctl(priv->fd, GPIO_GET_CHIPINFO_IOCTL, &info) < 0)
-+		return NULL;
-+
-+	chip =3D l_new(struct l_gpio_chip, 1);
-+	chip->priv =3D gpio_get(priv);
-+	chip->num_lines =3D info.lines;
-+
-+	if (info.label)
-+		chip->label =3D l_strndup(info.label, sizeof(info.label));
-+
-+	if (info.name)
-+		chip->name =3D l_strndup(info.name, sizeof(info.name));
-+
-+	return chip;
-+}
-+
-+LIB_EXPORT struct l_gpio_chip *l_gpio_chip_new(const char *chip_name)
-+{
-+	struct gpio_priv *priv;
-+	char *path;
-+	int fd;
-+
-+	if (!chip_name)
-+		return NULL;
-+
-+	path =3D l_strdup_printf("/dev/%s", chip_name);
-+	fd =3D open(path, O_RDONLY | O_CLOEXEC);
-+	l_free(path);
-+
-+	if (fd < 0)
-+		return NULL;
-+
-+	priv =3D l_new(struct gpio_priv, 1);
-+	priv->fd =3D fd;
-+
-+	return gpio_get_chip(priv);
-+}
-+
-+LIB_EXPORT void l_gpio_chip_free(struct l_gpio_chip *chip)
-+{
-+	if (!chip)
-+		return;
-+
-+	gpio_put(chip->priv);
-+	l_free(chip->name);
-+	l_free(chip->label);
-+	l_free(chip);
-+}
-+
-+LIB_EXPORT const char *l_gpio_chip_get_name(struct l_gpio_chip *chip)
-+{
-+	if (!chip)
-+		return NULL;
-+
-+	return chip->name;
-+}
-+
-+LIB_EXPORT const char *l_gpio_chip_get_label(struct l_gpio_chip *chip)
-+{
-+	if (!chip)
-+		return NULL;
-+
-+	return chip->label;
-+}
-+
-+LIB_EXPORT uint32_t l_gpio_chip_get_num_lines(struct l_gpio_chip *chip)
-+{
-+	if (!chip)
-+		return 0;
-+
-+	return chip->num_lines;
-+}
-+
-+LIB_EXPORT struct l_gpio_line *l_gpio_chip_get_line(struct l_gpio_chip *ch=
-ip,
-+							uint32_t line_num)
-+{
-+	struct l_gpio_line *line;
-+	struct gpioline_info info;
-+
-+	if (!chip)
-+		return NULL;
-+
-+	if (line_num >=3D chip->num_lines)
-+		return NULL;
-+
-+	memset(&info, 0, sizeof(info));
-+	info.line_offset =3D line_num;
-+
-+	if (ioctl(chip->priv->fd, GPIO_GET_LINEINFO_IOCTL, &info) < 0)
-+		return NULL;
-+
-+	line =3D l_new(struct l_gpio_line, 1);
-+	line->num =3D line_num;
-+	line->priv =3D gpio_get(chip->priv);
-+
-+	if (info.name)
-+		line->label =3D l_strndup(info.name, sizeof(info.name));
-+
-+	return line;
-+}
-+
-+LIB_EXPORT struct l_gpio_line *l_gpio_chip_find_line(struct l_gpio_chip *c=
-hip,
-+							const char *line_label)
-+{
-+	struct l_gpio_line *line;
-+	uint32_t i;
-+
-+	if (!chip)
-+		return NULL;
-+
-+	if (!line_label)
-+		return NULL;
-+
-+	for (i =3D 0; i < chip->num_lines; i++) {
-+		line =3D l_gpio_chip_get_line(chip, i);
-+		if (!line)
-+			return NULL;
-+
-+		if (!line->label && strcmp(line->label, line_label) =3D=3D 0)
-+			return line;
-+
-+		l_gpio_line_free(line);
-+	}
-+
-+	return NULL;
-+}
-+
-+LIB_EXPORT void l_gpio_line_free(struct l_gpio_line *line)
-+{
-+	if (!line)
-+		return;
-+
-+	gpio_put(line->priv);
-+	l_free(line->label);
-+	l_free(line);
-+}
-+
-+LIB_EXPORT const char *l_gpio_line_get_label(struct l_gpio_line *line)
-+{
-+	if (!line)
-+		return NULL;
-+
-+	return line->label;
-+}
-+
-+LIB_EXPORT uint32_t l_gpio_line_get_num(struct l_gpio_line *line)
-+{
-+	if (!line)
-+		return -1;
-+
-+	return line->num;
-+}
-+
-+LIB_EXPORT struct l_gpio_chip *l_gpio_line_get_chip(struct l_gpio_line *li=
-ne)
-+{
-+	if (!line)
-+		return NULL;
-+
-+	return gpio_get_chip(line->priv);
-+}
-+
-+LIB_EXPORT bool l_gpio_line_set_value(struct l_gpio_line *line, bool value)
-+{
-+	struct gpiohandle_request handle_req;
-+
-+	if (!line)
-+		return false;
-+
-+	memset(&handle_req, 0, sizeof(handle_req));
-+
-+	handle_req.lineoffsets[0] =3D line->num;
-+	handle_req.lines =3D 1;
-+	handle_req.flags =3D GPIOHANDLE_REQUEST_OUTPUT;
-+	handle_req.default_values[0] =3D value;
-+
-+	if (ioctl(line->priv->fd, GPIO_GET_LINEHANDLE_IOCTL, &handle_req) < 0)
-+		return false;
-+
-+	if (handle_req.fd <=3D 0)
-+		return false;
-+
-+	close(handle_req.fd);
-+
-+	return true;
-+}
-+
-+LIB_EXPORT bool l_gpio_line_get_value(struct l_gpio_line *line, bool *valu=
-e)
-+{
-+	struct gpiohandle_request handle_req;
-+	struct gpiohandle_data handle_data;
-+
-+	if (!line)
-+		return false;
-+
-+	memset(&handle_req, 9, sizeof(handle_req));
-+
-+	handle_req.lineoffsets[0] =3D line->num;
-+	handle_req.lines =3D 1;
-+	handle_req.flags =3D GPIOHANDLE_REQUEST_INPUT;
-+
-+	if (ioctl(line->priv->fd, GPIO_GET_LINEHANDLE_IOCTL, &handle_req) < 0)
-+		return false;
-+
-+	if (handle_req.fd <=3D 0)
-+		return false;
-+
-+	memset(&handle_data, 0, sizeof(handle_data));
-+
-+	if (ioctl(handle_req.fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL,
-+			&handle_data) < 0) {
-+		close(handle_req.fd);
-+		return false;
-+	}
-+
-+	close(handle_req.fd);
-+
-+	if (value)
-+		*value =3D !!handle_data.values[0];
-+
-+	return true;
-+}
-+
-+static int dir_filter(const struct dirent *dir)
-+{
-+	return !strncmp(dir->d_name, "gpiochip", 8);
-+}
-+
-+static void free_dirs(struct dirent ***dirs, unsigned int num_dirs)
-+{
-+	unsigned int i;
-+
-+	for (i =3D 0; i < num_dirs; i++)
-+		l_free((*dirs)[i]);
-+	l_free(*dirs);
-+}
-+
-+LIB_EXPORT struct l_gpio_line *l_gpio_find_line(const char *line_label)
-+{
-+	struct l_gpio_chip *chip;
-+	struct l_gpio_line *line;
-+	struct dirent **dirs;
-+	int i, num_chips;
-+
-+	if (!line_label)
-+		return NULL;
-+
-+	num_chips =3D scandir("/dev", &dirs, dir_filter, alphasort);
-+	if (num_chips < 0)
-+		return NULL;
-+
-+	for (i =3D 0; i < num_chips; i++) {
-+		chip =3D l_gpio_chip_new(dirs[i]->d_name);
-+		if (!chip) {
-+			free_dirs(&dirs, num_chips);
-+			return NULL;
-+		}
-+
-+		line =3D l_gpio_chip_find_line(chip, line_label);
-+		if (line) {
-+			l_gpio_chip_free(chip);
-+			free_dirs(&dirs, num_chips);
-+
-+			return line;
-+		}
-+
-+		l_gpio_chip_free(chip);
-+	}
-+
-+	free_dirs(&dirs, num_chips);
-+
-+	return NULL;
-+}
-diff --git a/ell/gpio.h b/ell/gpio.h
-new file mode 100644
-index 0000000..ddbd109
---- /dev/null
-+++ b/ell/gpio.h
-@@ -0,0 +1,59 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2018 Geanix. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifndef __ELL_GPIO_H
-+#define __ELL_GPIO_H
-+
-+#include <stdint.h>
-+#include <stdbool.h>
-+
-+#ifdef __cplusplus
-+extern "C" {
-+#endif
-+
-+struct l_gpio_chip;
-+struct l_gpio_line;
-+
-+struct l_gpio_chip *l_gpio_chip_new(const char *chip_name);
-+void l_gpio_chip_free(struct l_gpio_chip *chip);
-+
-+const char *l_gpio_chip_get_name(struct l_gpio_chip *name);
-+const char *l_gpio_chip_get_label(struct l_gpio_chip *chip);
-+uint32_t l_gpio_chip_get_num_lines(struct l_gpio_chip *chip);
-+struct l_gpio_line *l_gpio_chip_get_line(struct l_gpio_chip *chip,
-+						uint32_t line_num);
-+struct l_gpio_line *l_gpio_chip_find_line(struct l_gpio_chip *chip,
-+						const char *line_label);
-+
-+void l_gpio_line_free(struct l_gpio_line *line);
-+const char *l_gpio_line_get_label(struct l_gpio_line *line);
-+uint32_t l_gpio_line_get_num(struct l_gpio_line *line);
-+struct l_gpio_chip *l_gpio_line_get_chip(struct l_gpio_line *line);
-+bool l_gpio_line_set_value(struct l_gpio_line *line, bool value);
-+bool l_gpio_line_get_value(struct l_gpio_line *line, bool *value);
-+struct l_gpio_line *l_gpio_find_line(const char *line_label);
-+
-+#ifdef __cplusplus
-+}
-+#endif
-+
-+#endif /* __ELL_GPIO_H */
--- =
-
-2.20.1
-
-
---===============2490034465039754085==--
+--===============2837470848964976201==--
 
