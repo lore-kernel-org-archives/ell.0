@@ -1,58 +1,103 @@
-Content-Type: multipart/mixed; boundary="===============4483421464174132558=="
+Content-Type: multipart/mixed; boundary="===============7035303311095934948=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 8/9] tls: Allow user to set custom list of cipher suites
-Date: Fri, 14 Dec 2018 13:57:29 -0600
-Message-ID: <e6547197-e66e-6ab3-85dc-1d68b135feab@gmail.com>
-In-Reply-To: <CAOq732Kz4kKcv7iB4wfaqswsZgy4rZNW55Hq0rycYPF5ONLbfg@mail.gmail.com>
+From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
+Subject: Re: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
+Date: Mon, 17 Dec 2018 11:04:42 +0100
+Message-ID: <5caee1b5-5240-f2c4-0786-f8b95ca9425e@geanix.com>
+In-Reply-To: <0ae81caf-99ef-91c3-8fb7-a673024ba19e@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4483421464174132558==
+--===============7035303311095934948==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi Denis,
 
->> Yes, but you also have to consider the audience for our TLS
->> implementation.  It isn't browsers.  It is just iwd and maybe eventually
->> ConnMan for the portals stuff.  So can we optimize the API for those use
->> cases ?
+On 14/12/2018 18.18, Denis Kenzior wrote:
+>> I am not sure if the l_gpio_chip_{set,get}_line_value() functions are =
+
+>> the right approach.
+>>
+>> I am working on a (ofono) user for this class, where I need to lookup =
+
+>> a line, and store it in a private data structure. With the l_gpio_chip =
+
+>> + line number approach I need to have two gpio-related members in my =
+
+>> private struct.
+>>
 > =
 
-> I don't think we should but ok.  BTW we won't be Suite B compliant for
-> a while still because of the DSA certificates and likely more things.
+> Never worked with GPIOs, so this may be a silly question, but...
+> =
 
-Right, I forgot SuiteB actually implies DSA.  But we don't need SuiteB =
+> How does one figure out the line number that is needed?=C2=A0 You just ha=
+ve =
 
-anyway.  WPA3 allows:
+> to know based on some docs?
 
-- TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA38
-   ECDHE using the 384-bit prime modulus curve P-384
+The device tree can configure labels for each line that one can =
 
-- TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+read/compare using GPIO_GET_LINEINFO_IOCTL. If that is not the case, one =
 
-So perhaps we just need a 'WPA3' selector.  And once we have SuiteB =
+would have to either read the docs (often the schematic) or do =
 
-support, then we can add TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 to WPA3 =
+trial'n'error.
 
-selector as well.
+>> If we instead required callers to first create a l_gpio_chip instance, =
 
-> BTW since tls.c is pretty big we could split out all the cipher suite
-> definitions and the functions used by them into tls-suites.c or
-> similar.  For ECDHE we'll need to add extensions support and I'm also
-> thinking of defining the extensions in a new file tls-extensions.c
-> (we'll support very few initially but the different specs actually
-> define many).
+>> and use that to get l_gpio_line instances, then we could store a =
 
-Sure.  At 3kloc tls.c isn't too bad, but we can break it up.  Propose =
+>> reference to the chip in the line instance, which would make it =
 
-something.
+>> simpler for users to keep a reference to line.
+> =
 
-Regards,
--Denis
+> Possible, but the question is how does the kernel behave...
+> =
 
+>>
+>> That creates a new set of problems though, where l_gpio_line instances =
 
---===============4483421464174132558==--
+>> can get dangling references to freed l_gpio_chip instances. Maybe a =
+
+>> list of references to "child" lines in l_gpio_chip could be maintained =
+
+>> and freed when freeing the l_gpio_chip "parent".
+>>
+> =
+
+> You have the main /dev/chip file descriptor and you have a file =
+
+> descriptor returned from the GPIO_GET_LINEHANDLE_IOCTL.=C2=A0 What happen=
+s to =
+
+> the fds returned by GPIO_GET_LINEHANDLE_IOCTL if the main /dev/chip fd =
+
+> is closed?
+
+The virtual fds from GPIO_GET_LINEHANDLE_IOCTL stays valid after closing =
+
+the /dev/gpiochipX fd. (So I should probably close those virtual fds =
+
+after getting/setting the values.)
+
+> There's no hotplug/unplug with gpio devices right?=C2=A0 So you can count=
+ of =
+
+> the /dev/chip & fd to be owned exlusively by the ell client?
+
+You can get USB gpio expanders:
+http://nanorivertech.com/viperboard.html
+So I guess /dev/gpiochipX nodes can come and go.
+
+Multiple processes can use the same gpiochip, but only one process can =
+
+request a line handle.
+
+// Martin
+
+--===============7035303311095934948==--
 
