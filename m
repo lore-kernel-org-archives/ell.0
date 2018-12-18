@@ -1,163 +1,133 @@
-Content-Type: multipart/mixed; boundary="===============2837470848964976201=="
+Content-Type: multipart/mixed; boundary="===============3687499363455349292=="
 MIME-Version: 1.0
-From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
-Subject: Re: [PATCHv3] gpio: add simple get/set helpers for GPIO lines
-Date: Mon, 17 Dec 2018 23:01:27 +0100
-Message-ID: <3dab5182-77b0-8ef0-bf41-30dabddb00c0@geanix.com>
-In-Reply-To: <20181217213003.29260-1-martin@geanix.com>
+From: Marcel Holtmann <marcel@holtmann.org>
+Subject: Re: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
+Date: Tue, 18 Dec 2018 20:03:17 +0100
+Message-ID: <E2EE5281-71F9-4455-8313-568B7D30A604@holtmann.org>
+In-Reply-To: <f835d758-f12d-96c3-fab6-dc79c0afae6f@geanix.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2837470848964976201==
+--===============3687499363455349292==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi,
+Hi Martin,
 
-On 17/12/2018 22.30, Martin Hundeb=C3=B8ll wrote:
-> The Linux kernel GPIO api operates with chips, lines, handles, and
-> events.
+>>> The device tree can configure labels for each line that one can read/co=
+mpare using GPIO_GET_LINEINFO_IOCTL. If that is not the case, one would hav=
+e to either read the docs (often the schematic) or do trial'n'error.
+>>> =
+
+>> Okay, so I'm guessing we might need to expose this in the future somehow.
 > =
 
-> The chip and line structures represent info about gpio chips, and
-> gpio lines, respectively. They are used to e.g. lookup a line with a
-> certain name, and/or line flags.
+> I have these in my dirty tree now:
 > =
 
-> The handle structure is used to "obtain" a handle to one or more gpio
-> lines on a chip. Until the file descriptor in this handle is closed, the
-> gpio lines cannot be used by others. The same file descriptor is used
-> when setting or getting the line values (one can also set the initial
-> value when obtaining handles for output lines).
 > =
 
-> The event structure is used to get a file descriptor that can be used
-> with select/poll to wait for changes in line levels.
+> struct l_gpio_line *l_gpio_chip_get_line(struct l_gpio_chip *gpio_chip,
+>                                         uint32_t line_num);
 > =
 
-> This commit adds simple support for setting and getting the value for a
-> single gpio line. It does so by obtaining a line handle to get/set the
-> value, and then release the handle immediately again.
+> struct l_gpio_line *l_gpio_chip_find_line(struct l_gpio_chip *gpio_chip,
+>                                          const char *line_label);
 > =
 
-> Both the l_gpio_chip and l_gpio_line structures reference an internal
-> gpio structure that holds the file descriptor to the open
-> /dev/gpiochipX character device. This file descriptor is used by
-> l_gpio_chip to lookup line info, and by l_gpio_line to request a virtual
-> file descriptor used to get and set line values.
+> struct l_gpio_line *l_gpio_find_line(const char *line_label);
 > =
 
-> Functionality that could be implemented, but is postponed until the need
-> arises includes:
+> struct l_gpio_chip *l_gpio_line_get_chip(struct l_gpio_line *gpio_line);
 > =
 
->   * setting/getting multiple gpio lines with a single function
->   * waiting for events
->   * holding on to handles
+> const char *l_gpio_line_get_label(struct l_gpio_line *line);
 > =
 
-> Some of the above probably require adding structures to represent
-> multiple gpio lines and events, while handles should be private to the
-> class.
+> =
 
-I have attached a small find/get/set gpio util, that I use for testing =
+> They are WIP, though.
 
-my patch. It uses most of the API.
+so I am not 100% sure this is useful since it adds a complexity that most l=
+ike is never going to be used. What I would first check is what happens whe=
+n the underlying physical device goes away. Does the l_gpio_chip fd gets a =
+HUP signal. Since we might really need to allow for disconnect callback her=
+e.
 
-I am not really sure how to implement unit tests for the gpio interface, =
+I am fine with the lines being address with the uint32 index number. Creati=
+ng a struct for it seems kinda useless since you will always need special k=
+nowledge to some degree anyway. I rather have l_gpio_chip_find_line that ta=
+kes a line label and tries to find it. Especially with the background you m=
+ight need to set more than one GPIO at once, then the line concept blows up.
 
-though.
+>>>> You have the main /dev/chip file descriptor and you have a file descri=
+ptor returned from the GPIO_GET_LINEHANDLE_IOCTL.  What happens to the fds =
+returned by GPIO_GET_LINEHANDLE_IOCTL if the main /dev/chip fd is closed?
+>>> =
 
-// Martin
+>>> The virtual fds from GPIO_GET_LINEHANDLE_IOCTL stays valid after closin=
+g the /dev/gpiochipX fd. (So I should probably close those virtual fds afte=
+r getting/setting the values.)
+>> So if this is the case, do we even need to worry about reference trackin=
+g between gpio_chip and gpio_line?
+>> Perhaps all we need is a gpio_chip_info internal structure that can be r=
+eference counted and used by gpio_chip and gpio_line.  And gpio_chip and gp=
+io_line objects can be destroyed independently of each other.
+> =
 
---===============2837470848964976201==
-Content-Type: text/x-csrc
-MIME-Version: 1.0
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="gpio.c"
+> Is there generic reference counting functionality in ell?
+> =
 
-I2RlZmluZSBfR05VX1NPVVJDRQojaW5jbHVkZSA8c3RkaW8uaD4KI2luY2x1ZGUgPHN0ZGxpYi5o
-PgojaW5jbHVkZSA8c3RyaW5nLmg+CiNpbmNsdWRlIDxlcnJuby5oPgojaW5jbHVkZSA8ZWxsL2dw
-aW8uaD4KCnN0YXRpYyBpbnQgcHJpbnRfdXNhZ2Uodm9pZCkKewoJZnByaW50ZihzdGRlcnIsCgkJ
-InVzYWdlOiAlcyBmaW5kIDxuYW1lPlxuIgoJCSIgICAgICAgJXMgZ2V0ICg8Y2hpcD4gPGxpbmU+
-fDxuYW1lPilcbiIKCQkiICAgICAgICVzIHNldCAoPGNoaXA+IDxsaW5lPnw8bmFtZT4pIDx2YWx1
-ZT5cbiIKCQkiICAgICAgICVzIGNoaXAgPGNoaXA+XG4iCgkJIiAgICAgICAlcyBsaW5lIDxjaGlw
-PiA8bGluZT5cbiIsCgkJcHJvZ3JhbV9pbnZvY2F0aW9uX3Nob3J0X25hbWUsIHByb2dyYW1faW52
-b2NhdGlvbl9zaG9ydF9uYW1lLAoJCXByb2dyYW1faW52b2NhdGlvbl9zaG9ydF9uYW1lLCBwcm9n
-cmFtX2ludm9jYXRpb25fc2hvcnRfbmFtZSwKCQlwcm9ncmFtX2ludm9jYXRpb25fc2hvcnRfbmFt
-ZSk7CgoJcmV0dXJuIEVYSVRfRkFJTFVSRTsKfQoKc3RhdGljIGludCBmaW5kKGludCBhcmdjLCBj
-aGFyICoqYXJndikKewoJc3RydWN0IGxfZ3Bpb19jaGlwICpjaGlwOwoJc3RydWN0IGxfZ3Bpb19s
-aW5lICpsaW5lOwoKCWlmIChhcmdjICE9IDIpCgkJcmV0dXJuIHByaW50X3VzYWdlKCk7CgoJbGlu
-ZSA9IGxfZ3Bpb19maW5kX2xpbmUoYXJndlsxXSk7CglpZiAoIWxpbmUpCgkJcmV0dXJuIEVYSVRf
-RkFJTFVSRTsKCgljaGlwID0gbF9ncGlvX2xpbmVfZ2V0X2NoaXAobGluZSk7CglpZiAoIWNoaXAp
-IHsKCQlsX2dwaW9fbGluZV9mcmVlKGxpbmUpOwoJCXJldHVybiBFWElUX0ZBSUxVUkU7Cgl9CgoJ
-cHJpbnRmKCJjaGlwOiAlc1xuIiwgbF9ncGlvX2NoaXBfZ2V0X25hbWUoY2hpcCkpOwoJcHJpbnRm
-KCJsaW5lOiAldVxuIiwgbF9ncGlvX2xpbmVfZ2V0X251bShsaW5lKSk7CgoJbF9ncGlvX2xpbmVf
-ZnJlZShsaW5lKTsKCWxfZ3Bpb19jaGlwX2ZyZWUoY2hpcCk7CgoJcmV0dXJuIEVYSVRfU1VDQ0VT
-UzsKfQoKc3RhdGljIGludCBnZXQoaW50IGFyZ2MsIGNoYXIgKiphcmd2KQp7CglzdHJ1Y3QgbF9n
-cGlvX2NoaXAgKmNoaXA7CglzdHJ1Y3QgbF9ncGlvX2xpbmUgKmxpbmU7Cglib29sIHZhbHVlOwoK
-CWlmIChhcmdjID09IDIpIHsKCQlsaW5lID0gbF9ncGlvX2ZpbmRfbGluZShhcmd2WzFdKTsKCQlp
-ZiAoIWxpbmUpCgkJCXJldHVybiBFWElUX0ZBSUxVUkU7CgoJCWNoaXAgPSBsX2dwaW9fbGluZV9n
-ZXRfY2hpcChsaW5lKTsKCQlpZiAoIWNoaXApIHsKCQkJbF9ncGlvX2xpbmVfZnJlZShsaW5lKTsK
-CQkJcmV0dXJuIEVYSVRfRkFJTFVSRTsKCQl9Cgl9IGVsc2UgaWYgKGFyZ2MgPT0gMykgewoJCWNo
-YXIgKmNoaXBfbmFtZTsKCQl1aW50MzJfdCBsaW5lX251bTsKCgkJY2hpcF9uYW1lID0gYXJndlsx
-XTsKCQlsaW5lX251bSA9IHN0cnRvdWwoYXJndlsyXSwgTlVMTCwgMCk7CgoJCWNoaXAgPSBsX2dw
-aW9fY2hpcF9uZXcoY2hpcF9uYW1lKTsKCQlpZiAoIWNoaXApCgkJCXJldHVybiBFWElUX0ZBSUxV
-UkU7CgoJCWxpbmUgPSBsX2dwaW9fY2hpcF9nZXRfbGluZShjaGlwLCBsaW5lX251bSk7CgkJaWYg
-KCFsaW5lKSB7CgkJCWxfZ3Bpb19jaGlwX2ZyZWUoY2hpcCk7CgkJCXJldHVybiBFWElUX0ZBSUxV
-UkU7CgkJfQoJfSBlbHNlIHsKCQlyZXR1cm4gcHJpbnRfdXNhZ2UoKTsKCX0KCglwcmludGYoImNo
-aXA6ICVzXG4iLCBsX2dwaW9fY2hpcF9nZXRfbmFtZShjaGlwKSk7CglwcmludGYoImxpbmU6ICV1
-XG4iLCBsX2dwaW9fbGluZV9nZXRfbnVtKGxpbmUpKTsKCglpZiAoIWxfZ3Bpb19saW5lX2dldF92
-YWx1ZShsaW5lLCAmdmFsdWUpKSB7CgkJbF9ncGlvX2xpbmVfZnJlZShsaW5lKTsKCQlsX2dwaW9f
-Y2hpcF9mcmVlKGNoaXApOwoJCXJldHVybiBFWElUX0ZBSUxVUkU7Cgl9CgoJcHJpbnRmKCJ2YWw6
-ICAlaGh1XG4iLCB2YWx1ZSk7CgoJbF9ncGlvX2xpbmVfZnJlZShsaW5lKTsKCWxfZ3Bpb19jaGlw
-X2ZyZWUoY2hpcCk7CgoJcmV0dXJuIEVYSVRfU1VDQ0VTUzsKfQoKc3RhdGljIGludCBzZXQoaW50
-IGFyZ2MsIGNoYXIgKiphcmd2KQp7CglzdHJ1Y3QgbF9ncGlvX2NoaXAgKmNoaXA7CglzdHJ1Y3Qg
-bF9ncGlvX2xpbmUgKmxpbmU7Cgl1aW50OF90IHZhbHVlID0gMTsKCglpZiAoYXJnYyA9PSAzKSB7
-CgkJbGluZSA9IGxfZ3Bpb19maW5kX2xpbmUoYXJndlsxXSk7CgkJaWYgKCFsaW5lKQoJCQlyZXR1
-cm4gRVhJVF9GQUlMVVJFOwoKCQljaGlwID0gbF9ncGlvX2xpbmVfZ2V0X2NoaXAobGluZSk7CgkJ
-aWYgKCFjaGlwKSB7CgkJCWxfZ3Bpb19saW5lX2ZyZWUobGluZSk7CgkJCXJldHVybiBFWElUX0ZB
-SUxVUkU7CgkJfQoKCQl2YWx1ZSA9IHN0cnRvbChhcmd2WzJdLCBOVUxMLCAwKTsKCX0gZWxzZSBp
-ZiAoYXJnYyA9PSA0KSB7CgkJY2hhciAqY2hpcF9uYW1lOwoJCXVpbnQzMl90IGxpbmVfbnVtOwoK
-CQljaGlwX25hbWUgPSBhcmd2WzFdOwoJCWxpbmVfbnVtID0gc3RydG91bChhcmd2WzJdLCBOVUxM
-LCAwKTsKCQl2YWx1ZSA9IHN0cnRvbChhcmd2WzNdLCBOVUxMLCAwKTsKCgkJY2hpcCA9IGxfZ3Bp
-b19jaGlwX25ldyhjaGlwX25hbWUpOwoJCWlmICghY2hpcCkKCQkJcmV0dXJuIEVYSVRfRkFJTFVS
-RTsKCgkJbGluZSA9IGxfZ3Bpb19jaGlwX2dldF9saW5lKGNoaXAsIGxpbmVfbnVtKTsKCQlpZiAo
-IWxpbmUpIHsKCQkJbF9ncGlvX2NoaXBfZnJlZShjaGlwKTsKCQkJcmV0dXJuIEVYSVRfRkFJTFVS
-RTsKCQl9Cgl9IGVsc2UgewoJCXJldHVybiBwcmludF91c2FnZSgpOwoJfQoKCXByaW50ZigiY2hp
-cDogJXNcbiIsIGxfZ3Bpb19jaGlwX2dldF9uYW1lKGNoaXApKTsKCXByaW50ZigibGluZTogJXVc
-biIsIGxfZ3Bpb19saW5lX2dldF9udW0obGluZSkpOwoKCWlmICghbF9ncGlvX2xpbmVfc2V0X3Zh
-bHVlKGxpbmUsIHZhbHVlKSkgewoJCWxfZ3Bpb19jaGlwX2ZyZWUoY2hpcCk7CgkJbF9ncGlvX2xp
-bmVfZnJlZShsaW5lKTsKCQlyZXR1cm4gRVhJVF9GQUlMVVJFOwoJfQoKCXByaW50ZigidmFsOiAg
-JWhodVxuIiwgdmFsdWUpOwoKCWxfZ3Bpb19jaGlwX2ZyZWUoY2hpcCk7CglsX2dwaW9fbGluZV9m
-cmVlKGxpbmUpOwoKCXJldHVybiBFWElUX1NVQ0NFU1M7Cn0KCnN0YXRpYyBpbnQgY2hpcChpbnQg
-YXJnYywgY2hhciAqKmFyZ3YpCnsKCXN0cnVjdCBsX2dwaW9fY2hpcCAqY2hpcDsKCglpZiAoYXJn
-YyAhPSAyKQoJCXJldHVybiBwcmludF91c2FnZSgpOwoKCWNoaXAgPSBsX2dwaW9fY2hpcF9uZXco
-YXJndlsxXSk7CglpZiAoIWNoaXApCgkJcmV0dXJuIEVYSVRfRkFJTFVSRTsKCglwcmludGYoImNo
-aXA6ICAlc1xuIiwgbF9ncGlvX2NoaXBfZ2V0X25hbWUoY2hpcCkpOwoJcHJpbnRmKCJsYWJlbDog
-JXNcbiIsIGxfZ3Bpb19jaGlwX2dldF9sYWJlbChjaGlwKSk7CglwcmludGYoImxpbmVzOiAldVxu
-IiwgbF9ncGlvX2NoaXBfZ2V0X251bV9saW5lcyhjaGlwKSk7CgoJbF9ncGlvX2NoaXBfZnJlZShj
-aGlwKTsKCglyZXR1cm4gRVhJVF9GQUlMVVJFOwp9CgpzdGF0aWMgaW50IGxpbmUoaW50IGFyZ2Ms
-IGNoYXIgKiphcmd2KQp7CglzdHJ1Y3QgbF9ncGlvX2NoaXAgKmNoaXA7CglzdHJ1Y3QgbF9ncGlv
-X2xpbmUgKmxpbmU7Cgl1aW50MzJfdCBsaW5lX251bTsKCglpZiAoYXJnYyAhPSAzKQoJCXJldHVy
-biBwcmludF91c2FnZSgpOwoKCWNoaXAgPSBsX2dwaW9fY2hpcF9uZXcoYXJndlsxXSk7CglpZiAo
-IWNoaXApCgkJcmV0dXJuIEVYSVRfRkFJTFVSRTsKCglsaW5lX251bSA9IHN0cnRvdWwoYXJndlsy
-XSwgTlVMTCwgMCk7CglsaW5lID0gbF9ncGlvX2NoaXBfZ2V0X2xpbmUoY2hpcCwgbGluZV9udW0p
-OwoJaWYgKCFsaW5lKSB7CgkJbF9ncGlvX2NoaXBfZnJlZShjaGlwKTsKCQlyZXR1cm4gRVhJVF9G
-QUlMVVJFOwoJfQoKCXByaW50ZigiY2hpcDogICVzXG4iLCBsX2dwaW9fY2hpcF9nZXRfbmFtZShj
-aGlwKSk7CglwcmludGYoImxpbmU6ICAldVxuIiwgbF9ncGlvX2xpbmVfZ2V0X251bShsaW5lKSk7
-CglwcmludGYoImxhYmVsOiAlc1xuIiwgbF9ncGlvX2xpbmVfZ2V0X2xhYmVsKGxpbmUpKTsKCgls
-X2dwaW9fY2hpcF9mcmVlKGNoaXApOwoJbF9ncGlvX2xpbmVfZnJlZShsaW5lKTsKCglyZXR1cm4g
-RVhJVF9TVUNDRVNTOwp9CgppbnQgbWFpbihpbnQgYXJnYywgY2hhciAqKmFyZ3YpCnsKCWNvbnN0
-IGNoYXIgKmNtZDsKCglpZiAoYXJnYyA8IDIpCgkJcmV0dXJuIHByaW50X3VzYWdlKCk7CgoJY21k
-ID0gYXJndlsxXTsKCWFyZ2MtLTsKCWFyZ3YrKzsKCglpZiAoc3RyY21wKGNtZCwgImdldCIpID09
-IDApCgkJcmV0dXJuIGdldChhcmdjLCBhcmd2KTsKCWVsc2UgaWYgKHN0cmNtcChjbWQsICJzZXQi
-KSA9PSAwKQoJCXJldHVybiBzZXQoYXJnYywgYXJndik7CgllbHNlIGlmIChzdHJjbXAoY21kLCAi
-ZmluZCIpID09IDApCgkJcmV0dXJuIGZpbmQoYXJnYywgYXJndik7CgllbHNlIGlmIChzdHJjbXAo
-Y21kLCAiY2hpcCIpID09IDApCgkJcmV0dXJuIGNoaXAoYXJnYywgYXJndik7CgllbHNlIGlmIChz
-dHJjbXAoY21kLCAibGluZSIpID09IDApCgkJcmV0dXJuIGxpbmUoYXJnYywgYXJndik7CgllbHNl
-CgkJcmV0dXJuIHByaW50X3VzYWdlKCk7Cn0K
+> How much of the kernel API do we want to expose? Limiting ourselves to se=
+tting/getting a single gpio-line at the time is clearly the simplest, but I=
+ wonder how long it will be before someone requests support for handling mu=
+ltiple lines with a single structure (as is possible with the gpiohandle_re=
+quest structure in the kernel API).
+> =
 
---===============2837470848964976201==--
+>>>> There's no hotplug/unplug with gpio devices right?  So you can count o=
+f the /dev/chip & fd to be owned exlusively by the ell client?
+>>> =
+
+>>> You can get USB gpio expanders:
+>>> http://nanorivertech.com/viperboard.html
+>>> So I guess /dev/gpiochipX nodes can come and go.
+>> Probably out of scope for this simple API, just curious: how do we detec=
+t that? udev?
+> =
+
+> It sound like a job for udev, yes.
+
+If the HUP is actually signaled on the /dev/gpiochipX fd, then I would igno=
+re udev. And instead add a helper to find a given l_gpio_chip_new_from_name=
+() that then would walk either /dev/ (with scandir like libgpiod does) or b=
+y going through sysfs. I would prefer sysfs since it will be mostly part of=
+ a bus or class.
+
+> =
+
+>>> =
+
+>>> Multiple processes can use the same gpiochip, but only one process can =
+request a line handle.
+>> How do you define 'use the same gpiochip'?
+> =
+
+> Opening e.g. /dev/gpiochip0 can happen in parallel, but requesting a hand=
+le/virtual fd to gpioline0 on gpiochip0 is serialized.
+
+I would just allow opening /dev/gpiochipX multiple times. I think there is =
+not need for ELL to multiplex here.
+
+For one-shot triggers we could do a l_gpio_set(const char *chipname, const =
+char *linename) that then will try to find the chip and line by name and to=
+ggle it.
+
+Regards
+
+Marcel
+
+
+--===============3687499363455349292==--
 
