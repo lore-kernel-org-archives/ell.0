@@ -1,188 +1,134 @@
-Content-Type: multipart/mixed; boundary="===============8532946470200003268=="
+Content-Type: multipart/mixed; boundary="===============7976450851644059367=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 5/9] tls: Implement l_tls_set_version_range
-Date: Thu, 20 Dec 2018 03:35:08 +0100
-Message-ID: <CAOq732KOtHR+gnZaUNT+4z7Ve3fa7tzFn2-pKwVAKzoUe_Ud_w@mail.gmail.com>
-In-Reply-To: <52434d94-e953-e55b-1568-23c128da963a@gmail.com>
+From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
+Subject: Re: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
+Date: Thu, 20 Dec 2018 09:00:41 +0100
+Message-ID: <b6757a23-1c19-169e-77f6-dacf7b1d9e1c@geanix.com>
+In-Reply-To: <35ac9913-a4bd-eb44-62ed-943cf0fead8f@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8532946470200003268==
+--===============7976450851644059367==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-HI Denis,
+Hi Denis,
 
-On Wed, 19 Dec 2018 at 17:22, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 12/18/2018 06:57 PM, Andrew Zaborowski wrote:
-> > Allow user to set custom min and max TLS version limits, this can be
-> > used to ensure we comply with a specific security profile.
-> > ---
-> >   ell/ell.sym       |  1 +
-> >   ell/tls-private.h | 10 ++-----
-> >   ell/tls-record.c  |  4 +--
-> >   ell/tls.c         | 74 +++++++++++++++++++++++++++++++++++++----------
-> >   ell/tls.h         | 11 ++++++-
-> >   5 files changed, 73 insertions(+), 27 deletions(-)
-> >
->
-> <snip>
->
-> > diff --git a/ell/tls-private.h b/ell/tls-private.h
-> > index 0908b9c..e450ac2 100644
-> > --- a/ell/tls-private.h
-> > +++ b/ell/tls-private.h
-> > @@ -20,14 +20,7 @@
-> >    *
-> >    */
-> >
-> > -enum l_tls_version {
-> > -     L_TLS_V10 =3D ((3 << 8) | 1),
-> > -     L_TLS_V11 =3D ((3 << 8) | 2),
-> > -     L_TLS_V12 =3D ((3 << 8) | 3),
-> > -     L_TLS_V13 =3D ((3 << 8) | 4),     /* Not supported */
-> > -};
-> > -
-> > -#define TLS_VERSION  L_TLS_V12
-> > +#define TLS_MAX_VERSION      L_TLS_V12
-> >   #define TLS_MIN_VERSION     L_TLS_V10
->
-> So we generally discourage #defines that are used only once.  Are you
-> planning to use this outside l_tls_new?  This may also be relevant for
-> TLS_MIN_VERSION since you are getting rid of many of its usages as well.
+On 19/12/2018 20.43, Denis Kenzior wrote:
+>>>>>>> I am fine with the lines being address with the uint32 index
+>>>>>>> number. Creating a struct for it seems kinda useless since you =
 
-Other than l_tls_set_version_range no (although for 1.3 we potentially
-may need to move it back to tls-private.h because version negotiation
-happens in an extension)
+>>>>>>> will always need special knowledge to some degree anyway. I =
 
->
-> >
-> >   enum tls_cipher_type {
-> > @@ -147,6 +140,7 @@ struct l_tls {
-> >       l_tls_debug_cb_t debug_handler;
-> >       l_tls_destroy_cb_t debug_destroy;
-> >       void *debug_data;
-> > +     enum l_tls_version min_version, max_version;
->
-> Separate lines please :)
+>>>>>>> rather have l_gpio_chip_find_line that takes a line label and =
 
-Okay.
+>>>>>>> tries to find it. Especially with the background you might need =
 
->
-> >
-> >       struct l_queue *ca_certs;
-> >       struct l_certchain *cert;
->
-> <snip>
->
-> > @@ -393,7 +393,7 @@ static bool tls_handle_ciphertext(struct l_tls *tls)
-> >
-> >       if ((tls->negotiated_version && tls->negotiated_version !=3D vers=
-ion) ||
-> >                       (!tls->negotiated_version &&
-> > -                      tls->record_buf[1] !=3D 0x03 /* Appending E.1 */=
-)) {
-> > +                      tls->record_buf[1] !=3D 0x03 /* Appendix E.1 */)=
-) {
->
-> Separate patch please
->
-> >               TLS_DISCONNECT(TLS_ALERT_PROTOCOL_VERSION, 0,
-> >                               "Record version mismatch: %02x", version);
-> >               return false;
->
-> <snip>
->
-> > @@ -589,10 +603,13 @@ static bool tls_cipher_suite_is_compatible(struct=
- l_tls *tls,
-> >               return false;
-> >       }
-> >
-> > -     if ((tls->negotiated_version && tls->negotiated_version < L_TLS_V=
-12 &&
-> > -                     (!l_checksum_is_supported(L_CHECKSUM_MD5, true) ||
-> > -                      !l_checksum_is_supported(L_CHECKSUM_SHA1, true))=
-) ||
-> > -                     (tls->negotiated_version >=3D L_TLS_V12 &&
-> > +     if (
-> > +                     ((tls->max_version < L_TLS_V12 ||
-> > +                       (negotiated && negotiated < L_TLS_V12)) &&
->
-> So the previous version of this only looked at the negotiated version,
-> but this one also looks at the max version.  Should this function take
-> the TLS version as an argument and let the caller figure out the policy?
+>>>>>>> to set more than one GPIO at once, then the line concept blows up.
+>>>>>>
+>>>>>> Yes, the one-struct-per-line approach doesn't really scale to =
 
-So the idea here is that we can eliminate some suites before
-negotiated_version is set but we're dealing with an interval so we
-have a min and a max.  I guess we can simplify it locally (so as not
-to complicate it for the callers) by setting min and max to either
-tls->min/max_version or tls->negotiated_version.
+>>>>>> handling multiple lines in a single ioctl(). Now that I think =
 
->
-> > +                      (!l_checksum_is_supported(L_CHECKSUM_MD5, true) =
-||
-> > +                       !l_checksum_is_supported(L_CHECKSUM_SHA1, true)=
-)) ||
-> > +                     ((tls->min_version >=3D L_TLS_V12 ||
-> > +                       negotiated >=3D L_TLS_V12) &&
-> >                        !l_checksum_is_supported(
-> >                                       suite->prf_hmac !=3D L_CHECKSUM_N=
-ONE ?
-> >                                       suite->prf_hmac : L_CHECKSUM_SHA2=
-56,
->
-> Why is this indented so far to the right?
+>>>>>> about it, a single structure (and a convenient way to set it up) =
 
-In an attempt to comply with coding-style.txt :) I'm going with the
-editor's auto indent for the other lines where we have no specific
-rules.
+>>>>>> might be all we need. Something like:
+>>>>>>
+>>>>>> uint32_t lines[] =3D {0, 4, 8};
+>>>>>> char *labels[] =3D {"3v3", "reset", "led", NULL};
+>>>>>> bool values[] =3D {true, true, false};
+>>>>>>
+>>>>>> struct l_gpio *gpio;
+>>>>>>
+>>>>>> gpio =3D l_gpio_new("/dev/gpiochip0");
+>>>>>> l_gpio_lines_by_num(gpio, lines, L_ARRAY_SIZE(lines), L_GPIO_OUT);
+>>>
+>>> So this implies some sort of temporary state being kept by l_gpio. =
 
-> But really, can we put this
-> into a separate function and make this a bit more readable, maybe with a
-> few comments?
+>>> Not sure I like that...
+>>
+>> GPIO lines are more or less meant to be acquired (hogged in =
 
-Ok.
+>> kernel-nomenclature) by the controlling process. The reservation is =
 
->
-> > @@ -2751,6 +2781,18 @@ LIB_EXPORT bool l_tls_set_auth_data(struct l_tls=
- *tls, const char *cert_path,
-> >       return true;
-> >   }
-> >
-> > +LIB_EXPORT void l_tls_set_version_range(struct l_tls *tls,
-> > +                                     uint16_t min_version,
-> > +                                     uint16_t max_version)
->
-> Why uint16?
->
-> > +{
-> > +     tls->min_version =3D
-> > +             (min_version && min_version > TLS_MIN_VERSION) ?
-> > +             min_version : TLS_MIN_VERSION;
-> > +     tls->max_version =3D
-> > +             (max_version && max_version < TLS_MAX_VERSION) ?
-> > +             max_version : TLS_MAX_VERSION;
->
-> Yikes.  Again, why not use enums here and skip these checks?  If someone
-> wants to pass arbitrary int values to this function, that is their proble=
-m.
+>> tied to the virtual file descriptor, which maps to one or more gpio =
 
-Oops so I was determined to use enum l_tls_version for the parameters
-but somehow screwed up a rebase I think.  Still I think these checks
-are useful and we should accept possible other values.
+>> lines on a gpio chip. Closing the virtual fd releases the line(s).
+>>
+>> In my previous patches I simply acquired the gpio line while =
 
-With both l_tls_set_version_range and l_tls_set_cipher_suites I think
-it's important that the caller does not have to worry about which
-versions and suites we actually support internally.  They should be
-able to say "for this instance the policy is ok with anything from SSL
-2.0 to TLS 1.1 and such and such cipher suites" without diving into
-our .c files.  On the other hand our code can trivially limit this to
-the features that are actually usable so we don't end up negotiating a
-version we don't support.
+>> setting/getting the value, and then released again before returning.
+> =
 
-Best regards
+> But isn't the intent to do this here as well?=C2=A0 At least on l_gpio le=
+vel =
 
---===============8532946470200003268==--
+> it doesn't seem like we should be keeping the virtual fd.
+
+It was my initial intent to do a simple "open vfd -> set/get value -> =
+
+close vfd", but as our discussion has evolved, I am more inclined to =
+
+stick to what the kernel API exposes, and simply tie the l_gpio instance =
+
+to a single set of gpio-lines. If the user need different sets of lines, =
+
+he should create multiple l_gpio instances.
+
+> If we want to =
+
+> keep that open, then we need a whole new class for that.=C2=A0 One that m=
+ight =
+
+> need to expose l_io or some other way to subscribe to changes on gpio =
+
+> lines.=C2=A0 From what I understood this functionality isn't needed yet, =
+so =
+
+> it can be added later...
+
+The kernel API don't signal any changes on either the gpiochip fd or the =
+
+gpiohandle fd. Changes on gpio-lines are exposed through a gpioevent =
+
+virtual fd that is acquired using GPIO_GET_LINEEVENT_IOCTL.
+
+It implements .poll() to signal changes and .read() to supply details =
+
+about those changes, so users can use l_io to monitor it for events.
+
+gpioevents are mutual exclusive to gpiohandles, so one cannot acquire a =
+
+line for gpioevent if it is already acquired as a gpiohandle, and =
+
+vice-versa. That might require two distinct classes to handle?
+
+This event handling is of course not needed right now, but we should =
+
+consider it when designing the get/set interface.
+
+>>
+>>>>>> l_gpio_set_values(gpio, values);
+>>>
+>>> Why not use varargs here?=C2=A0 So something like:
+>>>
+>>> l_gpio_set_by_index(gpio, 0, true, 4, true, 8, false, -1);
+>>
+>> I would very much like to use varargs, but we should consider the =
+
+>> stateful approach explained above.
+>>
+> =
+
+> That statement seems to be contradictory?=C2=A0 Can you explain?
+
+Sorry, I meant to use varargs in either l_gpio_new() or l_gpio_set_lines().
+
+
+Anyways, thanks for being patient.
+
+// Martin
+
+--===============7976450851644059367==--
 
