@@ -1,96 +1,115 @@
-Content-Type: multipart/mixed; boundary="===============0024097771775628471=="
+Content-Type: multipart/mixed; boundary="===============2188126599203519028=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
 Subject: Re: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
-Date: Thu, 20 Dec 2018 11:51:18 -0600
-Message-ID: <984bab07-c9c2-eef0-e56b-ba282542d97f@gmail.com>
-In-Reply-To: <b6757a23-1c19-169e-77f6-dacf7b1d9e1c@geanix.com>
+Date: Thu, 20 Dec 2018 20:45:48 +0100
+Message-ID: <291bc8b4-d950-70a7-a41c-1033643905a2@geanix.com>
+In-Reply-To: <984bab07-c9c2-eef0-e56b-ba282542d97f@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0024097771775628471==
+--===============2188126599203519028==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Martin,
+Hi Denis,
 
->>>> So this implies some sort of temporary state being kept by l_gpio. =
+On 20/12/2018 18.51, Denis Kenzior wrote:
+> Ah, okay.=C2=A0 I think I get what you're trying to do.=C2=A0 So you want=
+ to have =
 
->>>> Not sure I like that...
->>>
->>> GPIO lines are more or less meant to be acquired (hogged in =
-
->>> kernel-nomenclature) by the controlling process. The reservation is =
-
->>> tied to the virtual file descriptor, which maps to one or more gpio =
-
->>> lines on a gpio chip. Closing the virtual fd releases the line(s).
->>>
->>> In my previous patches I simply acquired the gpio line while =
-
->>> setting/getting the value, and then released again before returning.
->>
->> But isn't the intent to do this here as well?=C2=A0 At least on l_gpio =
-
->> level it doesn't seem like we should be keeping the virtual fd.
+> something like:
 > =
 
-> It was my initial intent to do a simple "open vfd -> set/get value -> =
+> struct l_gpio *l_gpio_new(const char *file_path, ...);
+> =
 
-> close vfd", but as our discussion has evolved, I am more inclined to =
+> Which would open(file_path), and issue GPIO_GET_CHIPINFO_IOCTL and =
 
-> stick to what the kernel API exposes, and simply tie the l_gpio instance =
+> GPIO_GET_LINEINFO_IOCTL to find the right lines, then
+> =
 
-> to a single set of gpio-lines. If the user need different sets of lines, =
+> GPIO_GET_LINEHANDLE_IOCTL with GPIOHANDLE_REQUEST_OUTPUT and =
 
-> he should create multiple l_gpio instances.
+> GPIOHANDLE_REQUEST_INPUT flags set to obtain exclusive rights to the line=
+s.
+> =
 
-Ah, okay.  I think I get what you're trying to do.  So you want to have =
+> bool l_gpio_set_values(struct l_gpio *, ...);
+> =
 
-something like:
+> would issue a GPIOHANDLE_SET_LINE_VALUES_IOCTL
+> =
 
-struct l_gpio *l_gpio_new(const char *file_path, ...);
+> bool l_gpio_get_values(struct l_gpio *, ...);
+> =
 
-Which would open(file_path), and issue GPIO_GET_CHIPINFO_IOCTL and =
+> would issue a GPIOHANDLE_GET_LINE_VALUES_IOCTL,
+> =
 
-GPIO_GET_LINEINFO_IOCTL to find the right lines, then
+> Am I right so far?
 
-GPIO_GET_LINEHANDLE_IOCTL with GPIOHANDLE_REQUEST_OUTPUT and =
+Yes, this is pretty much how I have come to imagine it.
 
-GPIOHANDLE_REQUEST_INPUT flags set to obtain exclusive rights to the lines.
+> And use it something like:
+> =
 
-bool l_gpio_set_values(struct l_gpio *, ...);
+> struct l_gpio *gpio =3D l_gpio_new("/foo/bar", "3v3", "reset", "led", NUL=
+L);
+> l_gpio_set_values(gpio, true, true, false);
+> l_gpio_get_values(gpio, &foo, &bar, &baz);
+> =
 
-would issue a GPIOHANDLE_SET_LINE_VALUES_IOCTL
+> So the only issue I see here is how does one discover the lines for a =
 
-bool l_gpio_get_values(struct l_gpio *, ...);
+> given chip?=C2=A0 You might still want a l_gpio_chip abstraction to disco=
+ver =
 
-would issue a GPIOHANDLE_GET_LINE_VALUES_IOCTL,
+> lines / line numbers, no?
 
-Am I right so far?
+How about a "raw" API like:
 
-And use it something like:
+input_lines =3D l_gpio_lines("/some/chip", L_GPIO_IN, 1, 2, 6, -1);
+output_lines =3D l_gpio_lines("/some/chip", L_GPIO_OUT, 1, true, 2, false, =
 
-struct l_gpio *gpio =3D l_gpio_new("/foo/bar", "3v3", "reset", "led", NULL);
-l_gpio_set_values(gpio, true, true, false);
-l_gpio_get_values(gpio, &foo, &bar, &baz);
+-1);
 
-So the only issue I see here is how does one discover the lines for a =
+Output lines need a default value to set when the kernel changes them =
 
-given chip?  You might still want a l_gpio_chip abstraction to discover =
+from high-impedance inputs to outputs. I don't particular like how the =
 
-lines / line numbers, no?
+defaults are set in the above. Feel free to propose something better!
 
-Maybe something like:
+Lookup by label is then available via helpers:
 
-chip =3D l_gpio_chip_new("/foo/bar");
-gpio =3D chip.acquire(chip, "3v3", "reset", "led");
-l_gpio_set_values(gpio, ...);
-l_gpio_get_values(gpio, ...);
+chip_path =3D l_gpio_label_chip("chip-label");
+input_lines =3D l_gpio_label_lines(chip_path, L_GPIO_IN, "3v3", "reset", =
 
-Regards,
--Denis
+"led", NULL);
 
---===============0024097771775628471==--
+chip_path =3D l_gpio_chip_with_line_labels("3v3", "reset", "led", NULL);
+output_lines =3D l_gpio_label_lines(chip_path, L_GPIO_OUT, "3v3", "reset", =
+
+"led", NULL);
+
+Again, I would like something nicer here.
+
+> Maybe something like:
+> =
+
+> chip =3D l_gpio_chip_new("/foo/bar");
+> gpio =3D chip.acquire(chip, "3v3", "reset", "led");
+> l_gpio_set_values(gpio, ...);
+> l_gpio_get_values(gpio, ...);
+
+It all boils down to line handles (and probably line events too, at some =
+
+point). The chip and line info are only important when looking up lines, =
+
+and secondary after that.
+
+// Martin
+
+--===============2188126599203519028==--
 
