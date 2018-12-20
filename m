@@ -1,134 +1,96 @@
-Content-Type: multipart/mixed; boundary="===============7976450851644059367=="
+Content-Type: multipart/mixed; boundary="===============0024097771775628471=="
 MIME-Version: 1.0
-From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
-Date: Thu, 20 Dec 2018 09:00:41 +0100
-Message-ID: <b6757a23-1c19-169e-77f6-dacf7b1d9e1c@geanix.com>
-In-Reply-To: <35ac9913-a4bd-eb44-62ed-943cf0fead8f@gmail.com>
+Date: Thu, 20 Dec 2018 11:51:18 -0600
+Message-ID: <984bab07-c9c2-eef0-e56b-ba282542d97f@gmail.com>
+In-Reply-To: <b6757a23-1c19-169e-77f6-dacf7b1d9e1c@geanix.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7976450851644059367==
+--===============0024097771775628471==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi Martin,
 
-On 19/12/2018 20.43, Denis Kenzior wrote:
->>>>>>> I am fine with the lines being address with the uint32 index
->>>>>>> number. Creating a struct for it seems kinda useless since you =
+>>>> So this implies some sort of temporary state being kept by l_gpio. =
 
->>>>>>> will always need special knowledge to some degree anyway. I =
-
->>>>>>> rather have l_gpio_chip_find_line that takes a line label and =
-
->>>>>>> tries to find it. Especially with the background you might need =
-
->>>>>>> to set more than one GPIO at once, then the line concept blows up.
->>>>>>
->>>>>> Yes, the one-struct-per-line approach doesn't really scale to =
-
->>>>>> handling multiple lines in a single ioctl(). Now that I think =
-
->>>>>> about it, a single structure (and a convenient way to set it up) =
-
->>>>>> might be all we need. Something like:
->>>>>>
->>>>>> uint32_t lines[] =3D {0, 4, 8};
->>>>>> char *labels[] =3D {"3v3", "reset", "led", NULL};
->>>>>> bool values[] =3D {true, true, false};
->>>>>>
->>>>>> struct l_gpio *gpio;
->>>>>>
->>>>>> gpio =3D l_gpio_new("/dev/gpiochip0");
->>>>>> l_gpio_lines_by_num(gpio, lines, L_ARRAY_SIZE(lines), L_GPIO_OUT);
+>>>> Not sure I like that...
 >>>
->>> So this implies some sort of temporary state being kept by l_gpio. =
+>>> GPIO lines are more or less meant to be acquired (hogged in =
 
->>> Not sure I like that...
+>>> kernel-nomenclature) by the controlling process. The reservation is =
+
+>>> tied to the virtual file descriptor, which maps to one or more gpio =
+
+>>> lines on a gpio chip. Closing the virtual fd releases the line(s).
+>>>
+>>> In my previous patches I simply acquired the gpio line while =
+
+>>> setting/getting the value, and then released again before returning.
 >>
->> GPIO lines are more or less meant to be acquired (hogged in =
+>> But isn't the intent to do this here as well?=C2=A0 At least on l_gpio =
 
->> kernel-nomenclature) by the controlling process. The reservation is =
-
->> tied to the virtual file descriptor, which maps to one or more gpio =
-
->> lines on a gpio chip. Closing the virtual fd releases the line(s).
->>
->> In my previous patches I simply acquired the gpio line while =
-
->> setting/getting the value, and then released again before returning.
+>> level it doesn't seem like we should be keeping the virtual fd.
 > =
 
-> But isn't the intent to do this here as well?=C2=A0 At least on l_gpio le=
-vel =
+> It was my initial intent to do a simple "open vfd -> set/get value -> =
 
-> it doesn't seem like we should be keeping the virtual fd.
+> close vfd", but as our discussion has evolved, I am more inclined to =
 
-It was my initial intent to do a simple "open vfd -> set/get value -> =
+> stick to what the kernel API exposes, and simply tie the l_gpio instance =
 
-close vfd", but as our discussion has evolved, I am more inclined to =
+> to a single set of gpio-lines. If the user need different sets of lines, =
 
-stick to what the kernel API exposes, and simply tie the l_gpio instance =
+> he should create multiple l_gpio instances.
 
-to a single set of gpio-lines. If the user need different sets of lines, =
+Ah, okay.  I think I get what you're trying to do.  So you want to have =
 
-he should create multiple l_gpio instances.
+something like:
 
-> If we want to =
+struct l_gpio *l_gpio_new(const char *file_path, ...);
 
-> keep that open, then we need a whole new class for that.=C2=A0 One that m=
-ight =
+Which would open(file_path), and issue GPIO_GET_CHIPINFO_IOCTL and =
 
-> need to expose l_io or some other way to subscribe to changes on gpio =
+GPIO_GET_LINEINFO_IOCTL to find the right lines, then
 
-> lines.=C2=A0 From what I understood this functionality isn't needed yet, =
-so =
+GPIO_GET_LINEHANDLE_IOCTL with GPIOHANDLE_REQUEST_OUTPUT and =
 
-> it can be added later...
+GPIOHANDLE_REQUEST_INPUT flags set to obtain exclusive rights to the lines.
 
-The kernel API don't signal any changes on either the gpiochip fd or the =
+bool l_gpio_set_values(struct l_gpio *, ...);
 
-gpiohandle fd. Changes on gpio-lines are exposed through a gpioevent =
+would issue a GPIOHANDLE_SET_LINE_VALUES_IOCTL
 
-virtual fd that is acquired using GPIO_GET_LINEEVENT_IOCTL.
+bool l_gpio_get_values(struct l_gpio *, ...);
 
-It implements .poll() to signal changes and .read() to supply details =
+would issue a GPIOHANDLE_GET_LINE_VALUES_IOCTL,
 
-about those changes, so users can use l_io to monitor it for events.
+Am I right so far?
 
-gpioevents are mutual exclusive to gpiohandles, so one cannot acquire a =
+And use it something like:
 
-line for gpioevent if it is already acquired as a gpiohandle, and =
+struct l_gpio *gpio =3D l_gpio_new("/foo/bar", "3v3", "reset", "led", NULL);
+l_gpio_set_values(gpio, true, true, false);
+l_gpio_get_values(gpio, &foo, &bar, &baz);
 
-vice-versa. That might require two distinct classes to handle?
+So the only issue I see here is how does one discover the lines for a =
 
-This event handling is of course not needed right now, but we should =
+given chip?  You might still want a l_gpio_chip abstraction to discover =
 
-consider it when designing the get/set interface.
+lines / line numbers, no?
 
->>
->>>>>> l_gpio_set_values(gpio, values);
->>>
->>> Why not use varargs here?=C2=A0 So something like:
->>>
->>> l_gpio_set_by_index(gpio, 0, true, 4, true, 8, false, -1);
->>
->> I would very much like to use varargs, but we should consider the =
+Maybe something like:
 
->> stateful approach explained above.
->>
-> =
+chip =3D l_gpio_chip_new("/foo/bar");
+gpio =3D chip.acquire(chip, "3v3", "reset", "led");
+l_gpio_set_values(gpio, ...);
+l_gpio_get_values(gpio, ...);
 
-> That statement seems to be contradictory?=C2=A0 Can you explain?
+Regards,
+-Denis
 
-Sorry, I meant to use varargs in either l_gpio_new() or l_gpio_set_lines().
-
-
-Anyways, thanks for being patient.
-
-// Martin
-
---===============7976450851644059367==--
+--===============0024097771775628471==--
 
