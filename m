@@ -1,75 +1,45 @@
-Content-Type: multipart/mixed; boundary="===============6886349201233753892=="
+Content-Type: multipart/mixed; boundary="===============4733980804653174010=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 3/7] ecdh: Drop the curve parameter to
- l_ecdh_generate_shared_secret
-Date: Fri, 21 Dec 2018 23:03:22 +0100
-Message-ID: <20181221220326.10112-3-andrew.zaborowski@intel.com>
+Subject: [PATCH 4/7] ecc: Relax length check in l_ecc_point_from_data
+Date: Fri, 21 Dec 2018 23:03:23 +0100
+Message-ID: <20181221220326.10112-4-andrew.zaborowski@intel.com>
 In-Reply-To: <20181221220326.10112-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6886349201233753892==
+--===============4733980804653174010==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-We already have a pointer to the curve in the public and private keys so
-we can skip this parameter.
+l_ecc_point_from_data handles four point formats and for the first three
+the parser allows the len parameter to be longer than the ECC data while
+for L_ECC_POINT_TYPE_FULL it checks that len is exactly the size of the
+point data, relax this check to allow higher len values.
 ---
- ell/ecdh.c | 6 ++----
- ell/ecdh.h | 3 +--
- 2 files changed, 3 insertions(+), 6 deletions(-)
+ ell/ecc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/ell/ecdh.c b/ell/ecdh.c
-index 2c162e9..5ecbd44 100644
---- a/ell/ecdh.c
-+++ b/ell/ecdh.c
-@@ -83,17 +83,15 @@ LIB_EXPORT bool l_ecdh_generate_key_pair(const struct l=
-_ecc_curve *curve,
- 	return true;
- }
+diff --git a/ell/ecc.c b/ell/ecc.c
+index a59e8e4..6d9ab42 100644
+--- a/ell/ecc.c
++++ b/ell/ecc.c
+@@ -314,7 +314,7 @@ LIB_EXPORT struct l_ecc_point *l_ecc_point_from_data(
  =
 
--LIB_EXPORT bool l_ecdh_generate_shared_secret(const struct l_ecc_curve *cu=
-rve,
-+LIB_EXPORT bool l_ecdh_generate_shared_secret(
- 				const struct l_ecc_scalar *private_key,
- 				const struct l_ecc_point *other_public,
- 				struct l_ecc_scalar **secret)
- {
-+	const struct l_ecc_curve *curve =3D private_key->curve;
- 	struct l_ecc_scalar *z;
- 	struct l_ecc_point *product;
+ 		break;
+ 	case L_ECC_POINT_TYPE_FULL:
+-		if (len !=3D bytes * 2)
++		if (len < bytes * 2)
+ 			goto failed;
  =
 
--	if (unlikely(!curve))
--		return false;
--
- 	z =3D l_ecc_scalar_new_random(curve);
- =
-
- 	product =3D l_ecc_point_new(curve);
-diff --git a/ell/ecdh.h b/ell/ecdh.h
-index 4b14535..34cbc6b 100644
---- a/ell/ecdh.h
-+++ b/ell/ecdh.h
-@@ -42,8 +42,7 @@ bool l_ecdh_generate_key_pair(const struct l_ecc_curve *c=
-urve,
-  * Generate a shared secret from a private/public key. secret is an out
-  * parameters and must be freed.
-  */
--bool l_ecdh_generate_shared_secret(const struct l_ecc_curve *curve,
--				const struct l_ecc_scalar *private_key,
-+bool l_ecdh_generate_shared_secret(const struct l_ecc_scalar *private_key,
- 				const struct l_ecc_point *other_public,
- 				struct l_ecc_scalar **secret);
- =
-
+ 		_ecc_be2native(p->y, (void *) data + bytes, curve->ndigits);
 -- =
 
 2.19.1
 
 
---===============6886349201233753892==--
+--===============4733980804653174010==--
 
