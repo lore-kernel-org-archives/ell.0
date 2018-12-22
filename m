@@ -1,314 +1,213 @@
-Content-Type: multipart/mixed; boundary="===============4140844755497619707=="
+Content-Type: multipart/mixed; boundary="===============8431553345648217398=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 03/11] tls: Parse and process received extensions
-Date: Sat, 22 Dec 2018 05:16:27 +0100
-Message-ID: <20181222041635.6533-3-andrew.zaborowski@intel.com>
+Subject: [PATCH 04/11] tls: Implement the Supported Elliptic Curves extension
+Date: Sat, 22 Dec 2018 05:16:28 +0100
+Message-ID: <20181222041635.6533-4-andrew.zaborowski@intel.com>
 In-Reply-To: <20181222041635.6533-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4140844755497619707==
+--===============8431553345648217398==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On the server call the .client_handle callbacks for each supported
-extension in the received ClientHello and pass the list of extensions
-we've handled to the ServerHello builder.  On the client, process the
-extension responses in the ServerHello by calling .server_handle
-callbacks.
+Defined in RFC 8422 5.1.1
 ---
- ell/tls.c | 179 ++++++++++++++++++++++++++++++++++++++++++++++--------
- 1 file changed, 154 insertions(+), 25 deletions(-)
+ Makefile.am          |   1 +
+ ell/tls-extensions.c | 108 +++++++++++++++++++++++++++++++++++++++++++
+ ell/tls-private.h    |  10 ++++
+ ell/tls.c            |   3 +-
+ 4 files changed, 120 insertions(+), 2 deletions(-)
+ create mode 100644 ell/tls-extensions.c
 
-diff --git a/ell/tls.c b/ell/tls.c
-index ffa09e1..f8ba3d0 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -1577,6 +1577,135 @@ static bool tls_verify_finished(struct l_tls *tls, =
-const uint8_t *received,
- 	return true;
- }
- =
-
-+static bool tls_ptr_match(const void *a, const void *b)
+diff --git a/Makefile.am b/Makefile.am
+index 8401972..297c395 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -102,6 +102,7 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
+ 			ell/tls-private.h \
+ 			ell/tls.c \
+ 			ell/tls-record.c \
++			ell/tls-extensions.c \
+ 			ell/uuid.c \
+ 			ell/key.c \
+ 			ell/pkcs5-private.h \
+diff --git a/ell/tls-extensions.c b/ell/tls-extensions.c
+new file mode 100644
+index 0000000..749b8e6
+--- /dev/null
++++ b/ell/tls-extensions.c
+@@ -0,0 +1,108 @@
++/*
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2018  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <errno.h>
++
++#include "util.h"
++#include "tls.h"
++#include "cipher.h"
++#include "checksum.h"
++#include "cert.h"
++#include "tls-private.h"
++
++static const struct tls_named_curve tls_curve_pref[] =3D {
++	{ "secp256r1", 23, 19, 64 },
++	{ "secp384r1", 24, 20, 96 },
++};
++
++/* RFC 8422, Section 5.1 */
++static ssize_t tls_elliptic_curves_client_write(struct l_tls *tls,
++						uint8_t *buf, size_t len)
 +{
-+	return a =3D=3D b;
++	uint8_t *ptr =3D buf;
++	unsigned int i;
++
++	if (len < 2 + L_ARRAY_SIZE(tls_curve_pref) * 2)
++		return -ENOMEM;
++
++	l_put_be16(L_ARRAY_SIZE(tls_curve_pref) * 2, ptr);
++	ptr +=3D 2;
++
++	for (i =3D 0; i < L_ARRAY_SIZE(tls_curve_pref); i++) {
++		l_put_be16(tls_curve_pref[i].id, ptr);
++		ptr +=3D 2;
++	}
++
++	return ptr - buf;
 +}
 +
-+static bool tls_handle_hello_extensions(struct l_tls *tls,
-+					const uint8_t *buf, size_t len,
-+					struct l_queue *seen)
++static bool tls_elliptic_curves_client_handle(struct l_tls *tls,
++						const uint8_t *buf, size_t len)
 +{
-+	unsigned int i;
-+	const struct tls_hello_extension *extension;
-+	bool client_hello =3D tls->server;
-+	uint16_t extensions_size;
++	if (len < 2)
++		return false;
 +
-+	if (!len)
-+		return true;
++	if (l_get_be16(buf) !=3D len - 2 || (len & 1))
++		return false;
 +
-+	if (len < 2 || len > 2 + 65535)
-+		goto decode_error;
-+
-+	extensions_size =3D l_get_be16(buf);
-+	len -=3D 2;
 +	buf +=3D 2;
-+
-+	if (len !=3D extensions_size)
-+		goto decode_error;
++	len -=3D 2;
 +
 +	while (len) {
-+		uint16_t ext_id;
-+		size_t ext_len;
-+		bool (*handler)(struct l_tls *tls,
-+				const uint8_t *buf, size_t len);
++		unsigned int i;
++		uint16_t id;
 +
-+		if (len < 4)
-+			goto decode_error;
++		id =3D l_get_be16(buf);
++		buf +=3D 2;
++		len -=3D 2;
 +
-+		ext_id =3D l_get_be16(buf + 0);
-+		ext_len =3D l_get_be16(buf + 2);
-+		buf +=3D 4;
-+		len -=3D 4;
-+
-+		if (ext_len > len)
-+			goto decode_error;
-+
-+		/*
-+		 * RFC 5246, Section 7.4.1.4: "There MUST NOT be more than
-+		 * one extension of the same type."
-+		 */
-+		if (l_queue_find(seen, tls_ptr_match, L_UINT_TO_PTR(ext_id))) {
-+			TLS_DEBUG("Duplicate extension %u", ext_id);
-+			goto decode_error;
-+		}
-+
-+		l_queue_push_tail(seen, L_UINT_TO_PTR(ext_id));
-+
-+		extension =3D NULL;
-+
-+		for (i =3D 0; tls_extensions[i].name; i++)
-+			if (tls_extensions[i].id =3D=3D ext_id) {
-+				extension =3D &tls_extensions[i];
-+				break;
++		for (i =3D 0; i < L_ARRAY_SIZE(tls_curve_pref); i++)
++			if (tls_curve_pref[i].id =3D=3D id) {
++				tls->negotiated_curve =3D &tls_curve_pref[i];
++				TLS_DEBUG("Negotiated %s",
++						tls_curve_pref[i].name);
++				return true;
 +			}
-+
-+		if (!extension)
-+			goto next;
-+
-+		handler =3D client_hello ?
-+			extension->client_handle : extension->server_handle;
-+
-+		/*
-+		 * RFC 5246, Section 7.4.1.4: "If a client receives an
-+		 * extension type in ServerHello that it did not request in
-+		 * the associated ClientHello, it MUST abort the handshake
-+		 * with an unsupported_extension fatal alert."
-+		 */
-+		if (!client_hello && !handler) {
-+			TLS_DISCONNECT(TLS_ALERT_UNSUPPORTED_EXTENSION, 0,
-+					"%s extension not expected in "
-+					"a ServerHello", extension->name);
-+			return false;
-+		}
-+
-+		if (!handler(tls, buf, ext_len)) {
-+			TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
-+					"Hello %s extension parse error",
-+					extension->name);
-+			return false;
-+		}
-+
-+next:
-+		buf +=3D ext_len;
-+		len -=3D ext_len;
 +	}
 +
-+	/*
-+	 * Trigger any actions needed when an extension is missing and its
-+	 * handler has not been called yet.
-+	 */
-+	for (i =3D 0; tls_extensions[i].name; i++) {
-+		bool (*handler)(struct l_tls *tls);
-+
-+		extension =3D &tls_extensions[i];
-+		handler =3D client_hello ?
-+			extension->client_handle_absent :
-+			extension->server_handle_absent;
-+
-+		if (!handler)
-+			continue;
-+
-+		if (l_queue_find(seen, tls_ptr_match,
-+					L_UINT_TO_PTR(extension->id)))
-+			continue;
-+
-+		if (!handler(tls)) {
-+			TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
-+					"Hello %s extension missing",
-+					extension->name);
-+			return false;
-+		}
-+	}
-+
++	TLS_DEBUG("non-fatal: No common supported elliptic curves");
 +	return true;
-+
-+decode_error:
-+	TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
-+			"Hello extensions decode error");
-+	return false;
 +}
 +
- static void tls_handle_client_hello(struct l_tls *tls,
- 					const uint8_t *buf, size_t len)
- {
-@@ -1585,6 +1714,7 @@ static void tls_handle_client_hello(struct l_tls *tls,
- 	const uint8_t *cipher_suites;
- 	const uint8_t *compression_methods;
- 	int i;
-+	struct l_queue *extensions_offered =3D NULL;
- =
-
- 	/* Do we have enough for ProtocolVersion + Random + SessionID size? */
- 	if (len < 2 + 32 + 1)
-@@ -1626,22 +1756,12 @@ static void tls_handle_client_hello(struct l_tls *t=
-ls,
- =
-
- 	len -=3D compression_methods_size;
- =
-
--	if (len) {
--		uint16_t extensions_size;
-+	extensions_offered =3D l_queue_new();
- =
-
--		if (len < 2 || len > 2 + 65535)
--			goto decode_error;
--
--		extensions_size =3D l_get_be16(compression_methods +
--						compression_methods_size);
--		len -=3D 2;
--
--		if (len !=3D extensions_size)
--			goto decode_error;
--
--		/* TODO: validate each extension in the vector, 7.4.1.4 */
--		/* TODO: check for duplicates? */
--	}
-+	if (!tls_handle_hello_extensions(tls, compression_methods +
-+					compression_methods_size,
-+					len, extensions_offered))
-+		goto cleanup;
- =
-
- 	/*
- 	 * Note: if the client is supplying a SessionID we know it is false
-@@ -1664,7 +1784,7 @@ static void tls_handle_client_hello(struct l_tls *tls,
- 		TLS_DISCONNECT(TLS_ALERT_PROTOCOL_VERSION, 0,
- 				"Client version too low: %02x",
- 				tls->client_version);
--		return;
-+		goto cleanup;
- 	}
- =
-
- 	tls->negotiated_version =3D TLS_VERSION < tls->client_version ?
-@@ -1697,13 +1817,13 @@ static void tls_handle_client_hello(struct l_tls *t=
-ls,
- 		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
- 				"No common cipher suites matching negotiated "
- 				"TLS version and our certificate's key type");
--		return;
-+		goto cleanup;
- 	}
- =
-
- 	if (!tls_set_prf_hmac(tls)) {
- 		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
- 				"Error selecting the PRF HMAC");
--		return;
-+		goto cleanup;
- 	}
- =
-
- 	TLS_DEBUG("Negotiated %s", tls->pending.cipher_suite->name);
-@@ -1714,7 +1834,7 @@ static void tls_handle_client_hello(struct l_tls *tls,
- 	if (!memchr(compression_methods, 0, compression_methods_size)) {
- 		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
- 				"No common compression methods");
--		return;
-+		goto cleanup;
- 	}
- =
-
- 	while (compression_methods_size) {
-@@ -1730,8 +1850,10 @@ static void tls_handle_client_hello(struct l_tls *tl=
-s,
- =
-
- 	TLS_DEBUG("Negotiated %s", tls->pending.compression_method->name);
- =
-
--	if (!tls_send_server_hello(tls, NULL))
--		return;
-+	if (!tls_send_server_hello(tls, extensions_offered))
-+		goto cleanup;
++static bool tls_elliptic_curves_client_absent(struct l_tls *tls)
++{
++	tls->negotiated_curve =3D &tls_curve_pref[0];
++	return true;
++}
 +
-+	l_queue_destroy(extensions_offered, NULL);
++const struct tls_hello_extension tls_extensions[] =3D {
++	{
++		"Supported Elliptic Curves", "elliptic_curves", 10,
++		tls_elliptic_curves_client_write,
++		tls_elliptic_curves_client_handle,
++		tls_elliptic_curves_client_absent,
++		NULL, NULL, NULL,
++	},
++	{}
++};
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index 5ea8208..d1cfcac 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -117,6 +117,15 @@ struct tls_hello_extension {
+ 	bool (*server_handle_absent)(struct l_tls *tls);
+ };
  =
 
- 	if (tls->pending.cipher_suite->key_xchg->certificate_check && tls->cert)
- 		if (!tls_send_certificate(tls))
-@@ -1756,6 +1878,9 @@ static void tls_handle_client_hello(struct l_tls *tls,
- decode_error:
- 	TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
- 			"ClientHello decode error");
++extern const struct tls_hello_extension tls_extensions[];
 +
-+cleanup:
-+	l_queue_destroy(extensions_offered, NULL);
++struct tls_named_curve {
++	const char *name;
++	uint16_t id;
++	unsigned int l_group;
++	size_t point_bytes;
++};
++
+ enum tls_handshake_state {
+ 	TLS_HANDSHAKE_WAIT_START,
+ 	TLS_HANDSHAKE_WAIT_HELLO,
+@@ -198,6 +207,7 @@ struct l_tls {
+ 	size_t peer_pubkey_size;
+ 	enum handshake_hash_type signature_hash;
+ 	const struct tls_hash_algorithm *prf_hmac;
++	const struct tls_named_curve *negotiated_curve;
+ =
+
+ 	/* SecurityParameters current and pending */
+ =
+
+diff --git a/ell/tls.c b/ell/tls.c
+index f8ba3d0..ed7f0c7 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -191,6 +191,7 @@ static void tls_reset_handshake(struct l_tls *tls)
+ 	tls->peer_cert =3D NULL;
+ 	tls->peer_pubkey =3D NULL;
+ 	tls->peer_pubkey_size =3D 0;
++	tls->negotiated_curve =3D NULL;
+ =
+
+ 	for (hash =3D 0; hash < __HANDSHAKE_HASH_COUNT; hash++)
+ 		tls_drop_handshake_hash(tls, hash);
+@@ -709,8 +710,6 @@ static const struct tls_hash_algorithm *tls_set_prf_hma=
+c(struct l_tls *tls)
+ 	return NULL;
  }
  =
 
- static void tls_handle_server_hello(struct l_tls *tls,
-@@ -1764,6 +1889,8 @@ static void tls_handle_server_hello(struct l_tls *tls,
- 	uint8_t session_id_size, cipher_suite_id[2], compression_method_id;
- 	const char *error;
- 	int i;
-+	struct l_queue *extensions_seen;
-+	bool result;
- =
-
- 	/* Do we have enough for ProtocolVersion + Random + SessionID len ? */
- 	if (len < 2 + 32 + 1)
-@@ -1782,11 +1909,13 @@ static void tls_handle_server_hello(struct l_tls *t=
-ls,
- 	compression_method_id =3D buf[35 + session_id_size + 2];
- 	len -=3D session_id_size + 2 + 1;
- =
-
--	if (len !=3D 0) { /* We know we haven't solicited any extensions */
--		TLS_DISCONNECT(TLS_ALERT_UNSUPPORTED_EXTENSION, 0,
--				"ServerHello contains extensions");
-+	extensions_seen =3D l_queue_new();
-+	result =3D tls_handle_hello_extensions(tls, buf + 38 + session_id_size,
-+						len, extensions_seen);
-+	l_queue_destroy(extensions_seen, NULL);
-+
-+	if (!result)
- 		return;
--	}
- =
-
- 	tls->negotiated_version =3D l_get_be16(buf);
- =
-
+-static const struct tls_hello_extension tls_extensions[] =3D {};
+-
+ enum tls_handshake_type {
+ 	TLS_HELLO_REQUEST	=3D 0,
+ 	TLS_CLIENT_HELLO	=3D 1,
 -- =
 
 2.19.1
 
 
---===============4140844755497619707==--
+--===============8431553345648217398==--
 
