@@ -1,146 +1,79 @@
-Content-Type: multipart/mixed; boundary="===============0756760186233374975=="
+Content-Type: multipart/mixed; boundary="===============0106918362141015862=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 16/17] tls: Add DHE_RSA-based cipher suites
-Date: Tue, 01 Jan 2019 20:49:38 +0100
-Message-ID: <20190101194939.5974-16-andrew.zaborowski@intel.com>
+Subject: [PATCH 17/17] tls: Switch state before handling Key Echange messages
+Date: Tue, 01 Jan 2019 20:49:39 +0100
+Message-ID: <20190101194939.5974-17-andrew.zaborowski@intel.com>
 In-Reply-To: <20190101194939.5974-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0756760186233374975==
+--===============0106918362141015862==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add the 5 DHE_RSA suites defined in RFC 5246 and the 2 defined in
-RFC 5288.
+Where we handle a Client Key Exchange or a Server Key Exchange message
+and then switch to a new state, do the state change first so that if
+the tls_handle_*_key_exchange functions detect and error and move to an
+error state, tls->state is not overwritten afterwards.  This seems
+simpler than adding a success/failure return value to these methods so
+that the callers can just stop execution on error.
 ---
- ell/tls-suites.c | 55 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 55 insertions(+)
+ ell/tls.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/ell/tls-suites.c b/ell/tls-suites.c
-index 8e975a0..7b2ed27 100644
---- a/ell/tls-suites.c
-+++ b/ell/tls-suites.c
-@@ -1283,6 +1283,13 @@ static struct tls_cipher_suite tls_rsa_with_rc4_128_=
-md5 =3D {
- 	.encryption =3D &tls_3des_ede,
- 	.mac =3D &tls_sha,
- 	.key_xchg =3D &tls_rsa,
-+}, tls_dhe_rsa_with_3des_ede_cbc_sha =3D {
-+	.id =3D { 0x00, 0x16 },
-+	.name =3D "TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_3des_ede,
-+	.mac =3D &tls_sha,
-+	.key_xchg =3D &tls_dhe_rsa,
- }, tls_rsa_with_aes_128_cbc_sha =3D {
- 	.id =3D { 0x00, 0x2f },
- 	.name =3D "TLS_RSA_WITH_AES_128_CBC_SHA",
-@@ -1290,6 +1297,13 @@ static struct tls_cipher_suite tls_rsa_with_rc4_128_=
-md5 =3D {
- 	.encryption =3D &tls_aes128,
- 	.mac =3D &tls_sha,
- 	.key_xchg =3D &tls_rsa,
-+}, tls_dhe_rsa_with_aes_128_cbc_sha =3D {
-+	.id =3D { 0x00, 0x33 },
-+	.name =3D "TLS_DHE_RSA_WITH_AES_128_CBC_SHA",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes128,
-+	.mac =3D &tls_sha,
-+	.key_xchg =3D &tls_dhe_rsa,
- }, tls_rsa_with_aes_256_cbc_sha =3D {
- 	.id =3D { 0x00, 0x35 },
- 	.name =3D "TLS_RSA_WITH_AES_256_CBC_SHA",
-@@ -1297,6 +1311,13 @@ static struct tls_cipher_suite tls_rsa_with_rc4_128_=
-md5 =3D {
- 	.encryption =3D &tls_aes256,
- 	.mac =3D &tls_sha,
- 	.key_xchg =3D &tls_rsa,
-+}, tls_dhe_rsa_with_aes_256_cbc_sha =3D {
-+	.id =3D { 0x00, 0x39 },
-+	.name =3D "TLS_DHE_RSA_WITH_AES_256_CBC_SHA",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes256,
-+	.mac =3D &tls_sha,
-+	.key_xchg =3D &tls_dhe_rsa,
- }, tls_rsa_with_aes_128_cbc_sha256 =3D {
- 	.id =3D { 0x00, 0x3c },
- 	.name =3D "TLS_RSA_WITH_AES_128_CBC_SHA256",
-@@ -1311,6 +1332,20 @@ static struct tls_cipher_suite tls_rsa_with_rc4_128_=
-md5 =3D {
- 	.encryption =3D &tls_aes256,
- 	.mac =3D &tls_sha256,
- 	.key_xchg =3D &tls_rsa,
-+}, tls_dhe_rsa_with_aes_128_cbc_sha256 =3D {
-+	.id =3D { 0x00, 0x67 },
-+	.name =3D "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes128,
-+	.mac =3D &tls_sha256,
-+	.key_xchg =3D &tls_dhe_rsa,
-+}, tls_dhe_rsa_with_aes_256_cbc_sha256 =3D {
-+	.id =3D { 0x00, 0x6b },
-+	.name =3D "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes256,
-+	.mac =3D &tls_sha256,
-+	.key_xchg =3D &tls_dhe_rsa,
- }, tls_rsa_with_aes_128_gcm_sha256 =3D {
- 	.id =3D { 0x00, 0x9c },
- 	.name =3D "TLS_RSA_WITH_AES_128_GCM_SHA256",
-@@ -1324,6 +1359,19 @@ static struct tls_cipher_suite tls_rsa_with_rc4_128_=
-md5 =3D {
- 	.encryption =3D &tls_aes256_gcm,
- 	.prf_hmac =3D L_CHECKSUM_SHA384,
- 	.key_xchg =3D &tls_rsa,
-+}, tls_dhe_rsa_with_aes_128_gcm_sha256 =3D {
-+	.id =3D { 0x00, 0x9e },
-+	.name =3D "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes128_gcm,
-+	.key_xchg =3D &tls_dhe_rsa,
-+}, tls_dhe_rsa_with_aes_256_gcm_sha384 =3D {
-+	.id =3D { 0x00, 0x9f },
-+	.name =3D "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes256_gcm,
-+	.prf_hmac =3D L_CHECKSUM_SHA384,
-+	.key_xchg =3D &tls_dhe_rsa,
- }, tls_ecdhe_rsa_with_rc4_128_sha =3D {
- 	.id =3D { 0xc0, 0x11 },
- 	.name =3D "TLS_ECDHE_RSA_WITH_RC4_128_SHA",
-@@ -1385,17 +1433,24 @@ static struct tls_cipher_suite tls_rsa_with_rc4_128=
-_md5 =3D {
- struct tls_cipher_suite *tls_cipher_suite_pref[] =3D {
- 	&tls_ecdhe_rsa_with_aes_256_cbc_sha,
- 	&tls_ecdhe_rsa_with_aes_128_cbc_sha,
-+	&tls_dhe_rsa_with_aes_256_cbc_sha,
-+	&tls_dhe_rsa_with_aes_128_cbc_sha,
- 	&tls_rsa_with_aes_256_cbc_sha,
- 	&tls_rsa_with_aes_128_cbc_sha,
- 	&tls_ecdhe_rsa_with_aes_256_cbc_sha384,
- 	&tls_ecdhe_rsa_with_aes_128_cbc_sha256,
-+	&tls_dhe_rsa_with_aes_256_cbc_sha256,
-+	&tls_dhe_rsa_with_aes_128_cbc_sha256,
- 	&tls_rsa_with_aes_256_cbc_sha256,
- 	&tls_rsa_with_aes_128_cbc_sha256,
- 	&tls_ecdhe_rsa_with_aes_256_gcm_sha384,
- 	&tls_ecdhe_rsa_with_aes_128_gcm_sha256,
-+	&tls_dhe_rsa_with_aes_256_gcm_sha384,
-+	&tls_dhe_rsa_with_aes_128_gcm_sha256,
- 	&tls_rsa_with_aes_256_gcm_sha384,
- 	&tls_rsa_with_aes_128_gcm_sha256,
- 	&tls_ecdhe_rsa_with_3des_ede_cbc_sha,
-+	&tls_dhe_rsa_with_3des_ede_cbc_sha,
- 	&tls_rsa_with_3des_ede_cbc_sha,
- 	&tls_ecdhe_rsa_with_rc4_128_sha,
- 	&tls_rsa_with_rc4_128_sha,
+diff --git a/ell/tls.c b/ell/tls.c
+index fc8ab41..7db1d9b 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -2176,11 +2176,11 @@ static void tls_handle_handshake(struct l_tls *tls,=
+ int type,
+ 			break;
+ 		}
+ =
+
++		TLS_SET_STATE(TLS_HANDSHAKE_WAIT_HELLO_DONE);
++
+ 		tls->pending.cipher_suite->key_xchg->handle_server_key_exchange(
+ 								tls, buf, len);
+ =
+
+-		TLS_SET_STATE(TLS_HANDSHAKE_WAIT_HELLO_DONE);
+-
+ 		break;
+ =
+
+ 	case TLS_CERTIFICATE_REQUEST:
+@@ -2247,9 +2247,6 @@ static void tls_handle_handshake(struct l_tls *tls, i=
+nt type,
+ 			break;
+ 		}
+ =
+
+-		tls->pending.cipher_suite->key_xchg->handle_client_key_exchange(
+-								tls, buf, len);
+-
+ 		/*
+ 		 * If we accepted a client Certificate message with a
+ 		 * certificate that has signing capability (TODO: check
+@@ -2262,6 +2259,9 @@ static void tls_handle_handshake(struct l_tls *tls, i=
+nt type,
+ 		else
+ 			TLS_SET_STATE(TLS_HANDSHAKE_WAIT_CHANGE_CIPHER_SPEC);
+ =
+
++		tls->pending.cipher_suite->key_xchg->handle_client_key_exchange(
++								tls, buf, len);
++
+ 		break;
+ =
+
+ 	case TLS_FINISHED:
 -- =
 
 2.19.1
 
 
---===============0756760186233374975==--
+--===============0106918362141015862==--
 
