@@ -1,95 +1,121 @@
-Content-Type: multipart/mixed; boundary="===============7976810465096557007=="
+Content-Type: multipart/mixed; boundary="===============3971589882840367324=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 12/17] tls: Add RFC5289 suites using the ECDHE_RSA key exchange
-Date: Tue, 01 Jan 2019 20:49:34 +0100
-Message-ID: <20190101194939.5974-12-andrew.zaborowski@intel.com>
+Subject: [PATCH 13/17] key: Add l_key_validate_dh_payload
+Date: Tue, 01 Jan 2019 20:49:35 +0100
+Message-ID: <20190101194939.5974-13-andrew.zaborowski@intel.com>
 In-Reply-To: <20190101194939.5974-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7976810465096557007==
+--===============3971589882840367324==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add the 4 cipher suites defined in RFC 5289 that we can now support
-with the new ECDHE_RSA key exchange, 2 of these are the same ones
-defined in RFC 8422.
+Add a function to validate local private value payloads against a
+the group's prime before creating kernel keys out of them, and to
+validate public values received from the peer.
 ---
- ell/tls-suites.c | 36 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 36 insertions(+)
+ ell/ell.sym |  1 +
+ ell/key.c   | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/key.h   |  3 +++
+ 3 files changed, 52 insertions(+)
 
-diff --git a/ell/tls-suites.c b/ell/tls-suites.c
-index 297b3d4..af8cbcd 100644
---- a/ell/tls-suites.c
-+++ b/ell/tls-suites.c
-@@ -738,6 +738,10 @@ static struct tls_mac_algorithm tls_md5 =3D {
- 	.id =3D 4,
- 	.hmac_type =3D L_CHECKSUM_SHA256,
- 	.mac_length =3D 32,
-+}, tls_sha384 =3D {
-+	.id =3D 5,
-+	.hmac_type =3D L_CHECKSUM_SHA384,
-+	.mac_length =3D 48,
- };
+diff --git a/ell/ell.sym b/ell/ell.sym
+index ea64ac2..c3e6156 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -303,6 +303,7 @@ global:
+ 	l_key_get_info;
+ 	l_key_compute_dh_public;
+ 	l_key_compute_dh_secret;
++	l_key_validate_dh_payload;
+ 	l_key_encrypt;
+ 	l_key_decrypt;
+ 	l_key_sign;
+diff --git a/ell/key.c b/ell/key.c
+index 415658b..297e456 100644
+--- a/ell/key.c
++++ b/ell/key.c
+@@ -456,6 +456,54 @@ LIB_EXPORT bool l_key_compute_dh_secret(struct l_key *=
+other_public,
+ 	return compute_common(other_public, private, prime, payload, len);
+ }
  =
 
- static struct tls_cipher_suite tls_rsa_with_rc4_128_md5 =3D {
-@@ -830,6 +834,34 @@ static struct tls_cipher_suite tls_rsa_with_rc4_128_md=
-5 =3D {
- 	.encryption =3D &tls_aes256,
- 	.mac =3D &tls_sha,
- 	.key_xchg =3D &tls_ecdhe_rsa,
-+}, tls_ecdhe_rsa_with_aes_128_cbc_sha256 =3D {
-+	.id =3D { 0xc0, 0x27 },
-+	.name =3D "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes128,
-+	.mac =3D &tls_sha256,
-+	.key_xchg =3D &tls_ecdhe_rsa,
-+}, tls_ecdhe_rsa_with_aes_256_cbc_sha384 =3D {
-+	.id =3D { 0xc0, 0x28 },
-+	.name =3D "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes256,
-+	.mac =3D &tls_sha384,
-+	.prf_hmac =3D L_CHECKSUM_SHA384,
-+	.key_xchg =3D &tls_ecdhe_rsa,
-+}, tls_ecdhe_rsa_with_aes_128_gcm_sha256 =3D {
-+	.id =3D { 0xc0, 0x2f },
-+	.name =3D "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes128_gcm,
-+	.key_xchg =3D &tls_ecdhe_rsa,
-+}, tls_ecdhe_rsa_with_aes_256_gcm_sha384 =3D {
-+	.id =3D { 0xc0, 0x30 },
-+	.name =3D "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-+	.verify_data_length =3D 12,
-+	.encryption =3D &tls_aes256_gcm,
-+	.prf_hmac =3D L_CHECKSUM_SHA384,
-+	.key_xchg =3D &tls_ecdhe_rsa,
- };
++static int be_bignum_compare(const uint8_t *a, size_t a_len,
++				const uint8_t *b, size_t b_len)
++{
++	unsigned int i;
++
++	if (a_len >=3D b_len) {
++		for (i =3D 0; i < a_len - b_len; i++)
++			if (a[i])
++				return 1;
++
++		return memcmp(a + i, b, b_len);
++	} else {
++		for (i =3D 0; i < b_len - a_len; i++)
++			if (b[i])
++				return -1;
++
++		return memcmp(a, b + i, a_len);
++	}
++}
++
++/*
++ * Validate that @payload is within range for a private and public key for
++ * a DH computation in the finite field group defined by modulus @prime_bu=
+f,
++ * both numbers stored as big-endian integers.  We require a key in the
++ * [2, prime - 2] (inclusive) interval.  PKCS #3 does not exclude 1 as a
++ * private key but other specs do.
++ */
++LIB_EXPORT bool l_key_validate_dh_payload(const void *payload, size_t len,
++				const void *prime_buf, size_t prime_len)
++{
++	static const uint8_t one[] =3D { 1 };
++	uint8_t prime_1[prime_len];
++	unsigned int pos =3D prime_len;
++
++	memcpy(prime_1, prime_buf, prime_len);
++
++	/* Produce prime - 1 for the payload < prime - 1 check */
++	while (pos && !prime_1[--pos]--);
++
++	if (be_bignum_compare(payload, len, one, 1) <=3D 0)
++		return false;
++
++	if (be_bignum_compare(payload, len, prime_1, prime_len) >=3D 0)
++		return false;
++
++	return true;
++}
++
+ /* Common code for encrypt/decrypt/sign */
+ static ssize_t eds_common(struct l_key *key,
+ 				enum l_key_cipher_type cipher,
+diff --git a/ell/key.h b/ell/key.h
+index 1529135..e8688c6 100644
+--- a/ell/key.h
++++ b/ell/key.h
+@@ -80,6 +80,9 @@ bool l_key_compute_dh_secret(struct l_key *other_public, =
+struct l_key *private,
+ 				struct l_key *prime,
+ 				void *payload, size_t *len);
  =
 
- struct tls_cipher_suite *tls_cipher_suite_pref[] =3D {
-@@ -837,8 +869,12 @@ struct tls_cipher_suite *tls_cipher_suite_pref[] =3D {
- 	&tls_ecdhe_rsa_with_aes_128_cbc_sha,
- 	&tls_rsa_with_aes_256_cbc_sha,
- 	&tls_rsa_with_aes_128_cbc_sha,
-+	&tls_ecdhe_rsa_with_aes_256_cbc_sha384,
-+	&tls_ecdhe_rsa_with_aes_128_cbc_sha256,
- 	&tls_rsa_with_aes_256_cbc_sha256,
- 	&tls_rsa_with_aes_128_cbc_sha256,
-+	&tls_ecdhe_rsa_with_aes_256_gcm_sha384,
-+	&tls_ecdhe_rsa_with_aes_128_gcm_sha256,
- 	&tls_rsa_with_aes_256_gcm_sha384,
- 	&tls_rsa_with_aes_128_gcm_sha256,
- 	&tls_ecdhe_rsa_with_3des_ede_cbc_sha,
++bool l_key_validate_dh_payload(const void *payload, size_t len,
++				const void *prime_buf, size_t prime_len);
++
+ ssize_t l_key_encrypt(struct l_key *key, enum l_key_cipher_type cipher,
+ 			enum l_checksum_type checksum, const void *in,
+ 			void *out, size_t len_in, size_t len_out);
 -- =
 
 2.19.1
 
 
---===============7976810465096557007==--
+--===============3971589882840367324==--
 
