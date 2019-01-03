@@ -1,112 +1,188 @@
-Content-Type: multipart/mixed; boundary="===============0865424135802257517=="
+Content-Type: multipart/mixed; boundary="===============0385570979658135814=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 14/17] tls: DHE_RSA key exchange implementation client side
-Date: Thu, 03 Jan 2019 12:36:09 +0100
-Message-ID: <CAOq732Lnp2zD5WuMSP-j2mZ1fjeRU2RVGgXRP8RAkZAcYxFv5A@mail.gmail.com>
-In-Reply-To: <00db914f-560c-1d08-64da-de3ba6ffb47e@gmail.com>
+Subject: Re: [PATCH 02/17] tls: Add Hello extension sending support
+Date: Thu, 03 Jan 2019 12:45:43 +0100
+Message-ID: <CAOq732L5+-2X5-+qrx0y8MsDwrpASM=ynEr37SUDcypnxsbU9w@mail.gmail.com>
+In-Reply-To: <3c99fee2-77f9-c34f-f699-a14bf17f602d@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0865424135802257517==
+--===============0385570979658135814==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, 3 Jan 2019 at 04:33, Denis Kenzior <denkenz@gmail.com> wrote:
-> >> Generating a whole new random number is really a bad way of doing
-> >> things.  The entropy pool is a very limited resource, so don't abuse i=
-t.
-> >>    A much easier way would be to simply set the most-significant-byte =
-to
-> >> 0.
+On Thu, 3 Jan 2019 at 01:40, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 01/01/2019 01:49 PM, Andrew Zaborowski wrote:
+> >   static bool tls_send_client_hello(struct l_tls *tls)
+> >   {
+> > -     uint8_t buf[128 + L_ARRAY_SIZE(tls_compression_pref) +
+> > +     uint8_t buf[1024 + L_ARRAY_SIZE(tls_compression_pref) +
+> >                       2 * L_ARRAY_SIZE(tls_cipher_suite_pref)];
+>
+> So you're sort of depending on the buffer to be large enough, maybe not
+> a great strategy long-term.
+
+True, but there's always a fixed maximum size we need, only it's
+tricky to calculate that size dynamically because we'd need to
+complicate the API.
+>
+> >       uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
+> >       uint8_t *len_ptr;
+> > -     int i;
+> > +     unsigned int i;
+> > +     uint8_t *extensions_len_ptr;
 > >
-> > It's a pattern we use in the ecdh code (where the group order is only
-> > ~1/2 of the number space -- can improved by switching from the "Black
-> > box" method to the "Deterministic" method iirc) and in iwd so we'd
->
-> Yeah we might need to fix that, but there might not be an easy way as
-> opposed to here.
->
-> > probably need to change it everywhere.  But it seems that every way to
-> > "fix" the number instead of generating a new one affects the
-> > distribution making the algorithm weaker.  If that's ok then yes, we
-> > can simply force the top bits of the private value do "0" (down to the
-> > first "1" bit of the prime).
->
-> This would be fine with all DH groups from RFC 3526.  If TLS uses a
-> different set of primes, then setting the upper MSB bits to 0 might be
-> okay.
-
-PKCS #3 also mentions generating a priv key between 2^(n-1) and
-(2^n)-1, meaning forcing an MSB to 1, which accounts for both the min
-and max checks so I think I'm going to do that if we don't care about
-uniform distribution.
-
-> If you're worried about this, then perhaps simply re-generating
-> the upper N MSB bytes is another solution.
-
-Unfortunately this still would skew the distribution a little.
-
-> Might want to check what
-> other implementations do.
->
-> >>> +static void tls_handle_dhe_server_key_xchg(struct l_tls *tls,
-> >>> +                                             const uint8_t *buf, siz=
-e_t len)
-> >>> +{
-> >>> +     struct tls_dhe_params *params;
-> >>> +
-> >>> +     params =3D l_new(struct tls_dhe_params, 1);
-> >>> +     tls->pending.key_xchg_params =3D params;
-> >>
-> >> Why do this assignment here?
+> >       /* Fill in the Client Hello body */
 > >
-> > The reason is so that in case of error tls_reset_handshake will free
-> > this and we don't have to worry about it, I can add a comment.
->
-> Gah, that's really not obvious.  A comment is needed, but it might be
-> better to have decode_error label take care of this instead.
->
-> >>> +     /*
-> >>> +      * RFC 7919 Section 3.0:
-> >>> +      * "the client MUST verify that dh_Ys is in the range
-> >>> +      * 1 < dh_Ys < dh_p - 1.  If dh_Ys is not in this range, the cl=
-ient
-> >>> +      * MUST terminate the connection with a fatal handshake_failure=
-(40)
-> >>> +      * alert."
-> >>> +      */
-> >>> +     if (params->public_len > params->prime_len ||
-> >>> +                     !l_key_validate_dh_payload(params->public_buf,
-> >>> +                                                     params->public_=
-len,
-> >>> +                                                     params->prime_b=
-uf,
-> >>> +                                                     params->prime_l=
-en)) {
-> >>
-> >> So can we rely on the kernel to do this part for us?
+> > @@ -832,7 +835,7 @@ static bool tls_send_client_hello(struct l_tls *tls)
+> >       len_ptr =3D ptr;
+> >       ptr +=3D 2;
 > >
-> > Apparently we can't without modifying security/keys/dh.c and our keys
-> > code.  The keyctl operation is too smart and assumes
-> > generate_public_key and generate_shared_secret are the same operation,
-> > so when crypto/dh.c receives the parameters it always thinks it's
-> > dealing with a generator and the private value, instead of private and
-> > public values.  So it never runs the public value validation.
-> > dh_is_pubkey_valid also has one minor unimplemented feature.
+> > -     for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_cipher_suite_pref); i++)=
+ {
+> > +     for (i =3D 0; i < L_ARRAY_SIZE(tls_cipher_suite_pref); i++) {
+> >               if (!tls_cipher_suite_is_compatible(tls,
+> >                                               &tls_cipher_suite_pref[i],
+> >                                               NULL))
+> > @@ -850,17 +853,58 @@ static bool tls_send_client_hello(struct l_tls *t=
+ls)
+> >       l_put_be16((ptr - len_ptr - 2), len_ptr);
+> >       *ptr++ =3D L_ARRAY_SIZE(tls_compression_pref);
+> >
+> > -     for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_compression_pref); i++)
+> > +     for (i =3D 0; i < L_ARRAY_SIZE(tls_compression_pref); i++)
+> >               *ptr++ =3D tls_compression_pref[i].id;
+> >
+> > +     extensions_len_ptr =3D ptr;
+> > +     ptr +=3D 2;
+> > +
+> > +     for (i =3D 0; tls_extensions[i].name; i++) {
+> > +             const struct tls_hello_extension *extension =3D
+> > +                     &tls_extensions[i];
+> > +             ssize_t ext_len;
+> > +
+> > +             /*
+> > +              * Note: could handle NULL client_write with non-NULL
+> > +              * server_handle or server_handle_absent as "server-orien=
+ted"
+> > +              * extension (7.4.1.4) and write empty extension_data and
+> > +              * simliarly require empty extension_data in
+> > +              * tls_handle_client_hello if client_handle NULL.
+> > +              */
+> > +             if (!extension->client_write)
+> > +                     continue;
+> > +
+> > +             ext_len =3D extension->client_write(tls, ptr + 4,
+> > +                                             buf + sizeof(buf) - (ptr =
++ 4));
+> > +             if (ext_len =3D=3D -ENOMSG)
+> > +                     continue;
+> > +
+> > +             if (ext_len < 0) {
+> > +                     TLS_DEBUG("%s extension's client_write: %s",
+> > +                                     extension->name, strerror(-ext_le=
+n));
+> > +                     return false;
+> > +             }
+> > +
+> > +             l_put_be16(extension->id, ptr + 0);
+> > +             l_put_be16(ext_len, ptr + 2);
+> > +             ptr +=3D 4 + ext_len;
+> > +     }
+> > +
+> > +     if (ptr > extensions_len_ptr + 2)
+> > +             l_put_be16(ptr - (extensions_len_ptr + 2), extensions_len=
+_ptr);
+> > +     else /* Skip the length if no extensions */
+> > +             ptr =3D extensions_len_ptr;
+> > +
+> >       tls_tx_handshake(tls, TLS_CLIENT_HELLO, buf, ptr - buf);
+> >       return true;
+> >   }
+> >
+> > -static void tls_send_server_hello(struct l_tls *tls)
+> > +static bool tls_send_server_hello(struct l_tls *tls, struct l_queue *e=
+xtensions)
+> >   {
+> > -     uint8_t buf[128];
+> > +     uint8_t buf[1024];
+> >       uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
+> > +     uint8_t *extensions_len_ptr;
+> > +     const struct l_queue_entry *entry;
+> >
+> >       /* Fill in the Server Hello body */
+> >
+> > @@ -878,7 +922,49 @@ static void tls_send_server_hello(struct l_tls *tl=
+s)
+> >
+> >       *ptr++ =3D tls->pending.compression_method->id;
+> >
+> > +     extensions_len_ptr =3D ptr;
+> > +     ptr +=3D 2;
+> > +
+> > +     for (entry =3D l_queue_get_entries(extensions); entry;
+> > +                     entry =3D entry->next) {
+> > +             uint16_t ext_id =3D L_PTR_TO_UINT(entry->data);
+> > +             const struct tls_hello_extension *extension =3D NULL;
+> > +             unsigned int i;
+> > +             ssize_t ext_len;
+> > +
+> > +             for (i =3D 0; tls_extensions[i].name; i++)
+> > +                     if (tls_extensions[i].id =3D=3D ext_id) {
+> > +                             extension =3D &tls_extensions[i];
+> > +                             break;
+> > +                     }
+> > +
+> > +             if (!extension || !extension->server_write)
+> > +                     continue;
+> > +
+> > +             ext_len =3D extension->server_write(tls, ptr + 4,
+> > +                                             buf + sizeof(buf) - (ptr =
++ 4));
+> > +             if (ext_len =3D=3D -ENOMSG)
+> > +                     continue;
+> > +
+> > +             if (ext_len < 0) {
+> > +                     TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
+> > +                                     "%s extension's server_write: %s",
+> > +                                     extension->name, strerror(-ext_le=
+n));
+> > +                     return false;
+> > +             }
+> > +
+> > +             l_put_be16(ext_id, ptr + 0);
+> > +             l_put_be16(ext_len, ptr + 2);
+> > +             ptr +=3D 4 + ext_len;
+> > +     }
+> > +
+> > +     if (ptr > extensions_len_ptr + 2)
+> > +             l_put_be16(ptr - (extensions_len_ptr + 2), extensions_len=
+_ptr);
+> > +     else /* Skip the length if no extensions */
+> > +             ptr =3D extensions_len_ptr;
+> > +
+> >       tls_tx_handshake(tls, TLS_SERVER_HELLO, buf, ptr - buf);
+> > +     return true;
+> >   }
+> >
 >
-> That's a bug in the kernel then.  We should fix that.
+> So both the server and the client versions are almost the same code.
+> Signatures of client_write and server_write are also identical.  Can
+> these two functions be combined?
 
-As far as I understand we'd also need to fix the API then because
-keyctl has no way to know which operation we're requesting.  I.e.
-split KEYCTL_DH_COMPUTE into two operations or add a field to struct
-keyctl_dh_params.  We could also force the check for both private and
-public values but others might argue the requirements for private
-values may be less strict (in RFC7919 they're the same though, iirc),
-or the min and max may have been checked already.
+Ok.
+
+>
+> Also, don't you want the supported client extensions to also be
+> dynamically configurable per tls object?
+
+We can add this at some point but I'm not sure if there's any use for
+disabling extensions (probably less than for disabling cipher suites
+which we decided to have no public api for)
 
 Best regards
 
---===============0865424135802257517==--
+--===============0385570979658135814==--
 
