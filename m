@@ -1,65 +1,200 @@
-Content-Type: multipart/mixed; boundary="===============1894346142282678262=="
+Content-Type: multipart/mixed; boundary="===============1013526741222368460=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 13/17] key: Add l_key_validate_dh_payload
-Date: Wed, 02 Jan 2019 23:54:41 +0100
-Message-ID: <CAOq732+=p5ZVA=f3k15P4qHfvyMUfyWQzjC-dMgiA7Atga7-Xw@mail.gmail.com>
-In-Reply-To: <f33209a3-d93b-85c0-b7d6-40985304abbd@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 02/17] tls: Add Hello extension sending support
+Date: Wed, 02 Jan 2019 18:36:57 -0600
+Message-ID: <3c99fee2-77f9-c34f-f699-a14bf17f602d@gmail.com>
+In-Reply-To: <20190101194939.5974-2-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1894346142282678262==
+--===============1013526741222368460==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi Andrew,
 
-On Wed, 2 Jan 2019 at 21:47, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 01/01/2019 01:49 PM, Andrew Zaborowski wrote:
-> > Add a function to validate local private value payloads against a
-> > the group's prime before creating kernel keys out of them, and to
->
-> Do we have the same issue in iwd EAP-WSC?
+On 01/01/2019 01:49 PM, Andrew Zaborowski wrote:
+> Declare a struct for ServerHello/ClientHello extensions with write and
+> handle callbacks, modify our ServerHello and ClientHello message
+> builders to append the extensions to the messages.
+> ---
+>   ell/tls-private.h |  18 +++++++++
+>   ell/tls.c         | 101 ++++++++++++++++++++++++++++++++++++++++++----
+>   2 files changed, 112 insertions(+), 7 deletions(-)
+> =
 
-I was going to send a patch for that later, we probably should
-validate the values but obviously the probability of the check failing
-in the first iteration is vert low.  In TLS I guess it's higher
-because we may have to deal with a custom prime, but I didn't add this
-because of actually hitting a problem.
 
->
-> > validate public values received from the peer.
->
-> Note that the kernel already performs almost the same check in
-> dh_is_pubkey_valid
+<snip>
 
-Oh true, this was apprently added in July.  So as far as I understand
-that function is called in dh_compute so our compute_dh_secret should
-fail.  But, in unit/test-key we have this "dh_degenerate" test case
-and it's passing, I have to look at when this check is supposed to
-trigger in the kernel, maybe we can still use it.
+> @@ -812,11 +814,12 @@ static void tls_tx_handshake(struct l_tls *tls, int=
+ type, uint8_t *buf,
+>   =
 
->
-> Might make more sense to create an API to generate a valid private key
-> with the needed constraints.
+>   static bool tls_send_client_hello(struct l_tls *tls)
+>   {
+> -	uint8_t buf[128 + L_ARRAY_SIZE(tls_compression_pref) +
+> +	uint8_t buf[1024 + L_ARRAY_SIZE(tls_compression_pref) +
+>   			2 * L_ARRAY_SIZE(tls_cipher_suite_pref)];
 
-Yep, may be a good idea, and this could hide the 256 byte limit for
-l_getrandom too (I was also thinking maybe l_getrandom itself should
-try to hide that detail)
+So you're sort of depending on the buffer to be large enough, maybe not =
 
-> E.g. by twiddling the MSBs to 0 until the
-> private key is less than the prime.
+a great strategy long-term.
 
-I think this is not normally done so as not to affect the probability
-distribution of the private values.  But we probably should at least
-clear the top few bits of the random number that we know have to be 0
-for the number to be lower than the prime.  A TLS client can
-potentially a receive a prime from the server that has 01 in the first
-byte and then on average it'd need 256 iterations before it draws a
-value lower than the prime the naive way.
+>   	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
+>   	uint8_t *len_ptr;
+> -	int i;
+> +	unsigned int i;
+> +	uint8_t *extensions_len_ptr;
+>   =
 
-Best regards
+>   	/* Fill in the Client Hello body */
+>   =
 
---===============1894346142282678262==--
+> @@ -832,7 +835,7 @@ static bool tls_send_client_hello(struct l_tls *tls)
+>   	len_ptr =3D ptr;
+>   	ptr +=3D 2;
+>   =
+
+> -	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_cipher_suite_pref); i++) {
+> +	for (i =3D 0; i < L_ARRAY_SIZE(tls_cipher_suite_pref); i++) {
+>   		if (!tls_cipher_suite_is_compatible(tls,
+>   						&tls_cipher_suite_pref[i],
+>   						NULL))
+> @@ -850,17 +853,58 @@ static bool tls_send_client_hello(struct l_tls *tls)
+>   	l_put_be16((ptr - len_ptr - 2), len_ptr);
+>   	*ptr++ =3D L_ARRAY_SIZE(tls_compression_pref);
+>   =
+
+> -	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_compression_pref); i++)
+> +	for (i =3D 0; i < L_ARRAY_SIZE(tls_compression_pref); i++)
+>   		*ptr++ =3D tls_compression_pref[i].id;
+>   =
+
+> +	extensions_len_ptr =3D ptr;
+> +	ptr +=3D 2;
+> +
+> +	for (i =3D 0; tls_extensions[i].name; i++) {
+> +		const struct tls_hello_extension *extension =3D
+> +			&tls_extensions[i];
+> +		ssize_t ext_len;
+> +
+> +		/*
+> +		 * Note: could handle NULL client_write with non-NULL
+> +		 * server_handle or server_handle_absent as "server-oriented"
+> +		 * extension (7.4.1.4) and write empty extension_data and
+> +		 * simliarly require empty extension_data in
+> +		 * tls_handle_client_hello if client_handle NULL.
+> +		 */
+> +		if (!extension->client_write)
+> +			continue;
+> +
+> +		ext_len =3D extension->client_write(tls, ptr + 4,
+> +						buf + sizeof(buf) - (ptr + 4));
+> +		if (ext_len =3D=3D -ENOMSG)
+> +			continue;
+> +
+> +		if (ext_len < 0) {
+> +			TLS_DEBUG("%s extension's client_write: %s",
+> +					extension->name, strerror(-ext_len));
+> +			return false;
+> +		}
+> +
+> +		l_put_be16(extension->id, ptr + 0);
+> +		l_put_be16(ext_len, ptr + 2);
+> +		ptr +=3D 4 + ext_len;
+> +	}
+> +
+> +	if (ptr > extensions_len_ptr + 2)
+> +		l_put_be16(ptr - (extensions_len_ptr + 2), extensions_len_ptr);
+> +	else /* Skip the length if no extensions */
+> +		ptr =3D extensions_len_ptr;
+> +
+>   	tls_tx_handshake(tls, TLS_CLIENT_HELLO, buf, ptr - buf);
+>   	return true;
+>   }
+>   =
+
+> -static void tls_send_server_hello(struct l_tls *tls)
+> +static bool tls_send_server_hello(struct l_tls *tls, struct l_queue *ext=
+ensions)
+>   {
+> -	uint8_t buf[128];
+> +	uint8_t buf[1024];
+>   	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
+> +	uint8_t *extensions_len_ptr;
+> +	const struct l_queue_entry *entry;
+>   =
+
+>   	/* Fill in the Server Hello body */
+>   =
+
+> @@ -878,7 +922,49 @@ static void tls_send_server_hello(struct l_tls *tls)
+>   =
+
+>   	*ptr++ =3D tls->pending.compression_method->id;
+>   =
+
+> +	extensions_len_ptr =3D ptr;
+> +	ptr +=3D 2;
+> +
+> +	for (entry =3D l_queue_get_entries(extensions); entry;
+> +			entry =3D entry->next) {
+> +		uint16_t ext_id =3D L_PTR_TO_UINT(entry->data);
+> +		const struct tls_hello_extension *extension =3D NULL;
+> +		unsigned int i;
+> +		ssize_t ext_len;
+> +
+> +		for (i =3D 0; tls_extensions[i].name; i++)
+> +			if (tls_extensions[i].id =3D=3D ext_id) {
+> +				extension =3D &tls_extensions[i];
+> +				break;
+> +			}
+> +
+> +		if (!extension || !extension->server_write)
+> +			continue;
+> +
+> +		ext_len =3D extension->server_write(tls, ptr + 4,
+> +						buf + sizeof(buf) - (ptr + 4));
+> +		if (ext_len =3D=3D -ENOMSG)
+> +			continue;
+> +
+> +		if (ext_len < 0) {
+> +			TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
+> +					"%s extension's server_write: %s",
+> +					extension->name, strerror(-ext_len));
+> +			return false;
+> +		}
+> +
+> +		l_put_be16(ext_id, ptr + 0);
+> +		l_put_be16(ext_len, ptr + 2);
+> +		ptr +=3D 4 + ext_len;
+> +	}
+> +
+> +	if (ptr > extensions_len_ptr + 2)
+> +		l_put_be16(ptr - (extensions_len_ptr + 2), extensions_len_ptr);
+> +	else /* Skip the length if no extensions */
+> +		ptr =3D extensions_len_ptr;
+> +
+>   	tls_tx_handshake(tls, TLS_SERVER_HELLO, buf, ptr - buf);
+> +	return true;
+>   }
+>   =
+
+
+So both the server and the client versions are almost the same code. =
+
+Signatures of client_write and server_write are also identical.  Can =
+
+these two functions be combined?
+
+Also, don't you want the supported client extensions to also be =
+
+dynamically configurable per tls object?
+
+Regards,
+-Denis
+
+--===============1013526741222368460==--
 
