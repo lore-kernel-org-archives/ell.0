@@ -1,188 +1,263 @@
-Content-Type: multipart/mixed; boundary="===============0385570979658135814=="
+Content-Type: multipart/mixed; boundary="===============6811912941782997618=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 02/17] tls: Add Hello extension sending support
-Date: Thu, 03 Jan 2019 12:45:43 +0100
-Message-ID: <CAOq732L5+-2X5-+qrx0y8MsDwrpASM=ynEr37SUDcypnxsbU9w@mail.gmail.com>
-In-Reply-To: <3c99fee2-77f9-c34f-f699-a14bf17f602d@gmail.com>
+Subject: [PATCH 01/12] tls: Add Hello extension sending support
+Date: Fri, 04 Jan 2019 02:26:29 +0100
+Message-ID: <20190104012640.4022-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0385570979658135814==
+--===============6811912941782997618==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, 3 Jan 2019 at 01:40, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 01/01/2019 01:49 PM, Andrew Zaborowski wrote:
-> >   static bool tls_send_client_hello(struct l_tls *tls)
-> >   {
-> > -     uint8_t buf[128 + L_ARRAY_SIZE(tls_compression_pref) +
-> > +     uint8_t buf[1024 + L_ARRAY_SIZE(tls_compression_pref) +
-> >                       2 * L_ARRAY_SIZE(tls_cipher_suite_pref)];
->
-> So you're sort of depending on the buffer to be large enough, maybe not
-> a great strategy long-term.
+Declare a struct for ServerHello/ClientHello extensions with write and
+handle callbacks, modify our ServerHello and ClientHello message
+builders to append the extensions to the messages.
+---
+ ell/tls-private.h |  18 +++++++
+ ell/tls.c         | 125 +++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 136 insertions(+), 7 deletions(-)
 
-True, but there's always a fixed maximum size we need, only it's
-tricky to calculate that size dynamically because we'd need to
-complicate the API.
->
-> >       uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
-> >       uint8_t *len_ptr;
-> > -     int i;
-> > +     unsigned int i;
-> > +     uint8_t *extensions_len_ptr;
-> >
-> >       /* Fill in the Client Hello body */
-> >
-> > @@ -832,7 +835,7 @@ static bool tls_send_client_hello(struct l_tls *tls)
-> >       len_ptr =3D ptr;
-> >       ptr +=3D 2;
-> >
-> > -     for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_cipher_suite_pref); i++)=
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index 0908b9c..5ea8208 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -99,6 +99,24 @@ struct tls_compression_method {
+ 	const char *name;
+ };
+ =
+
++struct tls_hello_extension {
++	const char *name;
++	const char *short_name;
++	uint16_t id;
++	ssize_t (*client_write)(struct l_tls *tls, uint8_t *buf, size_t len);
++	/* Handle a Client Hello extension (on server), can't be NULL */
++	bool (*client_handle)(struct l_tls *tls,
++				const uint8_t *buf, size_t len);
++	/* Handle a Client Hello extension's absence (on server) */
++	bool (*client_handle_absent)(struct l_tls *tls);
++	ssize_t (*server_write)(struct l_tls *tls, uint8_t *buf, size_t len);
++	/* Handle a Server Hello extension (on client) */
++	bool (*server_handle)(struct l_tls *tls,
++				const uint8_t *buf, size_t len);
++	/* Handle a Server Hello extension's absence (on client) */
++	bool (*server_handle_absent)(struct l_tls *tls);
++};
++
+ enum tls_handshake_state {
+ 	TLS_HANDSHAKE_WAIT_START,
+ 	TLS_HANDSHAKE_WAIT_HELLO,
+diff --git a/ell/tls.c b/ell/tls.c
+index f4cd94c..c44003a 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -709,6 +709,8 @@ static const struct tls_hash_algorithm *tls_set_prf_hma=
+c(struct l_tls *tls)
+ 	return NULL;
+ }
+ =
+
++static const struct tls_hello_extension tls_extensions[] =3D {{}};
++
+ enum tls_handshake_type {
+ 	TLS_HELLO_REQUEST	=3D 0,
+ 	TLS_CLIENT_HELLO	=3D 1,
+@@ -810,13 +812,101 @@ static void tls_tx_handshake(struct l_tls *tls, int =
+type, uint8_t *buf,
+ 	tls_tx_record(tls, TLS_CT_HANDSHAKE, buf, length);
+ }
+ =
+
++static ssize_t tls_append_hello_extensions(struct l_tls *tls,
++						struct l_queue *extensions,
++						uint8_t *buf, size_t len)
++{
++	uint8_t *ptr =3D buf;
++	uint8_t *extensions_len_ptr =3D ptr;
++	bool client_hello =3D !tls->server;
++	unsigned int i =3D 0;
++	const struct l_queue_entry *entry =3D l_queue_get_entries(extensions);
++
++	if (len < 2)
++		return -ENOSPC;
++
++	ptr +=3D 2;
++	len -=3D 2;
++
++	while (1) {
++		const struct tls_hello_extension *extension;
++		ssize_t ext_len;
++		ssize_t (*ext_write)(struct l_tls *tls,
++					uint8_t *buf, size_t len);
++
++		if (client_hello) {
++			extension =3D &tls_extensions[i++];
++			if (!extension->name)
++				break;
++
++			ext_write =3D extension->client_write;
++		} else  {
++			uint16_t ext_id;
++
++			if (!entry)
++				break;
++
++			ext_id =3D L_PTR_TO_UINT(entry->data);
++			entry =3D entry->next;
++
++			for (i =3D 0; tls_extensions[i].name; i++)
++				if (tls_extensions[i].id =3D=3D ext_id)
++					break;
++
++			extension =3D &tls_extensions[i];
++			if (!extension->name)
++				continue;
++
++			ext_write =3D extension->server_write;
++		}
++
++		/*
++		 * Note: could handle NULL client_write with non-NULL
++		 * server_handle or server_handle_absent as "server-oriented"
++		 * extension (7.4.1.4) and write empty extension_data and
++		 * simliarly require empty extension_data in
++		 * tls_handle_client_hello if client_handle NULL.
++		 */
++		if (!ext_write)
++			continue;
++
++		if (len < 4)
++			return -ENOSPC;
++
++		ext_len =3D ext_write(tls, ptr + 4, len - 4);
++		if (ext_len =3D=3D -ENOMSG)
++			continue;
++
++		if (ext_len < 0) {
++			TLS_DEBUG("%s extension's %s_write: %s",
++					extension->name,
++					client_hello ? "client" : "server",
++					strerror(-ext_len));
++			return ext_len;
++		}
++
++		l_put_be16(extension->id, ptr + 0);
++		l_put_be16(ext_len, ptr + 2);
++		ptr +=3D 4 + ext_len;
++		len -=3D 4 + ext_len;
++	}
++
++	if (ptr > extensions_len_ptr + 2)
++		l_put_be16(ptr - (extensions_len_ptr + 2), extensions_len_ptr);
++	else /* Skip the length if no extensions */
++		ptr =3D extensions_len_ptr;
++
++	return ptr - buf;
++}
++
+ static bool tls_send_client_hello(struct l_tls *tls)
  {
-> > +     for (i =3D 0; i < L_ARRAY_SIZE(tls_cipher_suite_pref); i++) {
-> >               if (!tls_cipher_suite_is_compatible(tls,
-> >                                               &tls_cipher_suite_pref[i],
-> >                                               NULL))
-> > @@ -850,17 +853,58 @@ static bool tls_send_client_hello(struct l_tls *t=
-ls)
-> >       l_put_be16((ptr - len_ptr - 2), len_ptr);
-> >       *ptr++ =3D L_ARRAY_SIZE(tls_compression_pref);
-> >
-> > -     for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_compression_pref); i++)
-> > +     for (i =3D 0; i < L_ARRAY_SIZE(tls_compression_pref); i++)
-> >               *ptr++ =3D tls_compression_pref[i].id;
-> >
-> > +     extensions_len_ptr =3D ptr;
-> > +     ptr +=3D 2;
-> > +
-> > +     for (i =3D 0; tls_extensions[i].name; i++) {
-> > +             const struct tls_hello_extension *extension =3D
-> > +                     &tls_extensions[i];
-> > +             ssize_t ext_len;
-> > +
-> > +             /*
-> > +              * Note: could handle NULL client_write with non-NULL
-> > +              * server_handle or server_handle_absent as "server-orien=
-ted"
-> > +              * extension (7.4.1.4) and write empty extension_data and
-> > +              * simliarly require empty extension_data in
-> > +              * tls_handle_client_hello if client_handle NULL.
-> > +              */
-> > +             if (!extension->client_write)
-> > +                     continue;
-> > +
-> > +             ext_len =3D extension->client_write(tls, ptr + 4,
-> > +                                             buf + sizeof(buf) - (ptr =
-+ 4));
-> > +             if (ext_len =3D=3D -ENOMSG)
-> > +                     continue;
-> > +
-> > +             if (ext_len < 0) {
-> > +                     TLS_DEBUG("%s extension's client_write: %s",
-> > +                                     extension->name, strerror(-ext_le=
-n));
-> > +                     return false;
-> > +             }
-> > +
-> > +             l_put_be16(extension->id, ptr + 0);
-> > +             l_put_be16(ext_len, ptr + 2);
-> > +             ptr +=3D 4 + ext_len;
-> > +     }
-> > +
-> > +     if (ptr > extensions_len_ptr + 2)
-> > +             l_put_be16(ptr - (extensions_len_ptr + 2), extensions_len=
-_ptr);
-> > +     else /* Skip the length if no extensions */
-> > +             ptr =3D extensions_len_ptr;
-> > +
-> >       tls_tx_handshake(tls, TLS_CLIENT_HELLO, buf, ptr - buf);
-> >       return true;
-> >   }
-> >
-> > -static void tls_send_server_hello(struct l_tls *tls)
-> > +static bool tls_send_server_hello(struct l_tls *tls, struct l_queue *e=
-xtensions)
-> >   {
-> > -     uint8_t buf[128];
-> > +     uint8_t buf[1024];
-> >       uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
-> > +     uint8_t *extensions_len_ptr;
-> > +     const struct l_queue_entry *entry;
-> >
-> >       /* Fill in the Server Hello body */
-> >
-> > @@ -878,7 +922,49 @@ static void tls_send_server_hello(struct l_tls *tl=
-s)
-> >
-> >       *ptr++ =3D tls->pending.compression_method->id;
-> >
-> > +     extensions_len_ptr =3D ptr;
-> > +     ptr +=3D 2;
-> > +
-> > +     for (entry =3D l_queue_get_entries(extensions); entry;
-> > +                     entry =3D entry->next) {
-> > +             uint16_t ext_id =3D L_PTR_TO_UINT(entry->data);
-> > +             const struct tls_hello_extension *extension =3D NULL;
-> > +             unsigned int i;
-> > +             ssize_t ext_len;
-> > +
-> > +             for (i =3D 0; tls_extensions[i].name; i++)
-> > +                     if (tls_extensions[i].id =3D=3D ext_id) {
-> > +                             extension =3D &tls_extensions[i];
-> > +                             break;
-> > +                     }
-> > +
-> > +             if (!extension || !extension->server_write)
-> > +                     continue;
-> > +
-> > +             ext_len =3D extension->server_write(tls, ptr + 4,
-> > +                                             buf + sizeof(buf) - (ptr =
-+ 4));
-> > +             if (ext_len =3D=3D -ENOMSG)
-> > +                     continue;
-> > +
-> > +             if (ext_len < 0) {
-> > +                     TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
-> > +                                     "%s extension's server_write: %s",
-> > +                                     extension->name, strerror(-ext_le=
-n));
-> > +                     return false;
-> > +             }
-> > +
-> > +             l_put_be16(ext_id, ptr + 0);
-> > +             l_put_be16(ext_len, ptr + 2);
-> > +             ptr +=3D 4 + ext_len;
-> > +     }
-> > +
-> > +     if (ptr > extensions_len_ptr + 2)
-> > +             l_put_be16(ptr - (extensions_len_ptr + 2), extensions_len=
-_ptr);
-> > +     else /* Skip the length if no extensions */
-> > +             ptr =3D extensions_len_ptr;
-> > +
-> >       tls_tx_handshake(tls, TLS_SERVER_HELLO, buf, ptr - buf);
-> > +     return true;
-> >   }
-> >
->
-> So both the server and the client versions are almost the same code.
-> Signatures of client_write and server_write are also identical.  Can
-> these two functions be combined?
+-	uint8_t buf[128 + L_ARRAY_SIZE(tls_compression_pref) +
++	uint8_t buf[1024 + L_ARRAY_SIZE(tls_compression_pref) +
+ 			2 * L_ARRAY_SIZE(tls_cipher_suite_pref)];
+ 	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
+ 	uint8_t *len_ptr;
+-	int i;
++	unsigned int i;
++	ssize_t r;
+ =
 
-Ok.
+ 	/* Fill in the Client Hello body */
+ =
 
->
-> Also, don't you want the supported client extensions to also be
-> dynamically configurable per tls object?
+@@ -832,7 +922,7 @@ static bool tls_send_client_hello(struct l_tls *tls)
+ 	len_ptr =3D ptr;
+ 	ptr +=3D 2;
+ =
 
-We can add this at some point but I'm not sure if there's any use for
-disabling extensions (probably less than for disabling cipher suites
-which we decided to have no public api for)
+-	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_cipher_suite_pref); i++) {
++	for (i =3D 0; i < L_ARRAY_SIZE(tls_cipher_suite_pref); i++) {
+ 		if (!tls_cipher_suite_is_compatible(tls,
+ 						&tls_cipher_suite_pref[i],
+ 						NULL))
+@@ -850,17 +940,25 @@ static bool tls_send_client_hello(struct l_tls *tls)
+ 	l_put_be16((ptr - len_ptr - 2), len_ptr);
+ 	*ptr++ =3D L_ARRAY_SIZE(tls_compression_pref);
+ =
 
-Best regards
+-	for (i =3D 0; i < (int) L_ARRAY_SIZE(tls_compression_pref); i++)
++	for (i =3D 0; i < L_ARRAY_SIZE(tls_compression_pref); i++)
+ 		*ptr++ =3D tls_compression_pref[i].id;
+ =
 
---===============0385570979658135814==--
++	r =3D tls_append_hello_extensions(tls, NULL,
++					ptr, buf + sizeof(buf) - ptr);
++	if (r < 0)
++		return false;
++
++	ptr +=3D r;
++
+ 	tls_tx_handshake(tls, TLS_CLIENT_HELLO, buf, ptr - buf);
+ 	return true;
+ }
+ =
+
+-static void tls_send_server_hello(struct l_tls *tls)
++static bool tls_send_server_hello(struct l_tls *tls, struct l_queue *exten=
+sions)
+ {
+-	uint8_t buf[128];
++	uint8_t buf[1024];
+ 	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
++	ssize_t r;
+ =
+
+ 	/* Fill in the Server Hello body */
+ =
+
+@@ -878,7 +976,19 @@ static void tls_send_server_hello(struct l_tls *tls)
+ =
+
+ 	*ptr++ =3D tls->pending.compression_method->id;
+ =
+
++	r =3D tls_append_hello_extensions(tls, extensions,
++					ptr, buf + sizeof(buf) - ptr);
++	if (r < 0) {
++		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
++				"Error appending extensions: %s",
++				strerror(-r));
++		return false;
++	}
++
++	ptr +=3D r;
++
+ 	tls_tx_handshake(tls, TLS_SERVER_HELLO, buf, ptr - buf);
++	return true;
+ }
+ =
+
+ static bool tls_cert_list_add_size(struct l_cert *cert, void *user_data)
+@@ -1644,7 +1754,8 @@ static void tls_handle_client_hello(struct l_tls *tls,
+ =
+
+ 	TLS_DEBUG("Negotiated %s", tls->pending.compression_method->name);
+ =
+
+-	tls_send_server_hello(tls);
++	if (!tls_send_server_hello(tls, NULL))
++		return;
+ =
+
+ 	if (tls->pending.cipher_suite->key_xchg->certificate_check && tls->cert)
+ 		if (!tls_send_certificate(tls))
+-- =
+
+2.19.1
+
+
+--===============6811912941782997618==--
 
