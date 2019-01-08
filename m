@@ -1,45 +1,55 @@
-Content-Type: multipart/mixed; boundary="===============4096231069271170105=="
+Content-Type: multipart/mixed; boundary="===============6253198731531116289=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 06/12] tls: Move cipher suite definitions to tls-suites.c
-Date: Sat, 05 Jan 2019 15:52:54 +0100
-Message-ID: <CAOq732K+7YNrvvS9cO6bt6hUAWTGeVywpNXQjrOC0fH2YQqCrQ@mail.gmail.com>
-In-Reply-To: <0e235de5-3ae3-994e-8aad-3ecd1c8df3ef@gmail.com>
+Subject: [PATCH 1/8] unit: Free temporary buffer in load_cert_file
+Date: Tue, 08 Jan 2019 05:29:44 +0100
+Message-ID: <20190108042951.21914-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4096231069271170105==
+--===============6253198731531116289==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+---
+ unit/test-tls.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-On Fri, 4 Jan 2019 at 22:37, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 01/03/2019 07:26 PM, Andrew Zaborowski wrote:
-> > @@ -903,8 +734,7 @@ static ssize_t tls_append_hello_extensions(struct l=
-_tls *tls,
-> >
-> >   static bool tls_send_client_hello(struct l_tls *tls)
-> >   {
-> > -     uint8_t buf[1024 + L_ARRAY_SIZE(tls_compression_pref) +
-> > -                     2 * L_ARRAY_SIZE(tls_cipher_suite_pref)];
-> > +     uint8_t buf[1024 + L_ARRAY_SIZE(tls_compression_pref)];
-> >       uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
-> >       uint8_t *len_ptr;
-> >       unsigned int i;
->
-> Was this chunk intended?
->
-> Anyway, I went ahead and applied this patch.  Send me a fix if needed.
+diff --git a/unit/test-tls.c b/unit/test-tls.c
+index 6731a0e..3bb710e 100644
+--- a/unit/test-tls.c
++++ b/unit/test-tls.c
+@@ -212,16 +212,19 @@ static void test_tls12_prf(const void *data)
+ =
 
-Thank you.  After scratching my head for a moment I remember this
-chunk is because tls_cipher_suite_pref is now in another file so
-ARRAY_SIZE won't work.  But the message size is limited by the
-extensions implemented, right now it's less than 100 bytes actually.
-unit/test-tls will immediately tell us if it becomes too big.
+ static struct l_cert *load_cert_file(const char *filename)
+ {
+-	const uint8_t *der;
++	uint8_t *der;
+ 	size_t len;
+ 	char *label;
++	struct l_cert *cert;
+ =
 
-Best regards
+ 	der =3D l_pem_load_file(filename, 0, &label, &len);
+ 	if (!der)
+ 		return NULL;
+ =
 
---===============4096231069271170105==--
+ 	l_free(label);
+-	return l_cert_new_from_der(der, len);
++	cert =3D l_cert_new_from_der(der, len);
++	l_free(der);
++	return cert;
+ }
+ =
+
+ static void test_certificates(const void *data)
+-- =
+
+2.19.1
+
+
+--===============6253198731531116289==--
 
