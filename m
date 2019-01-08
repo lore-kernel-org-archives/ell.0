@@ -1,55 +1,56 @@
-Content-Type: multipart/mixed; boundary="===============6253198731531116289=="
+Content-Type: multipart/mixed; boundary="===============1264707657674943373=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/8] unit: Free temporary buffer in load_cert_file
-Date: Tue, 08 Jan 2019 05:29:44 +0100
-Message-ID: <20190108042951.21914-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/8] tls: Tolerate unsolicited extensions in Server Hello
+Date: Tue, 08 Jan 2019 05:29:45 +0100
+Message-ID: <20190108042951.21914-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20190108042951.21914-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6253198731531116289==
+--===============1264707657674943373==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+There are apparently servers that include a "Supported Point Formats"
+extension in the Server Hello even if the Client Hello has not asked for
+one, not conditionted by the presence of the Supported Elliptic Curves
+extension.  Don't fail when we see an extra extensions, only add a log
+line about it.  It it rare among the servers I tested though.
 ---
- unit/test-tls.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ ell/tls.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index 6731a0e..3bb710e 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -212,16 +212,19 @@ static void test_tls12_prf(const void *data)
+diff --git a/ell/tls.c b/ell/tls.c
+index e94dde3..de62e83 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -1327,12 +1327,15 @@ static bool tls_handle_hello_extensions(struct l_tl=
+s *tls,
+ 		 * extension type in ServerHello that it did not request in
+ 		 * the associated ClientHello, it MUST abort the handshake
+ 		 * with an unsupported_extension fatal alert."
++		 * There are however servers that include an unsolicited
++		 * Supported Point Format extension where the handshake
++		 * still completes fine if the extension is ignored so we
++		 * do this instead.
+ 		 */
+ 		if (!client_hello && !handler) {
+-			TLS_DISCONNECT(TLS_ALERT_UNSUPPORTED_EXTENSION, 0,
+-					"%s extension not expected in "
++			TLS_DEBUG("non-fatal: %s extension not expected in "
+ 					"a ServerHello", extension->name);
+-			return false;
++			goto next;
+ 		}
  =
 
- static struct l_cert *load_cert_file(const char *filename)
- {
--	const uint8_t *der;
-+	uint8_t *der;
- 	size_t len;
- 	char *label;
-+	struct l_cert *cert;
- =
-
- 	der =3D l_pem_load_file(filename, 0, &label, &len);
- 	if (!der)
- 		return NULL;
- =
-
- 	l_free(label);
--	return l_cert_new_from_der(der, len);
-+	cert =3D l_cert_new_from_der(der, len);
-+	l_free(der);
-+	return cert;
- }
- =
-
- static void test_certificates(const void *data)
+ 		if (!handler(tls, buf, ext_len)) {
 -- =
 
 2.19.1
 
 
---===============6253198731531116289==--
+--===============1264707657674943373==--
 
