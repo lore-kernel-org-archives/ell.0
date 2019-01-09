@@ -1,203 +1,108 @@
-Content-Type: multipart/mixed; boundary="===============4977735332723936292=="
+Content-Type: multipart/mixed; boundary="===============0689831351115663026=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/4] tls: DHE_RSA key exchange implementation client side
-Date: Wed, 09 Jan 2019 11:43:47 +0100
-Message-ID: <20190109104349.11763-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/4] tls: DHE_RSA key exchange implementation server side
+Date: Wed, 09 Jan 2019 11:43:48 +0100
+Message-ID: <20190109104349.11763-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20190109104349.11763-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4977735332723936292==
+--===============0689831351115663026==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add a new key exchange definition with the callbacks needed to handle the
-client side of the DHE_RSA key exchange.
+Add the handler for the ClientKeyExchange message and a builder callback
+for the ServerKeyExchange message for DHE_RSA.
 ---
- ell/tls-suites.c | 261 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 261 insertions(+)
+ ell/tls-suites.c | 187 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 187 insertions(+)
 
 diff --git a/ell/tls-suites.c b/ell/tls-suites.c
-index af8cbcd..14ea470 100644
+index 14ea470..b9fdc0f 100644
 --- a/ell/tls-suites.c
 +++ b/ell/tls-suites.c
-@@ -688,6 +688,267 @@ static struct tls_key_exchange_algorithm tls_ecdhe_rs=
-a =3D {
- 	.verify =3D tls_rsa_verify,
- };
+@@ -691,6 +691,34 @@ static struct tls_key_exchange_algorithm tls_ecdhe_rsa=
+ =3D {
+ /* Maximum FF DH prime modulus size in bytes */
+ #define TLS_DHE_MAX_SIZE 1024
  =
 
-+/* Maximum FF DH prime modulus size in bytes */
-+#define TLS_DHE_MAX_SIZE 1024
-+
-+struct tls_dhe_params {
-+	size_t prime_len;
-+	struct l_key *prime;
-+	struct l_key *generator;
-+	struct l_key *private;
-+	struct l_key *public;
-+	const uint8_t *server_dh_params_buf;
-+	size_t server_dh_params_len;
++/* RFC 3526, Section 3 */
++static const uint8_t tls_dh14_prime[] =3D {
++	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc9, 0x0f, 0xda, 0xa2,
++	0x21, 0x68, 0xc2, 0x34, 0xc4, 0xc6, 0x62, 0x8b, 0x80, 0xdc, 0x1c, 0xd1,
++	0x29, 0x02, 0x4e, 0x08, 0x8a, 0x67, 0xcc, 0x74, 0x02, 0x0b, 0xbe, 0xa6,
++	0x3b, 0x13, 0x9b, 0x22, 0x51, 0x4a, 0x08, 0x79, 0x8e, 0x34, 0x04, 0xdd,
++	0xef, 0x95, 0x19, 0xb3, 0xcd, 0x3a, 0x43, 0x1b, 0x30, 0x2b, 0x0a, 0x6d,
++	0xf2, 0x5f, 0x14, 0x37, 0x4f, 0xe1, 0x35, 0x6d, 0x6d, 0x51, 0xc2, 0x45,
++	0xe4, 0x85, 0xb5, 0x76, 0x62, 0x5e, 0x7e, 0xc6, 0xf4, 0x4c, 0x42, 0xe9,
++	0xa6, 0x37, 0xed, 0x6b, 0x0b, 0xff, 0x5c, 0xb6, 0xf4, 0x06, 0xb7, 0xed,
++	0xee, 0x38, 0x6b, 0xfb, 0x5a, 0x89, 0x9f, 0xa5, 0xae, 0x9f, 0x24, 0x11,
++	0x7c, 0x4b, 0x1f, 0xe6, 0x49, 0x28, 0x66, 0x51, 0xec, 0xe4, 0x5b, 0x3d,
++	0xc2, 0x00, 0x7c, 0xb8, 0xa1, 0x63, 0xbf, 0x05, 0x98, 0xda, 0x48, 0x36,
++	0x1c, 0x55, 0xd3, 0x9a, 0x69, 0x16, 0x3f, 0xa8, 0xfd, 0x24, 0xcf, 0x5f,
++	0x83, 0x65, 0x5d, 0x23, 0xdc, 0xa3, 0xad, 0x96, 0x1c, 0x62, 0xf3, 0x56,
++	0x20, 0x85, 0x52, 0xbb, 0x9e, 0xd5, 0x29, 0x07, 0x70, 0x96, 0x96, 0x6d,
++	0x67, 0x0c, 0x35, 0x4e, 0x4a, 0xbc, 0x98, 0x04, 0xf1, 0x74, 0x6c, 0x08,
++	0xca, 0x18, 0x21, 0x7c, 0x32, 0x90, 0x5e, 0x46, 0x2e, 0x36, 0xce, 0x3b,
++	0xe3, 0x9e, 0x77, 0x2c, 0x18, 0x0e, 0x86, 0x03, 0x9b, 0x27, 0x83, 0xa2,
++	0xec, 0x07, 0xa2, 0x8f, 0xb5, 0xc5, 0x5d, 0xf0, 0x6f, 0x4c, 0x52, 0xc9,
++	0xde, 0x2b, 0xcb, 0xf6, 0x95, 0x58, 0x17, 0x18, 0x39, 0x95, 0x49, 0x7c,
++	0xea, 0x95, 0x6a, 0xe5, 0x15, 0xd2, 0x26, 0x18, 0x98, 0xfa, 0x05, 0x10,
++	0x15, 0x72, 0x8e, 0x5a, 0x8a, 0xac, 0xaa, 0x68, 0xff, 0xff, 0xff, 0xff,
++	0xff, 0xff, 0xff, 0xff,
 +};
 +
-+static void tls_free_dhe_params(struct l_tls *tls)
++static const unsigned int tls_dh14_generator =3D 2;
++
+ struct tls_dhe_params {
+ 	size_t prime_len;
+ 	struct l_key *prime;
+@@ -758,6 +786,100 @@ static bool tls_get_server_dh_params_hash(struct l_tl=
+s *tls, uint8_t tls_id,
+ 	return true;
+ }
+ =
+
++static bool tls_send_dhe_server_key_xchg(struct l_tls *tls)
 +{
-+	struct tls_dhe_params *params =3D tls->pending.key_xchg_params;
-+
-+	if (!params)
-+		return;
-+
-+	tls->pending.key_xchg_params =3D NULL;
-+
-+	l_key_free(params->prime);
-+	l_key_free(params->generator);
-+	l_key_free(params->private);
-+	l_key_free(params->public);
-+	l_free(params);
-+}
-+
-+static bool tls_get_server_dh_params_hash(struct l_tls *tls, uint8_t tls_i=
-d,
-+						uint8_t *out, size_t *len,
-+						enum l_checksum_type *type)
-+{
-+	unsigned int hash;
-+	struct l_checksum *checksum;
-+	struct tls_dhe_params *params =3D tls->pending.key_xchg_params;
-+	ssize_t hash_len, ret;
-+
-+	for (hash =3D 0; hash < __HANDSHAKE_HASH_COUNT; hash++)
-+		if (tls_handshake_hash_data[hash].tls_id =3D=3D tls_id)
-+			break;
-+
-+	if (hash =3D=3D __HANDSHAKE_HASH_COUNT)
-+		return false;
-+
-+	hash_len =3D tls_handshake_hash_data[hash].length;
-+
-+	checksum =3D l_checksum_new(tls_handshake_hash_data[hash].l_id);
-+	if (!checksum)
-+		return false;
-+
-+	l_checksum_update(checksum, tls->pending.client_random, 32);
-+	l_checksum_update(checksum, tls->pending.server_random, 32);
-+	l_checksum_update(checksum, params->server_dh_params_buf,
-+				params->server_dh_params_len);
-+	ret =3D l_checksum_get_digest(checksum, out, hash_len);
-+	l_checksum_free(checksum);
-+
-+	if (ret !=3D (ssize_t) hash_len)
-+		return false;
-+
-+	if (len)
-+		*len =3D hash_len;
-+
-+	if (type)
-+		*type =3D tls_handshake_hash_data[hash].l_id;
-+
-+	return true;
-+}
-+
-+static void tls_handle_dhe_server_key_xchg(struct l_tls *tls,
-+						const uint8_t *buf, size_t len)
-+{
-+	struct tls_dhe_params *params =3D NULL;
++	uint8_t buf[1024 + TLS_DHE_MAX_SIZE * 3];
++	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
++	struct tls_dhe_params *params;
 +	const uint8_t *prime_buf;
-+	const uint8_t *generator_buf;
-+	size_t generator_len;
-+	const uint8_t *public_buf;
++	uint8_t generator_buf =3D tls_dh14_generator;
++	uint8_t public_buf[TLS_DHE_MAX_SIZE];
 +	size_t public_len;
-+
-+	if (len < 2)
-+		goto decode_error;
++	unsigned int zeros =3D 0;
++	ssize_t sign_len;
 +
 +	params =3D l_new(struct tls_dhe_params, 1);
-+	params->server_dh_params_buf =3D buf;
-+
-+	params->prime_len =3D l_get_be16(buf);
-+	if (len < 2 + params->prime_len + 2)
-+		goto decode_error;
-+
-+	prime_buf =3D buf + 2;
-+	buf +=3D 2 + params->prime_len;
-+	len -=3D 2 + params->prime_len;
-+
-+	/* Strip leading zeros for the length checks later */
-+	while (params->prime_len && prime_buf[0] =3D=3D 0x00) {
-+		prime_buf++;
-+		params->prime_len--;
-+	}
-+
-+	generator_len =3D l_get_be16(buf);
-+	if (len < 2 + generator_len + 2)
-+		goto decode_error;
-+
-+	generator_buf =3D buf + 2;
-+	buf +=3D 2 + generator_len;
-+	len -=3D 2 + generator_len;
-+
-+	public_len =3D l_get_be16(buf);
-+	if (len < 2 + public_len)
-+		goto decode_error;
-+
-+	public_buf =3D buf + 2;
-+	buf +=3D 2 + public_len;
-+	len -=3D 2 + public_len;
-+
-+	params->server_dh_params_len =3D buf - params->server_dh_params_buf;
 +
 +	/*
-+	 * Validate the values received.  Without RFC 7919 we basically have
-+	 * to blindly accept the provided prime value.  We have no way to
-+	 * confirm that it's actually prime or that it's a "safe prime" or
-+	 * that it forms a group without small sub-groups.  There's also no
-+	 * way to whitelist all valid values.  But we do a basic sanity
-+	 * check and require it to be 1024-bit or longer (see weakdh.org),
-+	 * might need to move to 2048 bits actually.
-+	 * The generator must also be at least within the min & max interval
-+	 * for the private/public values.
++	 * For now hardcode the Oakley Group 14 parameters like some other
++	 * TLS implementations do without RFC 7919, which is actually a
++	 * downside because the more common the group parameters are the
++	 * less secure they are assumed to be, but also is a test that the
++	 * group is sufficiently good.
++	 *
++	 * Eventually we should make this configurable so that a unique
++	 * likely-prime number generated by either 'openssl dhparam' or
++	 * 'ssh-keygen -G' can be set, or parse /etc/ssh/moduli to select
++	 * a random pre-generated FFDH group each time.
 +	 */
-+
-+	if (params->prime_len > TLS_DHE_MAX_SIZE || params->prime_len < 128 ||
-+			!(prime_buf[params->prime_len - 1] & 1)) {
-+		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
-+				"Server DH prime modulus invalid");
-+		goto free_params;
-+	}
-+
-+	if (!l_key_validate_dh_payload(generator_buf, generator_len,
-+					prime_buf, params->prime_len)) {
-+		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
-+				"Server DH generator value invalid");
-+		goto free_params;
-+	}
-+
-+	/*
-+	 * RFC 7919 Section 3.0:
-+	 * "the client MUST verify that dh_Ys is in the range
-+	 * 1 < dh_Ys < dh_p - 1.  If dh_Ys is not in this range, the client
-+	 * MUST terminate the connection with a fatal handshake_failure(40)
-+	 * alert."
-+	 */
-+	if (!l_key_validate_dh_payload(public_buf, public_len,
-+					prime_buf, params->prime_len)) {
-+		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
-+				"Server DH public value invalid");
-+		goto free_params;
-+	}
++	prime_buf =3D tls_dh14_prime;
++	params->prime_len =3D sizeof(tls_dh14_prime);
 +
 +	params->prime =3D l_key_new(L_KEY_RAW, prime_buf, params->prime_len);
-+	params->generator =3D l_key_new(L_KEY_RAW, generator_buf, generator_len);
-+	params->public =3D l_key_new(L_KEY_RAW, public_buf, public_len);
++	params->generator =3D l_key_new(L_KEY_RAW, &generator_buf, 1);
 +
-+	if (!params->prime || !params->generator || !params->public) {
++	if (!params->prime || !params->generator) {
 +		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0, "l_key_new failed");
 +		goto free_params;
 +	}
 +
-+	/* Do this now so we don't need prime_buf in send_client_key_xchg */
 +	params->private =3D l_key_generate_dh_private(prime_buf, params->prime_le=
 n);
 +	if (!params->private) {
@@ -206,39 +111,6 @@ n);
 +		goto free_params;
 +	}
 +
-+	tls->pending.key_xchg_params =3D params;
-+
-+	if (!tls->pending.cipher_suite->key_xchg->verify(tls, buf, len,
-+						tls_get_server_dh_params_hash))
-+		return;
-+
-+	TLS_SET_STATE(TLS_HANDSHAKE_WAIT_HELLO_DONE);
-+	return;
-+
-+decode_error:
-+	TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
-+			"ServerKeyExchange decode error");
-+
-+free_params:
-+	if (params) {
-+		l_key_free(params->prime);
-+		l_key_free(params->generator);
-+		l_key_free(params->public);
-+		l_free(params);
-+	}
-+}
-+
-+static bool tls_send_dhe_client_key_xchg(struct l_tls *tls)
-+{
-+	struct tls_dhe_params *params =3D tls->pending.key_xchg_params;
-+	uint8_t buf[128 + params->prime_len];
-+	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
-+	uint8_t public_buf[params->prime_len];
-+	size_t public_len;
-+	unsigned int zeros =3D 0;
-+	uint8_t pre_master_secret[params->prime_len];
-+	size_t pre_master_secret_len;
-+
 +	public_len =3D params->prime_len;
 +
 +	if (!l_key_compute_dh_public(params->generator, params->private,
@@ -246,59 +118,137 @@ n);
 +					&public_len)) {
 +		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
 +				"l_key_compute_dh_public failed");
-+		return false;
++		goto free_params;
 +	}
 +
 +	while (zeros < public_len && public_buf[zeros] =3D=3D 0x00)
 +		zeros++;
 +
++	params->server_dh_params_buf =3D ptr;
++
++	/* RFC 5246, Section 7.4.3 */
++
++	l_put_be16(params->prime_len, ptr);
++	memcpy(ptr + 2, prime_buf, params->prime_len);
++	ptr +=3D 2 + params->prime_len;
++
++	l_put_be16(1, ptr);
++	memcpy(ptr + 2, &generator_buf, 1);
++	ptr +=3D 2 + 1;
++
 +	l_put_be16(public_len - zeros, ptr);
 +	memcpy(ptr + 2, public_buf + zeros, public_len - zeros);
 +	ptr +=3D 2 + public_len - zeros;
 +
++	params->server_dh_params_len =3D ptr - params->server_dh_params_buf;
++	tls->pending.key_xchg_params =3D params;
++
++	sign_len =3D tls->pending.cipher_suite->key_xchg->sign(tls, ptr,
++					buf + sizeof(buf) - ptr,
++					tls_get_server_dh_params_hash);
++	if (sign_len < 0)
++		return false;
++
++	ptr +=3D sign_len;
++	tls_tx_handshake(tls, TLS_SERVER_KEY_EXCHANGE, buf, ptr - buf);
++	return true;
++
++free_params:
++	l_key_free(params->prime);
++	l_key_free(params->generator);
++	l_key_free(params->private);
++	l_free(params);
++	return false;
++}
++
+ static void tls_handle_dhe_server_key_xchg(struct l_tls *tls,
+ 						const uint8_t *buf, size_t len)
+ {
+@@ -937,13 +1059,78 @@ static bool tls_send_dhe_client_key_xchg(struct l_tl=
+s *tls)
+ 	return true;
+ }
+ =
+
++static void tls_handle_dhe_client_key_xchg(struct l_tls *tls,
++						const uint8_t *buf, size_t len)
++{
++	struct tls_dhe_params *params =3D tls->pending.key_xchg_params;
++	uint8_t pre_master_secret[params->prime_len];
++	size_t pre_master_secret_len;
++	size_t public_len;
++	unsigned int zeros =3D 0;
++
++	if (len < 2)
++		goto decode_error;
++
++	public_len =3D l_get_be16(buf);
++	buf +=3D 2;
++	len -=3D 2;
++
++	if (public_len !=3D len)
++		goto decode_error;
++
++	/*
++	 * RFC 7919 Section 4:
++	 * "the server MUST verify that 1 < dh_Yc < dh_p - 1.  If dh_Yc is
++	 * out of range, the server MUST terminate the connection with
++	 * a fatal handshake_failure(40) alert."
++	 */
++	if (!l_key_validate_dh_payload(buf, public_len,
++					tls_dh14_prime, params->prime_len)) {
++		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
++				"Client DH public value invalid");
++		return;
++	}
++
++	params->public =3D l_key_new(L_KEY_RAW, buf, public_len);
++	if (!params->prime) {
++		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0, "l_key_new failed");
++		return;
++	}
++
 +	pre_master_secret_len =3D params->prime_len;
-+	zeros =3D 0;
 +
 +	if (!l_key_compute_dh_secret(params->public, params->private,
 +					params->prime, pre_master_secret,
 +					&pre_master_secret_len)) {
 +		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
 +				"Generating DH shared-secret failed");
-+		return false;
++		return;
 +	}
 +
 +	while (zeros < pre_master_secret_len &&
 +			pre_master_secret[zeros] =3D=3D 0x00)
 +		zeros++;
 +
-+	tls_tx_handshake(tls, TLS_CLIENT_KEY_EXCHANGE, buf, ptr - buf);
-+
 +	tls_free_dhe_params(tls);
 +	tls_generate_master_secret(tls, pre_master_secret + zeros,
 +					pre_master_secret_len - zeros);
 +	memset(pre_master_secret, 0, pre_master_secret_len);
-+	return true;
++	return;
++
++decode_error:
++	TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
++			"ClientKeyExchange decode error");
 +}
 +
-+static struct tls_key_exchange_algorithm tls_dhe_rsa =3D {
-+	.id =3D 1, /* RSA_sign */
-+	.certificate_check =3D true,
-+	.need_ecc =3D true,
-+	.validate_cert_key_type =3D tls_rsa_validate_cert_key,
-+	.handle_server_key_exchange =3D tls_handle_dhe_server_key_xchg,
-+	.send_client_key_exchange =3D tls_send_dhe_client_key_xchg,
-+	.free_params =3D tls_free_dhe_params,
-+	.sign =3D tls_rsa_sign,
-+	.verify =3D tls_rsa_verify,
-+};
-+
- static struct tls_bulk_encryption_algorithm tls_rc4 =3D {
- 	.cipher_type =3D TLS_CIPHER_STREAM,
- 	.l_id =3D L_CIPHER_ARC4,
+ static struct tls_key_exchange_algorithm tls_dhe_rsa =3D {
+ 	.id =3D 1, /* RSA_sign */
+ 	.certificate_check =3D true,
+ 	.need_ecc =3D true,
+ 	.validate_cert_key_type =3D tls_rsa_validate_cert_key,
++	.send_server_key_exchange =3D tls_send_dhe_server_key_xchg,
+ 	.handle_server_key_exchange =3D tls_handle_dhe_server_key_xchg,
+ 	.send_client_key_exchange =3D tls_send_dhe_client_key_xchg,
++	.handle_client_key_exchange =3D tls_handle_dhe_client_key_xchg,
+ 	.free_params =3D tls_free_dhe_params,
+ 	.sign =3D tls_rsa_sign,
+ 	.verify =3D tls_rsa_verify,
 -- =
 
 2.19.1
 
 
---===============4977735332723936292==--
+--===============0689831351115663026==--
 
