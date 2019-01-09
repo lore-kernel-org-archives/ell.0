@@ -1,34 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============5912664430185298148=="
+Content-Type: multipart/mixed; boundary="===============8293260520248572141=="
 MIME-Version: 1.0
-From: Jan Engelhardt <jengelh@inai.de>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH 1/4] key: Add l_key_validate_dh_payload
-Date: Wed, 09 Jan 2019 14:40:56 +0100
-Message-ID: <nycvar.YFH.7.76.1901091440200.7590@n3.vanv.qr>
-In-Reply-To: <20190109104349.11763-1-andrew.zaborowski@intel.com>
+Date: Wed, 09 Jan 2019 08:54:25 -0600
+Message-ID: <9887235f-9914-0e36-a2d1-eac1f25b81c6@gmail.com>
+In-Reply-To: <nycvar.YFH.7.76.1901091440200.7590@n3.vanv.qr>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5912664430185298148==
+--===============8293260520248572141==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+hi Jan,
 
-On Wednesday 2019-01-09 11:43, Andrew Zaborowski wrote:
+> =
 
->Add a function to validate public values received from the DH peer
->against the minimum and maximum values depending on the group's
->prime modulus.  This is only necessary ~temporarily as the kernel
->*should* be validating the public value in the keyctl operation,
->however due to the shape of the syscall keyctl API it can't do that
->now so fixing it is not easy and may take a while.  We also can't
->do this easily inside l_key_compute_dh_secret because we don't have
->the prime's raw value there.  We could perhaps do that if we created
->a new "DH group" type (simliar to l_ecc_curve for ECDH) and made the
->API more like the ECDH API.
+> Excuse my ignorance, but isn't this something a library like
+> openssl/libressl/etc. should be doing instead?
 
-Excuse my ignorance, but isn't this something a library like
-openssl/libressl/etc. should be doing instead?
+We do not use openssl/libressl and do not want to.  Instead we utilize =
 
---===============5912664430185298148==--
+the Linux Kernel for most crypto primitives and just implement the bare =
+
+minimum TLS protocol needed for our main projects.
+
+This allows us to have a rather functional TLS stack in about ~5kloc, =
+
+compared to depending on something like OpenSSL 540+ kloc.
+
+Regards,
+-Denis
+
+--===============8293260520248572141==--
 
