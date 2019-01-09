@@ -1,94 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============7170256692961853656=="
+Content-Type: multipart/mixed; boundary="===============3834690771942183364=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 3/4] tls: DHE_RSA key exchange implementation server side
-Date: Wed, 09 Jan 2019 11:12:18 -0600
-Message-ID: <822f4e43-ebd3-a198-4527-2018cc3a855c@gmail.com>
-In-Reply-To: <20190109104349.11763-3-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH] tls: Implement the RFC 7919 Supported Groups extension
+Date: Wed, 09 Jan 2019 11:49:18 -0600
+Message-ID: <5ca1dc02-ebf9-9d96-0042-e6e4e22121e5@gmail.com>
+In-Reply-To: <20190108232530.5665-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7170256692961853656==
+--===============3834690771942183364==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
-On 01/09/2019 04:43 AM, Andrew Zaborowski wrote:
-> Add the handler for the ClientKeyExchange message and a builder callback
-> for the ServerKeyExchange message for DHE_RSA.
+On 01/08/2019 05:25 PM, Andrew Zaborowski wrote:
+> For ECDHE (RFC 8422) we implemented the Supported Elliptic Curves
+> extension which was later renamed Supported Groups in RFC 7919 and
+> extended to be used for negotiating FF groups for DHE too.  This change
+> is acknowledged in RFC 8422 too.  This fixes some problems with the DHE
+> key exchange in TLS although it seems like it may have been released
+> too late to get TLS users to re-enable DHE when ECDHE is widely
+> supported and had the group negotiation specified in a way free of
+> the issues in DHE.  RFC 7919 is only supported by few https servers
+> (all wikipedia servers as far as I could tell)
 > ---
->   ell/tls-suites.c | 187 +++++++++++++++++++++++++++++++++++++++++++++++
->   1 file changed, 187 insertions(+)
+>   ell/tls-extensions.c | 515 +++++++++++++++++++++++++++++++++++++++++--
+>   ell/tls-private.h    |  29 ++-
+>   ell/tls-suites.c     | 101 +++------
+>   ell/tls.c            |  14 ++
+>   4 files changed, 568 insertions(+), 91 deletions(-)
+> =
 
-<snip>
 
-> +
-> +	params->server_dh_params_buf =3D ptr;
-
-This part seems a bit hacky..
-
-> +
-> +	/* RFC 5246, Section 7.4.3 */
-> +
-> +	l_put_be16(params->prime_len, ptr);
-> +	memcpy(ptr + 2, prime_buf, params->prime_len);
-> +	ptr +=3D 2 + params->prime_len;
-> +
-> +	l_put_be16(1, ptr);
-> +	memcpy(ptr + 2, &generator_buf, 1);
-> +	ptr +=3D 2 + 1;
-> +
-> +	l_put_be16(public_len - zeros, ptr);
-> +	memcpy(ptr + 2, public_buf + zeros, public_len - zeros);
-> +	ptr +=3D 2 + public_len - zeros;
-> +
-> +	params->server_dh_params_len =3D ptr - params->server_dh_params_buf;
-> +	tls->pending.key_xchg_params =3D params;
-> +
-> +	sign_len =3D tls->pending.cipher_suite->key_xchg->sign(tls, ptr,
-> +					buf + sizeof(buf) - ptr,
-> +					tls_get_server_dh_params_hash);
-
-The way you did it in ecdh seems to be much cleaner.  Perhaps the =
-
-sign/verify operation should be receiving the data to be hashed directly =
-
-(maybe as an iovec), instead of having get_hash function lookup the hash =
-
-id, create the checksum, run it, check for errors, etc).  You are =
-
-already duplicating these steps in tls_get_server_ecdh_params_hash and =
-
-tls_get_server_dh_params_hash.  Admittedly, tls_get_prev_digest_by_id is =
-
-a bit of a special case.
-
-At the very least can we zero out the server_dh_params & =
-
-server_dh_params_len after you're done here (and similarly in patch 2)?
-
-> +	if (sign_len < 0)
-> +		return false;
-> +
-> +	ptr +=3D sign_len;
-> +	tls_tx_handshake(tls, TLS_SERVER_KEY_EXCHANGE, buf, ptr - buf);
-> +	return true;
-> +
-> +free_params:
-> +	l_key_free(params->prime);
-> +	l_key_free(params->generator);
-> +	l_key_free(params->private);
-> +	l_free(params);
-> +	return false;
-> +}
-> +
-
-Anyway, I applied all 4 of these.
+Applied, thanks.
 
 Regards,
 -Denis
 
---===============7170256692961853656==--
+
+--===============3834690771942183364==--
 
