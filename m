@@ -1,130 +1,94 @@
-Content-Type: multipart/mixed; boundary="===============3242096403622998067=="
+Content-Type: multipart/mixed; boundary="===============7170256692961853656=="
 MIME-Version: 1.0
-From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH 2/2] ecc: added API's to support SAE
-Date: Wed, 09 Jan 2019 09:10:40 -0800
-Message-ID: <20190109171040.32584-2-james.prestwood@linux.intel.com>
-In-Reply-To: <20190109171040.32584-1-james.prestwood@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 3/4] tls: DHE_RSA key exchange implementation server side
+Date: Wed, 09 Jan 2019 11:12:18 -0600
+Message-ID: <822f4e43-ebd3-a198-4527-2018cc3a855c@gmail.com>
+In-Reply-To: <20190109104349.11763-3-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3242096403622998067==
+--===============7170256692961853656==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The functionality require was:
- - Scalar multiplication
- - Find a scalars legendre symbol
- - Sum the curve equations X side
- - Get prime from curve (needed for input to SAE KDF)
- - Check if scalars/points are equal
----
- ell/ecc.c | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/ecc.h | 12 +++++++++++
- 2 files changed, 71 insertions(+)
+Hi Andrew,
 
-diff --git a/ell/ecc.c b/ell/ecc.c
-index c7e7089..b6b2cd6 100644
---- a/ell/ecc.c
-+++ b/ell/ecc.c
-@@ -485,3 +485,62 @@ LIB_EXPORT bool l_ecc_point_inverse(struct l_ecc_point=
- *p)
- =
+On 01/09/2019 04:43 AM, Andrew Zaborowski wrote:
+> Add the handler for the ClientKeyExchange message and a builder callback
+> for the ServerKeyExchange message for DHE_RSA.
+> ---
+>   ell/tls-suites.c | 187 +++++++++++++++++++++++++++++++++++++++++++++++
+>   1 file changed, 187 insertions(+)
 
- 	return true;
- }
-+
-+LIB_EXPORT bool l_ecc_scalar_multiply(struct l_ecc_scalar *ret,
-+					struct l_ecc_scalar *a,
-+					struct l_ecc_scalar *b)
-+{
-+	if (unlikely(!ret) || unlikely(!a) || unlikely(!b))
-+		return false;
-+
-+	_vli_mod_mult_fast(ret->c, a->c, b->c, a->curve->p, a->curve->ndigits);
-+
-+	return true;
-+}
-+
-+LIB_EXPORT int l_ecc_scalar_legendre(struct l_ecc_scalar *value)
-+{
-+	if (unlikely(!value))
-+		return -1;
-+
-+	return _vli_legendre(value->c, value->curve->p, value->curve->ndigits);
-+}
-+
-+LIB_EXPORT bool l_ecc_scalar_sum_x(struct l_ecc_scalar *ret,
-+					struct l_ecc_scalar *x)
-+{
-+	if (unlikely(!ret) || unlikely(!x))
-+		return false;
-+
-+	ecc_compute_y_sqr(x->curve, ret->c, x->c);
-+
-+	return true;
-+}
-+
-+LIB_EXPORT struct l_ecc_scalar *l_ecc_curve_get_prime(
-+						const struct l_ecc_curve *curve)
-+{
-+	if (unlikely(!curve))
-+		return NULL;
-+
-+	return _ecc_constant_new(curve, (void *) curve->p, curve->ndigits * 8);
-+}
-+
-+LIB_EXPORT bool l_ecc_scalars_are_equal(struct l_ecc_scalar *a,
-+						struct l_ecc_scalar *b)
-+{
-+	if (unlikely(!a) || unlikely(!b))
-+		return false;
-+
-+	return (memcmp(a->c, b->c, a->curve->ndigits * 8) =3D=3D 0);
-+}
-+
-+LIB_EXPORT bool l_ecc_points_are_equal(struct l_ecc_point *a,
-+						struct l_ecc_point *b)
-+{
-+	if (unlikely(!a) || unlikely(!b))
-+		return false;
-+
-+	return ((memcmp(a->x, b->x, a->curve->ndigits * 8) =3D=3D 0) &&
-+			(memcmp(a->y, b->y, a->curve->ndigits * 8)));
-+}
-diff --git a/ell/ecc.h b/ell/ecc.h
-index fd10f16..dc3d9c3 100644
---- a/ell/ecc.h
-+++ b/ell/ecc.h
-@@ -75,6 +75,18 @@ bool l_ecc_point_add(struct l_ecc_point *ret, struct l_e=
-cc_point *a,
- 				struct l_ecc_point *b);
- bool l_ecc_point_inverse(struct l_ecc_point *p);
- =
+<snip>
 
-+/* extra operations needed for SAE */
-+bool l_ecc_scalar_multiply(struct l_ecc_scalar *ret, struct l_ecc_scalar *=
-a,
-+				struct l_ecc_scalar *b);
-+int l_ecc_scalar_legendre(struct l_ecc_scalar *value);
-+bool l_ecc_scalar_sum_x(struct l_ecc_scalar *ret, struct l_ecc_scalar *x);
-+
-+struct l_ecc_scalar *l_ecc_curve_get_prime(const struct l_ecc_curve *curve=
-);
-+
-+bool l_ecc_scalars_are_equal(struct l_ecc_scalar *a, struct l_ecc_scalar *=
-b);
-+
-+bool l_ecc_points_are_equal(struct l_ecc_point *a, struct l_ecc_point *b);
-+
- #ifdef __cplusplus
- }
- #endif
--- =
+> +
+> +	params->server_dh_params_buf =3D ptr;
 
-2.17.1
+This part seems a bit hacky..
 
+> +
+> +	/* RFC 5246, Section 7.4.3 */
+> +
+> +	l_put_be16(params->prime_len, ptr);
+> +	memcpy(ptr + 2, prime_buf, params->prime_len);
+> +	ptr +=3D 2 + params->prime_len;
+> +
+> +	l_put_be16(1, ptr);
+> +	memcpy(ptr + 2, &generator_buf, 1);
+> +	ptr +=3D 2 + 1;
+> +
+> +	l_put_be16(public_len - zeros, ptr);
+> +	memcpy(ptr + 2, public_buf + zeros, public_len - zeros);
+> +	ptr +=3D 2 + public_len - zeros;
+> +
+> +	params->server_dh_params_len =3D ptr - params->server_dh_params_buf;
+> +	tls->pending.key_xchg_params =3D params;
+> +
+> +	sign_len =3D tls->pending.cipher_suite->key_xchg->sign(tls, ptr,
+> +					buf + sizeof(buf) - ptr,
+> +					tls_get_server_dh_params_hash);
 
---===============3242096403622998067==--
+The way you did it in ecdh seems to be much cleaner.  Perhaps the =
+
+sign/verify operation should be receiving the data to be hashed directly =
+
+(maybe as an iovec), instead of having get_hash function lookup the hash =
+
+id, create the checksum, run it, check for errors, etc).  You are =
+
+already duplicating these steps in tls_get_server_ecdh_params_hash and =
+
+tls_get_server_dh_params_hash.  Admittedly, tls_get_prev_digest_by_id is =
+
+a bit of a special case.
+
+At the very least can we zero out the server_dh_params & =
+
+server_dh_params_len after you're done here (and similarly in patch 2)?
+
+> +	if (sign_len < 0)
+> +		return false;
+> +
+> +	ptr +=3D sign_len;
+> +	tls_tx_handshake(tls, TLS_SERVER_KEY_EXCHANGE, buf, ptr - buf);
+> +	return true;
+> +
+> +free_params:
+> +	l_key_free(params->prime);
+> +	l_key_free(params->generator);
+> +	l_key_free(params->private);
+> +	l_free(params);
+> +	return false;
+> +}
+> +
+
+Anyway, I applied all 4 of these.
+
+Regards,
+-Denis
+
+--===============7170256692961853656==--
 
