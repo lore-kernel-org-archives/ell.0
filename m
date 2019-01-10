@@ -1,33 +1,77 @@
-Content-Type: multipart/mixed; boundary="===============8520698968617254254=="
+Content-Type: multipart/mixed; boundary="===============8069396351609723044=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/3] pem: Fix a bad l_free
-Date: Thu, 10 Jan 2019 16:30:44 -0600
-Message-ID: <e9c04384-cd5e-98bc-ea0f-5aad7da73a9b@gmail.com>
-In-Reply-To: <20190110222537.14492-1-andrew.zaborowski@intel.com>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH] util: Add conversion util for uppercase hex string
+Date: Thu, 10 Jan 2019 14:32:12 -0800
+Message-ID: <20190110223212.8137-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8520698968617254254==
+--===============8069396351609723044==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+---
+ ell/util.c | 22 ++++++++++++++++++++++
+ ell/util.h |  1 +
+ 2 files changed, 23 insertions(+)
 
-On 01/10/2019 04:25 PM, Andrew Zaborowski wrote:
-> On error pem_load_buffer will not set @label so it may end up being
-> uninitialized when we l_free it.  pem_load_buffer may also fail under
-> normal circumstances at the end of file, make sure we only l_free(label)
-> if the call succeeded.
-> ---
->   ell/pem.c | 3 ++-
->   1 file changed, 2 insertions(+), 1 deletion(-)
+diff --git a/ell/util.c b/ell/util.c
+index 31aa0c3..b68bbb8 100644
+--- a/ell/util.c
++++ b/ell/util.c
+@@ -365,6 +365,28 @@ LIB_EXPORT char *l_util_hexstring(const unsigned char =
+*buf, size_t len)
+ }
+ =
 
-All applied, thanks.
+ /**
++ * l_util_hexstring_upper:
++ * @buf: buffer pointer
++ * @len: length of buffer
++ *
++ * Returns: a newly allocated uppercase hex string
++ **/
++LIB_EXPORT char *l_util_hexstring_upper(const unsigned char *buf, size_t l=
+en)
++{
++	char *str;
++	char *p;
++
++	str =3D l_util_hexstring(buf, len);
++	if (!str)
++		return NULL;
++
++	for (p =3D str; *p !=3D '\0'; p++)
++		*p =3D toupper(*p);
++
++	return str;
++}
++
++/**
+  * l_util_from_hexstring:
+  * @str: Null-terminated string containing the hex-encoded bytes
+  * @out_len: Number of bytes decoded
+diff --git a/ell/util.h b/ell/util.h
+index c31d36b..de4df74 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -276,6 +276,7 @@ bool l_str_has_prefix(const char *str, const char *pref=
+ix);
+ bool l_str_has_suffix(const char *str, const char *suffix);
+ =
 
-Regards,
--Denis
+ char *l_util_hexstring(const unsigned char *buf, size_t len);
++char *l_util_hexstring_upper(const unsigned char *buf, size_t len);
+ unsigned char *l_util_from_hexstring(const char *str, size_t *out_len);
+ =
 
---===============8520698968617254254==--
+ typedef void (*l_util_hexdump_func_t) (const char *str, void *user_data);
+-- =
+
+2.13.6
+
+
+--===============8069396351609723044==--
 
