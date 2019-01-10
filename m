@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============1601265371160050386=="
+Content-Type: multipart/mixed; boundary="===============1074705996561764752=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v3 2/4] ecc: added API's to support SAE
-Date: Thu, 10 Jan 2019 13:32:16 -0600
-Message-ID: <7bd1b2c2-8a7d-9f88-2d5f-c258dd81a577@gmail.com>
-In-Reply-To: <20190110185316.27969-2-james.prestwood@linux.intel.com>
+Subject: Re: [PATCH v3 3/4] ecc: moved point add, exp, and legendre into ecc.c
+Date: Thu, 10 Jan 2019 13:33:58 -0600
+Message-ID: <c23b9287-6ad8-fa8c-e4df-ed6feb0f8098@gmail.com>
+In-Reply-To: <20190110185316.27969-3-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1601265371160050386==
+--===============1074705996561764752==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,36 +16,23 @@ Content-Transfer-Encoding: quoted-printable
 Hi James,
 
 On 01/10/2019 12:53 PM, James Prestwood wrote:
-> The functionality require was:
->   - Scalar multiplication
->   - Find a scalars legendre symbol
->   - Sum the curve equations X side
->   - Get prime from curve (needed for input to SAE KDF)
->   - Check if scalars/points are equal
+> _ecc_point_add, _vli_mod_exp, and _vli_legendre were all written in
+> house, in addition to the ecc code taken from the kernel. Inside IWD
+> it was much more convenient to just bundle these into the same file.
+> Now (in ELL), since we have ecc-private.h, its much easier to keep
+> these separate and out of ecc-external.c.
 > ---
->   ell/ecc.c | 61 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
->   ell/ecc.h | 15 ++++++++++++++
->   2 files changed, 75 insertions(+), 1 deletion(-)
+>   ell/ecc-external.c | 123 +++++++--------------------------------------
+>   ell/ecc-private.h  |   4 ++
+>   ell/ecc.c          |  90 +++++++++++++++++++++++++++++++++
+>   3 files changed, 111 insertions(+), 106 deletions(-)
 > =
 
 
-<snip>
-
-> +LIB_EXPORT struct l_ecc_scalar *l_ecc_curve_get_prime(
-> +						const struct l_ecc_curve *curve)
-> +{
-> +	if (unlikely(!curve))
-> +		return NULL;
-> +
-> +	return _ecc_constant_new(curve, (void *) curve->p, curve->ndigits * 8);
-
-I took out this cast and applied this patch.
-
-> +}
-> +
+Patch 3 & 4 applied, thanks.
 
 Regards,
 -Denis
 
---===============1601265371160050386==--
+--===============1074705996561764752==--
 
