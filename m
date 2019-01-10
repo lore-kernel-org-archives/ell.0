@@ -1,113 +1,122 @@
-Content-Type: multipart/mixed; boundary="===============7935035022925290752=="
+Content-Type: multipart/mixed; boundary="===============1412340124925391326=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH v2 1/2] ecc: add API's to support EAP-PWD
-Date: Thu, 10 Jan 2019 09:02:38 -0800
-Message-ID: <20190110170239.28955-1-james.prestwood@linux.intel.com>
+Subject: [PATCH v2 2/2] ecc: added API's to support SAE
+Date: Thu, 10 Jan 2019 09:02:39 -0800
+Message-ID: <20190110170239.28955-2-james.prestwood@linux.intel.com>
+In-Reply-To: <20190110170239.28955-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7935035022925290752==
+--===============1412340124925391326==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-EAP-PWD requires the following ECC functionality
- - Point multiplication
- - Point addition
- - Point inverse
- - Scalar addition
+The functionality require was:
+ - Scalar multiplication
+ - Find a scalars legendre symbol
+ - Sum the curve equations X side
+ - Get prime from curve (needed for input to SAE KDF)
+ - Check if scalars/points are equal
 ---
- ell/ecc.c | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/ecc.h | 14 ++++++++++++++
- 2 files changed, 66 insertions(+)
+ ell/ecc.c | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/ecc.h | 12 +++++++++++
+ 2 files changed, 71 insertions(+)
 
 diff --git a/ell/ecc.c b/ell/ecc.c
-index 6d9ab42..4dafa4c 100644
+index 4dafa4c..c14cde4 100644
 --- a/ell/ecc.c
 +++ b/ell/ecc.c
-@@ -433,3 +433,55 @@ LIB_EXPORT void l_ecc_scalar_free(struct l_ecc_scalar =
-*c)
- 	memset(c->c, 0, c->curve->ndigits * 8);
- 	l_free(c);
+@@ -485,3 +485,62 @@ LIB_EXPORT bool l_ecc_point_inverse(struct l_ecc_point=
+ *p)
+ =
+
+ 	return true;
  }
 +
-+LIB_EXPORT struct l_ecc_scalar *l_ecc_curve_get_order(
-+						const struct l_ecc_curve *curve)
-+{
-+	return _ecc_constant_new(curve, (void *) curve->n, curve->ndigits * 8);
-+}
-+
-+LIB_EXPORT bool l_ecc_scalar_add(struct l_ecc_scalar *ret,
++LIB_EXPORT bool l_ecc_scalar_multiply(struct l_ecc_scalar *ret,
 +					struct l_ecc_scalar *a,
-+					struct l_ecc_scalar *b,
-+					struct l_ecc_scalar *mod)
-+{
-+	if (unlikely(!ret || !a || !b || !mod))
-+		return false;
-+
-+	_vli_mod_add(ret->c, a->c, b->c, mod->c, a->curve->ndigits);
-+
-+	return true;
-+}
-+
-+LIB_EXPORT bool l_ecc_point_multiply(struct l_ecc_point *ret,
-+					struct l_ecc_scalar *scalar,
-+					struct l_ecc_point *point)
-+{
-+	if (unlikely(!ret || !scalar || !point))
-+		return false;
-+
-+	_ecc_point_mult(ret, point, scalar->c, NULL, scalar->curve->p);
-+
-+	return true;
-+}
-+
-+LIB_EXPORT bool l_ecc_point_add(struct l_ecc_point *ret, struct l_ecc_poin=
-t *a,
-+					struct l_ecc_point *b)
++					struct l_ecc_scalar *b)
 +{
 +	if (unlikely(!ret || !a || !b))
 +		return false;
 +
-+	_ecc_point_add(ret, a, b, a->curve->p);
++	_vli_mod_mult_fast(ret->c, a->c, b->c, a->curve->p, a->curve->ndigits);
 +
 +	return true;
 +}
 +
-+LIB_EXPORT bool l_ecc_point_inverse(struct l_ecc_point *p)
++LIB_EXPORT int l_ecc_scalar_legendre(struct l_ecc_scalar *value)
 +{
-+	if (unlikely(!p))
++	if (unlikely(!value))
++		return -1;
++
++	return _vli_legendre(value->c, value->curve->p, value->curve->ndigits);
++}
++
++LIB_EXPORT bool l_ecc_scalar_sum_x(struct l_ecc_scalar *ret,
++					struct l_ecc_scalar *x)
++{
++	if (unlikely(!ret || !x))
 +		return false;
 +
-+	_vli_mod_sub(p->y, p->curve->p, p->y, p->curve->p, p->curve->ndigits);
++	ecc_compute_y_sqr(x->curve, ret->c, x->c);
 +
 +	return true;
 +}
++
++LIB_EXPORT struct l_ecc_scalar *l_ecc_curve_get_prime(
++						const struct l_ecc_curve *curve)
++{
++	if (unlikely(!curve))
++		return NULL;
++
++	return _ecc_constant_new(curve, (void *) curve->p, curve->ndigits * 8);
++}
++
++LIB_EXPORT bool l_ecc_scalars_are_equal(struct l_ecc_scalar *a,
++						struct l_ecc_scalar *b)
++{
++	if (unlikely(!a || !b))
++		return false;
++
++	return (memcmp(a->c, b->c, a->curve->ndigits * 8) =3D=3D 0);
++}
++
++LIB_EXPORT bool l_ecc_points_are_equal(struct l_ecc_point *a,
++						struct l_ecc_point *b)
++{
++	if (unlikely(!a || !b))
++		return false;
++
++	return ((memcmp(a->x, b->x, a->curve->ndigits * 8) =3D=3D 0) &&
++			(memcmp(a->y, b->y, a->curve->ndigits * 8) =3D=3D 0));
++}
 diff --git a/ell/ecc.h b/ell/ecc.h
-index 40c7d47..fd10f16 100644
+index fd10f16..dc3d9c3 100644
 --- a/ell/ecc.h
 +++ b/ell/ecc.h
-@@ -61,6 +61,20 @@ ssize_t l_ecc_scalar_get_data(const struct l_ecc_scalar =
-*c, void *buf,
- 					size_t len);
- void l_ecc_scalar_free(struct l_ecc_scalar *c);
+@@ -75,6 +75,18 @@ bool l_ecc_point_add(struct l_ecc_point *ret, struct l_e=
+cc_point *a,
+ 				struct l_ecc_point *b);
+ bool l_ecc_point_inverse(struct l_ecc_point *p);
  =
 
-+/* Constant operations */
-+struct l_ecc_scalar *l_ecc_curve_get_order(const struct l_ecc_curve *curve=
-);
-+bool l_ecc_scalar_add(struct l_ecc_scalar *ret, struct l_ecc_scalar *a,
-+				struct l_ecc_scalar *b,
-+				struct l_ecc_scalar *mod);
++/* extra operations needed for SAE */
++bool l_ecc_scalar_multiply(struct l_ecc_scalar *ret, struct l_ecc_scalar *=
+a,
++				struct l_ecc_scalar *b);
++int l_ecc_scalar_legendre(struct l_ecc_scalar *value);
++bool l_ecc_scalar_sum_x(struct l_ecc_scalar *ret, struct l_ecc_scalar *x);
 +
-+/* Point operations */
-+bool l_ecc_point_multiply(struct l_ecc_point *ret,
-+				struct l_ecc_scalar *scalar,
-+				struct l_ecc_point *point);
-+bool l_ecc_point_add(struct l_ecc_point *ret, struct l_ecc_point *a,
-+				struct l_ecc_point *b);
-+bool l_ecc_point_inverse(struct l_ecc_point *p);
++struct l_ecc_scalar *l_ecc_curve_get_prime(const struct l_ecc_curve *curve=
+);
++
++bool l_ecc_scalars_are_equal(struct l_ecc_scalar *a, struct l_ecc_scalar *=
+b);
++
++bool l_ecc_points_are_equal(struct l_ecc_point *a, struct l_ecc_point *b);
 +
  #ifdef __cplusplus
  }
@@ -117,5 +126,5 @@ index 40c7d47..fd10f16 100644
 2.17.1
 
 
---===============7935035022925290752==--
+--===============1412340124925391326==--
 
