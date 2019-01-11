@@ -1,537 +1,902 @@
-Content-Type: multipart/mixed; boundary="===============8626322522737465316=="
+Content-Type: multipart/mixed; boundary="===============0830790037433366641=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/2] tls: Pass optional data parameter to sign/verify callbacks
-Date: Fri, 11 Jan 2019 14:14:29 +0100
-Message-ID: <20190111131430.12428-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] tls: Separate signature algorithm and key exchange
+ algorithm
+Date: Fri, 11 Jan 2019 14:14:30 +0100
+Message-ID: <20190111131430.12428-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20190111131430.12428-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8626322522737465316==
+--===============0830790037433366641==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add parameters to optinally provide a buffer with the data to be
-signed/verified to the signature algorithm .sign and .verify functions,
-in addition to the current get_hash callback parameter.  Currently .sign
-and .verify would receive the get_hash callback and call it when
-necessary to obtain the hash of the data being signed.
-
-In the case of the handshake messages signature the hash data is part of
-the handshake state so there was no need for additional parameters.
-When we're hashing the ServerKeyExchange parameters though there's no
-need to keep a buffer of the data around for longer than we're building
-or processing the message so there's no point copying it to the
-handshake state structs.  So instead we pass that buffer to
-.sign/.verify which then passes it to the get_hash callbacks.
-
-This removes some duplication and in case of ECDHE gets rid of two
-instances of rebuilding the ServerECDHParams struct unnecessarily.
+Separate definitions of the key exchange algorithms from the signature
+algorithm.  DHE and ECDHE can be used with different signature
+algorithms hopefully without any changes.
 ---
-This is to illustrate the possible cleanup in DHE to avoid putting a
-pointer to a stack structure in the handshake state.
----
- ell/tls-private.h |   3 +
- ell/tls-suites.c  | 198 ++++++++++++++++++++--------------------------
- ell/tls.c         |   6 +-
- 3 files changed, 91 insertions(+), 116 deletions(-)
+ ell/tls-private.h |  24 +--
+ ell/tls-suites.c  | 369 +++++++++++++++++++++++++---------------------
+ ell/tls.c         |  44 +++---
+ 3 files changed, 238 insertions(+), 199 deletions(-)
 
 diff --git a/ell/tls-private.h b/ell/tls-private.h
-index c82a4d5..134203f 100644
+index 134203f..10f25c5 100644
 --- a/ell/tls-private.h
 +++ b/ell/tls-private.h
-@@ -59,6 +59,7 @@ struct tls_hash_algorithm {
- extern const struct tls_hash_algorithm tls_handshake_hash_data[];
- =
-
- typedef bool (*tls_get_hash_t)(struct l_tls *tls, uint8_t tls_id,
-+				const uint8_t *data, size_t data_len,
+@@ -63,15 +63,23 @@ typedef bool (*tls_get_hash_t)(struct l_tls *tls, uint8=
+_t tls_id,
  				uint8_t *out, size_t *len,
  				enum l_checksum_type *type);
  =
 
-@@ -80,8 +81,10 @@ struct tls_key_exchange_algorithm {
+-struct tls_key_exchange_algorithm {
++struct tls_signature_algorithm {
+ 	uint8_t id;
+ =
+
+-	bool certificate_check;
++	bool (*validate_cert_key_type)(struct l_cert *cert);
++
++	ssize_t (*sign)(struct l_tls *tls, uint8_t *out, size_t len,
++			const uint8_t *data, size_t data_len,
++			tls_get_hash_t get_hash);
++	bool (*verify)(struct l_tls *tls, const uint8_t *in, size_t len,
++			const uint8_t *data, size_t data_len,
++			tls_get_hash_t get_hash);
++};
++
++struct tls_key_exchange_algorithm {
+ 	bool need_ecc;
+ 	bool need_ffdh;
+ =
+
+-	bool (*validate_cert_key_type)(struct l_cert *cert);
+-
+ 	bool (*send_server_key_exchange)(struct l_tls *tls);
+ 	void (*handle_server_key_exchange)(struct l_tls *tls,
+ 						const uint8_t *buf, size_t len);
+@@ -80,13 +88,6 @@ struct tls_key_exchange_algorithm {
+ 	void (*handle_client_key_exchange)(struct l_tls *tls,
  						const uint8_t *buf, size_t len);
  =
 
- 	ssize_t (*sign)(struct l_tls *tls, uint8_t *out, size_t len,
-+			const uint8_t *data, size_t data_len,
- 			tls_get_hash_t get_hash);
- 	bool (*verify)(struct l_tls *tls, const uint8_t *in, size_t len,
-+			const uint8_t *data, size_t data_len,
- 			tls_get_hash_t get_hash);
+-	ssize_t (*sign)(struct l_tls *tls, uint8_t *out, size_t len,
+-			const uint8_t *data, size_t data_len,
+-			tls_get_hash_t get_hash);
+-	bool (*verify)(struct l_tls *tls, const uint8_t *in, size_t len,
+-			const uint8_t *data, size_t data_len,
+-			tls_get_hash_t get_hash);
+-
+ 	void (*free_params)(struct l_tls *tls);
+ };
  =
 
- 	void (*free_params)(struct l_tls *tls);
+@@ -102,6 +103,7 @@ struct tls_cipher_suite {
+ 	int verify_data_length;
+ =
+
+ 	struct tls_bulk_encryption_algorithm *encryption;
++	struct tls_signature_algorithm *signature;
+ 	struct tls_key_exchange_algorithm *key_xchg;
+ 	struct tls_mac_algorithm *mac;
+ 	enum l_checksum_type prf_hmac;
 diff --git a/ell/tls-suites.c b/ell/tls-suites.c
-index cb1416a..d3c7f8f 100644
+index d3c7f8f..56d8795 100644
 --- a/ell/tls-suites.c
 +++ b/ell/tls-suites.c
-@@ -157,6 +157,7 @@ static void tls_handle_rsa_client_key_xchg(struct l_tls=
- *tls,
+@@ -42,120 +42,6 @@ static bool tls_rsa_validate_cert_key(struct l_cert *ce=
+rt)
+ 	return l_cert_get_pubkey_type(cert) =3D=3D L_CERT_KEY_RSA;
  }
  =
 
- static ssize_t tls_rsa_sign(struct l_tls *tls, uint8_t *out, size_t len,
-+				const uint8_t *data, size_t data_len,
- 				tls_get_hash_t get_hash)
- {
- 	ssize_t result =3D -EMSGSIZE;
-@@ -180,7 +181,8 @@ static ssize_t tls_rsa_sign(struct l_tls *tls, uint8_t =
-*out, size_t len,
- 		if (len < 2)	/* Is there space for the algorithm IDs */
- 			goto error;
- =
-
--		get_hash(tls, hash_type->tls_id, sign_input, NULL, NULL);
-+		get_hash(tls, hash_type->tls_id, data, data_len,
-+				sign_input, NULL, NULL);
- 		sign_checksum_type =3D hash_type->l_id;
- 		sign_input_len =3D hash_type->length;
- =
-
-@@ -188,8 +190,10 @@ static ssize_t tls_rsa_sign(struct l_tls *tls, uint8_t=
- *out, size_t len,
- 		*ptr++ =3D 1;	/* RSA_sign */
- 		len -=3D 2;
- 	} else {
--		get_hash(tls, 1, sign_input + 0, NULL, NULL);	/* MD5 */
--		get_hash(tls, 2, sign_input + 16, NULL, NULL);	/* SHA1 */
-+		/* MD5 */
-+		get_hash(tls, 1, data, data_len, sign_input + 0, NULL, NULL);
-+		/* SHA1 */
-+		get_hash(tls, 2, data, data_len, sign_input + 16, NULL, NULL);
- 		sign_checksum_type =3D L_CHECKSUM_NONE;
- 		sign_input_len =3D 36;
- 	}
-@@ -214,6 +218,7 @@ error:
- }
- =
-
- static bool tls_rsa_verify(struct l_tls *tls, const uint8_t *in, size_t le=
-n,
-+				const uint8_t *data, size_t data_len,
- 				tls_get_hash_t get_hash)
- {
- 	enum l_checksum_type hash_type;
-@@ -255,8 +260,8 @@ static bool tls_rsa_verify(struct l_tls *tls, const uin=
-t8_t *in, size_t len,
- 			return false;
- 		}
- =
-
--		if (!get_hash(tls, in[0], expected, &expected_len,
--				&hash_type)) {
-+		if (!get_hash(tls, in[0], data, data_len,
-+				expected, &expected_len, &hash_type)) {
- 			TLS_DISCONNECT(TLS_ALERT_DECRYPT_ERROR, 0,
- 					"Unknown hash type %i", in[0]);
- =
-
-@@ -281,8 +286,10 @@ static bool tls_rsa_verify(struct l_tls *tls, const ui=
-nt8_t *in, size_t len,
- 		 * encoding.
- 		 */
- 	} else {
--		get_hash(tls, 1, expected + 0, NULL, NULL);	/* MD5 */
--		get_hash(tls, 2, expected + 16, NULL, NULL);	/* SHA1 */
-+		/* MD5 */
-+		get_hash(tls, 1, data, data_len, expected + 0, NULL, NULL);
-+		/* SHA1 */
-+		get_hash(tls, 2, data, data_len, expected + 16, NULL, NULL);
- 		expected_len =3D 36;
- 		hash_type =3D L_CHECKSUM_NONE;
- =
-
-@@ -322,59 +329,16 @@ static struct tls_key_exchange_algorithm tls_rsa =3D {
- 	.verify =3D tls_rsa_verify,
- };
- =
-
--struct tls_ecdhe_params {
--	const struct l_ecc_curve *curve;
--	struct l_ecc_scalar *private;
--	struct l_ecc_point *public;
--};
--
--static void tls_free_ecdhe_params(struct l_tls *tls)
+-static bool tls_send_rsa_client_key_xchg(struct l_tls *tls)
 -{
--	struct tls_ecdhe_params *params =3D tls->pending.key_xchg_params;
+-	uint8_t buf[1024 + 32];
+-	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
+-	uint8_t pre_master_secret[48];
+-	ssize_t bytes_encrypted;
 -
--	if (!params)
--		return;
+-	if (!tls->peer_pubkey) {
+-		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
+-				"Peer public key not received");
 -
--	tls->pending.key_xchg_params =3D NULL;
--
--	l_ecc_scalar_free(params->private);
--	l_ecc_point_free(params->public);
--	l_free(params);
--}
--
--static size_t tls_write_ecpoint(uint8_t *buf,
--				const struct tls_named_group *curve,
--				const struct l_ecc_point *point)
--{
--	/* RFC 8422, Section 5.4.1 */
--	buf[0] =3D 1 + curve->ec.point_bytes;	/* length */
--	buf[1] =3D 4;				/* form: uncompressed */
--	return 2 + l_ecc_point_get_data(point, buf + 2, curve->ec.point_bytes);
--}
--
--static size_t tls_write_server_ecdh_params(struct l_tls *tls, uint8_t *buf)
--{
--	struct tls_ecdhe_params *params =3D tls->pending.key_xchg_params;
--
--	/* RFC 8422, Section 5.4 */
--	buf[0] =3D 3;				/* curve_type: named_curve */
--	l_put_be16(tls->negotiated_curve->id, buf + 1);
--	return 3 + tls_write_ecpoint(buf + 3, tls->negotiated_curve,
--					params->public);
--}
--
--static bool tls_get_server_ecdh_params_hash(struct l_tls *tls, uint8_t tls=
-_id,
--						uint8_t *out, size_t *len,
--						enum l_checksum_type *type)
-+/* Used by both DHE and ECDHE */
-+static bool tls_get_dh_params_hash(struct l_tls *tls, uint8_t tls_id,
-+					const uint8_t *data, size_t data_len,
-+					uint8_t *out, size_t *len,
-+					enum l_checksum_type *type)
- {
- 	unsigned int hash;
- 	struct l_checksum *checksum;
--	uint8_t params[1024];
--	size_t params_len;
- 	ssize_t hash_len, ret;
- =
-
--	params_len =3D tls_write_server_ecdh_params(tls, params);
--
- 	for (hash =3D 0; hash < __HANDSHAKE_HASH_COUNT; hash++)
- 		if (tls_handshake_hash_data[hash].tls_id =3D=3D tls_id)
- 			break;
-@@ -396,7 +360,7 @@ static bool tls_get_server_ecdh_params_hash(struct l_tl=
-s *tls, uint8_t tls_id,
- 	 */
- 	l_checksum_update(checksum, tls->pending.client_random, 32);
- 	l_checksum_update(checksum, tls->pending.server_random, 32);
--	l_checksum_update(checksum, params, params_len);
-+	l_checksum_update(checksum, data, data_len);
- 	ret =3D l_checksum_get_digest(checksum, out, hash_len);
- 	l_checksum_free(checksum);
- =
-
-@@ -412,12 +376,54 @@ static bool tls_get_server_ecdh_params_hash(struct l_=
-tls *tls, uint8_t tls_id,
- 	return true;
- }
- =
-
-+struct tls_ecdhe_params {
-+	const struct l_ecc_curve *curve;
-+	struct l_ecc_scalar *private;
-+	struct l_ecc_point *public;
-+};
-+
-+static void tls_free_ecdhe_params(struct l_tls *tls)
-+{
-+	struct tls_ecdhe_params *params =3D tls->pending.key_xchg_params;
-+
-+	if (!params)
-+		return;
-+
-+	tls->pending.key_xchg_params =3D NULL;
-+
-+	l_ecc_scalar_free(params->private);
-+	l_ecc_point_free(params->public);
-+	l_free(params);
-+}
-+
-+static size_t tls_write_ecpoint(uint8_t *buf,
-+				const struct tls_named_group *curve,
-+				const struct l_ecc_point *point)
-+{
-+	/* RFC 8422, Section 5.4.1 */
-+	buf[0] =3D 1 + curve->ec.point_bytes;	/* length */
-+	buf[1] =3D 4;				/* form: uncompressed */
-+	return 2 + l_ecc_point_get_data(point, buf + 2, curve->ec.point_bytes);
-+}
-+
-+static size_t tls_write_server_ecdh_params(struct l_tls *tls, uint8_t *buf)
-+{
-+	struct tls_ecdhe_params *params =3D tls->pending.key_xchg_params;
-+
-+	/* RFC 8422, Section 5.4 */
-+	buf[0] =3D 3;				/* curve_type: named_curve */
-+	l_put_be16(tls->negotiated_curve->id, buf + 1);
-+	return 3 + tls_write_ecpoint(buf + 3, tls->negotiated_curve,
-+					params->public);
-+}
-+
- static bool tls_send_ecdhe_server_key_xchg(struct l_tls *tls)
- {
- 	uint8_t buf[1024];
- 	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
- 	struct tls_ecdhe_params *params;
- 	ssize_t sign_len;
-+	const uint8_t *server_ecdh_params_ptr;
- =
-
- 	/*
- 	 * RFC 8422, Section 5.4
-@@ -438,11 +444,14 @@ static bool tls_send_ecdhe_server_key_xchg(struct l_t=
-ls *tls)
- 		return false;
- 	}
- =
-
-+	server_ecdh_params_ptr =3D ptr;
- 	ptr +=3D tls_write_server_ecdh_params(tls, ptr);
- =
-
- 	sign_len =3D tls->pending.cipher_suite->key_xchg->sign(tls, ptr,
--					buf + sizeof(buf) - ptr,
--					tls_get_server_ecdh_params_hash);
-+						buf + sizeof(buf) - ptr,
-+						server_ecdh_params_ptr,
-+						ptr - server_ecdh_params_ptr,
-+						tls_get_dh_params_hash);
- 	if (sign_len < 0)
- 		return false;
- =
-
-@@ -458,6 +467,7 @@ static void tls_handle_ecdhe_server_key_xchg(struct l_t=
-ls *tls,
- {
- 	struct tls_ecdhe_params *params;
- 	uint16_t namedcurve;
-+	const uint8_t *server_ecdh_params_ptr =3D buf;
- =
-
- 	/* RFC 8422, Section 5.4 */
- =
-
-@@ -525,7 +535,9 @@ static void tls_handle_ecdhe_server_key_xchg(struct l_t=
-ls *tls,
- 	}
- =
-
- 	if (!tls->pending.cipher_suite->key_xchg->verify(tls, buf, len,
--					tls_get_server_ecdh_params_hash))
-+						server_ecdh_params_ptr,
-+						buf - server_ecdh_params_ptr,
-+						tls_get_dh_params_hash))
- 		return;
- =
-
- 	TLS_SET_STATE(TLS_HANDSHAKE_WAIT_HELLO_DONE);
-@@ -698,8 +710,6 @@ struct tls_dhe_params {
- 	struct l_key *generator;
- 	struct l_key *private;
- 	struct l_key *public;
--	const uint8_t *server_dh_params_buf;
--	size_t server_dh_params_len;
- };
- =
-
- static void tls_free_dhe_params(struct l_tls *tls)
-@@ -718,47 +728,6 @@ static void tls_free_dhe_params(struct l_tls *tls)
- 	l_free(params);
- }
- =
-
--static bool tls_get_server_dh_params_hash(struct l_tls *tls, uint8_t tls_i=
-d,
--						uint8_t *out, size_t *len,
--						enum l_checksum_type *type)
--{
--	unsigned int hash;
--	struct l_checksum *checksum;
--	struct tls_dhe_params *params =3D tls->pending.key_xchg_params;
--	ssize_t hash_len, ret;
--
--	for (hash =3D 0; hash < __HANDSHAKE_HASH_COUNT; hash++)
--		if (tls_handshake_hash_data[hash].tls_id =3D=3D tls_id)
--			break;
--
--	if (hash =3D=3D __HANDSHAKE_HASH_COUNT)
 -		return false;
+-	}
 -
--	hash_len =3D tls_handshake_hash_data[hash].length;
+-	/* Must match the version in tls_send_client_hello */
+-	pre_master_secret[0] =3D (uint8_t) (TLS_VERSION >> 8);
+-	pre_master_secret[1] =3D (uint8_t) (TLS_VERSION >> 0);
 -
--	checksum =3D l_checksum_new(tls_handshake_hash_data[hash].l_id);
--	if (!checksum)
+-	l_getrandom(pre_master_secret + 2, 46);
+-
+-	if (tls->peer_pubkey_size + 32 > (int) sizeof(buf)) {
+-		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
+-				"Peer public key too big: %zi",
+-				tls->peer_pubkey_size);
+-
 -		return false;
+-	}
 -
--	l_checksum_update(checksum, tls->pending.client_random, 32);
--	l_checksum_update(checksum, tls->pending.server_random, 32);
--	l_checksum_update(checksum, params->server_dh_params_buf,
--				params->server_dh_params_len);
--	ret =3D l_checksum_get_digest(checksum, out, hash_len);
--	l_checksum_free(checksum);
+-	l_put_be16(tls->peer_pubkey_size, ptr);
+-	bytes_encrypted =3D l_key_encrypt(tls->peer_pubkey,
+-					L_KEY_RSA_PKCS1_V1_5, L_CHECKSUM_NONE,
+-					pre_master_secret, ptr + 2, 48,
+-					tls->peer_pubkey_size);
+-	ptr +=3D tls->peer_pubkey_size + 2;
 -
--	if (ret !=3D (ssize_t) hash_len)
+-	if (bytes_encrypted !=3D (ssize_t) tls->peer_pubkey_size) {
+-		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
+-				"Encrypting PreMasterSecret failed: %s",
+-				strerror(-bytes_encrypted));
+-
 -		return false;
+-	}
 -
--	if (len)
--		*len =3D hash_len;
+-	tls_tx_handshake(tls, TLS_CLIENT_KEY_EXCHANGE, buf, ptr - buf);
 -
--	if (type)
--		*type =3D tls_handshake_hash_data[hash].l_id;
+-	tls_generate_master_secret(tls, pre_master_secret, 48);
+-	memset(pre_master_secret, 0, 48);
 -
 -	return true;
 -}
 -
- static bool tls_send_dhe_server_key_xchg(struct l_tls *tls)
- {
- 	uint8_t buf[1024 + TLS_DHE_MAX_SIZE * 3];
-@@ -770,6 +739,7 @@ static bool tls_send_dhe_server_key_xchg(struct l_tls *=
-tls)
- 	size_t public_len;
- 	unsigned int zeros =3D 0;
- 	ssize_t sign_len;
-+	const uint8_t *server_dh_params_ptr;
+-static void tls_handle_rsa_client_key_xchg(struct l_tls *tls,
+-						const uint8_t *buf, size_t len)
+-{
+-	uint8_t pre_master_secret[48], random_secret[46];
+-	ssize_t bytes_decrypted;
+-
+-	if (!tls->priv_key || !tls->priv_key_size) {
+-		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, TLS_ALERT_BAD_CERT,
+-				"No private key");
+-
+-		return;
+-	}
+-
+-	if (len !=3D tls->priv_key_size + 2) {
+-		TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
+-				"ClientKeyExchange len %zi not %zi", len,
+-				tls->priv_key_size + 2);
+-
+-		return;
+-	}
+-
+-	len =3D l_get_be16(buf);
+-
+-	if (len !=3D tls->priv_key_size) {
+-		TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
+-				"EncryptedPreMasterSecret len %zi not %zi",
+-				len, tls->priv_key_size);
+-
+-		return;
+-	}
+-
+-	bytes_decrypted =3D l_key_decrypt(tls->priv_key, L_KEY_RSA_PKCS1_V1_5,
+-					L_CHECKSUM_NONE, buf + 2,
+-					pre_master_secret, tls->priv_key_size,
+-					48);
+-
+-	/*
+-	 * Assume correct premaster secret client version which according
+-	 * to the TLS1.2 spec is unlikely in client implementations SSLv3
+-	 * and prior.  Spec suggests either not supporting them or adding
+-	 * a configurable override for <=3D SSLv3 clients.  For now we have
+-	 * no need to support them.
+-	 *
+-	 * On any decode error randomise the Pre Master Secret as per the
+-	 * countermeasures in 7.4.7.1 and don't generate any alerts.
+-	 */
+-	l_getrandom(random_secret, 46);
+-
+-	pre_master_secret[0] =3D tls->client_version >> 8;
+-	pre_master_secret[1] =3D tls->client_version >> 0;
+-
+-	if (bytes_decrypted !=3D 48) {
+-		memcpy(pre_master_secret + 2, random_secret, 46);
+-
+-		TLS_DEBUG("Error decrypting PreMasterSecret: %s",
+-				strerror(-bytes_decrypted));
+-	}
+-
+-	tls_generate_master_secret(tls, pre_master_secret, 48);
+-	memset(pre_master_secret, 0, 48);
+-	memset(random_secret, 0, 46);
+-}
+-
+ static ssize_t tls_rsa_sign(struct l_tls *tls, uint8_t *out, size_t len,
+ 				const uint8_t *data, size_t data_len,
+ 				tls_get_hash_t get_hash)
+@@ -319,16 +205,132 @@ static bool tls_rsa_verify(struct l_tls *tls, const =
+uint8_t *in, size_t len,
+ 	return success;
+ }
  =
 
- 	params =3D l_new(struct tls_dhe_params, 1);
- 	prime_buf =3D tls->negotiated_ff_group->ff.prime;
-@@ -803,7 +773,7 @@ static bool tls_send_dhe_server_key_xchg(struct l_tls *=
-tls)
- 	while (zeros < public_len && public_buf[zeros] =3D=3D 0x00)
- 		zeros++;
+-static struct tls_key_exchange_algorithm tls_rsa =3D {
++static struct tls_signature_algorithm tls_rsa_signature =3D {
+ 	.id =3D 1, /* RSA_sign */
+-	.certificate_check =3D true,
+ 	.validate_cert_key_type =3D tls_rsa_validate_cert_key,
+-	.send_client_key_exchange =3D tls_send_rsa_client_key_xchg,
+-	.handle_client_key_exchange =3D tls_handle_rsa_client_key_xchg,
+ 	.sign =3D tls_rsa_sign,
+ 	.verify =3D tls_rsa_verify,
+ };
  =
 
--	params->server_dh_params_buf =3D ptr;
-+	server_dh_params_ptr =3D ptr;
++static bool tls_send_rsa_client_key_xchg(struct l_tls *tls)
++{
++	uint8_t buf[1024 + 32];
++	uint8_t *ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
++	uint8_t pre_master_secret[48];
++	ssize_t bytes_encrypted;
++
++	if (!tls->peer_pubkey) {
++		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
++				"Peer public key not received");
++
++		return false;
++	}
++
++	/* Must match the version in tls_send_client_hello */
++	pre_master_secret[0] =3D (uint8_t) (TLS_VERSION >> 8);
++	pre_master_secret[1] =3D (uint8_t) (TLS_VERSION >> 0);
++
++	l_getrandom(pre_master_secret + 2, 46);
++
++	if (tls->peer_pubkey_size + 32 > (int) sizeof(buf)) {
++		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
++				"Peer public key too big: %zi",
++				tls->peer_pubkey_size);
++
++		return false;
++	}
++
++	l_put_be16(tls->peer_pubkey_size, ptr);
++	bytes_encrypted =3D l_key_encrypt(tls->peer_pubkey,
++					L_KEY_RSA_PKCS1_V1_5, L_CHECKSUM_NONE,
++					pre_master_secret, ptr + 2, 48,
++					tls->peer_pubkey_size);
++	ptr +=3D tls->peer_pubkey_size + 2;
++
++	if (bytes_encrypted !=3D (ssize_t) tls->peer_pubkey_size) {
++		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
++				"Encrypting PreMasterSecret failed: %s",
++				strerror(-bytes_encrypted));
++
++		return false;
++	}
++
++	tls_tx_handshake(tls, TLS_CLIENT_KEY_EXCHANGE, buf, ptr - buf);
++
++	tls_generate_master_secret(tls, pre_master_secret, 48);
++	memset(pre_master_secret, 0, 48);
++
++	return true;
++}
++
++static void tls_handle_rsa_client_key_xchg(struct l_tls *tls,
++						const uint8_t *buf, size_t len)
++{
++	uint8_t pre_master_secret[48], random_secret[46];
++	ssize_t bytes_decrypted;
++
++	if (!tls->priv_key || !tls->priv_key_size) {
++		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, TLS_ALERT_BAD_CERT,
++				"No private key");
++
++		return;
++	}
++
++	if (len !=3D tls->priv_key_size + 2) {
++		TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
++				"ClientKeyExchange len %zi not %zi", len,
++				tls->priv_key_size + 2);
++
++		return;
++	}
++
++	len =3D l_get_be16(buf);
++
++	if (len !=3D tls->priv_key_size) {
++		TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
++				"EncryptedPreMasterSecret len %zi not %zi",
++				len, tls->priv_key_size);
++
++		return;
++	}
++
++	bytes_decrypted =3D l_key_decrypt(tls->priv_key, L_KEY_RSA_PKCS1_V1_5,
++					L_CHECKSUM_NONE, buf + 2,
++					pre_master_secret, tls->priv_key_size,
++					48);
++
++	/*
++	 * Assume correct premaster secret client version which according
++	 * to the TLS1.2 spec is unlikely in client implementations SSLv3
++	 * and prior.  Spec suggests either not supporting them or adding
++	 * a configurable override for <=3D SSLv3 clients.  For now we have
++	 * no need to support them.
++	 *
++	 * On any decode error randomise the Pre Master Secret as per the
++	 * countermeasures in 7.4.7.1 and don't generate any alerts.
++	 */
++	l_getrandom(random_secret, 46);
++
++	pre_master_secret[0] =3D tls->client_version >> 8;
++	pre_master_secret[1] =3D tls->client_version >> 0;
++
++	if (bytes_decrypted !=3D 48) {
++		memcpy(pre_master_secret + 2, random_secret, 46);
++
++		TLS_DEBUG("Error decrypting PreMasterSecret: %s",
++				strerror(-bytes_decrypted));
++	}
++
++	tls_generate_master_secret(tls, pre_master_secret, 48);
++	memset(pre_master_secret, 0, 48);
++	memset(random_secret, 0, 46);
++}
++
++static struct tls_key_exchange_algorithm tls_rsa_key_xchg =3D {
++	.send_client_key_exchange =3D tls_send_rsa_client_key_xchg,
++	.handle_client_key_exchange =3D tls_handle_rsa_client_key_xchg,
++};
++
+ /* Used by both DHE and ECDHE */
+ static bool tls_get_dh_params_hash(struct l_tls *tls, uint8_t tls_id,
+ 					const uint8_t *data, size_t data_len,
+@@ -447,15 +449,17 @@ static bool tls_send_ecdhe_server_key_xchg(struct l_t=
+ls *tls)
+ 	server_ecdh_params_ptr =3D ptr;
+ 	ptr +=3D tls_write_server_ecdh_params(tls, ptr);
  =
 
- 	/* RFC 5246, Section 7.4.3 */
+-	sign_len =3D tls->pending.cipher_suite->key_xchg->sign(tls, ptr,
++	if (tls->pending.cipher_suite->signature) {
++		sign_len =3D tls->pending.cipher_suite->signature->sign(tls, ptr,
+ 						buf + sizeof(buf) - ptr,
+ 						server_ecdh_params_ptr,
+ 						ptr - server_ecdh_params_ptr,
+ 						tls_get_dh_params_hash);
+-	if (sign_len < 0)
+-		return false;
++		if (sign_len < 0)
++			return false;
  =
 
-@@ -819,16 +789,17 @@ static bool tls_send_dhe_server_key_xchg(struct l_tls=
+-	ptr +=3D sign_len;
++		ptr +=3D sign_len;
++	}
+ =
+
+ 	tls_tx_handshake(tls, TLS_SERVER_KEY_EXCHANGE, buf, ptr - buf);
+ =
+
+@@ -534,11 +538,16 @@ static void tls_handle_ecdhe_server_key_xchg(struct l=
+_tls *tls,
+ 		return;
+ 	}
+ =
+
+-	if (!tls->pending.cipher_suite->key_xchg->verify(tls, buf, len,
++	if (tls->pending.cipher_suite->signature) {
++		if (!tls->pending.cipher_suite->signature->verify(tls, buf, len,
+ 						server_ecdh_params_ptr,
+ 						buf - server_ecdh_params_ptr,
+ 						tls_get_dh_params_hash))
+-		return;
++			return;
++	} else {
++		if (len)
++			goto decode_error;
++	}
+ =
+
+ 	TLS_SET_STATE(TLS_HANDSHAKE_WAIT_HELLO_DONE);
+ =
+
+@@ -687,18 +696,13 @@ decode_error:
+ 			"ClientKeyExchange decode error");
+ }
+ =
+
+-static struct tls_key_exchange_algorithm tls_ecdhe_rsa =3D {
+-	.id =3D 1, /* RSA_sign */
+-	.certificate_check =3D true,
++static struct tls_key_exchange_algorithm tls_ecdhe =3D {
+ 	.need_ecc =3D true,
+-	.validate_cert_key_type =3D tls_rsa_validate_cert_key,
+ 	.send_server_key_exchange =3D tls_send_ecdhe_server_key_xchg,
+ 	.handle_server_key_exchange =3D tls_handle_ecdhe_server_key_xchg,
+ 	.send_client_key_exchange =3D tls_send_ecdhe_client_key_xchg,
+ 	.handle_client_key_exchange =3D tls_handle_ecdhe_client_key_xchg,
+ 	.free_params =3D tls_free_ecdhe_params,
+-	.sign =3D tls_rsa_sign,
+-	.verify =3D tls_rsa_verify,
+ };
+ =
+
+ /* Maximum FF DH prime modulus size in bytes */
+@@ -789,15 +793,18 @@ static bool tls_send_dhe_server_key_xchg(struct l_tls=
  *tls)
  	memcpy(ptr + 2, public_buf + zeros, public_len - zeros);
  	ptr +=3D 2 + public_len - zeros;
  =
 
--	params->server_dh_params_len =3D ptr - params->server_dh_params_buf;
--	tls->pending.key_xchg_params =3D params;
--
- 	sign_len =3D tls->pending.cipher_suite->key_xchg->sign(tls, ptr,
--					buf + sizeof(buf) - ptr,
--					tls_get_server_dh_params_hash);
-+						buf + sizeof(buf) - ptr,
-+						server_dh_params_ptr,
-+						ptr - server_dh_params_ptr,
-+						tls_get_dh_params_hash);
- 	if (sign_len < 0)
--		return false;
-+		goto free_params;
- =
-
- 	ptr +=3D sign_len;
-+	tls->pending.key_xchg_params =3D params;
+-	sign_len =3D tls->pending.cipher_suite->key_xchg->sign(tls, ptr,
++	if (tls->pending.cipher_suite->signature) {
++		sign_len =3D tls->pending.cipher_suite->signature->sign(tls, ptr,
+ 						buf + sizeof(buf) - ptr,
+ 						server_dh_params_ptr,
+ 						ptr - server_dh_params_ptr,
+ 						tls_get_dh_params_hash);
+-	if (sign_len < 0)
+-		goto free_params;
++		if (sign_len < 0)
++			goto free_params;
 +
- 	tls_tx_handshake(tls, TLS_SERVER_KEY_EXCHANGE, buf, ptr - buf);
- 	return true;
++		ptr +=3D sign_len;
++	}
  =
 
-@@ -849,13 +820,12 @@ static void tls_handle_dhe_server_key_xchg(struct l_t=
-ls *tls,
- 	size_t generator_len;
- 	const uint8_t *public_buf;
- 	size_t public_len;
-+	const uint8_t *server_dh_params_ptr =3D buf;
- =
-
- 	if (len < 2)
- 		goto decode_error;
- =
-
- 	params =3D l_new(struct tls_dhe_params, 1);
--	params->server_dh_params_buf =3D buf;
--
- 	params->prime_len =3D l_get_be16(buf);
- 	if (len < 2 + params->prime_len + 2)
- 		goto decode_error;
-@@ -886,8 +856,6 @@ static void tls_handle_dhe_server_key_xchg(struct l_tls=
- *tls,
- 	buf +=3D 2 + public_len;
- 	len -=3D 2 + public_len;
- =
-
--	params->server_dh_params_len =3D buf - params->server_dh_params_buf;
--
- 	/*
- 	 * Validate the values received.  Without requiring RFC 7919 from
- 	 * the server, and there are many servers that don't implement it
-@@ -958,7 +926,9 @@ static void tls_handle_dhe_server_key_xchg(struct l_tls=
- *tls,
+-	ptr +=3D sign_len;
  	tls->pending.key_xchg_params =3D params;
  =
 
- 	if (!tls->pending.cipher_suite->key_xchg->verify(tls, buf, len,
--						tls_get_server_dh_params_hash))
-+						server_dh_params_ptr,
-+						buf - server_dh_params_ptr,
-+						tls_get_dh_params_hash))
- 		return;
+ 	tls_tx_handshake(tls, TLS_SERVER_KEY_EXCHANGE, buf, ptr - buf);
+@@ -925,11 +932,16 @@ static void tls_handle_dhe_server_key_xchg(struct l_t=
+ls *tls,
+ =
+
+ 	tls->pending.key_xchg_params =3D params;
+ =
+
+-	if (!tls->pending.cipher_suite->key_xchg->verify(tls, buf, len,
+-						server_dh_params_ptr,
+-						buf - server_dh_params_ptr,
+-						tls_get_dh_params_hash))
+-		return;
++	if (tls->pending.cipher_suite->signature) {
++		if (!tls->pending.cipher_suite->signature->verify(tls, buf, len,
++							server_dh_params_ptr,
++							buf - server_dh_params_ptr,
++							tls_get_dh_params_hash))
++			return;
++	} else {
++		if (len)
++			goto decode_error;
++	}
  =
 
  	TLS_SET_STATE(TLS_HANDSHAKE_WAIT_HELLO_DONE);
+ 	return;
+@@ -1063,18 +1075,13 @@ decode_error:
+ 			"ClientKeyExchange decode error");
+ }
+ =
+
+-static struct tls_key_exchange_algorithm tls_dhe_rsa =3D {
+-	.id =3D 1, /* RSA_sign */
+-	.certificate_check =3D true,
++static struct tls_key_exchange_algorithm tls_dhe =3D {
+ 	.need_ecc =3D true,
+-	.validate_cert_key_type =3D tls_rsa_validate_cert_key,
+ 	.send_server_key_exchange =3D tls_send_dhe_server_key_xchg,
+ 	.handle_server_key_exchange =3D tls_handle_dhe_server_key_xchg,
+ 	.send_client_key_exchange =3D tls_send_dhe_client_key_xchg,
+ 	.handle_client_key_exchange =3D tls_handle_dhe_client_key_xchg,
+ 	.free_params =3D tls_free_dhe_params,
+-	.sign =3D tls_rsa_sign,
+-	.verify =3D tls_rsa_verify,
+ };
+ =
+
+ static struct tls_bulk_encryption_algorithm tls_rc4 =3D {
+@@ -1139,145 +1146,166 @@ static struct tls_cipher_suite tls_rsa_with_rc4_1=
+28_md5 =3D {
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_rc4,
+ 	.mac =3D &tls_md5,
+-	.key_xchg =3D &tls_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_rsa_key_xchg,
+ }, tls_rsa_with_rc4_128_sha =3D {
+ 	.id =3D { 0x00, 0x05 },
+ 	.name =3D "TLS_RSA_WITH_RC4_128_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_rc4,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_rsa_key_xchg,
+ }, tls_rsa_with_3des_ede_cbc_sha =3D {
+ 	.id =3D { 0x00, 0x0a },
+ 	.name =3D "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_3des_ede,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_rsa_key_xchg,
+ }, tls_dhe_rsa_with_3des_ede_cbc_sha =3D {
+ 	.id =3D { 0x00, 0x16 },
+ 	.name =3D "TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_3des_ede,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_dhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_dhe,
+ }, tls_rsa_with_aes_128_cbc_sha =3D {
+ 	.id =3D { 0x00, 0x2f },
+ 	.name =3D "TLS_RSA_WITH_AES_128_CBC_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes128,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_rsa_key_xchg,
+ }, tls_dhe_rsa_with_aes_128_cbc_sha =3D {
+ 	.id =3D { 0x00, 0x33 },
+ 	.name =3D "TLS_DHE_RSA_WITH_AES_128_CBC_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes128,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_dhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_dhe,
+ }, tls_rsa_with_aes_256_cbc_sha =3D {
+ 	.id =3D { 0x00, 0x35 },
+ 	.name =3D "TLS_RSA_WITH_AES_256_CBC_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes256,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_rsa_key_xchg,
+ }, tls_dhe_rsa_with_aes_256_cbc_sha =3D {
+ 	.id =3D { 0x00, 0x39 },
+ 	.name =3D "TLS_DHE_RSA_WITH_AES_256_CBC_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes256,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_dhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_dhe,
+ }, tls_rsa_with_aes_128_cbc_sha256 =3D {
+ 	.id =3D { 0x00, 0x3c },
+ 	.name =3D "TLS_RSA_WITH_AES_128_CBC_SHA256",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes128,
+ 	.mac =3D &tls_sha256,
+-	.key_xchg =3D &tls_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_rsa_key_xchg,
+ }, tls_rsa_with_aes_256_cbc_sha256 =3D {
+ 	.id =3D { 0x00, 0x3d },
+ 	.name =3D "TLS_RSA_WITH_AES_256_CBC_SHA256",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes256,
+ 	.mac =3D &tls_sha256,
+-	.key_xchg =3D &tls_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_rsa_key_xchg,
+ }, tls_dhe_rsa_with_aes_128_cbc_sha256 =3D {
+ 	.id =3D { 0x00, 0x67 },
+ 	.name =3D "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes128,
+ 	.mac =3D &tls_sha256,
+-	.key_xchg =3D &tls_dhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_dhe,
+ }, tls_dhe_rsa_with_aes_256_cbc_sha256 =3D {
+ 	.id =3D { 0x00, 0x6b },
+ 	.name =3D "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes256,
+ 	.mac =3D &tls_sha256,
+-	.key_xchg =3D &tls_dhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_dhe,
+ }, tls_rsa_with_aes_128_gcm_sha256 =3D {
+ 	.id =3D { 0x00, 0x9c },
+ 	.name =3D "TLS_RSA_WITH_AES_128_GCM_SHA256",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes128_gcm,
+-	.key_xchg =3D &tls_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_rsa_key_xchg,
+ }, tls_rsa_with_aes_256_gcm_sha384 =3D {
+ 	.id =3D { 0x00, 0x9d },
+ 	.name =3D "TLS_RSA_WITH_AES_256_GCM_SHA384",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes256_gcm,
+ 	.prf_hmac =3D L_CHECKSUM_SHA384,
+-	.key_xchg =3D &tls_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_rsa_key_xchg,
+ }, tls_dhe_rsa_with_aes_128_gcm_sha256 =3D {
+ 	.id =3D { 0x00, 0x9e },
+ 	.name =3D "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes128_gcm,
+-	.key_xchg =3D &tls_dhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_dhe,
+ }, tls_dhe_rsa_with_aes_256_gcm_sha384 =3D {
+ 	.id =3D { 0x00, 0x9f },
+ 	.name =3D "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes256_gcm,
+ 	.prf_hmac =3D L_CHECKSUM_SHA384,
+-	.key_xchg =3D &tls_dhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_dhe,
+ }, tls_ecdhe_rsa_with_rc4_128_sha =3D {
+ 	.id =3D { 0xc0, 0x11 },
+ 	.name =3D "TLS_ECDHE_RSA_WITH_RC4_128_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_rc4,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_ecdhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_ecdhe,
+ }, tls_ecdhe_rsa_with_3des_ede_cbc_sha =3D {
+ 	.id =3D { 0xc0, 0x12 },
+ 	.name =3D "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_3des_ede,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_ecdhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_ecdhe,
+ }, tls_ecdhe_rsa_with_aes_128_cbc_sha =3D {
+ 	.id =3D { 0xc0, 0x13 },
+ 	.name =3D "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes128,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_ecdhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_ecdhe,
+ }, tls_ecdhe_rsa_with_aes_256_cbc_sha =3D {
+ 	.id =3D { 0xc0, 0x14 },
+ 	.name =3D "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes256,
+ 	.mac =3D &tls_sha,
+-	.key_xchg =3D &tls_ecdhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_ecdhe,
+ }, tls_ecdhe_rsa_with_aes_128_cbc_sha256 =3D {
+ 	.id =3D { 0xc0, 0x27 },
+ 	.name =3D "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes128,
+ 	.mac =3D &tls_sha256,
+-	.key_xchg =3D &tls_ecdhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_ecdhe,
+ }, tls_ecdhe_rsa_with_aes_256_cbc_sha384 =3D {
+ 	.id =3D { 0xc0, 0x28 },
+ 	.name =3D "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
+@@ -1285,20 +1313,23 @@ static struct tls_cipher_suite tls_rsa_with_rc4_128=
+_md5 =3D {
+ 	.encryption =3D &tls_aes256,
+ 	.mac =3D &tls_sha384,
+ 	.prf_hmac =3D L_CHECKSUM_SHA384,
+-	.key_xchg =3D &tls_ecdhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_ecdhe,
+ }, tls_ecdhe_rsa_with_aes_128_gcm_sha256 =3D {
+ 	.id =3D { 0xc0, 0x2f },
+ 	.name =3D "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes128_gcm,
+-	.key_xchg =3D &tls_ecdhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_ecdhe,
+ }, tls_ecdhe_rsa_with_aes_256_gcm_sha384 =3D {
+ 	.id =3D { 0xc0, 0x30 },
+ 	.name =3D "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+ 	.verify_data_length =3D 12,
+ 	.encryption =3D &tls_aes256_gcm,
+ 	.prf_hmac =3D L_CHECKSUM_SHA384,
+-	.key_xchg =3D &tls_ecdhe_rsa,
++	.signature =3D &tls_rsa_signature,
++	.key_xchg =3D &tls_ecdhe,
+ };
+ =
+
+ struct tls_cipher_suite *tls_cipher_suite_pref[] =3D {
 diff --git a/ell/tls.c b/ell/tls.c
-index f9e1e95..6e8c968 100644
+index 6e8c968..f7d1d73 100644
 --- a/ell/tls.c
 +++ b/ell/tls.c
-@@ -1143,6 +1143,7 @@ static void tls_get_handshake_hash(struct l_tls *tls,
- }
+@@ -477,14 +477,21 @@ static bool tls_cipher_suite_is_compatible(struct l_t=
+ls *tls,
+ 		return false;
+ 	}
  =
 
- static bool tls_get_handshake_hash_by_id(struct l_tls *tls, uint8_t hash_i=
-d,
-+					const uint8_t *data, size_t data_len,
- 					uint8_t *out, size_t *len,
- 					enum l_checksum_type *type)
- {
-@@ -1176,7 +1177,7 @@ static bool tls_send_certificate_verify(struct l_tls =
++	/*
++	 * If the certificate is compatible with the signature algorithm it
++	 * also must be compatible with the key exchange mechanism because
++	 * the cipher suites are defined so that the same certificates can
++	 * be used by both.
++	 */
+ 	leaf =3D l_certchain_get_leaf(tls->cert);
+-	if (leaf && !suite->key_xchg->validate_cert_key_type(leaf)) {
++	if (leaf && suite->signature &&
++			!suite->signature->validate_cert_key_type(leaf)) {
+ 		if (error) {
+ 			*error =3D error_buf;
+ 			snprintf(error_buf, sizeof(error_buf),
+ 					"Local certificate has key type "
+ 					"incompatible with cipher suite %s's "
+-					"key xchg mechanism", suite->name);
++					"signature algorithm", suite->name);
+ 		}
+ =
+
+ 		return false;
+@@ -924,7 +931,7 @@ static bool tls_send_certificate(struct l_tls *tls)
+ =
+
+ 	/* TODO: might want check this earlier and exclude the cipher suite */
+ 	leaf =3D l_certchain_get_leaf(tls->cert);
+-	if (leaf && !tls->pending.cipher_suite->key_xchg->
++	if (leaf && !tls->pending.cipher_suite->signature->
+ 			validate_cert_key_type(leaf)) {
+ 		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, TLS_ALERT_CERT_UNKNOWN,
+ 				"Local certificate has key type incompatible "
+@@ -1174,7 +1181,7 @@ static bool tls_send_certificate_verify(struct l_tls =
 *tls)
- 	sign_len =3D tls->pending.cipher_suite->key_xchg->sign(tls,
+ =
+
+ 	/* Fill in the Certificate Verify body */
+ =
+
+-	sign_len =3D tls->pending.cipher_suite->key_xchg->sign(tls,
++	sign_len =3D tls->pending.cipher_suite->signature->sign(tls,
  					buf + TLS_HANDSHAKE_HEADER_SIZE,
  					2048 - TLS_HANDSHAKE_HEADER_SIZE,
--					tls_get_handshake_hash_by_id);
-+					NULL, 0, tls_get_handshake_hash_by_id);
+ 					NULL, 0, tls_get_handshake_hash_by_id);
+@@ -1591,7 +1598,7 @@ static void tls_handle_client_hello(struct l_tls *tls,
  =
 
- 	if (sign_len < 0)
- 		return false;
-@@ -1997,6 +1998,7 @@ static void tls_handle_server_hello_done(struct l_tls=
- *tls,
- }
+ 	l_queue_destroy(extensions_offered, NULL);
  =
 
- static bool tls_get_prev_digest_by_id(struct l_tls *tls, uint8_t hash_id,
-+					const uint8_t *data, size_t data_len,
- 					uint8_t *out, size_t *out_len,
- 					enum l_checksum_type *type)
- {
-@@ -2026,7 +2028,7 @@ static void tls_handle_certificate_verify(struct l_tl=
+-	if (tls->pending.cipher_suite->key_xchg->certificate_check && tls->cert)
++	if (tls->pending.cipher_suite->signature && tls->cert)
+ 		if (!tls_send_certificate(tls))
+ 			return;
+ =
+
+@@ -1601,15 +1608,13 @@ static void tls_handle_client_hello(struct l_tls *t=
+ls,
+ 			return;
+ =
+
+ 	/* TODO: don't bother if configured to not authenticate client */
+-	if (tls->pending.cipher_suite->key_xchg->certificate_check &&
+-			tls->ca_certs)
++	if (tls->pending.cipher_suite->signature && tls->ca_certs)
+ 		if (!tls_send_certificate_request(tls))
+ 			return;
+ =
+
+ 	tls_send_server_hello_done(tls);
+ =
+
+-	if (tls->pending.cipher_suite->key_xchg->certificate_check &&
+-			tls->ca_certs)
++	if (tls->pending.cipher_suite->signature && tls->ca_certs)
+ 		TLS_SET_STATE(TLS_HANDSHAKE_WAIT_CERTIFICATE);
+ 	else
+ 		TLS_SET_STATE(TLS_HANDSHAKE_WAIT_KEY_EXCHANGE);
+@@ -1726,7 +1731,7 @@ static void tls_handle_server_hello(struct l_tls *tls,
+ =
+
+ 	TLS_DEBUG("Negotiated %s", tls->pending.compression_method->name);
+ =
+
+-	if (tls->pending.cipher_suite->key_xchg->certificate_check)
++	if (tls->pending.cipher_suite->signature)
+ 		TLS_SET_STATE(TLS_HANDSHAKE_WAIT_CERTIFICATE);
+ 	else
+ 		TLS_SET_STATE(TLS_HANDSHAKE_WAIT_KEY_EXCHANGE);
+@@ -1807,7 +1812,7 @@ static void tls_handle_certificate(struct l_tls *tls,
+ 	 * algorithm."
+ 	 */
+ 	leaf =3D l_certchain_get_leaf(certchain);
+-	if (!tls->pending.cipher_suite->key_xchg->
++	if (!tls->pending.cipher_suite->signature->
+ 			validate_cert_key_type(leaf)) {
+ 		TLS_DISCONNECT(TLS_ALERT_UNSUPPORTED_CERT, 0,
+ 				"Peer certificate key type incompatible with "
+@@ -1910,7 +1915,8 @@ static void tls_handle_certificate_request(struct l_t=
+ls *tls,
+ =
+
+ 			/* Ignore hash types for signatures other than ours */
+ 			if (signature_hash_data[i + 1] !=3D
+-					tls->pending.cipher_suite->key_xchg->id)
++					tls->pending.cipher_suite->
++						signature->id)
+ 				continue;
+ =
+
+ 			if (hash_id =3D=3D tls_handshake_hash_data[
+@@ -2028,7 +2034,8 @@ static void tls_handle_certificate_verify(struct l_tl=
 s *tls,
  {
  	int i;
  =
 
--	if (!tls->pending.cipher_suite->key_xchg->verify(tls, buf, len,
-+	if (!tls->pending.cipher_suite->key_xchg->verify(tls, buf, len, NULL, 0,
+-	if (!tls->pending.cipher_suite->key_xchg->verify(tls, buf, len, NULL, 0,
++	if (!tls->pending.cipher_suite->signature->verify(tls, buf, len,
++						NULL, 0,
  						tls_get_prev_digest_by_id))
  		return;
  =
 
+@@ -2048,7 +2055,7 @@ static void tls_handle_certificate_verify(struct l_tl=
+s *tls,
+ 	 *   - If tls->ca_certs is non-NULL then tls_handle_certificate
+ 	 *     will have checked the whole certificate chain to be valid and
+ 	 *     additionally trusted by our CAs if known.
+-	 *   - Additionally cipher_suite->key_xchg->verify has just confirmed
++	 *   - Additionally cipher_suite->signature->verify has just confirmed
+ 	 *     that the peer owns the end-entity certificate because it was
+ 	 *     able to sign the contents of the handshake messages and that
+ 	 *     signature could be verified with the public key from that
+@@ -2253,8 +2260,7 @@ static void tls_handle_handshake(struct l_tls *tls, i=
+nt type,
+ 		 */
+ 		if (tls->state !=3D TLS_HANDSHAKE_WAIT_HELLO_DONE ||
+ 				tls->cert_requested ||
+-				!tls->pending.cipher_suite->key_xchg->
+-				certificate_check) {
++				!tls->pending.cipher_suite->signature) {
+ 			TLS_DISCONNECT(TLS_ALERT_UNEXPECTED_MESSAGE, 0,
+ 					"Message invalid in current state "
+ 					"or certificate check not supported "
+@@ -2307,7 +2313,7 @@ static void tls_handle_handshake(struct l_tls *tls, i=
+nt type,
+ 		/*
+ 		 * If we accepted a client Certificate message with a
+ 		 * certificate that has signing capability (TODO: check
+-		 * usage bitmask), Certiifcate Verify is received next.  It
++		 * usage bitmask), Certificate Verify is received next.  It
+ 		 * sounds as if this is mandatory for the client although
+ 		 * this isn't 100% clear.
+ 		 */
+@@ -2374,8 +2380,8 @@ static void tls_handle_handshake(struct l_tls *tls, i=
+nt type,
+ 		 *      ServerKeyExchange parameters using its certified key
+ 		 *      pair.
+ 		 */
+-		if (!tls->server && tls->cipher_suite[0]->key_xchg->
+-				certificate_check && tls->ca_certs)
++		if (!tls->server && tls->cipher_suite[0]->signature &&
++				tls->ca_certs)
+ 			tls->peer_authenticated =3D true;
+ =
+
+ 		tls_finished(tls);
 -- =
 
 2.19.1
 
 
---===============8626322522737465316==--
+--===============0830790037433366641==--
 
