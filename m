@@ -1,36 +1,71 @@
-Content-Type: multipart/mixed; boundary="===============8973239164636947981=="
+Content-Type: multipart/mixed; boundary="===============7782114111913565652=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] unit: test-ecdh: add bytes to l_getrandom wrapper
-Date: Fri, 11 Jan 2019 11:37:35 -0600
-Message-ID: <27bdaf5b-38c4-9b98-e715-6862da0c8f3a@gmail.com>
-In-Reply-To: <20190111173859.13407-1-james.prestwood@linux.intel.com>
+From: James Prestwood <james.prestwood@linux.intel.com>
+Subject: [PATCH] ecc: add API to get supported groups
+Date: Mon, 14 Jan 2019 12:45:05 -0800
+Message-ID: <20190114204505.19193-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8973239164636947981==
+--===============7782114111913565652==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Protocols using ECC need a way to query which groups ELL supports. ecc.c
+now has a zero-terminated  list of supported groups, which is returned
+by l_ecc_curve_get_groups().
+---
+ ell/ecc.c | 7 +++++++
+ ell/ecc.h | 1 +
+ 2 files changed, 8 insertions(+)
 
-On 01/11/2019 11:38 AM, James Prestwood wrote:
-> This should have been put into the commit adding the P384 unit test.
-> Since P384 works with 48 byte integers we need 48 bytes of randomness
-> in the l_getrandom wrapper. A check was also added so l_getrandom will
-> fail if too many bytes are requested (e.g. if a larger curve is added).
-> ---
->   unit/test-ecdh.c | 20 +++++++++++++-------
->   1 file changed, 13 insertions(+), 7 deletions(-)
-> =
+diff --git a/ell/ecc.c b/ell/ecc.c
+index 053e5fb..ff03f24 100644
+--- a/ell/ecc.c
++++ b/ell/ecc.c
+@@ -85,6 +85,8 @@ static const struct l_ecc_curve p384 =3D {
+ 	.b =3D P384_CURVE_B
+ };
+ =
+
++static const unsigned int ecc_groups[] =3D { 19, 20, 0 };
++
+ static const struct l_ecc_curve *curves[] =3D {
+ 	&p256,
+ 	&p384,
+@@ -102,6 +104,11 @@ LIB_EXPORT const struct l_ecc_curve *l_ecc_curve_get(u=
+nsigned int group)
+ 	return NULL;
+ }
+ =
+
++LIB_EXPORT const unsigned int *l_ecc_curve_get_groups(void)
++{
++	return ecc_groups;
++}
++
+ static bool ecc_valid_point(struct l_ecc_point *point)
+ {
+ 	const struct l_ecc_curve *curve =3D point->curve;
+diff --git a/ell/ecc.h b/ell/ecc.h
+index 9a852ff..cb6ab50 100644
+--- a/ell/ecc.h
++++ b/ell/ecc.h
+@@ -43,6 +43,7 @@ enum l_ecc_point_type {
+ };
+ =
+
+ const struct l_ecc_curve *l_ecc_curve_get(unsigned int group);
++const unsigned int *l_ecc_curve_get_groups(void);
+ =
+
+ struct l_ecc_point *l_ecc_point_new(const struct l_ecc_curve *curve);
+ struct l_ecc_point *l_ecc_point_from_data(const struct l_ecc_curve *curve,
+-- =
+
+2.17.1
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
-
---===============8973239164636947981==--
+--===============7782114111913565652==--
 
