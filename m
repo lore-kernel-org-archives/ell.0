@@ -1,33 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============5288545560514441996=="
+Content-Type: multipart/mixed; boundary="===============4315110427671285799=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] genl: Handle empty data in l_genl_msg_append_attr
-Date: Tue, 15 Jan 2019 07:42:13 -0600
-Message-ID: <4a64d584-a6e7-f815-7b84-b17db25ab9fb@gmail.com>
-In-Reply-To: <20190115062125.5202-1-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 1/3] tls: Implement l_tls_set_version_range
+Date: Tue, 15 Jan 2019 14:45:47 -0600
+Message-ID: <de90beaf-fa29-45a6-e6ca-8dc1b0c5a794@gmail.com>
+In-Reply-To: <20190111141148.17379-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5288545560514441996==
+--===============4315110427671285799==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
-On 01/15/2019 12:21 AM, Andrew Zaborowski wrote:
-> Make sure l_genl_msg_append_attr can be called with a NULL @data (when
-> @len is 0) for attributes like nl80211 flags, without triggering an asan
-> warning about the memcpy parameter being NULL.
+On 01/11/2019 08:11 AM, Andrew Zaborowski wrote:
+> Allow user to set custom min and max TLS version limits, this can be
+> used to ensure we comply with a specific security profile.
 > ---
->   ell/genl.c | 4 +++-
->   1 file changed, 3 insertions(+), 1 deletion(-)
+> Last message in the previous discussion about this was here:
+> https://lists.01.org/pipermail/ell/2018-December/001625.html
+> ---
+>   ell/ell.sym       |  1 +
+>   ell/tls-private.h | 11 +++-----
+>   ell/tls-record.c  |  2 +-
+>   ell/tls-suites.c  |  4 +--
+>   ell/tls.c         | 66 +++++++++++++++++++++++++++++++++--------------
+>   ell/tls.h         | 12 ++++++++-
+>   6 files changed, 65 insertions(+), 31 deletions(-)
+> =
 
-Applied, thanks.
+
+All applied, thanks.
 
 Regards,
 -Denis
 
 
---===============5288545560514441996==--
+--===============4315110427671285799==--
 
