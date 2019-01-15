@@ -1,108 +1,53 @@
-Content-Type: multipart/mixed; boundary="===============0332558032271397239=="
+Content-Type: multipart/mixed; boundary="===============2756277648149932716=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] ecc: add API to get supported groups
-Date: Tue, 15 Jan 2019 14:53:43 -0600
-Message-ID: <0ebefee8-5a57-e934-7737-5db15bd583bf@gmail.com>
-In-Reply-To: <20190114204505.19193-1-james.prestwood@linux.intel.com>
+From: James Prestwood <james.prestwood@linux.intel.com>
+Subject: [PATCH v2 2/2] ecc: document where ECC groups came from
+Date: Tue, 15 Jan 2019 14:23:39 -0800
+Message-ID: <20190115222339.9323-2-james.prestwood@linux.intel.com>
+In-Reply-To: <20190115222339.9323-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0332558032271397239==
+--===============2756277648149932716==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+For future reference a comment was added pointing to RFC 5114
+---
+ ell/ecc.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-On 01/14/2019 02:45 PM, James Prestwood wrote:
-> Protocols using ECC need a way to query which groups ELL supports. ecc.c
-> now has a zero-terminated  list of supported groups, which is returned
-> by l_ecc_curve_get_groups().
-> ---
->   ell/ecc.c | 7 +++++++
->   ell/ecc.h | 1 +
->   2 files changed, 8 insertions(+)
-> =
+diff --git a/ell/ecc.c b/ell/ecc.c
+index b2110df..1ce12a4 100644
+--- a/ell/ecc.c
++++ b/ell/ecc.c
+@@ -32,6 +32,9 @@
+ #include "ecc-private.h"
+ #include "random.h"
+ =
 
++/*
++ * RFC 5114 - Section 2.6 256-bit Random ECP Group
++ */
+ #define P256_CURVE_P { 0xFFFFFFFFFFFFFFFFull, 0x00000000FFFFFFFFull, \
+ 			0x0000000000000000ull, 0xFFFFFFFF00000001ull }
+ #define P256_CURVE_GX { 0xF4A13945D898C296ull, 0x77037D812DEB33A0ull,   \
+@@ -56,6 +59,9 @@ static const struct l_ecc_curve p256 =3D {
+ 	.b =3D P256_CURVE_B,
+ };
+ =
 
-You're missing ell.sym entries...
++/*
++ * RFC 5114 - Section 2.6 384-bit Random ECP Group
++ */
+ #define P384_CURVE_P {	0x00000000FFFFFFFFull, 0xFFFFFFFF00000000ull, \
+ 			0xFFFFFFFFFFFFFFFEull, 0xFFFFFFFFFFFFFFFFull, \
+ 			0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFFFFFFFFFFull }
+-- =
 
-> diff --git a/ell/ecc.c b/ell/ecc.c
-> index 053e5fb..ff03f24 100644
-> --- a/ell/ecc.c
-> +++ b/ell/ecc.c
-> @@ -85,6 +85,8 @@ static const struct l_ecc_curve p384 =3D {
->   	.b =3D P384_CURVE_B
->   };
->   =
-
-> +static const unsigned int ecc_groups[] =3D { 19, 20, 0 };
-> +
-
-For maintainability it might be worth building this at runtime, =
-
-otherwise someone forgets to update this...
-
->   static const struct l_ecc_curve *curves[] =3D {
->   	&p256,
->   	&p384,
-> @@ -102,6 +104,11 @@ LIB_EXPORT const struct l_ecc_curve *l_ecc_curve_get=
-(unsigned int group)
->   	return NULL;
->   }
->   =
-
-> +LIB_EXPORT const unsigned int *l_ecc_curve_get_groups(void)
-
-lets call this l_ecc_curve_get_supported_groups.  Also, some docs to =
-
-figure out where the group number came from would be nice.
-
-> +{
-> +	return ecc_groups;
-
-Maybe something like:
-
-static unsigned int supported_groups[L_ARRAY_SIZE(curves) + 1];
-static bool first =3D true;
-
-if (first) {
-	unsigned int i;
-
-	for (i =3D 0; i < L_ARRAY_SIZE(curves); i++)
-		supported_groups[i] =3D curves[i].group;
-
-	supported_groups[i] =3D 0;
-}
-
-return supported_groups;
-
-> +}
-> +
->   static bool ecc_valid_point(struct l_ecc_point *point)
->   {
->   	const struct l_ecc_curve *curve =3D point->curve;
-> diff --git a/ell/ecc.h b/ell/ecc.h
-> index 9a852ff..cb6ab50 100644
-> --- a/ell/ecc.h
-> +++ b/ell/ecc.h
-> @@ -43,6 +43,7 @@ enum l_ecc_point_type {
->   };
->   =
-
->   const struct l_ecc_curve *l_ecc_curve_get(unsigned int group);
-> +const unsigned int *l_ecc_curve_get_groups(void);
->   =
-
->   struct l_ecc_point *l_ecc_point_new(const struct l_ecc_curve *curve);
->   struct l_ecc_point *l_ecc_point_from_data(const struct l_ecc_curve *cur=
-ve,
-> =
+2.17.1
 
 
-Regards,
--Denis
-
---===============0332558032271397239==--
+--===============2756277648149932716==--
 
