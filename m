@@ -1,71 +1,46 @@
-Content-Type: multipart/mixed; boundary="===============7782114111913565652=="
+Content-Type: multipart/mixed; boundary="===============8456600297220583934=="
 MIME-Version: 1.0
-From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH] ecc: add API to get supported groups
-Date: Mon, 14 Jan 2019 12:45:05 -0800
-Message-ID: <20190114204505.19193-1-james.prestwood@linux.intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH] genl: Handle empty data in l_genl_msg_append_attr
+Date: Tue, 15 Jan 2019 07:21:25 +0100
+Message-ID: <20190115062125.5202-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7782114111913565652==
+--===============8456600297220583934==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Protocols using ECC need a way to query which groups ELL supports. ecc.c
-now has a zero-terminated  list of supported groups, which is returned
-by l_ecc_curve_get_groups().
+Make sure l_genl_msg_append_attr can be called with a NULL @data (when
+@len is 0) for attributes like nl80211 flags, without triggering an asan
+warning about the memcpy parameter being NULL.
 ---
- ell/ecc.c | 7 +++++++
- ell/ecc.h | 1 +
- 2 files changed, 8 insertions(+)
+ ell/genl.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/ell/ecc.c b/ell/ecc.c
-index 053e5fb..ff03f24 100644
---- a/ell/ecc.c
-+++ b/ell/ecc.c
-@@ -85,6 +85,8 @@ static const struct l_ecc_curve p384 =3D {
- 	.b =3D P384_CURVE_B
- };
+diff --git a/ell/genl.c b/ell/genl.c
+index 32f54bc..2905a5e 100644
+--- a/ell/genl.c
++++ b/ell/genl.c
+@@ -790,7 +790,9 @@ LIB_EXPORT bool l_genl_msg_append_attr(struct l_genl_ms=
+g *msg, uint16_t type,
+ 	nla->nla_len =3D NLA_HDRLEN + len;
+ 	nla->nla_type =3D type;
  =
 
-+static const unsigned int ecc_groups[] =3D { 19, 20, 0 };
+-	memcpy(msg->data + msg->len + NLA_HDRLEN, data, len);
++	if (len)
++		memcpy(msg->data + msg->len + NLA_HDRLEN, data, len);
 +
- static const struct l_ecc_curve *curves[] =3D {
- 	&p256,
- 	&p384,
-@@ -102,6 +104,11 @@ LIB_EXPORT const struct l_ecc_curve *l_ecc_curve_get(u=
-nsigned int group)
- 	return NULL;
- }
+ 	msg->len +=3D NLA_HDRLEN + NLA_ALIGN(len);
  =
 
-+LIB_EXPORT const unsigned int *l_ecc_curve_get_groups(void)
-+{
-+	return ecc_groups;
-+}
-+
- static bool ecc_valid_point(struct l_ecc_point *point)
- {
- 	const struct l_ecc_curve *curve =3D point->curve;
-diff --git a/ell/ecc.h b/ell/ecc.h
-index 9a852ff..cb6ab50 100644
---- a/ell/ecc.h
-+++ b/ell/ecc.h
-@@ -43,6 +43,7 @@ enum l_ecc_point_type {
- };
- =
-
- const struct l_ecc_curve *l_ecc_curve_get(unsigned int group);
-+const unsigned int *l_ecc_curve_get_groups(void);
- =
-
- struct l_ecc_point *l_ecc_point_new(const struct l_ecc_curve *curve);
- struct l_ecc_point *l_ecc_point_from_data(const struct l_ecc_curve *curve,
+ 	return true;
 -- =
 
-2.17.1
+2.19.1
 
 
---===============7782114111913565652==--
+--===============8456600297220583934==--
 
