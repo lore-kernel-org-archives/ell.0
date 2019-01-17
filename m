@@ -1,36 +1,93 @@
-Content-Type: multipart/mixed; boundary="===============4938187037891191030=="
+Content-Type: multipart/mixed; boundary="===============7523107849739389151=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/4] key: Unlink keys when revoking
-Date: Thu, 17 Jan 2019 11:32:34 -0600
-Message-ID: <a1c7a4a3-d6f6-3a04-3480-08bf81e0db5f@gmail.com>
-In-Reply-To: <20190117171916.27960-1-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 1/2] tls: Pass optional data parameter to sign/verify
+ callbacks
+Date: Thu, 17 Jan 2019 22:37:39 +0100
+Message-ID: <CAOq732K7hCcahLOhJHaKjLMx9RpeJhduWQBdYwDLoBQeN4kijQ@mail.gmail.com>
+In-Reply-To: <5e13d457-a422-2ab6-7cec-00e54eedc520@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4938187037891191030==
+--===============7523107849739389151==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+On Thu, 17 Jan 2019 at 18:03, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 01/11/2019 07:14 AM, Andrew Zaborowski wrote:
+> > This is to illustrate the possible cleanup in DHE to avoid putting a
+> > pointer to a stack structure in the handshake state.
+> > ---
+> >   ell/tls-private.h |   3 +
+> >   ell/tls-suites.c  | 198 ++++++++++++++++++++--------------------------
+> >   ell/tls.c         |   6 +-
+> >   3 files changed, 91 insertions(+), 116 deletions(-)
+>
+> So I like this approach way more than the current situation.
+>
+> >
+> > diff --git a/ell/tls-private.h b/ell/tls-private.h
+> > index c82a4d5..134203f 100644
+> > --- a/ell/tls-private.h
+> > +++ b/ell/tls-private.h
+> > @@ -59,6 +59,7 @@ struct tls_hash_algorithm {
+> >   extern const struct tls_hash_algorithm tls_handshake_hash_data[];
+> >
+> >   typedef bool (*tls_get_hash_t)(struct l_tls *tls, uint8_t tls_id,
+> > +                             const uint8_t *data, size_t data_len,
+> >                               uint8_t *out, size_t *len,
+>
+> Can we call this out_len to make this clearer?
 
-On 01/17/2019 11:19 AM, Andrew Zaborowski wrote:
-> As an optimization unlink the key in l_key_free and l_keyring_free same
-> as we do in l_key(ring)_free_norevoke, in addition to the actual
-> revocation.  This happens to release the quota spot used by the key much
-> faster under some circumstances.
-> ---
->   ell/key.c | 15 +++++++++++++++
->   1 file changed, 15 insertions(+)
-> =
+Ok.
 
+>
+> >                               enum l_checksum_type *type);
+>
+> So one question I have is whether this type argument is needed.  It
+> seems like you only ever use it in 1 place, and pass in NULL everywhere
+> else.
+>
+> You could simply add a convenience method to lookup l_checksum from a
+> tls_id, no?
 
-All applied, thanks.
+Yeah, I was also wondering why I wasn't doing the mapping to the
+l_checksum_type inside the caller, I'm going to re-check this and
+possibly convert the signature.
 
-Regards,
--Denis
+>
+> >
+> > @@ -80,8 +81,10 @@ struct tls_key_exchange_algorithm {
+> >                                               const uint8_t *buf, size_=
+t len);
+> >
+> >       ssize_t (*sign)(struct l_tls *tls, uint8_t *out, size_t len,
+>
+> Can we name this out_len to make it clearer
 
+Ok.
 
---===============4938187037891191030==--
+>
+> > +                     const uint8_t *data, size_t data_len,
+>
+> These maybe might need to come after the get_hash, since our general
+> pattern is callback, userdata, not the other way around.
+
+Ok I can switch that around although it's a little different from the
+other userdata's.
+
+>
+> >                       tls_get_hash_t get_hash);
+> >       bool (*verify)(struct l_tls *tls, const uint8_t *in, size_t len,
+> > +                     const uint8_t *data, size_t data_len,
+> >                       tls_get_hash_t get_hash);
+>
+> As above
+
+Ok.
+
+Best regards
+
+--===============7523107849739389151==--
 
