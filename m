@@ -1,41 +1,69 @@
-Content-Type: multipart/mixed; boundary="===============1629254867532790993=="
+Content-Type: multipart/mixed; boundary="===============5796900524340053084=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/4] tls: Fix error check typo
-Date: Thu, 17 Jan 2019 18:19:14 +0100
-Message-ID: <20190117171916.27960-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/4] unit: Drop list of cipher suites from test-tls
+Date: Thu, 17 Jan 2019 18:19:15 +0100
+Message-ID: <20190117171916.27960-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20190117171916.27960-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1629254867532790993==
+--===============5796900524340053084==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Drop the incomplete list of cipher suite names to test and use the
+authoritative array of suites declared in tls-private.h.
 ---
- ell/tls-suites.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ unit/test-tls.c | 18 ++++--------------
+ 1 file changed, 4 insertions(+), 14 deletions(-)
 
-diff --git a/ell/tls-suites.c b/ell/tls-suites.c
-index d99f08b..1c3976e 100644
---- a/ell/tls-suites.c
-+++ b/ell/tls-suites.c
-@@ -1063,7 +1063,7 @@ static void tls_handle_dhe_client_key_xchg(struct l_t=
-ls *tls,
- 	}
+diff --git a/unit/test-tls.c b/unit/test-tls.c
+index b372474..ebca9aa 100644
+--- a/unit/test-tls.c
++++ b/unit/test-tls.c
+@@ -620,18 +620,7 @@ static void test_tls_suite_test(const void *data)
  =
 
- 	params->public =3D l_key_new(L_KEY_RAW, buf, public_len);
--	if (!params->prime) {
-+	if (!params->public) {
- 		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0, "l_key_new failed");
- 		return;
- 	}
+ int main(int argc, char *argv[])
+ {
+-	const char *suite_names[] =3D {
+-		"TLS_RSA_WITH_RC4_128_MD5",
+-		"TLS_RSA_WITH_RC4_128_SHA",
+-		"TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+-		"TLS_RSA_WITH_AES_128_CBC_SHA",
+-		"TLS_RSA_WITH_AES_256_CBC_SHA",
+-		"TLS_RSA_WITH_AES_128_CBC_SHA256",
+-		"TLS_RSA_WITH_AES_256_CBC_SHA256",
+-		"TLS_RSA_WITH_AES_128_GCM_SHA256",
+-		"TLS_RSA_WITH_AES_256_GCM_SHA384",
+-		NULL
+-	}, **name;
++	unsigned int i;
+ =
+
+ 	l_test_init(&argc, &argv);
+ =
+
+@@ -699,8 +688,9 @@ int main(int argc, char *argv[])
+ 	l_test_add("TLS connection version mismatch",
+ 			test_tls_version_mismatch_test, NULL);
+ =
+
+-	for (name =3D suite_names; *name; name++)
+-		l_test_add(*name, test_tls_suite_test, *name);
++	for (i =3D 0; tls_cipher_suite_pref[i]; i++)
++		l_test_add(tls_cipher_suite_pref[i]->name, test_tls_suite_test,
++				tls_cipher_suite_pref[i]->name);
+ =
+
+ done:
+ 	return l_test_run();
 -- =
 
 2.19.1
 
 
---===============1629254867532790993==--
+--===============5796900524340053084==--
 
