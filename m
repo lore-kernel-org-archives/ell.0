@@ -1,95 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============2328525420739738163=="
+Content-Type: multipart/mixed; boundary="===============7355706407732319968=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Subject: [PATCH] key: Work around keyctl_dh_params breakage in certain stable
- kernels
-Date: Wed, 23 Jan 2019 14:43:23 -0800
-Message-ID: <20190123224323.18586-1-mathew.j.martineau@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v2 1/2] time: basic utility for getting the system time
+Date: Wed, 23 Jan 2019 17:19:18 -0600
+Message-ID: <920d638f-96ab-4d72-6b83-0fc224197ac4@gmail.com>
+In-Reply-To: <20190123221159.24449-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2328525420739738163==
+--===============7355706407732319968==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-These stable kernels had a change which renamed one of the members of
-struct keyctl_dh_params and broke the ELL build:
+Hi James,
 
-v4.14.70, v4.14.71, v4.14.72
-v4.18.8, v4.18.9, v4.18.10
+On 01/23/2019 04:11 PM, James Prestwood wrote:
+> Timeouts are sometimes overkill for long timeouts, or timeouts that
+> don't require being immediately serviced once expired. For this
+> reason the 'time' module was added which allows you to get the system
+> clock time, as well as some basic APIs to check if two time values are
+> before/after one another, calculating an offset from a start time, and
+> finding the diff between two time values. This allows an application
+> to handle its own timeouts lazily with no tie to the main loop.
+> =
 
-Later stable releases in the v4.14.x and v4.18.x series reverted to the
-previous member name.
-
-This change allows ELL to build using the kernel declaration of the
-struct for v4.20 and later, and provides a correct structure declaration
-for older kernels.
----
- ell/key.c | 26 +++++++++++++++++---------
- 1 file changed, 17 insertions(+), 9 deletions(-)
-
-diff --git a/ell/key.c b/ell/key.c
-index bd5b4ea..6c36655 100644
---- a/ell/key.c
-+++ b/ell/key.c
-@@ -39,12 +39,6 @@
- =
-
- #ifndef KEYCTL_DH_COMPUTE
- #define KEYCTL_DH_COMPUTE 23
--
--struct keyctl_dh_params {
--	int32_t private;
--	int32_t prime;
--	int32_t base;
--};
- #endif
- =
-
- #ifndef KEYCTL_PKEY_QUERY
-@@ -79,6 +73,20 @@ struct keyctl_pkey_params {
- 	};
- 	uint32_t __spare[7];
- };
-+
-+/* Work around the missing (pre-4.7) or broken (4.14.{70,71,72} and
-+ * 4.18.{8,9,10}) kernel declaration of struct keyctl_dh_params
-+ */
-+struct dh_params {
-+	int32_t private;
-+	int32_t prime;
-+	int32_t base;
-+};
-+#else
-+/* When KEYCTL_PKEY_QUERY is defined by the kernel, the
-+ * struct keyctl_dh_params declaration is valid.
-+ */
-+#define dh_params keyctl_dh_params
- #endif
- =
-
- #ifndef KEYCTL_RESTRICT_KEYRING
-@@ -201,9 +209,9 @@ static long kernel_dh_compute(int32_t private, int32_t =
-prime, int32_t base,
- {
- 	long result;
- =
-
--	struct keyctl_dh_params params =3D { .private =3D private,
--					   .prime =3D prime,
--					   .base =3D base };
-+	struct dh_params params =3D { .private =3D private,
-+				    .prime =3D prime,
-+				    .base =3D base };
- =
-
- 	result =3D syscall(__NR_keyctl, KEYCTL_DH_COMPUTE, &params, payload, len,
- 			NULL);
--- =
-
-2.20.1
+> The APIs were modeled after the kernel APIs in jiffies.h
+> ---
+>   Makefile.am |  6 +++--
+>   ell/ell.h   |  1 +
+>   ell/ell.sym |  7 ++++++
+>   ell/time.c  | 72 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+>   ell/time.h  | 67 +++++++++++++++++++++++++++++++++++++++++++++++++
+>   5 files changed, 151 insertions(+), 2 deletions(-)
+>   create mode 100644 ell/time.c
+>   create mode 100644 ell/time.h
+> =
 
 
---===============2328525420739738163==--
+Both applied, thanks.
+
+Regards,
+-Denis
+
+
+--===============7355706407732319968==--
 
