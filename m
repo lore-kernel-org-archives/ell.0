@@ -1,39 +1,236 @@
-Content-Type: multipart/mixed; boundary="===============6827223742181143291=="
+Content-Type: multipart/mixed; boundary="===============8525432644781826231=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 2/2] tls: Drop unneeded ecc curve data
-Date: Tue, 22 Jan 2019 12:30:31 -0600
-Message-ID: <d045570b-a27b-9d68-f097-e77c07ea0d64@gmail.com>
-In-Reply-To: <20190122180229.12051-2-andrew.zaborowski@intel.com>
+From: James Prestwood <james.prestwood@linux.intel.com>
+Subject: [PATCH] time: basic utility for getting the system time
+Date: Wed, 23 Jan 2019 10:38:37 -0800
+Message-ID: <20190123183837.28020-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6827223742181143291==
+--===============8525432644781826231==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Timeouts are sometimes overkill for long timeouts, or timeouts that
+don't require being immediately serviced once expired. For this
+reason the 'time' module was added which allows you to get the system
+clock time, as well as some basic APIs to check if two time values are
+before/after one another, and for calculating an offset from a start
+time. This allows an application to handle its own timeouts lazily
+with no tie to the main loop.
 
-On 01/22/2019 12:02 PM, Andrew Zaborowski wrote:
-> Drop the information on ECC curves that we can get from the l_ecc APIs
-> except for the name and the curve ID.  We keep the IDs in the
-> tls_group_pref array so we can set the curve preference independently of
-> the list of ecc.c supported curves and don't have to generate the array
-> dynamically.
-> ---
->   ell/tls-extensions.c | 10 ++--------
->   ell/tls-private.h    |  4 ----
->   ell/tls-suites.c     | 37 +++++++++++++++++++++++--------------
->   3 files changed, 25 insertions(+), 26 deletions(-)
-> =
+The APIs were modeled after the kernel APIs in jiffies.h
+---
+ Makefile.am |  6 ++--
+ ell/ell.sym |  6 ++++
+ ell/time.c  | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/time.h  | 45 ++++++++++++++++++++++++++
+ 4 files changed, 148 insertions(+), 2 deletions(-)
+ create mode 100644 ell/time.c
+ create mode 100644 ell/time.h
+
+diff --git a/Makefile.am b/Makefile.am
+index 3eecbe0..1c089ec 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -51,7 +51,8 @@ pkginclude_HEADERS =3D ell/ell.h \
+ 			ell/dhcp.h \
+ 			ell/cert.h \
+ 			ell/ecc.h \
+-			ell/ecdh.h
++			ell/ecdh.h \
++			ell/time.h
+ =
+
+ lib_LTLIBRARIES =3D ell/libell.la
+ =
+
+@@ -121,7 +122,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
+ 			ell/ecc.h \
+ 			ell/ecc-external.c \
+ 			ell/ecc.c \
+-			ell/ecdh.c
++			ell/ecdh.c \
++			ell/time.c
+ =
+
+ ell_libell_la_LDFLAGS =3D -no-undefined \
+ 			-Wl,--version-script=3D$(top_srcdir)/ell/ell.sym \
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 7643a25..e67716e 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -485,6 +485,12 @@ global:
+ 	/* ecdh */
+ 	l_ecdh_generate_key_pair;
+ 	l_ecdh_generate_shared_secret;
++
++	/* time */
++	l_time_now;
++	l_time_after;
++	l_time_before;
++	l_time_offset;
+ local:
+ 	*;
+ };
+diff --git a/ell/time.c b/ell/time.c
+new file mode 100644
+index 0000000..3c2b929
+--- /dev/null
++++ b/ell/time.c
+@@ -0,0 +1,93 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2019  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <time.h>
++#include <limits.h>
++
++#include "time.h"
++#include "private.h"
++
++/**
++ * l_time_now:
++ *
++ * Get the running clocktime in microseconds
++ *
++ * Returns: Current clock time in microseconds
++ **/
++LIB_EXPORT uint64_t l_time_now(void)
++{
++	struct timespec now;
++
++	clock_gettime(CLOCK_BOOTTIME, &now);
++
++	return now.tv_sec * 1000000 + now.tv_nsec / 1000;
++}
++
++/**
++ * l_time_after
++ *
++ * Returns: True if time a is after time b
++ **/
++LIB_EXPORT bool l_time_after(uint64_t a, uint64_t b)
++{
++	if ((int64_t)(b - a) < 0)
++		return true;
++
++	return false;
++}
++
++/**
++ * l_time_before
++ *
++ * Returns: True if time a is before time b
++ **/
++LIB_EXPORT bool l_time_before(uint64_t a, uint64_t b)
++{
++	return l_time_after(b, a);
++}
++
++/**
++ * l_time_offset
++ *
++ * @time: Start time to calculate offset
++ * @offset: Amount of time to add to 'time'
++ *
++ * Adds an offset to a time value. This checks for overflow, and if detect=
+ed
++ * returns ULONG_MAX.
++ *
++ * Returns: A time value 'time' + 'offset'. Or ULONG_MAX if time + offset
++ * exceeds ULONG_MAX.
++ **/
++LIB_EXPORT uint64_t l_time_offset(uint64_t time, uint64_t offset)
++{
++	uint64_t added =3D time + offset;
++
++	/* check overflow */
++	if (!l_time_after(added, time))
++		return ULONG_MAX;
++
++	return added;
++}
+diff --git a/ell/time.h b/ell/time.h
+new file mode 100644
+index 0000000..00c09cd
+--- /dev/null
++++ b/ell/time.h
+@@ -0,0 +1,45 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2019  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifndef __ELL_TIME_H
++#define __ELL_TIME_H
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#include <stdint.h>
++#include <stdbool.h>
++
++uint64_t l_time_now(void);
++
++bool l_time_after(uint64_t a, uint64_t b);
++
++bool l_time_before(uint64_t a, uint64_t b);
++
++uint64_t l_time_offset(uint64_t time, uint64_t offset);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* __ELL_TIME_H */
+-- =
+
+2.17.1
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
-
---===============6827223742181143291==--
+--===============8525432644781826231==--
 
