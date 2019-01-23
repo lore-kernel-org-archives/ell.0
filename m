@@ -1,48 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============7355706407732319968=="
+Content-Type: multipart/mixed; boundary="===============3900397839910503310=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2 1/2] time: basic utility for getting the system time
-Date: Wed, 23 Jan 2019 17:19:18 -0600
-Message-ID: <920d638f-96ab-4d72-6b83-0fc224197ac4@gmail.com>
-In-Reply-To: <20190123221159.24449-1-james.prestwood@linux.intel.com>
+Subject: Re: [PATCH] key: Work around keyctl_dh_params breakage in certain
+ stable kernels
+Date: Wed, 23 Jan 2019 17:21:05 -0600
+Message-ID: <0f2e5486-c23a-60d2-0615-b87953f01d7a@gmail.com>
+In-Reply-To: <20190123224323.18586-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7355706407732319968==
+--===============3900397839910503310==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Hi Mat,
 
-On 01/23/2019 04:11 PM, James Prestwood wrote:
-> Timeouts are sometimes overkill for long timeouts, or timeouts that
-> don't require being immediately serviced once expired. For this
-> reason the 'time' module was added which allows you to get the system
-> clock time, as well as some basic APIs to check if two time values are
-> before/after one another, calculating an offset from a start time, and
-> finding the diff between two time values. This allows an application
-> to handle its own timeouts lazily with no tie to the main loop.
+On 01/23/2019 04:43 PM, Mat Martineau wrote:
+> These stable kernels had a change which renamed one of the members of
+> struct keyctl_dh_params and broke the ELL build:
 > =
 
-> The APIs were modeled after the kernel APIs in jiffies.h
+> v4.14.70, v4.14.71, v4.14.72
+> v4.18.8, v4.18.9, v4.18.10
+> =
+
+> Later stable releases in the v4.14.x and v4.18.x series reverted to the
+> previous member name.
+> =
+
+> This change allows ELL to build using the kernel declaration of the
+> struct for v4.20 and later, and provides a correct structure declaration
+> for older kernels.
 > ---
->   Makefile.am |  6 +++--
->   ell/ell.h   |  1 +
->   ell/ell.sym |  7 ++++++
->   ell/time.c  | 72 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->   ell/time.h  | 67 +++++++++++++++++++++++++++++++++++++++++++++++++
->   5 files changed, 151 insertions(+), 2 deletions(-)
->   create mode 100644 ell/time.c
->   create mode 100644 ell/time.h
+>   ell/key.c | 26 +++++++++++++++++---------
+>   1 file changed, 17 insertions(+), 9 deletions(-)
 > =
 
 
-Both applied, thanks.
+Applied, thanks.
 
 Regards,
 -Denis
 
 
---===============7355706407732319968==--
+--===============3900397839910503310==--
 
