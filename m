@@ -1,44 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============3662242893537609393=="
+Content-Type: multipart/mixed; boundary="===============4251337046967288714=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: =?unknown-8bit?q?Micha=C5=82?= 'Khorne' Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
 Subject: Re: [PATCH] dbus: Added l_dbus_signal_emit
-Date: Fri, 01 Feb 2019 11:39:39 -0600
-Message-ID: <5e688fdb-ed07-2aa0-b9b1-1ce4749150ef@gmail.com>
-In-Reply-To: <20190201134118.28458-1-michal.lowas-rzechonek@silvair.com>
+Date: Fri, 01 Feb 2019 20:12:35 +0100
+Message-ID: <20190201191235.5wtj6imwtgtpcoqc@kynes>
+In-Reply-To: <5e688fdb-ed07-2aa0-b9b1-1ce4749150ef@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3662242893537609393==
+--===============4251337046967288714==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On 02/01/2019 07:41 AM, Micha=C5=82 'Khorne' Lowas-Rzechonek wrote:
-> From: Micha=C5=82 Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
+Hi Denis,
+
+On 02/01, Denis Kenzior wrote:
+> I'm confused why this is needed? You can emit a signal today by doing:
 > =
 
-> After declaring a signal with l_dbus_interface_signal, we need a way to
-> actually publish it.
-> =
+> sig =3D l_dbus_message_new_signal();
+> l_dbus_message_set_arguments(sig, "...", ...);
+> l_dbus_send();
 
-> This commit adds API for this, along with an updated example.
-> ---
->   ell/dbus-service.c      | 98 +++++++++++++++++++++++++++++++++++++++++
->   ell/dbus-service.h      |  4 ++
->   examples/dbus-service.c | 12 ++++-
->   3 files changed, 112 insertions(+), 2 deletions(-)
-> =
+Hm. I was originally trying to do that, but if I tried to emit a signal
+from a method handler, the client wasn't receiving replies... I think
+I've seen mismatched serial numers on dbus-monitor, so I deferred
+sending the signal until after method reply.
 
+Seems like I must have had a bug somewhere else, the example above works
+as expected. I'm going to re-test this and get back to you.
 
-I'm confused why this is needed? You can emit a signal today by doing:
+Sorry for the commotion.
 
-sig =3D l_dbus_message_new_signal();
-l_dbus_message_set_arguments(sig, "...", ...);
-l_dbus_send();
+-- =
 
-Regards,
--Denis
+Micha=C5=82 Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
+Silvair http://silvair.com
+Jasnog=C3=B3rska 44, 31-358 Krakow, POLAND
 
-
---===============3662242893537609393==--
+--===============4251337046967288714==--
 
