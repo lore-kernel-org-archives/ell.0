@@ -1,101 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============0130247971887437550=="
+Content-Type: multipart/mixed; boundary="===============7478161304312858994=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel@holtmann.org>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH] uuid: Added l_uuid_parse
-Date: Fri, 01 Feb 2019 17:15:08 +0100
-Message-ID: <35E8B0B5-82F3-4A91-A08E-FA506815851A@holtmann.org>
+Date: Fri, 01 Feb 2019 11:22:38 -0600
+Message-ID: <b90e57e8-4a9a-5826-3564-1a4161d4a7fa@gmail.com>
 In-Reply-To: <20190201134617.28831-1-michal.lowas-rzechonek@silvair.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0130247971887437550==
+--===============7478161304312858994==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Michal,
-
-> This commit adds API complementary to l_uuid_to_string, allowing parsing
-> canonical string representation into a byte array.
-
-I would have called it l_uuid_from_string.
+Hi Micha=C5=82,
 
 > I've also changed printf/scanf formatting to use PRIx/SCNx macros, for
-> better portability.
+> better portability
 
-This should be a separate patch.
+Hmm, portability where?  Is this an actual concern? Any platform that =
 
-> ---
-> ell/uuid.c       | 54 ++++++++++++++++++++++++++++++++++++-------
-> ell/uuid.h       |  1 +
-> unit/test-uuid.c | 60 ++++++++++++++++++++++++++++++++++++++++++++++++
-> 3 files changed, 107 insertions(+), 8 deletions(-)
-> =
+ell can actually run on, PRIx/SCNx =3D=3D 'x', no?
 
-> diff --git a/ell/uuid.c b/ell/uuid.c
-> index a4d72fc..26893a5 100644
-> --- a/ell/uuid.c
-> +++ b/ell/uuid.c
-> @@ -25,6 +25,7 @@
-> #endif
-> =
+The use of PRI* macros makes the printf statement quite a bit less =
 
-> #define _GNU_SOURCE
-> +#include <inttypes.h>
-> #include <stdio.h>
-> =
+readable IMO.  I can understand the need when using size_t or other =
 
-> #include "checksum.h"
-> @@ -210,17 +211,54 @@ LIB_EXPORT bool l_uuid_to_string(const uint8_t uuid=
-[16],
-> {
-> 	int n;
-> =
+esoteric types that depend on the arch, but uint8_t isn't one of them...
 
-> -	n =3D snprintf(dest, dest_size, "%02x%02x%02x%02x-%02x%02x-%02x%02x-"
-> -					"%02x%02x-%02x%02x%02x%02x%02x%02x",
-> -					uuid[0], uuid[1], uuid[2], uuid[3],
-> -					uuid[4], uuid[5],
-> -					uuid[6], uuid[7],
-> -					uuid[8], uuid[9],
-> -					uuid[10], uuid[11], uuid[12],
-> -					uuid[13], uuid[14], uuid[15]);
-> +	n =3D snprintf(dest, dest_size,
-> +			"%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "-"
-> +			"%02" PRIx8 "%02" PRIx8 "-"
-> +			"%02" PRIx8 "%02" PRIx8 "-"
-> +			"%02" PRIx8 "%02" PRIx8 "-"
-> +			"%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRIx8 "%02" PRI=
-x8 "",
-> +			uuid[0], uuid[1], uuid[2], uuid[3],
-> +			uuid[4], uuid[5],
-> +			uuid[6], uuid[7],
-> +			uuid[8], uuid[9],
-> +			uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
-> =
+Anyway, no biggie, just wondering...
 
-> 	if (n < 0 || (size_t) n >=3D dest_size)
-> 		return false;
-> =
+Regards,
+-Denis
 
-> 	return true;
-> }
-> +
-> +LIB_EXPORT bool l_uuid_parse(const char *src, size_t src_size,
-> +							 uint8_t uuid[16])
-> +{
-
-Don=E2=80=99t bother with src_size parameter. You can use strlen for that s=
-ince supporting non null-terminated strings seems rather pointless. You wil=
-l required space or null terminator at the end of make sscanf actually work=
- correctly anyway. So I would rather check that the string is long enough t=
-o hold an actual UUID text representation and that you have a proper termin=
-ator at the end.
-
-Regards
-
-Marcel
-
-
---===============0130247971887437550==--
+--===============7478161304312858994==--
 
