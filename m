@@ -1,29 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============7759828415218981369=="
+Content-Type: multipart/mixed; boundary="===============2644014524283126371=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: =?unknown-8bit?q?Micha=C5=82?= 'Khorne' Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
 Subject: Re: [PATCH] uuid: Added l_uuid_parse
-Date: Fri, 01 Feb 2019 11:33:21 -0600
-Message-ID: <4072ed5f-9d2f-e036-625e-e088a09affe2@gmail.com>
-In-Reply-To: <20190201172825.c3hwc4x2ks2uure7@kynes>
+Date: Fri, 01 Feb 2019 18:39:11 +0100
+Message-ID: <20190201173911.s5hhd74pl35dwtfh@kynes>
+In-Reply-To: <4072ed5f-9d2f-e036-625e-e088a09affe2@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7759828415218981369==
+--===============2644014524283126371==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Micha=C5=82,
+Denis,
 
-> $ ./a.out
-> PRIx8=3Dx, SCNx8=3Dhhx
+On 02/01, Denis Kenzior wrote:
+> Hi Micha=C5=82,
+> =
 
-Ah right.  But then I would just use hhx instead of SCNx8.  There should =
+> > $ ./a.out
+> > PRIx8=3Dx, SCNx8=3Dhhx
+> =
 
-be no portability concerns and it is makes things much more readable.
+> Ah right.  But then I would just use hhx instead of SCNx8.  There should =
+be
+> no portability concerns and it is makes things much more readable.
 
-Regards,
--Denis
+Ok, will do.
 
---===============7759828415218981369==--
+Too much bare metal does something to one's brain...
+
+-- =
+
+Micha=C5=82 Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
+Silvair http://silvair.com
+Jasnog=C3=B3rska 44, 31-358 Krakow, POLAND
+
+--===============2644014524283126371==--
 
