@@ -1,41 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============2644014524283126371=="
+Content-Type: multipart/mixed; boundary="===============3662242893537609393=="
 MIME-Version: 1.0
-From: =?unknown-8bit?q?Micha=C5=82?= 'Khorne' Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
-Subject: Re: [PATCH] uuid: Added l_uuid_parse
-Date: Fri, 01 Feb 2019 18:39:11 +0100
-Message-ID: <20190201173911.s5hhd74pl35dwtfh@kynes>
-In-Reply-To: <4072ed5f-9d2f-e036-625e-e088a09affe2@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] dbus: Added l_dbus_signal_emit
+Date: Fri, 01 Feb 2019 11:39:39 -0600
+Message-ID: <5e688fdb-ed07-2aa0-b9b1-1ce4749150ef@gmail.com>
+In-Reply-To: <20190201134118.28458-1-michal.lowas-rzechonek@silvair.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2644014524283126371==
+--===============3662242893537609393==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Denis,
-
-On 02/01, Denis Kenzior wrote:
-> Hi Micha=C5=82,
+On 02/01/2019 07:41 AM, Micha=C5=82 'Khorne' Lowas-Rzechonek wrote:
+> From: Micha=C5=82 Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
 > =
 
-> > $ ./a.out
-> > PRIx8=3Dx, SCNx8=3Dhhx
+> After declaring a signal with l_dbus_interface_signal, we need a way to
+> actually publish it.
 > =
 
-> Ah right.  But then I would just use hhx instead of SCNx8.  There should =
-be
-> no portability concerns and it is makes things much more readable.
+> This commit adds API for this, along with an updated example.
+> ---
+>   ell/dbus-service.c      | 98 +++++++++++++++++++++++++++++++++++++++++
+>   ell/dbus-service.h      |  4 ++
+>   examples/dbus-service.c | 12 ++++-
+>   3 files changed, 112 insertions(+), 2 deletions(-)
+> =
 
-Ok, will do.
 
-Too much bare metal does something to one's brain...
+I'm confused why this is needed? You can emit a signal today by doing:
 
--- =
+sig =3D l_dbus_message_new_signal();
+l_dbus_message_set_arguments(sig, "...", ...);
+l_dbus_send();
 
-Micha=C5=82 Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
-Silvair http://silvair.com
-Jasnog=C3=B3rska 44, 31-358 Krakow, POLAND
+Regards,
+-Denis
 
---===============2644014524283126371==--
+
+--===============3662242893537609393==--
 
