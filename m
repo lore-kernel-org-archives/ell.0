@@ -1,387 +1,327 @@
-Content-Type: multipart/mixed; boundary="===============0172779690176947780=="
+Content-Type: multipart/mixed; boundary="===============0061253312842701018=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/4] tls: Implement the Signature Algorithms extension
-Date: Tue, 05 Feb 2019 16:54:58 +0100
-Message-ID: <20190205155500.24750-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/4] tls: Handle CertificateRequest using common code
+Date: Tue, 05 Feb 2019 16:54:59 +0100
+Message-ID: <20190205155500.24750-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20190205155500.24750-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0172779690176947780==
+--===============0061253312842701018==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Use the new, more complete code added for the Signature Algorithms
+extensions to parse and generate the signature algorithms data in the
+Certificate Request messages.  Get rid of a few TODOs this way.
+
+The signature algorithms data in both messages serves mostly the same
+purpose.
 ---
- ell/tls-extensions.c | 277 +++++++++++++++++++++++++++++++++++++++++++
- ell/tls-private.h    |   4 +
- ell/tls.c            |  10 +-
- 3 files changed, 282 insertions(+), 9 deletions(-)
+ ell/tls-extensions.c |   8 +--
+ ell/tls-private.h    |   5 ++
+ ell/tls-suites.c     |   2 +-
+ ell/tls.c            | 133 +++++++++++++------------------------------
+ 4 files changed, 49 insertions(+), 99 deletions(-)
 
 diff --git a/ell/tls-extensions.c b/ell/tls-extensions.c
-index d179e67..695b4be 100644
+index 695b4be..73c320d 100644
 --- a/ell/tls-extensions.c
 +++ b/ell/tls-extensions.c
-@@ -568,6 +568,276 @@ static ssize_t tls_ec_point_formats_server_write(stru=
-ct l_tls *tls,
- 	return 2;
+@@ -602,8 +602,8 @@ static ssize_t tls_ec_point_formats_server_write(struct=
+ l_tls *tls,
+  * with the hash algorithms we can use for signature verification,
+  * i.e. those in the tls_handshake_hash_data table.
+  */
+-static ssize_t tls_write_signature_algorithms(struct l_tls *tls,
+-						uint8_t *buf, size_t len)
++ssize_t tls_write_signature_algorithms(struct l_tls *tls,
++					uint8_t *buf, size_t len)
+ {
+ 	uint8_t *ptr =3D buf;
+ 	unsigned int i, j;
+@@ -669,8 +669,8 @@ static ssize_t tls_write_signature_algorithms(struct l_=
+tls *tls,
+ 	return ptr - buf;
+ }
+ =
+
+-static ssize_t tls_parse_signature_algorithms(struct l_tls *tls,
+-						const uint8_t *buf, size_t len)
++ssize_t tls_parse_signature_algorithms(struct l_tls *tls,
++					const uint8_t *buf, size_t len)
+ {
+ 	const uint8_t *ptr =3D buf;
+ 	enum handshake_hash_type first_supported, hash;
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index 2d1424e..bf9e2ec 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -325,6 +325,11 @@ const struct tls_named_group *tls_find_ff_group(const =
+uint8_t *prime,
+ 						const uint8_t *generator,
+ 						size_t generator_len);
+ =
+
++ssize_t tls_write_signature_algorithms(struct l_tls *tls,
++					uint8_t *buf, size_t len);
++ssize_t tls_parse_signature_algorithms(struct l_tls *tls,
++					const uint8_t *buf, size_t len);
++
+ int tls_parse_certificate_list(const void *data, size_t len,
+ 				struct l_certchain **out_certchain);
+ =
+
+diff --git a/ell/tls-suites.c b/ell/tls-suites.c
+index c11c28d..18ac366 100644
+--- a/ell/tls-suites.c
++++ b/ell/tls-suites.c
+@@ -213,7 +213,7 @@ static bool tls_rsa_verify(struct l_tls *tls, const uin=
+t8_t *in, size_t in_len,
+ }
+ =
+
+ static struct tls_signature_algorithm tls_rsa_signature =3D {
+-	.id =3D 1, /* RSA_sign */
++	.id =3D 1, /* SignatureAlgorithm.rsa */
+ 	.validate_cert_key_type =3D tls_rsa_validate_cert_key,
+ 	.sign =3D tls_rsa_sign,
+ 	.verify =3D tls_rsa_verify,
+diff --git a/ell/tls.c b/ell/tls.c
+index fd898f6..7a30617 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -951,7 +951,7 @@ static bool tls_send_certificate(struct l_tls *tls)
+ 	/*
+ 	 * TODO: check that the certificate is compatible with hash and
+ 	 * signature algorithms lists supplied to us in the Client Hello
+-	 * extensions (if we're a server) or in the Certificate Request
++	 * extensions (if we're a 1.2+ server) or in the Certificate Request
+ 	 * (if we act as a 1.2+ client).
+ 	 *
+ 	 *  - for the hash and signature_algorithms list, check all
+@@ -988,26 +988,19 @@ static bool tls_send_certificate(struct l_tls *tls)
+ 	return true;
  }
  =
 
 +/*
-+ * This is used to append the list of signature algorithm and hash type
-+ * combinations we support to the Signature Algorithms client hello
-+ * extension (on the client) and the Certificate Request message (on the
-+ * server).  In both cases we need to list the algorithms we support for
-+ * two use cases: certificate chain verification and signing/verifying
-+ * Server Key Exchange params (server->client) or Certificate Verify
-+ * data (client->server).
-+ *
-+ * For the server side RFC 5462, Section 7.4.1.4.1 says:
-+ * "If the client [...] is willing to use them for verifying
-+ * messages sent by the server, i.e., server certificates and
-+ * server key exchange [...] it MUST send the
-+ * signature_algorithms extension, listing the algorithms it
-+ * is willing to accept."
-+ *
-+ * As for the certificate chains we mostly rely on the kernel to do
-+ * this so when we receive the list we do not currently verify the
-+ * that the whole chain uses only algorithms from the list on either
-+ * side (TODO). But we know that the chain verification in the kernel
-+ * can use a superset of the hash algorithms l_checksum supports.
-+ * For the Server Key Exchange and Certificate Verify signatures we
-+ * use l_checksum but we need to map the TLS-specific hash IDs to
-+ * enum l_checksum_type using the tls_handshake_hash_data list in
-+ * signature->sign() and signature->verify(), so we use
-+ * tls_handshake_hash_data as the definitive list of allowed hash
-+ * algorithms.
-+ *
-+ * Our supported signature algorithms can work with any hash type so we
-+ * basically have to send all possible combinations of the signature
-+ * algorithm IDs from the supported cipher suites (except anonymous)
-+ * with the hash algorithms we can use for signature verification,
-+ * i.e. those in the tls_handshake_hash_data table.
++ * Note: ClientCertificateType.rsa_sign value coincides with the
++ * SignatureAlgorithm.rsa value but other values in those enum are
++ * different so we don't mix them, can't extract them from
++ * tls->pending.cipher_suite->signature.
 + */
-+static ssize_t tls_write_signature_algorithms(struct l_tls *tls,
-+						uint8_t *buf, size_t len)
-+{
-+	uint8_t *ptr =3D buf;
-+	unsigned int i, j;
-+	struct tls_cipher_suite **suite;
-+	uint8_t sig_alg_ids[16];
-+	uint8_t hash_ids[16];
-+	unsigned int sig_alg_cnt =3D 0;
-+	unsigned int hash_cnt =3D 0;
-+
-+	for (suite =3D tls->cipher_suite_pref_list; *suite; suite++) {
-+		uint8_t id;
-+
-+		if (!(*suite)->signature)
-+			continue;
-+
-+		id =3D (*suite)->signature->id;
-+
-+		if (memchr(sig_alg_ids, id, sig_alg_cnt))
-+			continue;
-+
-+		if (!tls_cipher_suite_is_compatible(tls, *suite, NULL))
-+			continue;
-+
-+		if (sig_alg_cnt >=3D sizeof(sig_alg_ids))
-+			return -ENOMEM;
-+
-+		sig_alg_ids[sig_alg_cnt++] =3D id;
-+	}
-+
-+	for (i =3D 0; i < __HANDSHAKE_HASH_COUNT; i++) {
-+		const struct tls_hash_algorithm *hash =3D
-+			&tls_handshake_hash_data[i];
-+		bool supported;
-+
-+		/*
-+		 * The hash types in the Signature Algorithms extension are
-+		 * all supported hashes but the ones in the Certificate
-+		 * Request (server->client) must be in the set for which we
-+		 * maintain handshake message hashes because that is going
-+		 * to be used in Certificate Verify.
-+		 */
-+		if (tls->server)
-+			supported =3D !!tls->handshake_hash[i];
-+		else
-+			supported =3D l_checksum_is_supported(hash->l_id, false);
-+
-+		if (supported)
-+			hash_ids[hash_cnt++] =3D hash->tls_id;
-+	}
-+
-+	if (len < 2 + sig_alg_cnt * hash_cnt * 2)
-+		return -ENOMEM;
-+
-+	l_put_be16(sig_alg_cnt * hash_cnt * 2, ptr);
-+	ptr +=3D 2;
-+
-+	for (i =3D 0; i < sig_alg_cnt; i++)
-+		for (j =3D 0; j < hash_cnt; j++) {
-+			*ptr++ =3D hash_ids[j];
-+			*ptr++ =3D sig_alg_ids[i];
-+		}
-+
-+	return ptr - buf;
-+}
-+
-+static ssize_t tls_parse_signature_algorithms(struct l_tls *tls,
-+						const uint8_t *buf, size_t len)
-+{
-+	const uint8_t *ptr =3D buf;
-+	enum handshake_hash_type first_supported, hash;
-+	const struct tls_hash_algorithm *preferred;
-+	struct tls_cipher_suite **suite;
-+	uint8_t sig_alg_ids[16];
-+	unsigned int sig_alg_cnt =3D 0;
-+
-+	/*
-+	 * This only makes sense as a variable-length field, assume
-+	 * there's a typo in RFC5246 7.4.4 here.
-+	 */
-+	if (len < 4)
-+		return -EINVAL;
-+
-+	if (l_get_be16(ptr) < len - 2)
-+		return -EINVAL;
-+
-+	len =3D l_get_be16(ptr);
-+	ptr +=3D 2;
-+
-+	if (len & 1)
-+		return -EINVAL;
-+
-+	for (suite =3D tls->cipher_suite_pref_list; *suite; suite++) {
-+		uint8_t id;
-+
-+		if (!(*suite)->signature)
-+			continue;
-+
-+		id =3D (*suite)->signature->id;
-+
-+		if (memchr(sig_alg_ids, id, sig_alg_cnt))
-+			continue;
-+
-+		if (!tls_cipher_suite_is_compatible(tls, *suite, NULL))
-+			continue;
-+
-+		if (sig_alg_cnt >=3D sizeof(sig_alg_ids))
-+			return -ENOMEM;
-+
-+		sig_alg_ids[sig_alg_cnt++] =3D id;
-+	}
-+
-+	/*
-+	 * In 1.2 we force our preference for SHA256/SHA384 (depending on
-+	 * cipher suite's PRF hmac) if it is supported by the peer because
-+	 * that must be supported anyway for the PRF and the Finished hash
-+	 * meaning that we only need to keep one hash instead of two.
-+	 * If not available fall back to the first common hash algorithm.
-+	 */
-+	first_supported =3D -1;
-+
-+	if (tls->prf_hmac)
-+		preferred =3D tls->prf_hmac;
-+	else
-+		preferred =3D &tls_handshake_hash_data[HANDSHAKE_HASH_SHA256];
-+
-+	while (len) {
-+		uint8_t hash_id =3D *ptr++;
-+		uint8_t sig_alg_id =3D *ptr++;
-+		bool supported;
-+
-+		/* Ignore hash types for signatures other than ours */
-+		if (tls->pending.cipher_suite &&
-+				(!tls->pending.cipher_suite->signature ||
-+				 tls->pending.cipher_suite->signature->id !=3D
-+				 sig_alg_id))
-+			continue;
-+		else if (!tls->pending.cipher_suite &&
-+				!memchr(sig_alg_ids, sig_alg_id, sig_alg_cnt))
-+			continue;
-+
-+		if (hash_id =3D=3D preferred->tls_id) {
-+			for (hash =3D 0; hash < __HANDSHAKE_HASH_COUNT; hash++)
-+				if (&tls_handshake_hash_data[hash] =3D=3D preferred)
-+					break;
-+			break;
-+		}
-+
-+		if ((int) first_supported !=3D -1)
-+			continue;
-+
-+		for (hash =3D 0; hash < __HANDSHAKE_HASH_COUNT; hash++)
-+			if (hash_id =3D=3D tls_handshake_hash_data[hash].tls_id)
-+				break;
-+
-+		if (hash =3D=3D __HANDSHAKE_HASH_COUNT)
-+			continue;
-+
-+		if (tls->server)
-+			supported =3D l_checksum_is_supported(
-+					tls_handshake_hash_data[hash].l_id,
-+					false);
-+		else
-+			supported =3D !!tls->handshake_hash[hash];
-+
-+		if (supported)
-+			first_supported =3D hash;
-+	}
-+
-+	if (len)
-+		tls->signature_hash =3D hash;
-+	else if ((int) first_supported !=3D -1)
-+		tls->signature_hash =3D first_supported;
-+	else
-+		return -ENOTSUP;
-+
-+	return ptr + len - buf;
-+}
-+
-+/* RFC 5462, Section 7.4.1.4.1 */
-+static ssize_t tls_signature_algorithms_client_write(struct l_tls *tls,
-+						uint8_t *buf, size_t len)
-+{
-+	/*
-+	 * "Note: this extension is not meaningful for TLS versions
-+	 * prior to 1.2.  Clients MUST NOT offer it if they are offering
-+	 * prior versions."
-+	 */
-+	if (tls->max_version < L_TLS_V12)
-+		return -ENOMSG;
-+
-+	return tls_write_signature_algorithms(tls, buf, len);
-+}
-+
-+static bool tls_signature_algorithms_client_handle(struct l_tls *tls,
-+						const uint8_t *buf, size_t len)
-+{
-+	ssize_t ret;
-+
-+	/*
-+	 * "However, even if clients do offer it, the rules specified in
-+	 * [TLSEXT] require servers to ignore extensions they do not
-+	 * understand."
-+	 */
-+	if (tls->max_version < L_TLS_V12)
-+		return true;
-+
-+	ret =3D tls_parse_signature_algorithms(tls, buf, len);
-+
-+	if (ret =3D=3D -ENOTSUP)
-+		TLS_DEBUG("No common signature algorithms");
-+
-+	/*
-+	 * TODO: also check our certificate chain against the parsed
-+	 * signature algorithms.
-+	 */
-+
-+	return ret =3D=3D (ssize_t) len;
-+}
-+
-+static bool tls_signature_algorithms_client_absent(struct l_tls *tls)
-+{
-+	/*
-+	 * "If the client does not send the signature_algorithms extension,
-+	 * the server MUST do the following:
-+	 *    - [...] behave as if client had sent the value {sha1,rsa}.
-+	 *    - [...] behave as if client had sent the value {sha1,dsa}.
-+	 *    - [...] behave as if client had sent the value {sha1,ecdsa}.
-+	 */
-+	if (tls->max_version >=3D L_TLS_V12)
-+		tls->signature_hash =3D HANDSHAKE_HASH_SHA1;
-+
-+	return true;
-+}
-+
- const struct tls_hello_extension tls_extensions[] =3D {
- 	{
- 		"Supported Groups", "elliptic_curves", 10,
-@@ -584,6 +854,13 @@ const struct tls_hello_extension tls_extensions[] =3D {
- 		tls_ec_point_formats_server_write,
- 		NULL, NULL,
- 	},
-+	{
-+		"Signature Algorithms", "signature_algoritms", 13,
-+		tls_signature_algorithms_client_write,
-+		tls_signature_algorithms_client_handle,
-+		tls_signature_algorithms_client_absent,
-+		NULL, NULL, NULL,
-+	},
- 	{}
+ static uint8_t tls_cert_type_pref[] =3D {
+ 	1, /* RSA_sign */
  };
  =
 
-diff --git a/ell/tls-private.h b/ell/tls-private.h
-index 03ad07c..2d1424e 100644
---- a/ell/tls-private.h
-+++ b/ell/tls-private.h
-@@ -308,6 +308,10 @@ bool tls_handle_message(struct l_tls *tls, const uint8=
-_t *message,
- =
-
- void tls_tx_handshake(struct l_tls *tls, int type, uint8_t *buf, size_t le=
-ngth);
- =
-
-+bool tls_cipher_suite_is_compatible(struct l_tls *tls,
-+					const struct tls_cipher_suite *suite,
-+					const char **error);
-+
- /* Optionally limit allowed cipher suites to a custom set */
- bool tls_set_cipher_suites(struct l_tls *tls, const char **suite_list);
- =
-
-diff --git a/ell/tls.c b/ell/tls.c
-index 02e49f9..fd898f6 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -379,7 +379,7 @@ static void tls_reset_cipher_spec(struct l_tls *tls, bo=
-ol txrx)
- 	tls_change_cipher_spec(tls, txrx, NULL);
- }
- =
-
--static bool tls_cipher_suite_is_compatible(struct l_tls *tls,
-+bool tls_cipher_suite_is_compatible(struct l_tls *tls,
- 					const struct tls_cipher_suite *suite,
- 					const char **error)
+-struct tls_signature_hash_algorithms {
+-	uint8_t hash_id;
+-	uint8_t signature_id;
+-};
+-
+-static struct tls_signature_hash_algorithms tls_signature_hash_pref[] =3D {
+-	{ 6, 1 }, /* SHA512 + RSA */
+-	{ 5, 1 }, /* SHA384 + RSA */
+-	{ 4, 1 }, /* SHA256 + RSA */
+-	{ 2, 1 }, /* SHA1 + RSA */
+-	{ 1, 1 }, /* MD5 + RSA */
+-};
+-
+ static bool tls_send_certificate_request(struct l_tls *tls)
  {
-@@ -1486,13 +1486,6 @@ static void tls_handle_client_hello(struct l_tls *tl=
-s,
- 	 * trying to connect somewhere else.  We might want to throw an error.
- 	 */
+-	uint8_t *buf, *ptr, *dn_ptr, *signature_hash_ptr;
++	uint8_t *buf, *ptr, *dn_ptr;
+ 	const struct l_queue_entry *entry;
+ 	unsigned int i;
+ 	size_t dn_total =3D 0;
+@@ -1022,7 +1015,6 @@ static bool tls_send_certificate_request(struct l_tls=
+ *tls)
+ 	}
+ =
+
+ 	buf =3D l_malloc(128 + L_ARRAY_SIZE(tls_cert_type_pref) +
+-			2 * L_ARRAY_SIZE(tls_signature_hash_pref) +
+ 			dn_total);
+ 	ptr =3D buf + TLS_HANDSHAKE_HEADER_SIZE;
+ =
+
+@@ -1032,27 +1024,19 @@ static bool tls_send_certificate_request(struct l_t=
+ls *tls)
+ 	for (i =3D 0; i < L_ARRAY_SIZE(tls_cert_type_pref); i++)
+ 		*ptr++ =3D tls_cert_type_pref[i];
  =
 
 -	/*
--	 * TODO: Obligatory in 1.2: check for signature_algorithms extension,
--	 * store the list of algorithms for later checking in
--	 * tls_send_certificate on both server and client sides.  If not
--	 * present assume only SHA1+RSA (7.4.1.4.1).
+-	 * This only makes sense as a variable-length field, assume there's
+-	 * a typo in RFC5246 7.4.4 here.
+-	 *
+-	 * TODO: we support the full list of hash algorithms when used
+-	 * in the client certificate chain but we can only verify the
+-	 * Certificate Verify signature when the hash algorithm matches
+-	 * one of HANDSHAKE_HASH_*.  The values we include here will
+-	 * affect both of these steps so revisit which set we're passing
+-	 * here.
 -	 */
+ 	if (tls->negotiated_version >=3D L_TLS_V12) {
+-		signature_hash_ptr =3D ptr;
+-		ptr +=3D 2;
++		ssize_t ret =3D tls_write_signature_algorithms(tls, ptr,
++						buf + sizeof(buf) - ptr);
+ =
+
+-		for (i =3D 0; i < L_ARRAY_SIZE(tls_signature_hash_pref); i++) {
+-			*ptr++ =3D tls_signature_hash_pref[i].hash_id;
+-			*ptr++ =3D tls_signature_hash_pref[i].signature_id;
++		if (ret < 0) {
++			TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
++					"tls_write_signature_algorithms: %s",
++					strerror(-ret));
++			l_free(buf);
++			return false;
+ 		}
+ =
+
+-		l_put_be16(ptr - (signature_hash_ptr + 2), signature_hash_ptr);
++		ptr +=3D ret;
+ 	}
+ =
+
+ 	dn_ptr =3D ptr;
+@@ -1857,18 +1841,24 @@ done:
+ static void tls_handle_certificate_request(struct l_tls *tls,
+ 						const uint8_t *buf, size_t len)
+ {
+-	int cert_type_len, signature_hash_len, dn_len, i;
+-	enum handshake_hash_type first_supported, hash;
+-	const uint8_t *signature_hash_data;
+-	uint8_t hash_id;
++	unsigned int cert_type_len, dn_len, i;
+ =
+
+ 	tls->cert_requested =3D 1;
+ =
+
+ 	cert_type_len =3D *buf++;
+-	if (len < (size_t) 1 + cert_type_len + 2)
++	if (len < 1 + cert_type_len + 2)
+ 		goto decode_error;
+ =
+
+-	/* Skip certificate_types */
++	for (i =3D 0; i < sizeof(tls_cert_type_pref); i++)
++		if (memchr(buf, tls_cert_type_pref[i], cert_type_len))
++			break;
++
++	if (i =3D=3D sizeof(tls_cert_type_pref)) {
++		TLS_DISCONNECT(TLS_ALERT_UNSUPPORTED_CERT, 0,
++				"Requested certificate types not supported");
++		return;
++	}
++
+ 	buf +=3D cert_type_len;
+ 	len -=3D 1 + cert_type_len;
+ =
+
+@@ -1879,66 +1869,21 @@ static void tls_handle_certificate_request(struct l=
+_tls *tls,
+ 	 */
+ =
+
+ 	if (tls->negotiated_version >=3D L_TLS_V12) {
+-		/*
+-		 * This only makes sense as a variable-length field, assume
+-		 * there's a typo in RFC5246 7.4.4 here.
+-		 */
+-		signature_hash_len =3D l_get_be16(buf);
+-		signature_hash_data =3D buf + 2;
 -
- 	/* Save client_version for Premaster Secret verification */
- 	tls->client_version =3D l_get_be16(buf);
+-		if (len < (size_t) 2 + signature_hash_len + 2 ||
+-				(signature_hash_len & 1))
+-			goto decode_error;
+-
+-		len -=3D 2 + signature_hash_len;
+-		buf +=3D 2 + signature_hash_len;
+-
+-		/*
+-		 * In 1.2 SHA256 is the default because that is most likely
+-		 * to be supported in all the scenarios and optimal because
+-		 * SHA256 is required independently for the Finished hash
+-		 * meaning that we'll just need one hash type instead of
+-		 * two.  If not available fall back to the first common
+-		 * hash algorithm.
+-		 */
+-		first_supported =3D -1;
+-
+-		for (i =3D 0; i < signature_hash_len; i +=3D 2) {
+-			hash_id =3D signature_hash_data[i + 0];
+-
+-			/* Ignore hash types for signatures other than ours */
+-			if (signature_hash_data[i + 1] !=3D
+-					tls->pending.cipher_suite->
+-						signature->id)
+-				continue;
+-
+-			if (hash_id =3D=3D tls_handshake_hash_data[
+-						HANDSHAKE_HASH_SHA256].tls_id)
+-				break;
+-
+-			if ((int) first_supported !=3D -1)
+-				continue;
+-
+-			for (hash =3D 0; hash < __HANDSHAKE_HASH_COUNT; hash++)
+-				if (hash_id =3D=3D tls_handshake_hash_data[hash].
+-						tls_id &&
+-						tls->handshake_hash[hash]) {
+-					first_supported =3D hash;
+-					break;
+-				}
+-		}
++		enum handshake_hash_type hash;
++		ssize_t ret =3D tls_parse_signature_algorithms(tls, buf, len);
  =
 
-@@ -2407,7 +2400,6 @@ LIB_EXPORT struct l_tls *l_tls_new(bool server,
- 	tls->disconnected =3D disconnect_handler;
- 	tls->user_data =3D user_data;
- 	tls->cipher_suite_pref_list =3D tls_cipher_suite_pref;
--	tls->signature_hash =3D HANDSHAKE_HASH_SHA256;
- 	tls->min_version =3D TLS_MIN_VERSION;
- 	tls->max_version =3D TLS_MAX_VERSION;
+-		if (i < signature_hash_len)
+-			tls->signature_hash =3D HANDSHAKE_HASH_SHA256;
+-		else if ((int) first_supported !=3D -1)
+-			tls->signature_hash =3D first_supported;
+-		else {
++		if (ret =3D=3D -ENOTSUP) {
+ 			TLS_DISCONNECT(TLS_ALERT_UNSUPPORTED_CERT, 0,
+ 					"No supported signature hash type");
+-
+ 			return;
+ 		}
  =
 
++		if (ret < 0)
++			goto decode_error;
++
++		len -=3D ret;
++		buf +=3D ret;
++
+ 		/*
+ 		 * We can now safely stop maintaining handshake message
+ 		 * hashes other than the PRF hash and the one selected for
+@@ -1951,7 +1896,7 @@ static void tls_handle_certificate_request(struct l_t=
+ls *tls,
+ 	}
+ =
+
+ 	dn_len =3D l_get_be16(buf);
+-	if ((size_t) 2 + dn_len !=3D len)
++	if (2 + dn_len !=3D len)
+ 		goto decode_error;
+ =
+
+ 	return;
 -- =
 
 2.19.1
 
 
---===============0172779690176947780==--
+--===============0061253312842701018==--
 
