@@ -1,39 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============0718352067683926301=="
+Content-Type: multipart/mixed; boundary="===============1726906533393535836=="
 MIME-Version: 1.0
-From: =?unknown-8bit?q?Micha=C5=82?= 'Khorne' Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
-Subject: Re: [PATCH v2] uuid: Added l_uuid_from_string
-Date: Mon, 04 Feb 2019 18:36:01 +0100
-Message-ID: <20190204173601.pef4xgowvasy7tbw@kynes>
-In-Reply-To: <nycvar.YFH.7.76.1902041527340.19955@n3.vanv.qr>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/4] checksum: Drop unused field
+Date: Tue, 05 Feb 2019 16:54:57 +0100
+Message-ID: <20190205155500.24750-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0718352067683926301==
+--===============1726906533393535836==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Jan,
+---
+ ell/checksum.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/ell/checksum.c b/ell/checksum.c
+index f6f5cb2..729399e 100644
+--- a/ell/checksum.c
++++ b/ell/checksum.c
+@@ -69,7 +69,6 @@ struct sockaddr_alg {
+ #endif
  =
 
-On 02/04, Jan Engelhardt wrote:
-> >+	uint8_t uuid[16];
-> >+	const char *string_uuid =3D "65fcc697-0776-5bf9-8573-72a51080c7d";
-> =
-
-> You can make these
-> =
-
-> 	static const char string_uid[] =3D "65f.."
-
-True, but I don't think it matters, since this is test code. I was just
-following examples.
-
+ struct checksum_info {
+-	enum l_checksum_type type;
+ 	const char *name;
+ 	uint8_t digest_len;
+ 	bool supported;
 -- =
 
-Micha=C5=82 Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
-Silvair http://silvair.com
-Jasnog=C3=B3rska 44, 31-358 Krakow, POLAND
+2.19.1
 
---===============0718352067683926301==--
+
+--===============1726906533393535836==--
 
