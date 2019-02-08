@@ -1,38 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============7533934019942550956=="
+Content-Type: multipart/mixed; boundary="===============8749493005302475156=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] ecc: fix potential buffer overrun
-Date: Thu, 07 Feb 2019 12:15:46 -0600
-Message-ID: <b5383aeb-7c08-ca91-28fd-a47f2b2b4a51@gmail.com>
-In-Reply-To: <20190207181458.29466-1-james.prestwood@linux.intel.com>
+From: =?unknown-8bit?q?Micha=C5=82?= 'Khorne' Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
+Subject: Re: [PATCH v2] uuid: Added l_uuid_from_string
+Date: Fri, 08 Feb 2019 12:56:05 +0100
+Message-ID: <20190208115605.scioqoyarvuotwy5@scytale>
+In-Reply-To: <40ecdc4b-53cc-cae4-38c0-d24d8c687e9a@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7533934019942550956==
+--===============8749493005302475156==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Denis,
 
-On 02/07/2019 12:14 PM, James Prestwood wrote:
-> l_ecc_curve_get_[tls|ike]_group were iterating over curves and assuming
-> a NULL terminated list which was not the case. This never got caught
-> because IWD played nice and only got groups it already new existed.
+On 02/07, Denis Kenzior wrote:
+> I split this up into two commits to be in compliance with our patch
+> submission guidelines (see HACKING, pt 3).
 > =
 
-> This was changed to iterate over L_ARRAY_SIZE(curves).
-> ---
->   ell/ecc.c | 8 ++++----
->   1 file changed, 4 insertions(+), 4 deletions(-)
-> =
+> I also massaged the style of test data in the unit test a bit.  Please
+> review and make sure I didn't screw anything up accidentally.
 
+Looks good, thank you.
 
-Applied, thanks.
+I'll make sure to follow HACKING next time.
 
-Regards,
--Denis
+cheers
+-- =
 
+Micha=C5=82 Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
+Silvair http://silvair.com
+Jasnog=C3=B3rska 44, 31-358 Krakow, POLAND
 
---===============7533934019942550956==--
+--===============8749493005302475156==--
 
