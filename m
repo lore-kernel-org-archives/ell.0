@@ -1,61 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============4413902305884918346=="
+Content-Type: multipart/mixed; boundary="===============3581377222049802239=="
 MIME-Version: 1.0
 From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH 1/2] unit: Add test for l_strv_append().
-Date: Thu, 14 Feb 2019 12:45:48 -0800
-Message-ID: <20190214204549.26138-2-ossama.othman@intel.com>
+Subject: [PATCH 2/2] strv: Remove unnecessary post-increment.
+Date: Thu, 14 Feb 2019 12:45:49 -0800
+Message-ID: <20190214204549.26138-3-ossama.othman@intel.com>
 In-Reply-To: <20190214204549.26138-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4413902305884918346==
+--===============3581377222049802239==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Remove unecessary post-increment of a string array index in
+l_strv_append().  The updated index value was not used after the
+post-increment.
 ---
- unit/test-string.c | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+ ell/strv.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/unit/test-string.c b/unit/test-string.c
-index c59a35f..710617b 100644
---- a/unit/test-string.c
-+++ b/unit/test-string.c
-@@ -253,6 +253,24 @@ static void test_strv_contains(const void *test_data)
- 	assert(l_strv_contains(strv3, "Bar") =3D=3D true);
- }
+diff --git a/ell/strv.c b/ell/strv.c
+index a507626..89f2df5 100644
+--- a/ell/strv.c
++++ b/ell/strv.c
+@@ -284,7 +284,7 @@ LIB_EXPORT char **l_strv_append(char **str_array, const=
+ char *str)
+ 	for (i =3D 0; i < len; i++)
+ 		ret[i] =3D str_array[i];
  =
 
-+static void test_strv_append(const void *test_data)
-+{
-+	const char *src[] =3D { "Foo", "Bar" };
-+	char **dst =3D NULL;
-+
-+	size_t len =3D L_ARRAY_SIZE(src);
-+
-+	for (size_t i =3D 0; i < len; i++)
-+		dst =3D l_strv_append(dst, src[i]);
-+
-+	assert(l_strv_length(dst) =3D=3D len);
-+
-+	for (size_t i =3D 0; i < len; i++)
-+		assert(strcmp(src[i], dst[i]) =3D=3D 0);
-+
-+        l_strv_free(dst);
-+}
-+
- static void test_parse_args(const void *test_data)
- {
- 	static struct test_case {
-@@ -319,6 +337,7 @@ int main(int argc, char *argv[])
+-	ret[i++] =3D l_strdup(str);
++	ret[i] =3D l_strdup(str);
  =
 
- 	l_test_add("strv_length", test_strv_length, NULL);
- 	l_test_add("strv_contains", test_strv_contains, NULL);
-+	l_test_add("strv_append", test_strv_append, NULL);
- =
-
- 	l_test_add("parse_args", test_parse_args, NULL);
+ 	l_free(str_array);
  =
 
 -- =
@@ -63,5 +42,5 @@ index c59a35f..710617b 100644
 2.17.1
 
 
---===============4413902305884918346==--
+--===============3581377222049802239==--
 
