@@ -1,32 +1,33 @@
-Content-Type: multipart/mixed; boundary="===============4762976459649251169=="
+Content-Type: multipart/mixed; boundary="===============6671271173239825332=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 0/2] l_strv_append() test and minor patch
-Date: Sun, 17 Feb 2019 20:41:58 -0600
-Message-ID: <c16c7a6e-a788-00cb-7e55-72db90ea1e79@gmail.com>
-In-Reply-To: <20190214204549.26138-1-ossama.othman@intel.com>
+Subject: Re: [PATCH] unit: Add runtime check for TLS suite cipher support
+Date: Sun, 17 Feb 2019 20:43:10 -0600
+Message-ID: <364ff69a-b34f-e191-6453-4e5b4eaf0dca@gmail.com>
+In-Reply-To: <20190215220137.7592-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4762976459649251169==
+--===============6671271173239825332==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+Hi Mat,
 
-On 02/14/2019 02:45 PM, Ossama Othman wrote:
-> The l_strv_append() function needlessly post-incremented an array
-> index value prior to returning.  Drop the post-increment, and a
-> l_strv_append() unit test.
-> =
+On 02/15/2019 04:01 PM, Mat Martineau wrote:
+> Skip TLS suite tests where the currently running kernel does not have
+> support for the necessary cipher. Checksums types already have runtime
+> validation.
+> ---
+>   unit/test-tls.c | 21 ++++++++++++++++++---
+>   1 file changed, 18 insertions(+), 3 deletions(-)
 
-
-Both applied, thanks.
+Applied, thanks.
 
 Regards,
 -Denis
 
 
---===============4762976459649251169==--
+--===============6671271173239825332==--
 
