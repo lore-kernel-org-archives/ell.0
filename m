@@ -1,46 +1,89 @@
-Content-Type: multipart/mixed; boundary="===============7105844568086040141=="
+Content-Type: multipart/mixed; boundary="===============4417122675711590830=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] settings: fix segfault if when settings has no group
-Date: Thu, 21 Feb 2019 14:12:03 -0600
-Message-ID: <dd7263d5-0e8b-6e41-8761-2da24e2455ad@gmail.com>
-In-Reply-To: <20190221182216.29956-1-james.prestwood@linux.intel.com>
+From: James Prestwood <james.prestwood@linux.intel.com>
+Subject: [PATCH v2] settings: fix segfault if when settings has no group
+Date: Thu, 21 Feb 2019 14:20:58 -0800
+Message-ID: <20190221222058.17698-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7105844568086040141==
+--===============4417122675711590830==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+A settings file containing a key/value but no group caused
+l_settings_load_from_data to segfault. This was due to not checking
+that a group was actually found before parsing a key/value pair.
 
-On 02/21/2019 12:22 PM, James Prestwood wrote:
-> A settings file containing a key/value but no group caused
-> l_settings_load_from_data to segfault. This was due to both parse_key
-> and parse_value not checking that the group was non-NULL.
+A new flag was added, 'has_group', which gets set after a group has
+been parsed successfully. This flag also must be true for the load
+to be successful.
 
-Whoops :)
+Also, the return of parse_key was being checked against false, when
+it actually is returning a unsigned int. This was changed to just
+check !parse_key.
+---
+ ell/settings.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-I think it might be more clear to fix this in =
+diff --git a/ell/settings.c b/ell/settings.c
+index e3e8303..a5856bd 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -347,7 +347,7 @@ static bool parse_keyvalue(struct l_settings *settings,=
+ const char *data,
+ 		return false;
+ 	}
+ =
 
-l_settings_load_from_data() to not call parse_keyvalue if no group has =
+-	if (parse_key(settings, data, equal - data, line) =3D=3D false)
++	if (!parse_key(settings, data, equal - data, line))
+ 		return false;
+ =
 
-been encountered previously.
+ 	equal +=3D 1;
+@@ -362,6 +362,7 @@ LIB_EXPORT bool l_settings_load_from_data(struct l_sett=
+ings *settings,
+ {
+ 	size_t pos =3D 0;
+ 	bool r =3D true;
++	bool has_group =3D false;
+ 	const char *eol;
+ 	size_t line =3D 1;
+ 	size_t line_len;
+@@ -387,16 +388,18 @@ LIB_EXPORT bool l_settings_load_from_data(struct l_se=
+ttings *settings,
+ =
 
-> =
+ 		line_len =3D eol - data - pos;
+ =
 
-> Also, the return of parse_key was being checked against false, when
-> it actually is returning a unsigned int. This was changed to just
-> check !parse_key.
-> ---
->   ell/settings.c | 8 +++++++-
->   1 file changed, 7 insertions(+), 1 deletion(-)
-> =
+-		if (data[pos] =3D=3D '[')
++		if (data[pos] =3D=3D '[') {
+ 			r =3D parse_group(settings, data + pos, line_len, line);
+-		else if (data[pos] !=3D '#')
++			if (r)
++				has_group =3D true;
++		} else if (data[pos] !=3D '#' && has_group)
+ 			r =3D parse_keyvalue(settings, data + pos, line_len,
+ 						line);
+ =
+
+ 		pos +=3D line_len;
+ 	}
+ =
+
+-	return r;
++	return r && has_group;
+ }
+ =
+
+ LIB_EXPORT char *l_settings_to_data(const struct l_settings *settings,
+-- =
+
+2.17.1
 
 
-Regards,
--Denis
-
---===============7105844568086040141==--
+--===============4417122675711590830==--
 
