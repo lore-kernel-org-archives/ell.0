@@ -1,73 +1,46 @@
-Content-Type: multipart/mixed; boundary="===============1800344613446271324=="
+Content-Type: multipart/mixed; boundary="===============5830728134301217218=="
 MIME-Version: 1.0
-From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH v3 2/2] unit: settings: add another invalid data case
-Date: Thu, 21 Feb 2019 14:33:55 -0800
-Message-ID: <20190221223355.31790-2-james.prestwood@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v3 1/2] settings: fix segfault if when settings has no
+ group
+Date: Thu, 21 Feb 2019 16:40:33 -0600
+Message-ID: <92ff5312-5ecb-8e64-09f9-c1f7cee339d3@gmail.com>
 In-Reply-To: <20190221223355.31790-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1800344613446271324==
+--===============5830728134301217218==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This case has an ungrouped value come before a group, which is
-invalid and should not load.
----
- unit/test-settings.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+Hi James,
 
-diff --git a/unit/test-settings.c b/unit/test-settings.c
-index 71f3341..4d4fb68 100644
---- a/unit/test-settings.c
-+++ b/unit/test-settings.c
-@@ -291,17 +291,22 @@ static void test_to_data(const void *test_data)
- }
- =
+On 02/21/2019 04:33 PM, James Prestwood wrote:
+> A settings file containing a key/value but no group caused
+> l_settings_load_from_data to segfault. This was due to not checking
+> that a group was actually found before parsing a key/value pair.
+> =
 
- static const char *no_group_data =3D "key_without_group=3Dvalue\n";
-+static const char *key_before_group_data =3D "key_without_group=3Dvalue\n"
-+						"[GROUP]\n"
-+						"valid_key=3Dvalue\n";
- =
+> A new flag was added, 'has_group', which gets set after a group has
+> been parsed successfully. This flag also must be true for the load
+> to be successful.
+> =
 
- static void test_invalid_data(const void *test_data)
- {
-+	const char *data =3D test_data;
- 	struct l_settings *settings;
- 	bool r;
- =
-
- 	settings =3D l_settings_new();
- =
-
--	r =3D l_settings_load_from_data(settings, no_group_data,
--					strlen(no_group_data));
-+	r =3D l_settings_load_from_data(settings, data, strlen(data));
- 	assert(r =3D=3D false);
-+
-+	l_settings_free(settings);
- }
- =
-
- int main(int argc, char *argv[])
-@@ -312,7 +317,8 @@ int main(int argc, char *argv[])
- 	l_test_add("Load from File", test_load_from_file, NULL);
- 	l_test_add("Set Methods", test_set_methods, NULL);
- 	l_test_add("Export to Data 1", test_to_data, data2);
--	l_test_add("Invalid Data (no group)", test_invalid_data, NULL);
-+	l_test_add("Invalid Data 1", test_invalid_data, no_group_data);
-+	l_test_add("Invalid Data 2", test_invalid_data, key_before_group_data);
- =
-
- 	return l_test_run();
- }
--- =
-
-2.17.1
+> Also, the return of parse_key was being checked against false, when
+> it actually is returning a unsigned int. This was changed to just
+> check !parse_key.
+> ---
+>   ell/settings.c | 13 ++++++++++---
+>   1 file changed, 10 insertions(+), 3 deletions(-)
+> =
 
 
---===============1800344613446271324==--
+Both applied, thanks.
+
+Regards,
+-Denis
+
+
+--===============5830728134301217218==--
 
