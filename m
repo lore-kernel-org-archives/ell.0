@@ -1,73 +1,61 @@
-Content-Type: multipart/mixed; boundary="===============8754549366060768237=="
+Content-Type: multipart/mixed; boundary="===============3009547625066665852=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH 1/2] settings: fix segfault if when settings has no group
-Date: Thu, 21 Feb 2019 10:22:15 -0800
-Message-ID: <20190221182216.29956-1-james.prestwood@linux.intel.com>
+Subject: [PATCH 2/2] unit: test-settings: added test with no group
+Date: Thu, 21 Feb 2019 10:22:16 -0800
+Message-ID: <20190221182216.29956-2-james.prestwood@linux.intel.com>
+In-Reply-To: <20190221182216.29956-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8754549366060768237==
+--===============3009547625066665852==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-A settings file containing a key/value but no group caused
-l_settings_load_from_data to segfault. This was due to both parse_key
-and parse_value not checking that the group was non-NULL.
-
-Also, the return of parse_key was being checked against false, when
-it actually is returning a unsigned int. This was changed to just
-check !parse_key.
 ---
- ell/settings.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ unit/test-settings.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/ell/settings.c b/ell/settings.c
-index e3e8303..2153218 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -297,6 +297,9 @@ static unsigned int parse_key(struct l_settings *settin=
-gs, const char *data,
- 	}
+diff --git a/unit/test-settings.c b/unit/test-settings.c
+index c31c379..71f3341 100644
+--- a/unit/test-settings.c
++++ b/unit/test-settings.c
+@@ -290,6 +290,20 @@ static void test_to_data(const void *test_data)
+ 	l_settings_free(settings);
+ }
  =
 
- 	group =3D l_queue_peek_tail(settings->groups);
-+	if (!group)
-+		return 0;
++static const char *no_group_data =3D "key_without_group=3Dvalue\n";
 +
- 	pair =3D l_new(struct setting_data, 1);
- 	pair->key =3D l_strndup(data, end);
- 	l_queue_push_head(group->settings, pair);
-@@ -312,6 +315,9 @@ static bool parse_value(struct l_settings *settings, co=
-nst char *data,
- 	struct setting_data *pair;
- =
-
- 	group =3D l_queue_peek_tail(settings->groups);
-+	if (!group)
-+		return false;
++static void test_invalid_data(const void *test_data)
++{
++	struct l_settings *settings;
++	bool r;
 +
- 	pair =3D l_queue_pop_head(group->settings);
++	settings =3D l_settings_new();
++
++	r =3D l_settings_load_from_data(settings, no_group_data,
++					strlen(no_group_data));
++	assert(r =3D=3D false);
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -298,6 +312,7 @@ int main(int argc, char *argv[])
+ 	l_test_add("Load from File", test_load_from_file, NULL);
+ 	l_test_add("Set Methods", test_set_methods, NULL);
+ 	l_test_add("Export to Data 1", test_to_data, data2);
++	l_test_add("Invalid Data (no group)", test_invalid_data, NULL);
  =
 
- 	if (!l_utf8_validate(data, len, NULL)) {
-@@ -347,7 +353,7 @@ static bool parse_keyvalue(struct l_settings *settings,=
- const char *data,
- 		return false;
- 	}
- =
-
--	if (parse_key(settings, data, equal - data, line) =3D=3D false)
-+	if (!parse_key(settings, data, equal - data, line))
- 		return false;
- =
-
- 	equal +=3D 1;
+ 	return l_test_run();
+ }
 -- =
 
 2.17.1
 
 
---===============8754549366060768237==--
+--===============3009547625066665852==--
 
