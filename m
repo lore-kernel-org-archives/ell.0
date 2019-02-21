@@ -1,13 +1,13 @@
-Content-Type: multipart/mixed; boundary="===============4417122675711590830=="
+Content-Type: multipart/mixed; boundary="===============1064736532951730270=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH v2] settings: fix segfault if when settings has no group
-Date: Thu, 21 Feb 2019 14:20:58 -0800
-Message-ID: <20190221222058.17698-1-james.prestwood@linux.intel.com>
+Subject: [PATCH v3 1/2] settings: fix segfault if when settings has no group
+Date: Thu, 21 Feb 2019 14:33:54 -0800
+Message-ID: <20190221223355.31790-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4417122675711590830==
+--===============1064736532951730270==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -24,11 +24,11 @@ Also, the return of parse_key was being checked against false, when
 it actually is returning a unsigned int. This was changed to just
 check !parse_key.
 ---
- ell/settings.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ ell/settings.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
 diff --git a/ell/settings.c b/ell/settings.c
-index e3e8303..a5856bd 100644
+index e3e8303..0c06fe7 100644
 --- a/ell/settings.c
 +++ b/ell/settings.c
 @@ -347,7 +347,7 @@ static bool parse_keyvalue(struct l_settings *settings,=
@@ -52,7 +52,7 @@ ings *settings,
  	const char *eol;
  	size_t line =3D 1;
  	size_t line_len;
-@@ -387,16 +388,18 @@ LIB_EXPORT bool l_settings_load_from_data(struct l_se=
+@@ -387,11 +388,17 @@ LIB_EXPORT bool l_settings_load_from_data(struct l_se=
 ttings *settings,
  =
 
@@ -65,25 +65,21 @@ ttings *settings,
 -		else if (data[pos] !=3D '#')
 +			if (r)
 +				has_group =3D true;
-+		} else if (data[pos] !=3D '#' && has_group)
++		} else if (data[pos] !=3D '#') {
++			if (!has_group)
++				return false;
++
  			r =3D parse_keyvalue(settings, data + pos, line_len,
  						line);
++		}
  =
 
  		pos +=3D line_len;
  	}
- =
-
--	return r;
-+	return r && has_group;
- }
- =
-
- LIB_EXPORT char *l_settings_to_data(const struct l_settings *settings,
 -- =
 
 2.17.1
 
 
---===============4417122675711590830==--
+--===============1064736532951730270==--
 
