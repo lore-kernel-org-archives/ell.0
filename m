@@ -1,33 +1,73 @@
-Content-Type: multipart/mixed; boundary="===============6671271173239825332=="
+Content-Type: multipart/mixed; boundary="===============8754549366060768237=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] unit: Add runtime check for TLS suite cipher support
-Date: Sun, 17 Feb 2019 20:43:10 -0600
-Message-ID: <364ff69a-b34f-e191-6453-4e5b4eaf0dca@gmail.com>
-In-Reply-To: <20190215220137.7592-1-mathew.j.martineau@linux.intel.com>
+From: James Prestwood <james.prestwood@linux.intel.com>
+Subject: [PATCH 1/2] settings: fix segfault if when settings has no group
+Date: Thu, 21 Feb 2019 10:22:15 -0800
+Message-ID: <20190221182216.29956-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6671271173239825332==
+--===============8754549366060768237==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+A settings file containing a key/value but no group caused
+l_settings_load_from_data to segfault. This was due to both parse_key
+and parse_value not checking that the group was non-NULL.
 
-On 02/15/2019 04:01 PM, Mat Martineau wrote:
-> Skip TLS suite tests where the currently running kernel does not have
-> support for the necessary cipher. Checksums types already have runtime
-> validation.
-> ---
->   unit/test-tls.c | 21 ++++++++++++++++++---
->   1 file changed, 18 insertions(+), 3 deletions(-)
+Also, the return of parse_key was being checked against false, when
+it actually is returning a unsigned int. This was changed to just
+check !parse_key.
+---
+ ell/settings.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-Applied, thanks.
+diff --git a/ell/settings.c b/ell/settings.c
+index e3e8303..2153218 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -297,6 +297,9 @@ static unsigned int parse_key(struct l_settings *settin=
+gs, const char *data,
+ 	}
+ =
 
-Regards,
--Denis
+ 	group =3D l_queue_peek_tail(settings->groups);
++	if (!group)
++		return 0;
++
+ 	pair =3D l_new(struct setting_data, 1);
+ 	pair->key =3D l_strndup(data, end);
+ 	l_queue_push_head(group->settings, pair);
+@@ -312,6 +315,9 @@ static bool parse_value(struct l_settings *settings, co=
+nst char *data,
+ 	struct setting_data *pair;
+ =
+
+ 	group =3D l_queue_peek_tail(settings->groups);
++	if (!group)
++		return false;
++
+ 	pair =3D l_queue_pop_head(group->settings);
+ =
+
+ 	if (!l_utf8_validate(data, len, NULL)) {
+@@ -347,7 +353,7 @@ static bool parse_keyvalue(struct l_settings *settings,=
+ const char *data,
+ 		return false;
+ 	}
+ =
+
+-	if (parse_key(settings, data, equal - data, line) =3D=3D false)
++	if (!parse_key(settings, data, equal - data, line))
+ 		return false;
+ =
+
+ 	equal +=3D 1;
+-- =
+
+2.17.1
 
 
---===============6671271173239825332==--
+--===============8754549366060768237==--
 
