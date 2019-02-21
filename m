@@ -1,85 +1,73 @@
-Content-Type: multipart/mixed; boundary="===============1064736532951730270=="
+Content-Type: multipart/mixed; boundary="===============1800344613446271324=="
 MIME-Version: 1.0
 From: James Prestwood <james.prestwood@linux.intel.com>
-Subject: [PATCH v3 1/2] settings: fix segfault if when settings has no group
-Date: Thu, 21 Feb 2019 14:33:54 -0800
-Message-ID: <20190221223355.31790-1-james.prestwood@linux.intel.com>
+Subject: [PATCH v3 2/2] unit: settings: add another invalid data case
+Date: Thu, 21 Feb 2019 14:33:55 -0800
+Message-ID: <20190221223355.31790-2-james.prestwood@linux.intel.com>
+In-Reply-To: <20190221223355.31790-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1064736532951730270==
+--===============1800344613446271324==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-A settings file containing a key/value but no group caused
-l_settings_load_from_data to segfault. This was due to not checking
-that a group was actually found before parsing a key/value pair.
-
-A new flag was added, 'has_group', which gets set after a group has
-been parsed successfully. This flag also must be true for the load
-to be successful.
-
-Also, the return of parse_key was being checked against false, when
-it actually is returning a unsigned int. This was changed to just
-check !parse_key.
+This case has an ungrouped value come before a group, which is
+invalid and should not load.
 ---
- ell/settings.c | 13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
+ unit/test-settings.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/ell/settings.c b/ell/settings.c
-index e3e8303..0c06fe7 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -347,7 +347,7 @@ static bool parse_keyvalue(struct l_settings *settings,=
- const char *data,
- 		return false;
- 	}
+diff --git a/unit/test-settings.c b/unit/test-settings.c
+index 71f3341..4d4fb68 100644
+--- a/unit/test-settings.c
++++ b/unit/test-settings.c
+@@ -291,17 +291,22 @@ static void test_to_data(const void *test_data)
+ }
  =
 
--	if (parse_key(settings, data, equal - data, line) =3D=3D false)
-+	if (!parse_key(settings, data, equal - data, line))
- 		return false;
+ static const char *no_group_data =3D "key_without_group=3Dvalue\n";
++static const char *key_before_group_data =3D "key_without_group=3Dvalue\n"
++						"[GROUP]\n"
++						"valid_key=3Dvalue\n";
  =
 
- 	equal +=3D 1;
-@@ -362,6 +362,7 @@ LIB_EXPORT bool l_settings_load_from_data(struct l_sett=
-ings *settings,
+ static void test_invalid_data(const void *test_data)
  {
- 	size_t pos =3D 0;
- 	bool r =3D true;
-+	bool has_group =3D false;
- 	const char *eol;
- 	size_t line =3D 1;
- 	size_t line_len;
-@@ -387,11 +388,17 @@ LIB_EXPORT bool l_settings_load_from_data(struct l_se=
-ttings *settings,
++	const char *data =3D test_data;
+ 	struct l_settings *settings;
+ 	bool r;
  =
 
- 		line_len =3D eol - data - pos;
+ 	settings =3D l_settings_new();
  =
 
--		if (data[pos] =3D=3D '[')
-+		if (data[pos] =3D=3D '[') {
- 			r =3D parse_group(settings, data + pos, line_len, line);
--		else if (data[pos] !=3D '#')
-+			if (r)
-+				has_group =3D true;
-+		} else if (data[pos] !=3D '#') {
-+			if (!has_group)
-+				return false;
+-	r =3D l_settings_load_from_data(settings, no_group_data,
+-					strlen(no_group_data));
++	r =3D l_settings_load_from_data(settings, data, strlen(data));
+ 	assert(r =3D=3D false);
 +
- 			r =3D parse_keyvalue(settings, data + pos, line_len,
- 						line);
-+		}
++	l_settings_free(settings);
+ }
  =
 
- 		pos +=3D line_len;
- 	}
+ int main(int argc, char *argv[])
+@@ -312,7 +317,8 @@ int main(int argc, char *argv[])
+ 	l_test_add("Load from File", test_load_from_file, NULL);
+ 	l_test_add("Set Methods", test_set_methods, NULL);
+ 	l_test_add("Export to Data 1", test_to_data, data2);
+-	l_test_add("Invalid Data (no group)", test_invalid_data, NULL);
++	l_test_add("Invalid Data 1", test_invalid_data, no_group_data);
++	l_test_add("Invalid Data 2", test_invalid_data, key_before_group_data);
+ =
+
+ 	return l_test_run();
+ }
 -- =
 
 2.17.1
 
 
---===============1064736532951730270==--
+--===============1800344613446271324==--
 
