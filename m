@@ -1,80 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============0664601348337334722=="
+Content-Type: multipart/mixed; boundary="===============2552692195725952586=="
 MIME-Version: 1.0
 From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH v2 1/2] uintset: NULL-check before use
-Date: Thu, 28 Feb 2019 17:01:17 -0800
-Message-ID: <20190301010118.32494-1-tim.a.kourt@linux.intel.com>
+Subject: [PATCH v2 2/2] unit: Sanity check for NULL l_uintset
+Date: Thu, 28 Feb 2019 17:01:18 -0800
+Message-ID: <20190301010118.32494-2-tim.a.kourt@linux.intel.com>
+In-Reply-To: <20190301010118.32494-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0664601348337334722==
+--===============2552692195725952586==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Postpone the variable usage until after the set is NULL-checked.
 ---
- ell/uintset.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ unit/test-uintset.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/ell/uintset.c b/ell/uintset.c
-index 2b95ac2..1d96e68 100644
---- a/ell/uintset.c
-+++ b/ell/uintset.c
-@@ -202,11 +202,13 @@ LIB_EXPORT void l_uintset_free(struct l_uintset *set)
-  **/
- LIB_EXPORT bool l_uintset_take(struct l_uintset *set, uint32_t number)
- {
--	uint32_t offset =3D (number - set->min) / BITS_PER_LONG;
-+	uint32_t offset;
+diff --git a/unit/test-uintset.c b/unit/test-uintset.c
+index 35fc935..42d9698 100644
+--- a/unit/test-uintset.c
++++ b/unit/test-uintset.c
+@@ -120,6 +120,13 @@ static void test_uintset_3(const void *data)
+ 	l_uintset_free(set);
+ }
  =
 
- 	if (unlikely(!set))
- 		return false;
- =
-
-+	offset =3D (number - set->min) / BITS_PER_LONG;
++static void test_uintset_4(const void *data)
++{
++	assert(!l_uintset_take(NULL, 1));
++	assert(!l_uintset_put(NULL, 1));
++	assert(!l_uintset_contains(NULL, 1));
++}
 +
- 	number -=3D set->min;
- =
-
- 	if (number > set->size)
-@@ -233,12 +235,13 @@ LIB_EXPORT bool l_uintset_take(struct l_uintset *set,=
- uint32_t number)
-  **/
- LIB_EXPORT bool l_uintset_put(struct l_uintset *set, uint32_t number)
+ static void test_uintset_find_unused(const void *data)
  {
--	uint32_t bit =3D number - set->min;
-+	uint32_t bit;
- 	uint32_t offset;
- =
-
- 	if (unlikely(!set))
- 		return false;
- =
-
-+	bit =3D number - set->min;
- 	if (bit >=3D set->size)
- 		return false;
- =
-
-@@ -257,12 +260,13 @@ LIB_EXPORT bool l_uintset_put(struct l_uintset *set, =
-uint32_t number)
-  **/
- LIB_EXPORT bool l_uintset_contains(struct l_uintset *set, uint32_t number)
- {
--	uint32_t bit =3D number - set->min;
-+	uint32_t bit;
- 	uint32_t offset;
- =
-
- 	if (unlikely(!set))
- 		return false;
- =
-
-+	bit =3D number - set->min;
- 	if (bit >=3D set->size)
- 		return false;
+ 	struct l_uintset *set;
+@@ -167,6 +174,7 @@ int main(int argc, char *argv[])
+ 	l_test_add("l_uintset sanity check", test_uintset, NULL);
+ 	l_test_add("l_uintset sanity check #2", test_uintset_2, NULL);
+ 	l_test_add("l_uintset sanity check #3", test_uintset_3, NULL);
++	l_test_add("l_uintset sanity check #4", test_uintset_4, NULL);
+ 	l_test_add("l_uintset find unused tests", test_uintset_find_unused,
+ 							NULL);
  =
 
 -- =
@@ -82,5 +50,5 @@ uint32_t number)
 2.13.6
 
 
---===============0664601348337334722==--
+--===============2552692195725952586==--
 
