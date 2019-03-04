@@ -1,34 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============5010475301390442072=="
+Content-Type: multipart/mixed; boundary="===============3862739651115360625=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] unit: Remove loop initial declaration.
-Date: Tue, 26 Feb 2019 12:32:41 -0600
-Message-ID: <f1c871bd-9a49-9517-28ce-2ef05ec4b395@gmail.com>
-In-Reply-To: <20190226180931.32239-1-ossama.othman@intel.com>
+From: Ossama Othman <ossama.othman@intel.com>
+Subject: [PATCH 0/5] Support C89 ELL builds
+Date: Mon, 04 Mar 2019 10:42:54 -0800
+Message-ID: <20190304184259.22809-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5010475301390442072==
+--===============3862739651115360625==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+This patch set provides several simple changes to enable C89 support
+in ELL.
 
-On 02/26/2019 12:09 PM, Ossama Othman wrote:
-> Move the variable declaration in test_string.c:test_strv_append() out
-> of the for-loop initial declaration to support older C standards, as
-> well as to conform to the ELL coding style.
-> ---
->   unit/test-string.c | 6 +++---
->   1 file changed, 3 insertions(+), 3 deletions(-)
-> =
+Ossama Othman (5):
+  ell: Use __inline__ instead of inline for C89.
+  ell: Do not use C99 '//' single line comment.
+  settings: Explicitly enable strto{u}ll() for C89.
+  string: Use __va_copy() for pre-C99 builds.
+  unit: Remove C99 loop variable declaration.
+
+ ell/asn1-private.h       | 4 ++++
+ ell/dbus.c               | 2 +-
+ ell/netlink.c            | 2 +-
+ ell/settings.c           | 4 ++++
+ ell/string.c             | 4 ++++
+ ell/utf8.h               | 4 ++++
+ ell/util.h               | 4 ++++
+ unit/test-dbus-message.c | 3 ++-
+ 8 files changed, 24 insertions(+), 3 deletions(-)
+
+-- =
+
+2.17.1
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
---===============5010475301390442072==--
+--===============3862739651115360625==--
 
