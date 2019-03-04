@@ -1,46 +1,60 @@
-Content-Type: multipart/mixed; boundary="===============8732907102970953903=="
+Content-Type: multipart/mixed; boundary="===============8192418879580427737=="
 MIME-Version: 1.0
 From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH 3/5] settings: Explicitly enable strto{u}ll() for C89.
-Date: Mon, 04 Mar 2019 10:42:57 -0800
-Message-ID: <20190304184259.22809-4-ossama.othman@intel.com>
+Subject: [PATCH 2/5] ell: Do not use C99 '//' single line comment.
+Date: Mon, 04 Mar 2019 10:42:56 -0800
+Message-ID: <20190304184259.22809-3-ossama.othman@intel.com>
 In-Reply-To: <20190304184259.22809-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8732907102970953903==
+--===============8192418879580427737==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The strtoll() and strtoull() functions were introduced in C99.  Define
-_DEFAULT_SOURCE to enable them when building ELL with older C
-standards, such as C89.  This addresses a run-time failure in
-unit/test-settings when setting and getting 64 bit integers.
+Support older C standards by avoiding use of C99/C++ style '//'
+comments.
 ---
- ell/settings.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ ell/dbus.c    | 2 +-
+ ell/netlink.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/ell/settings.c b/ell/settings.c
-index 0c06fe7..98823a2 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -24,6 +24,10 @@
- #include <config.h>
- #endif
+diff --git a/ell/dbus.c b/ell/dbus.c
+index 5664f85..92be396 100644
+--- a/ell/dbus.c
++++ b/ell/dbus.c
+@@ -1286,7 +1286,7 @@ LIB_EXPORT bool l_dbus_set_debug(struct l_dbus *dbus,
+ 	dbus->debug_destroy =3D destroy;
+ 	dbus->debug_data =3D user_data;
  =
 
-+#if __STDC_VERSION__ <=3D 199409L
-+#define _DEFAULT_SOURCE  /* for strto{u}ll() */
-+#endif
-+
- #include <stdio.h>
- #include <stdlib.h>
- #include <strings.h>
+-	//l_io_set_debug(dbus->io, function, user_data, NULL);
++	/* l_io_set_debug(dbus->io, function, user_data, NULL); */
+ =
+
+ 	return true;
+ }
+diff --git a/ell/netlink.c b/ell/netlink.c
+index 39e6b3a..3d291cf 100644
+--- a/ell/netlink.c
++++ b/ell/netlink.c
+@@ -607,7 +607,7 @@ LIB_EXPORT bool l_netlink_set_debug(struct l_netlink *n=
+etlink,
+ 	netlink->debug_destroy =3D destroy;
+ 	netlink->debug_data =3D user_data;
+ =
+
+-	//l_io_set_debug(netlink->io, function, user_data, NULL);
++	/* l_io_set_debug(netlink->io, function, user_data, NULL); */
+ =
+
+ 	return true;
+ }
 -- =
 
 2.17.1
 
 
---===============8732907102970953903==--
+--===============8192418879580427737==--
 
