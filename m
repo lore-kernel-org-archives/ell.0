@@ -1,60 +1,78 @@
-Content-Type: multipart/mixed; boundary="===============8192418879580427737=="
+Content-Type: multipart/mixed; boundary="===============6804521016543429034=="
 MIME-Version: 1.0
 From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH 2/5] ell: Do not use C99 '//' single line comment.
-Date: Mon, 04 Mar 2019 10:42:56 -0800
-Message-ID: <20190304184259.22809-3-ossama.othman@intel.com>
+Subject: [PATCH 1/5] ell: Use __inline__ instead of inline for C89.
+Date: Mon, 04 Mar 2019 10:42:55 -0800
+Message-ID: <20190304184259.22809-2-ossama.othman@intel.com>
 In-Reply-To: <20190304184259.22809-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8192418879580427737==
+--===============6804521016543429034==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Support older C standards by avoiding use of C99/C++ style '//'
-comments.
+The inline keyword was introduced in C99.  Use the gcc __inline__
+extension for older C standards.
 ---
- ell/dbus.c    | 2 +-
- ell/netlink.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ ell/asn1-private.h | 4 ++++
+ ell/utf8.h         | 4 ++++
+ ell/util.h         | 4 ++++
+ 3 files changed, 12 insertions(+)
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 5664f85..92be396 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -1286,7 +1286,7 @@ LIB_EXPORT bool l_dbus_set_debug(struct l_dbus *dbus,
- 	dbus->debug_destroy =3D destroy;
- 	dbus->debug_data =3D user_data;
+diff --git a/ell/asn1-private.h b/ell/asn1-private.h
+index bea9ea9..53bba4c 100644
+--- a/ell/asn1-private.h
++++ b/ell/asn1-private.h
+@@ -40,6 +40,10 @@ struct asn1_oid {
+ 	((oid1)->asn1_len =3D=3D (oid2_len) && \
+ 	 !memcmp((oid1)->asn1, (oid2_string), (oid2_len)))
  =
 
--	//l_io_set_debug(dbus->io, function, user_data, NULL);
-+	/* l_io_set_debug(dbus->io, function, user_data, NULL); */
++#if __STDC_VERSION__ <=3D 199409L
++#define inline __inline__
++#endif
++
+ static inline int asn1_parse_definite_length(const uint8_t **buf,
+ 						size_t *len)
+ {
+diff --git a/ell/utf8.h b/ell/utf8.h
+index 92226d3..c92da60 100644
+--- a/ell/utf8.h
++++ b/ell/utf8.h
+@@ -80,6 +80,10 @@ enum l_ascii {
+ #define l_ascii_isxdigit(c) \
+ 	((l_ascii_table[(unsigned char) (c)] & L_ASCII_XDIGIT) !=3D 0)
  =
 
- 	return true;
- }
-diff --git a/ell/netlink.c b/ell/netlink.c
-index 39e6b3a..3d291cf 100644
---- a/ell/netlink.c
-+++ b/ell/netlink.c
-@@ -607,7 +607,7 @@ LIB_EXPORT bool l_netlink_set_debug(struct l_netlink *n=
-etlink,
- 	netlink->debug_destroy =3D destroy;
- 	netlink->debug_data =3D user_data;
++#if __STDC_VERSION__ <=3D 199409L
++#define inline __inline__
++#endif
++
+ static inline __attribute__ ((always_inline))
+ 					bool l_ascii_isblank(unsigned char c)
+ {
+diff --git a/ell/util.h b/ell/util.h
+index de4df74..c4ba7f8 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -102,6 +102,10 @@ do {						\
+ #error "Unknown byte order"
+ #endif
  =
 
--	//l_io_set_debug(netlink->io, function, user_data, NULL);
-+	/* l_io_set_debug(netlink->io, function, user_data, NULL); */
- =
-
- 	return true;
- }
++#if __STDC_VERSION__ <=3D 199409L
++#define inline __inline__
++#endif
++
+ static inline uint8_t l_get_u8(const void *ptr)
+ {
+ 	return *((const uint8_t *) ptr);
 -- =
 
 2.17.1
 
 
---===============8192418879580427737==--
+--===============6804521016543429034==--
 
