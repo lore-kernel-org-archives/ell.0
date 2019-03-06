@@ -1,81 +1,157 @@
-Content-Type: multipart/mixed; boundary="===============2037350685394593591=="
+Content-Type: multipart/mixed; boundary="===============0849156077467442717=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] uintset: Add l_uintset_intersect
-Date: Tue, 05 Mar 2019 15:47:15 -0600
-Message-ID: <845b54c4-a10b-89bf-ea1e-9c2e2fe07d11@gmail.com>
-In-Reply-To: <20190305203543.1492-1-tim.a.kourt@linux.intel.com>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH 1/2] uintset: Add l_uintset_foreach
+Date: Wed, 06 Mar 2019 14:03:10 -0800
+Message-ID: <20190306220311.18897-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2037350685394593591==
+--===============0849156077467442717==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Tim,
+Enables an efficient traversal through the numbers in the set.
+---
+ ell/uintset.c | 67 +++++++++++++++++++++++++++++++++++++++++++++++++++++++=
++++-
+ ell/uintset.h |  7 ++++++-
+ 2 files changed, 72 insertions(+), 2 deletions(-)
 
-On 03/05/2019 02:35 PM, Tim Kourt wrote:
-> l_uintset_intersect computes the intersection of two sets.
-> In addition, it introduces find_next_bit(=E2=80=A6) that is used to
-> efficiently loop through the set bits in the set and may have
-> multiple implication in the future.
+diff --git a/ell/uintset.c b/ell/uintset.c
+index 1d96e68..3f20098 100644
+--- a/ell/uintset.c
++++ b/ell/uintset.c
+@@ -2,7 +2,7 @@
+  *
+  *  Embedded Linux library
+  *
+- *  Copyright (C) 2015  Intel Corporation. All rights reserved.
++ *  Copyright (C) 2015-2019  Intel Corporation. All rights reserved.
+  *
+  *  This library is free software; you can redistribute it and/or
+  *  modify it under the terms of the GNU Lesser General Public
+@@ -122,6 +122,49 @@ static unsigned long find_last_bit(const unsigned long=
+ *addr, unsigned int size)
+ 	return size;
+ }
+ =
 
-implications or applications?  If it is the first, that sounds ominous...
++static unsigned long find_next_bit(const unsigned long *addr,
++							unsigned long size,
++							unsigned long bit)
++{
++	unsigned long mask;
++	unsigned long offset;
++
++	if (bit >=3D size)
++		return size;
++
++	addr +=3D bit / BITS_PER_LONG;
++	offset =3D bit % BITS_PER_LONG;
++	bit -=3D offset;
++
++	if (offset) {
++		mask =3D *addr & ~(~0UL >> (BITS_PER_LONG - offset));
++		if (mask)
++			return bit + __ffs(mask);
++
++		bit +=3D BITS_PER_LONG;
++		addr++;
++	}
++
++	for (size -=3D bit; size >=3D BITS_PER_LONG;
++			size -=3D BITS_PER_LONG, bit +=3D BITS_PER_LONG, addr++) {
++		if (!*addr)
++			continue;
++
++		return bit + __ffs(*addr);
++	}
++
++	if (!size)
++		return bit;
++
++	mask =3D *addr & (~0UL >> (BITS_PER_LONG - size));
++	if (mask)
++		bit +=3D __ffs(mask);
++	else
++		bit +=3D size;
++
++	return bit;
++}
++
+ struct l_uintset {
+ 	unsigned long *bits;
+ 	uint16_t size;
+@@ -404,3 +447,25 @@ LIB_EXPORT uint32_t l_uintset_find_min(struct l_uintse=
+t *set)
+ =
 
-> ---
->   ell/uintset.c | 96 ++++++++++++++++++++++++++++++++++++++++++++++++++++=
-+++++++
->   ell/uintset.h |  3 ++
->   2 files changed, 99 insertions(+)
-> =
+ 	return bit + set->min;
+ }
++
++/**
++ * l_uintset_foreach:
++ * @set: The set of numbers
++ * @function: callback function
++ * @user_data: user data given to callback function
++ *
++ * Call @function for every given number in @set.
++ **/
++LIB_EXPORT void l_uintset_foreach(struct l_uintset *set,
++					l_uintset_foreach_func_t function,
++					void *user_data)
++{
++	unsigned int bit;
++
++	if (unlikely(!set || !function))
++		return;
++
++	for (bit =3D find_first_bit(set->bits, set->size); bit < set->size;
++			bit =3D find_next_bit(set->bits, set->size, bit + 1))
++		function(set->min + bit, user_data);
++}
+diff --git a/ell/uintset.h b/ell/uintset.h
+index 474c5e4..dd03cd7 100644
+--- a/ell/uintset.h
++++ b/ell/uintset.h
+@@ -2,7 +2,7 @@
+  *
+  *  Embedded Linux library
+  *
+- *  Copyright (C) 2015  Intel Corporation. All rights reserved.
++ *  Copyright (C) 2015-2019  Intel Corporation. All rights reserved.
+  *
+  *  This library is free software; you can redistribute it and/or
+  *  modify it under the terms of the GNU Lesser General Public
+@@ -31,6 +31,8 @@ extern "C" {
+ #include <stddef.h>
+ #include <stdbool.h>
+ =
+
++typedef void (*l_uintset_foreach_func_t) (uint32_t number, void *user_data=
+);
++
+ struct l_uintset;
+ =
+
+ struct l_uintset *l_uintset_new_from_range(uint32_t min, uint32_t max);
+@@ -50,6 +52,9 @@ uint32_t l_uintset_find_min(struct l_uintset *set);
+ uint32_t l_uintset_find_unused_min(struct l_uintset *set);
+ uint32_t l_uintset_find_unused(struct l_uintset *set, uint32_t start);
+ =
+
++void l_uintset_foreach(struct l_uintset *set,
++			l_uintset_foreach_func_t function, void *user_data);
++
+ #ifdef __cplusplus
+ }
+ #endif
+-- =
+
+2.13.6
 
 
-<snip>
-
-> +
-> +/**
-> + * l_uintset_intersect:
-> + * @set_a: The set of numbers
-> + * @set_b: The set of numbers
-> + *
-> + * Returns: A newly allocated l_uintset object containing intersection of
-> + * @set_a and @set_b. If @set_a and @set_b cannot be intersected returns=
- NULL.
-> + * If either @set_a or @set_b is NULL returns NULL.
-> + **/
-> +LIB_EXPORT struct l_uintset *l_uintset_intersect(const struct l_uintset =
-*set_a,
-> +						const struct l_uintset *set_b)
-> +{
-> +	struct l_uintset *intersection;
-> +	uint32_t min;
-> +	uint32_t max;
-> +	unsigned int bit_a;
-> +	unsigned int bit_b;
-> +
-> +	if (unlikely(!set_a) || unlikely(!set_b))
-> +		return NULL;
-> +
-> +	if (set_a->max < set_b->min || set_b->max < set_a->min)
-> +		return NULL;
-
-So honestly I would implement a fast version which works for sets where =
-
-min and max are the same.  This is really what you want anyway for the =
-
-scan_freq_set stuff, right?  That should be a very simple bitwise and =
-
-operation...
-
-I'm not completely sure of the utility of this more generalized =
-
-intersect operation that you have implemented here.  Do you foresee a =
-
-need for something like this?
-
-Regards,
--Denis
-
---===============2037350685394593591==--
+--===============0849156077467442717==--
 
