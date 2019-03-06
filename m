@@ -1,28 +1,27 @@
-Content-Type: multipart/mixed; boundary="===============0849156077467442717=="
+Content-Type: multipart/mixed; boundary="===============8687783218674419666=="
 MIME-Version: 1.0
 From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH 1/2] uintset: Add l_uintset_foreach
-Date: Wed, 06 Mar 2019 14:03:10 -0800
-Message-ID: <20190306220311.18897-1-tim.a.kourt@linux.intel.com>
+Subject: [PATCH 2/2] unit: Add l_uintset_foreach tests
+Date: Wed, 06 Mar 2019 14:03:11 -0800
+Message-ID: <20190306220311.18897-2-tim.a.kourt@linux.intel.com>
+In-Reply-To: <20190306220311.18897-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0849156077467442717==
+--===============8687783218674419666==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Enables an efficient traversal through the numbers in the set.
 ---
- ell/uintset.c | 67 +++++++++++++++++++++++++++++++++++++++++++++++++++++++=
+ unit/test-uintset.c | 98 +++++++++++++++++++++++++++++++++++++++++++++++++=
 +++-
- ell/uintset.h |  7 ++++++-
- 2 files changed, 72 insertions(+), 2 deletions(-)
+ 1 file changed, 97 insertions(+), 1 deletion(-)
 
-diff --git a/ell/uintset.c b/ell/uintset.c
-index 1d96e68..3f20098 100644
---- a/ell/uintset.c
-+++ b/ell/uintset.c
+diff --git a/unit/test-uintset.c b/unit/test-uintset.c
+index 42d9698..4488cd9 100644
+--- a/unit/test-uintset.c
++++ b/unit/test-uintset.c
 @@ -2,7 +2,7 @@
   *
   *  Embedded Linux library
@@ -32,126 +31,122 @@ index 1d96e68..3f20098 100644
   *
   *  This library is free software; you can redistribute it and/or
   *  modify it under the terms of the GNU Lesser General Public
-@@ -122,6 +122,49 @@ static unsigned long find_last_bit(const unsigned long=
- *addr, unsigned int size)
- 	return size;
+@@ -167,6 +167,101 @@ static void test_uintset_find_unused(const void *data)
+ 	l_uintset_free(set);
  }
  =
 
-+static unsigned long find_next_bit(const unsigned long *addr,
-+							unsigned long size,
-+							unsigned long bit)
++static void uintset_foreach(uint32_t number, void *user_data)
 +{
-+	unsigned long mask;
-+	unsigned long offset;
++	struct l_uintset *check =3D user_data;
 +
-+	if (bit >=3D size)
-+		return size;
-+
-+	addr +=3D bit / BITS_PER_LONG;
-+	offset =3D bit % BITS_PER_LONG;
-+	bit -=3D offset;
-+
-+	if (offset) {
-+		mask =3D *addr & ~(~0UL >> (BITS_PER_LONG - offset));
-+		if (mask)
-+			return bit + __ffs(mask);
-+
-+		bit +=3D BITS_PER_LONG;
-+		addr++;
-+	}
-+
-+	for (size -=3D bit; size >=3D BITS_PER_LONG;
-+			size -=3D BITS_PER_LONG, bit +=3D BITS_PER_LONG, addr++) {
-+		if (!*addr)
-+			continue;
-+
-+		return bit + __ffs(*addr);
-+	}
-+
-+	if (!size)
-+		return bit;
-+
-+	mask =3D *addr & (~0UL >> (BITS_PER_LONG - size));
-+	if (mask)
-+		bit +=3D __ffs(mask);
-+	else
-+		bit +=3D size;
-+
-+	return bit;
++	l_uintset_take(check, number);
 +}
 +
- struct l_uintset {
- 	unsigned long *bits;
- 	uint16_t size;
-@@ -404,3 +447,25 @@ LIB_EXPORT uint32_t l_uintset_find_min(struct l_uintse=
-t *set)
- =
-
- 	return bit + set->min;
- }
-+
-+/**
-+ * l_uintset_foreach:
-+ * @set: The set of numbers
-+ * @function: callback function
-+ * @user_data: user data given to callback function
-+ *
-+ * Call @function for every given number in @set.
-+ **/
-+LIB_EXPORT void l_uintset_foreach(struct l_uintset *set,
-+					l_uintset_foreach_func_t function,
-+					void *user_data)
++static void test_uintset_foreach(const void *data)
 +{
-+	unsigned int bit;
++	struct l_uintset *set;
++	struct l_uintset *check;
++	int i;
 +
-+	if (unlikely(!set || !function))
-+		return;
++	set =3D l_uintset_new_from_range(0, 63);
++	check =3D l_uintset_new_from_range(0, 63);
++	assert(set);
++	assert(check);
 +
-+	for (bit =3D find_first_bit(set->bits, set->size); bit < set->size;
-+			bit =3D find_next_bit(set->bits, set->size, bit + 1))
-+		function(set->min + bit, user_data);
++	for (i =3D 0; i < 64; i++) {
++		assert(l_uintset_put(set, i));
++		assert(l_uintset_put(check, i));
++	}
++
++	l_uintset_foreach(set, uintset_foreach, check);
++	assert(l_uintset_find_max(check) =3D=3D 64);
++
++	l_uintset_free(set);
++	l_uintset_free(check);
++
++	set =3D l_uintset_new_from_range(0, 127);
++	check =3D l_uintset_new_from_range(0, 127);
++	assert(set);
++	assert(check);
++
++	assert(l_uintset_put(set, 127));
++	assert(l_uintset_put(check, 127));
++
++	l_uintset_foreach(set, uintset_foreach, check);
++	assert(l_uintset_find_max(check) =3D=3D 128);
++
++	l_uintset_free(set);
++	l_uintset_free(check);
++
++	set =3D l_uintset_new_from_range(0, 191);
++	check =3D l_uintset_new_from_range(0, 191);
++	assert(set);
++	assert(check);
++
++	assert(l_uintset_put(set, 50));
++	assert(l_uintset_put(check, 50));
++	assert(l_uintset_put(set, 150));
++	assert(l_uintset_put(check, 150));
++
++	l_uintset_foreach(set, uintset_foreach, check);
++	assert(l_uintset_find_max(check) =3D=3D 192);
++
++	l_uintset_free(set);
++	l_uintset_free(check);
++
++	set =3D l_uintset_new_from_range(0, 192);
++	check =3D l_uintset_new_from_range(0, 192);
++	assert(set);
++	assert(check);
++
++	assert(l_uintset_put(set, 0));
++	assert(l_uintset_put(check, 0));
++	assert(l_uintset_put(set, 63));
++	assert(l_uintset_put(check, 63));
++	assert(l_uintset_put(set, 120));
++	assert(l_uintset_put(check, 120));
++
++	l_uintset_foreach(set, uintset_foreach, check);
++	assert(l_uintset_find_max(check) =3D=3D 193);
++
++	l_uintset_free(set);
++	l_uintset_free(check);
++
++	set =3D l_uintset_new_from_range(0, 192);
++	check =3D l_uintset_new_from_range(0, 192);
++	assert(set);
++	assert(check);
++
++	assert(l_uintset_put(set, 0));
++	assert(l_uintset_put(check, 0));
++
++	assert(l_uintset_put(set, 192));
++	assert(l_uintset_put(check, 192));
++
++	l_uintset_foreach(set, uintset_foreach, check);
++	assert(l_uintset_find_max(check) =3D=3D 193);
++
++	l_uintset_free(set);
++	l_uintset_free(check);
 +}
-diff --git a/ell/uintset.h b/ell/uintset.h
-index 474c5e4..dd03cd7 100644
---- a/ell/uintset.h
-+++ b/ell/uintset.h
-@@ -2,7 +2,7 @@
-  *
-  *  Embedded Linux library
-  *
-- *  Copyright (C) 2015  Intel Corporation. All rights reserved.
-+ *  Copyright (C) 2015-2019  Intel Corporation. All rights reserved.
-  *
-  *  This library is free software; you can redistribute it and/or
-  *  modify it under the terms of the GNU Lesser General Public
-@@ -31,6 +31,8 @@ extern "C" {
- #include <stddef.h>
- #include <stdbool.h>
- =
-
-+typedef void (*l_uintset_foreach_func_t) (uint32_t number, void *user_data=
-);
 +
- struct l_uintset;
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -175,6 +270,7 @@ int main(int argc, char *argv[])
+ 	l_test_add("l_uintset sanity check #2", test_uintset_2, NULL);
+ 	l_test_add("l_uintset sanity check #3", test_uintset_3, NULL);
+ 	l_test_add("l_uintset sanity check #4", test_uintset_4, NULL);
++	l_test_add("l_uintset for each tests", test_uintset_foreach, NULL);
+ 	l_test_add("l_uintset find unused tests", test_uintset_find_unused,
+ 							NULL);
  =
 
- struct l_uintset *l_uintset_new_from_range(uint32_t min, uint32_t max);
-@@ -50,6 +52,9 @@ uint32_t l_uintset_find_min(struct l_uintset *set);
- uint32_t l_uintset_find_unused_min(struct l_uintset *set);
- uint32_t l_uintset_find_unused(struct l_uintset *set, uint32_t start);
- =
-
-+void l_uintset_foreach(struct l_uintset *set,
-+			l_uintset_foreach_func_t function, void *user_data);
-+
- #ifdef __cplusplus
- }
- #endif
 -- =
 
 2.13.6
 
 
---===============0849156077467442717==--
+--===============8687783218674419666==--
 
