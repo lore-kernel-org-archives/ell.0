@@ -1,93 +1,138 @@
-Content-Type: multipart/mixed; boundary="===============4883403769362044080=="
+Content-Type: multipart/mixed; boundary="===============7897813288146530886=="
 MIME-Version: 1.0
 From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH 1/2] uintset: Add l_uintset_intersect
-Date: Wed, 06 Mar 2019 16:17:06 -0800
-Message-ID: <20190307001707.22395-1-tim.a.kourt@linux.intel.com>
+Subject: [PATCH 2/2] unit: Add l_uintset_intersect tests
+Date: Wed, 06 Mar 2019 16:17:07 -0800
+Message-ID: <20190307001707.22395-2-tim.a.kourt@linux.intel.com>
+In-Reply-To: <20190307001707.22395-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4883403769362044080==
+--===============7897813288146530886==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-l_uintset_intersect computes the intersection of two sets
-of an equal base.
 ---
- ell/uintset.c | 37 +++++++++++++++++++++++++++++++++++++
- ell/uintset.h |  3 +++
- 2 files changed, 40 insertions(+)
+ unit/test-uintset.c | 91 +++++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 1 file changed, 91 insertions(+)
 
-diff --git a/ell/uintset.c b/ell/uintset.c
-index 3f20098..60a9822 100644
---- a/ell/uintset.c
-+++ b/ell/uintset.c
-@@ -469,3 +469,40 @@ LIB_EXPORT void l_uintset_foreach(struct l_uintset *se=
-t,
- 			bit =3D find_next_bit(set->bits, set->size, bit + 1))
- 		function(set->min + bit, user_data);
+diff --git a/unit/test-uintset.c b/unit/test-uintset.c
+index 4488cd9..9bd455c 100644
+--- a/unit/test-uintset.c
++++ b/unit/test-uintset.c
+@@ -262,6 +262,91 @@ static void test_uintset_foreach(const void *data)
+ 	l_uintset_free(check);
  }
-+
-+/**
-+ * l_uintset_intersect:
-+ * @set_a: The set of numbers
-+ * @set_b: The set of numbers
-+ *
-+ * Intersects the two sets of numbers of an equal base, e.g.:
-+ * l_uintset_get_min(set_a) must be equal to l_uintset_get_min(set_b) and
-+ * l_uintset_get_max(set_a) must be equal to l_uintset_get_max(set_b)
-+ *
-+ * Returns: A newly allocated l_uintset object containing the intersection=
- of
-+ * @set_a and @set_b. If the bases are not equal returns NULL. If either @=
-set_a
-+ * or @set_b is NULL returns NULL.
-+ **/
-+LIB_EXPORT struct l_uintset *l_uintset_intersect(const struct l_uintset *s=
-et_a,
-+						const struct l_uintset *set_b)
-+{
-+	struct l_uintset *intersection;
-+	uint32_t offset;
-+	uint32_t offset_max;
-+
-+	if (unlikely(!set_a || !set_b))
-+		return NULL;
-+
-+	if (unlikely(set_a->min !=3D set_b->min || set_a->max !=3D set_b->max))
-+		return NULL;
-+
-+	intersection =3D l_uintset_new_from_range(set_a->min, set_a->max);
-+
-+	offset_max =3D (set_a->size + BITS_PER_LONG - 1) / BITS_PER_LONG;
-+
-+	for (offset =3D 0; offset < offset_max; offset++)
-+		intersection->bits[offset] =3D
-+				set_a->bits[offset] & set_b->bits[offset];
-+
-+	return intersection;
-+}
-diff --git a/ell/uintset.h b/ell/uintset.h
-index dd03cd7..c05a21b 100644
---- a/ell/uintset.h
-+++ b/ell/uintset.h
-@@ -55,6 +55,9 @@ uint32_t l_uintset_find_unused(struct l_uintset *set, uin=
-t32_t start);
- void l_uintset_foreach(struct l_uintset *set,
- 			l_uintset_foreach_func_t function, void *user_data);
  =
 
-+struct l_uintset *l_uintset_intersect(const struct l_uintset *set_a,
-+						const struct l_uintset *set_b);
++static void test_uintset_intersect_1(const void *data)
++{
++	struct l_uintset *set_a;
++	struct l_uintset *set_b;
 +
- #ifdef __cplusplus
++	assert(!l_uintset_intersect(NULL, NULL));
++
++	set_a =3D l_uintset_new_from_range(0, 5);
++	assert(!l_uintset_intersect(NULL, set_a));
++	assert(!l_uintset_intersect(set_a, NULL));
++
++	set_b =3D l_uintset_new_from_range(4, 10);
++	assert(!l_uintset_intersect(set_a, set_b));
++
++	l_uintset_free(set_a);
++	l_uintset_free(set_b);
++}
++
++struct uintset_data {
++	uint32_t min;
++	uint32_t max;
++	uint32_t *vals;
++	uint32_t size;
++};
++
++struct uintset_intersect_data {
++	const struct uintset_data set_a;
++	const struct uintset_data set_b;
++	const struct uintset_data set_r;
++};
++
++uint32_t vals1[] =3D { 1, 2, 3 };
++uint32_t vals2[] =3D { 3, 4};
++uint32_t vals3[] =3D { 3 };
++
++static const struct uintset_intersect_data intersect_data_1 =3D {
++	.set_a =3D { 0, 4, vals1, L_ARRAY_SIZE(vals1) },
++	.set_b =3D { 0, 4, vals2, L_ARRAY_SIZE(vals2) },
++	.set_r =3D { 0, 4, vals3, L_ARRAY_SIZE(vals3) },
++};
++
++uint32_t vals4[] =3D { 0, 1, 64, 127 };
++uint32_t vals5[] =3D { 1, 25, 64, 66, 127, 135 };
++uint32_t vals6[] =3D { 1, 64, 127 };
++
++static const struct uintset_intersect_data intersect_data_2 =3D {
++	.set_a =3D { 0, 191, vals4, L_ARRAY_SIZE(vals4) },
++	.set_b =3D { 0, 191, vals5, L_ARRAY_SIZE(vals5) },
++	.set_r =3D { 0, 191, vals6, L_ARRAY_SIZE(vals6) },
++};
++
++static void test_uintset_intersect_2(const void *user_data)
++{
++	const struct uintset_intersect_data *data =3D user_data;
++	struct l_uintset *set_a;
++	struct l_uintset *set_b;
++	struct l_uintset *set_r;
++	size_t i;
++
++	set_a =3D l_uintset_new_from_range(data->set_a.min, data->set_a.max);
++
++	for (i =3D 0; i < data->set_a.size; i++)
++		l_uintset_put(set_a, data->set_a.vals[i]);
++
++	set_b =3D l_uintset_new_from_range(data->set_b.min, data->set_b.max);
++
++	for (i =3D 0; i < data->set_b.size; i++)
++		l_uintset_put(set_b, data->set_b.vals[i]);
++
++	set_r =3D l_uintset_intersect(set_a, set_b);
++
++	assert(set_r);
++
++	for (i =3D 0; i < data->set_r.size; i++) {
++		assert(l_uintset_contains(set_r, data->set_r.vals[i]));
++		assert(l_uintset_take(set_r, data->set_r.vals[i]));
++	}
++
++	assert(l_uintset_find_max(set_r) =3D=3D l_uintset_get_max(set_r) + 1);
++
++	l_uintset_free(set_a);
++	l_uintset_free(set_b);
++	l_uintset_free(set_r);
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -273,6 +358,12 @@ int main(int argc, char *argv[])
+ 	l_test_add("l_uintset for each tests", test_uintset_foreach, NULL);
+ 	l_test_add("l_uintset find unused tests", test_uintset_find_unused,
+ 							NULL);
++	l_test_add("l_uintset intersect sanity check", test_uintset_intersect_1,
++									NULL);
++	l_test_add("l_uintset intersect test 1", test_uintset_intersect_2,
++							&intersect_data_1);
++	l_test_add("l_uintset intersect test2", test_uintset_intersect_2,
++							&intersect_data_2);
+ =
+
+ 	return l_test_run();
  }
- #endif
 -- =
 
 2.13.6
 
 
---===============4883403769362044080==--
+--===============7897813288146530886==--
 
