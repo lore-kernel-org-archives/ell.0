@@ -1,152 +1,93 @@
-Content-Type: multipart/mixed; boundary="===============8687783218674419666=="
+Content-Type: multipart/mixed; boundary="===============4883403769362044080=="
 MIME-Version: 1.0
 From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH 2/2] unit: Add l_uintset_foreach tests
-Date: Wed, 06 Mar 2019 14:03:11 -0800
-Message-ID: <20190306220311.18897-2-tim.a.kourt@linux.intel.com>
-In-Reply-To: <20190306220311.18897-1-tim.a.kourt@linux.intel.com>
+Subject: [PATCH 1/2] uintset: Add l_uintset_intersect
+Date: Wed, 06 Mar 2019 16:17:06 -0800
+Message-ID: <20190307001707.22395-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8687783218674419666==
+--===============4883403769362044080==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+l_uintset_intersect computes the intersection of two sets
+of an equal base.
 ---
- unit/test-uintset.c | 98 +++++++++++++++++++++++++++++++++++++++++++++++++=
-+++-
- 1 file changed, 97 insertions(+), 1 deletion(-)
+ ell/uintset.c | 37 +++++++++++++++++++++++++++++++++++++
+ ell/uintset.h |  3 +++
+ 2 files changed, 40 insertions(+)
 
-diff --git a/unit/test-uintset.c b/unit/test-uintset.c
-index 42d9698..4488cd9 100644
---- a/unit/test-uintset.c
-+++ b/unit/test-uintset.c
-@@ -2,7 +2,7 @@
-  *
-  *  Embedded Linux library
-  *
-- *  Copyright (C) 2015  Intel Corporation. All rights reserved.
-+ *  Copyright (C) 2015-2019  Intel Corporation. All rights reserved.
-  *
-  *  This library is free software; you can redistribute it and/or
-  *  modify it under the terms of the GNU Lesser General Public
-@@ -167,6 +167,101 @@ static void test_uintset_find_unused(const void *data)
- 	l_uintset_free(set);
+diff --git a/ell/uintset.c b/ell/uintset.c
+index 3f20098..60a9822 100644
+--- a/ell/uintset.c
++++ b/ell/uintset.c
+@@ -469,3 +469,40 @@ LIB_EXPORT void l_uintset_foreach(struct l_uintset *se=
+t,
+ 			bit =3D find_next_bit(set->bits, set->size, bit + 1))
+ 		function(set->min + bit, user_data);
  }
++
++/**
++ * l_uintset_intersect:
++ * @set_a: The set of numbers
++ * @set_b: The set of numbers
++ *
++ * Intersects the two sets of numbers of an equal base, e.g.:
++ * l_uintset_get_min(set_a) must be equal to l_uintset_get_min(set_b) and
++ * l_uintset_get_max(set_a) must be equal to l_uintset_get_max(set_b)
++ *
++ * Returns: A newly allocated l_uintset object containing the intersection=
+ of
++ * @set_a and @set_b. If the bases are not equal returns NULL. If either @=
+set_a
++ * or @set_b is NULL returns NULL.
++ **/
++LIB_EXPORT struct l_uintset *l_uintset_intersect(const struct l_uintset *s=
+et_a,
++						const struct l_uintset *set_b)
++{
++	struct l_uintset *intersection;
++	uint32_t offset;
++	uint32_t offset_max;
++
++	if (unlikely(!set_a || !set_b))
++		return NULL;
++
++	if (unlikely(set_a->min !=3D set_b->min || set_a->max !=3D set_b->max))
++		return NULL;
++
++	intersection =3D l_uintset_new_from_range(set_a->min, set_a->max);
++
++	offset_max =3D (set_a->size + BITS_PER_LONG - 1) / BITS_PER_LONG;
++
++	for (offset =3D 0; offset < offset_max; offset++)
++		intersection->bits[offset] =3D
++				set_a->bits[offset] & set_b->bits[offset];
++
++	return intersection;
++}
+diff --git a/ell/uintset.h b/ell/uintset.h
+index dd03cd7..c05a21b 100644
+--- a/ell/uintset.h
++++ b/ell/uintset.h
+@@ -55,6 +55,9 @@ uint32_t l_uintset_find_unused(struct l_uintset *set, uin=
+t32_t start);
+ void l_uintset_foreach(struct l_uintset *set,
+ 			l_uintset_foreach_func_t function, void *user_data);
  =
 
-+static void uintset_foreach(uint32_t number, void *user_data)
-+{
-+	struct l_uintset *check =3D user_data;
++struct l_uintset *l_uintset_intersect(const struct l_uintset *set_a,
++						const struct l_uintset *set_b);
 +
-+	l_uintset_take(check, number);
-+}
-+
-+static void test_uintset_foreach(const void *data)
-+{
-+	struct l_uintset *set;
-+	struct l_uintset *check;
-+	int i;
-+
-+	set =3D l_uintset_new_from_range(0, 63);
-+	check =3D l_uintset_new_from_range(0, 63);
-+	assert(set);
-+	assert(check);
-+
-+	for (i =3D 0; i < 64; i++) {
-+		assert(l_uintset_put(set, i));
-+		assert(l_uintset_put(check, i));
-+	}
-+
-+	l_uintset_foreach(set, uintset_foreach, check);
-+	assert(l_uintset_find_max(check) =3D=3D 64);
-+
-+	l_uintset_free(set);
-+	l_uintset_free(check);
-+
-+	set =3D l_uintset_new_from_range(0, 127);
-+	check =3D l_uintset_new_from_range(0, 127);
-+	assert(set);
-+	assert(check);
-+
-+	assert(l_uintset_put(set, 127));
-+	assert(l_uintset_put(check, 127));
-+
-+	l_uintset_foreach(set, uintset_foreach, check);
-+	assert(l_uintset_find_max(check) =3D=3D 128);
-+
-+	l_uintset_free(set);
-+	l_uintset_free(check);
-+
-+	set =3D l_uintset_new_from_range(0, 191);
-+	check =3D l_uintset_new_from_range(0, 191);
-+	assert(set);
-+	assert(check);
-+
-+	assert(l_uintset_put(set, 50));
-+	assert(l_uintset_put(check, 50));
-+	assert(l_uintset_put(set, 150));
-+	assert(l_uintset_put(check, 150));
-+
-+	l_uintset_foreach(set, uintset_foreach, check);
-+	assert(l_uintset_find_max(check) =3D=3D 192);
-+
-+	l_uintset_free(set);
-+	l_uintset_free(check);
-+
-+	set =3D l_uintset_new_from_range(0, 192);
-+	check =3D l_uintset_new_from_range(0, 192);
-+	assert(set);
-+	assert(check);
-+
-+	assert(l_uintset_put(set, 0));
-+	assert(l_uintset_put(check, 0));
-+	assert(l_uintset_put(set, 63));
-+	assert(l_uintset_put(check, 63));
-+	assert(l_uintset_put(set, 120));
-+	assert(l_uintset_put(check, 120));
-+
-+	l_uintset_foreach(set, uintset_foreach, check);
-+	assert(l_uintset_find_max(check) =3D=3D 193);
-+
-+	l_uintset_free(set);
-+	l_uintset_free(check);
-+
-+	set =3D l_uintset_new_from_range(0, 192);
-+	check =3D l_uintset_new_from_range(0, 192);
-+	assert(set);
-+	assert(check);
-+
-+	assert(l_uintset_put(set, 0));
-+	assert(l_uintset_put(check, 0));
-+
-+	assert(l_uintset_put(set, 192));
-+	assert(l_uintset_put(check, 192));
-+
-+	l_uintset_foreach(set, uintset_foreach, check);
-+	assert(l_uintset_find_max(check) =3D=3D 193);
-+
-+	l_uintset_free(set);
-+	l_uintset_free(check);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -175,6 +270,7 @@ int main(int argc, char *argv[])
- 	l_test_add("l_uintset sanity check #2", test_uintset_2, NULL);
- 	l_test_add("l_uintset sanity check #3", test_uintset_3, NULL);
- 	l_test_add("l_uintset sanity check #4", test_uintset_4, NULL);
-+	l_test_add("l_uintset for each tests", test_uintset_foreach, NULL);
- 	l_test_add("l_uintset find unused tests", test_uintset_find_unused,
- 							NULL);
- =
-
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
 2.13.6
 
 
---===============8687783218674419666==--
+--===============4883403769362044080==--
 
