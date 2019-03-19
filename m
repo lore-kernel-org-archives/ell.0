@@ -1,77 +1,101 @@
-Content-Type: multipart/mixed; boundary="===============8366035155253452660=="
+Content-Type: multipart/mixed; boundary="===============1563212044839589038=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/4] ecc: Clear point coordinates, use explicit_bzero
-Date: Tue, 19 Mar 2019 01:48:40 +0100
-Message-ID: <20190319004843.13451-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/4] pkcs5: Memzero copies of secrets
+Date: Tue, 19 Mar 2019 01:48:41 +0100
+Message-ID: <20190319004843.13451-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20190319004843.13451-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8366035155253452660==
+--===============1563212044839589038==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-We would only zero out memory used by the scalar type because
-Diffie-Hellman secrets are scalars, but in PWD the PWD and PK values may
-be points so also clear those.  Update l_ecc_scalar_free to use
-explicit_bzero too.
+Those functions are used, among others, for decrypting private keys and
+are passed the private key passphrases so make sure those are being
+cleared.
 ---
- ell/ecc.c  | 7 ++++++-
- ell/ecdh.c | 2 --
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ ell/pkcs5.c | 34 ++++++++++++++++------------------
+ 1 file changed, 16 insertions(+), 18 deletions(-)
 
-diff --git a/ell/ecc.c b/ell/ecc.c
-index 88c8373..5fa91a8 100644
---- a/ell/ecc.c
-+++ b/ell/ecc.c
-@@ -541,6 +541,11 @@ LIB_EXPORT ssize_t l_ecc_point_get_data(const struct l=
-_ecc_point *p, void *buf,
+diff --git a/ell/pkcs5.c b/ell/pkcs5.c
+index 9fac479..bd7db90 100644
+--- a/ell/pkcs5.c
++++ b/ell/pkcs5.c
+@@ -89,11 +89,11 @@ LIB_EXPORT bool l_pkcs5_pbkdf1(enum l_checksum_type typ=
+e, const char *password,
  =
 
- LIB_EXPORT void l_ecc_point_free(struct l_ecc_point *p)
- {
-+	if (unlikely(!p))
-+		return;
-+
-+	explicit_bzero(p->x, p->curve->ndigits * 8);
-+	explicit_bzero(p->y, p->curve->ndigits * 8);
- 	l_free(p);
+ 	l_checksum_free(checksum);
+ =
+
+-	if (iter_count)
+-		return false;
++	if (!iter_count)
++		memcpy(out_dk, t, dk_len);
+ =
+
+-	memcpy(out_dk, t, dk_len);
+-	return true;
++	explicit_bzero(t, sizeof(t));
++	return !iter_count;
  }
  =
 
-@@ -612,7 +617,7 @@ LIB_EXPORT void l_ecc_scalar_free(struct l_ecc_scalar *=
-c)
- 	if (unlikely(!c))
- 		return;
+ /* RFC8018 section 5.2 */
+@@ -399,14 +399,13 @@ static struct l_cipher *pkcs5_cipher_from_pbes2_param=
+s(
+ 		return NULL;
  =
 
--	memset(c->c, 0, c->curve->ndigits * 8);
-+	explicit_bzero(c->c, c->curve->ndigits * 8);
- 	l_free(c);
+ 	cipher =3D l_cipher_new(enc_scheme->cipher_type, derived_key, key_len);
+-	if (!cipher)
+-		return NULL;
+-
+-	if (l_cipher_set_iv(cipher, params, enc_scheme->iv_size))
+-		return cipher;
++	if (cipher && !l_cipher_set_iv(cipher, params, enc_scheme->iv_size)) {
++		l_cipher_free(cipher);
++		cipher =3D NULL;
++	}
+ =
+
+-	l_cipher_free(cipher);
+-	return NULL;
++	explicit_bzero(derived_key, 16);
++	return cipher;
  }
  =
 
-diff --git a/ell/ecdh.c b/ell/ecdh.c
-index 5ecbd44..a10189f 100644
---- a/ell/ecdh.c
-+++ b/ell/ecdh.c
-@@ -100,8 +100,6 @@ LIB_EXPORT bool l_ecdh_generate_shared_secret(
+ struct l_cipher *pkcs5_cipher_from_alg_id(const uint8_t *id_asn1,
+@@ -474,12 +473,11 @@ struct l_cipher *pkcs5_cipher_from_alg_id(const uint8=
+_t *id_asn1,
+ 		return NULL;
  =
 
- 	*secret =3D _ecc_constant_new(curve, product->x, curve->ndigits * 8);
+ 	cipher =3D l_cipher_new(pbes1_scheme->cipher_type, derived_key + 0, 8);
+-	if (!cipher)
+-		return NULL;
+-
+-	if (l_cipher_set_iv(cipher, derived_key + 8, 8))
+-		return cipher;
++	if (cipher && !l_cipher_set_iv(cipher, derived_key + 8, 8)) {
++		l_cipher_free(cipher);
++		cipher =3D NULL;
++	}
  =
 
--	memset(product->x, 0, curve->ndigits * 8);
--	memset(product->y, 0, curve->ndigits * 8);
- 	l_ecc_point_free(product);
- 	l_ecc_scalar_free(z);
- =
-
+-	l_cipher_free(cipher);
+-	return NULL;
++	explicit_bzero(derived_key, 16);
++	return cipher;
+ }
 -- =
 
 2.19.1
 
 
---===============8366035155253452660==--
+--===============1563212044839589038==--
 
