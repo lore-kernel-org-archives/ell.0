@@ -1,38 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============4745723198395876316=="
+Content-Type: multipart/mixed; boundary="===============6124131892264198203=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] utf8: Don't rely on char being signed
-Date: Wed, 20 Mar 2019 20:10:28 -0500
-Message-ID: <be851dcb-84a5-9604-3dd9-bc83678a77b9@gmail.com>
-In-Reply-To: <20190315001331.1944-1-andrew.zaborowski@intel.com>
+From: Ramon Henrique <rhpr@cesar.org.br>
+Subject: [PATCH 0/2] Allow connection to a tcp dbus address
+Date: Sun, 31 Mar 2019 11:00:40 -0300
+Message-ID: <20190331140042.6798-1-rhpr@cesar.org.br>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4745723198395876316==
+--===============6124131892264198203==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+This patch came from a demand in a project with industrial IoT for
+monitoring a PLC (creating supervisor apps). The infrastructure was
+built from a DBus service that can be accessed by a front-end in the
+same local network.
 
-On 03/14/2019 07:13 PM, Andrew Zaborowski wrote:
-> Even if it gets forced by compile flags in a future commit it's better
-> to avoid this char usage.
-> =
+Ramon Ribeiro (2):
+  dbus: Add support to tcp address
+  unit: dbus: Add unit test to dbus tcp address
 
-> Reported-by: Natanael Copa
-> Tested-by: Natanael Copa
-> ---
->   ell/utf8.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> =
+ .gitignore           |   1 +
+ Makefile.am          |   3 +
+ ell/dbus.c           |  95 ++++++++++++++++++-
+ unit/dbus.conf       |   2 +
+ unit/test-dbus-tcp.c | 261 +++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 5 files changed, 358 insertions(+), 4 deletions(-)
+ create mode 100644 unit/test-dbus-tcp.c
+
+-- =
+
+2.11.0
 
 
-Both applied, thanks.
-
-Regards,
--Denis
-
-
---===============4745723198395876316==--
+--===============6124131892264198203==--
 
