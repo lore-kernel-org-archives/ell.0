@@ -1,42 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============3532534688771592291=="
+Content-Type: multipart/mixed; boundary="===============4319011913808781428=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] genl: Be more careful with termination of genl names
-Date: Fri, 05 Apr 2019 17:06:07 -0500
-Message-ID: <a449f427-2260-5cfa-b515-37da9faedffe@gmail.com>
-In-Reply-To: <20190404221303.2452-1-mathew.j.martineau@linux.intel.com>
+From: Ossama Othman <ossama.othman@intel.com>
+Subject: [PATCH 0/2] Fix unit tests under Clang build.
+Date: Mon, 08 Apr 2019 13:12:33 -0700
+Message-ID: <20190408201235.10846-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3532534688771592291==
+--===============4319011913808781428==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+This patch set addresses unit test build warnings and a segmentation
+fault when ELL is built with the Clang C compiler.
 
-On 04/04/2019 05:13 PM, Mat Martineau wrote:
-> GCC 9 adds "-Werror=3Dstringop-truncation" that warns (and therefore
-> triggers a compile error) when strncpy has a size limit that's the same
-> as the destination size, which can allow string termination
-> problems. Instead, reduce the limit passed to strncpy by 1 and make sure
-> the destination is terminated. This appears to be consistent with the
-> handling of GENL_NAMSIZ strings in the kernel.
-> =
+Ossama Othman (2):
+  unit: Remove unnecessary NULL pointer checks.
+  unit: Fixed a test-dbus-message seg fault.
 
-> The fixed-length struct genl_mcast name is also used in a string
-> comparison, where the known size limit is now applied.
-> ---
->   ell/genl.c | 12 ++++++++----
->   1 file changed, 8 insertions(+), 4 deletions(-)
-> =
+ unit/test-dbus-message.c | 2 +-
+ unit/test-dhcp.c         | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+-- =
+
+2.17.1
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
-
---===============3532534688771592291==--
+--===============4319011913808781428==--
 
