@@ -1,37 +1,49 @@
-Content-Type: multipart/mixed; boundary="===============0447036866978552497=="
+Content-Type: multipart/mixed; boundary="===============3631611237041080372=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] ecc: add checks for zero, one and order
-Date: Thu, 11 Apr 2019 10:19:02 -0500
-Message-ID: <ac790c60-1a37-00d0-4353-127c88caf2d7@gmail.com>
-In-Reply-To: <20190410183752.6176-1-james.prestwood@linux.intel.com>
+From: Ramon Ribeiro <rhpr@cesar.org.br>
+Subject: [PATCH v1 0/2] Allow connection to a tcp dbus address
+Date: Mon, 15 Apr 2019 09:23:25 -0300
+Message-ID: <1555331007-26977-1-git-send-email-rhpr@cesar.org.br>
+In-Reply-To: <20190331140042.6798-1-rhpr@cesar.org.br>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0447036866978552497==
+--===============3631611237041080372==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+This patch came from a demand in a project with industrial IoT for
+monitoring a PLC (creating supervisor apps). The infrastructure was
+built from a DBus service that can be accessed by a front-end in the
+same local network.
 
-On 04/10/2019 01:37 PM, James Prestwood wrote:
-> To mitigate potential attacks, checks were added to the two
-> scalar initalization APIs l_ecc_scalar{new,new_random}. After
-> the scalar is created we check that its not zero or one, and
-> less than the group order. For new_random we also keep the check
-> that the scalar is less than the group prime, as this is required
-> in several RFCs/spec for creating random values.
-> ---
->   ell/ecc.c | 32 +++++++++++++++++++++++++++-----
->   1 file changed, 27 insertions(+), 5 deletions(-)
-> =
+Changes from v0 to v1:
+ - Changes from atoi to strtoul
+ - Handle port of zero as invalid
+ - Use syscall `select` to avoid a blocking connect
+
+Note: Maybe there is another approach using struct l_io and the
+callback l_io_write but I'm not sure if that is enough, due TCP
+connection timeout.
+
+Ramon Ribeiro (2):
+  dbus: Add support to tcp address
+  unit: dbus: Add unit test to dbus tcp address
+
+ .gitignore           |   1 +
+ Makefile.am          |   3 +
+ ell/dbus.c           | 151 ++++++++++++++++++++++++++++-
+ unit/dbus.conf       |   2 +
+ unit/test-dbus-tcp.c | 261 +++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 5 files changed, 413 insertions(+), 5 deletions(-)
+ create mode 100644 unit/test-dbus-tcp.c
+
+-- =
+
+2.7.4
 
 
-Applied with some credits going to Mathy Vanhoef.
-
-Regards,
--Denis
-
---===============0447036866978552497==--
+--===============3631611237041080372==--
 
