@@ -1,285 +1,355 @@
-Content-Type: multipart/mixed; boundary="===============1205874960537287740=="
+Content-Type: multipart/mixed; boundary="===============5046135690472458572=="
 MIME-Version: 1.0
 From: Ramon Ribeiro <rhpr@cesar.org.br>
-Subject: [PATCH v1 1/2] dbus: Add support to tcp address
-Date: Mon, 15 Apr 2019 09:23:26 -0300
-Message-ID: <1555331007-26977-2-git-send-email-rhpr@cesar.org.br>
+Subject: [PATCH v1 2/2] unit: dbus: Add unit test to dbus tcp address
+Date: Mon, 15 Apr 2019 09:23:27 -0300
+Message-ID: <1555331007-26977-3-git-send-email-rhpr@cesar.org.br>
 In-Reply-To: <1555331007-26977-1-git-send-email-rhpr@cesar.org.br>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1205874960537287740==
+--===============5046135690472458572==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This patch allows a dbus client to connect to a dbus-daemon server
-address listenning a TCP transport protocol.
-A non-blocking TCP socket is created to avoid blocking the main event
-loop.
 ---
- ell/dbus.c | 151 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++=
-++--
- 1 file changed, 146 insertions(+), 5 deletions(-)
+ .gitignore           |   1 +
+ Makefile.am          |   3 +
+ unit/dbus.conf       |   2 +
+ unit/test-dbus-tcp.c | 261 +++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 4 files changed, 267 insertions(+)
+ create mode 100644 unit/test-dbus-tcp.c
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 3a84c90..3a495d0 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -31,8 +31,11 @@
- #include <stdarg.h>
- #include <stdlib.h>
- #include <string.h>
-+#include <netdb.h>
- #include <sys/socket.h>
- #include <sys/un.h>
-+#include <sys/select.h>
-+#include <netinet/in.h>
- #include <errno.h>
+diff --git a/.gitignore b/.gitignore
+index 520c509..7d938f2 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -34,6 +34,7 @@ unit/test-netlink
+ unit/test-genl
+ unit/test-genl-msg
+ unit/test-dbus
++unit/test-dbus-tcp
+ unit/test-dbus-message
+ unit/test-dbus-message-fds
+ unit/test-dbus-util
+diff --git a/Makefile.am b/Makefile.am
+index 5bc13bd..28b8452 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -175,6 +175,7 @@ unit_tests =3D unit/test-unit \
  =
 
- #include "util.h"
-@@ -75,6 +78,7 @@ struct l_dbus_ops {
- struct l_dbus {
- 	struct l_io *io;
- 	char *guid;
-+	char *transport;
- 	bool negotiate_unix_fd;
- 	bool support_unix_fd;
- 	bool is_ready;
-@@ -466,7 +470,8 @@ static bool auth_read_handler(struct l_io *io, void *us=
-er_data)
- 				return false;
+ dbus_tests =3D unit/test-hwdb \
+ 			unit/test-dbus \
++			unit/test-dbus-tcp \
+ 			unit/test-dbus-util \
+ 			unit/test-dbus-message \
+ 			unit/test-dbus-message-fds \
+@@ -243,6 +244,8 @@ unit_test_genl_msg_LDADD =3D ell/libell-private.la
  =
 
- 			break;
--		}
-+		} else if (len =3D=3D 0)
-+			close(fd);
+ unit_test_dbus_LDADD =3D ell/libell-private.la
  =
 
- 		offset +=3D len;
- 	}
-@@ -511,7 +516,10 @@ static bool auth_read_handler(struct l_io *io, void *u=
-ser_data)
- 		} else if (!strncmp(ptr, "REJECTED ", 9)) {
- 			static const char *command =3D "AUTH ANONYMOUS\r\n";
++unit_test_dbus_tcp_LDADD =3D ell/libell-private.la
++
+ unit_test_dbus_message_LDADD =3D ell/libell-private.la
  =
 
--			dbus->negotiate_unix_fd =3D true;
-+			if (!strcmp(dbus->transport, "unix"))
-+				dbus->negotiate_unix_fd =3D true;
-+			else
-+				dbus->negotiate_unix_fd =3D false;
+ unit_test_dbus_message_fds_LDADD =3D ell/libell-private.la
+diff --git a/unit/dbus.conf b/unit/dbus.conf
+index 97e1bb5..6b1fccd 100644
+--- a/unit/dbus.conf
++++ b/unit/dbus.conf
+@@ -7,6 +7,8 @@
+   <allow_anonymous />
  =
 
- 			classic->auth_command =3D l_strdup(command);
- 			classic->auth_state =3D WAITING_FOR_OK;
-@@ -680,6 +688,8 @@ static struct l_dbus_message *classic_recv_message(stru=
-ct l_dbus *dbus)
- 	len =3D recv(fd, &hdr, DBUS_HEADER_SIZE, MSG_PEEK | MSG_DONTWAIT);
- 	if (len !=3D DBUS_HEADER_SIZE)
- 		return NULL;
-+	else if (len =3D=3D 0)
-+		close(fd);
+   <listen>unix:path=3D/tmp/ell-test-bus</listen>
++  <listen>tcp:host=3Dlocalhost,bind=3D*,port=3D1234,family=3Dipv4</listen>
++  <apparmor mode=3D"disabled" />
  =
 
- 	header_size =3D align_len(DBUS_HEADER_SIZE + hdr.dbus1.field_length, 8);
- 	header =3D l_malloc(header_size);
-@@ -1033,7 +1043,8 @@ static const struct l_dbus_ops classic_ops =3D {
- 	.name_acquire =3D classic_name_acquire,
- };
- =
-
--static struct l_dbus *setup_dbus1(int fd, const char *guid)
-+static struct l_dbus *setup_dbus1(int fd, const char *guid,
-+				  const char *transport)
- {
- 	static const unsigned char creds =3D 0x00;
- 	char uid[6], hexuid[12], *ptr =3D hexuid;
-@@ -1065,11 +1076,13 @@ static struct l_dbus *setup_dbus1(int fd, const cha=
-r *guid)
- =
-
- 	dbus_init(dbus, fd);
- 	dbus->guid =3D l_strdup(guid);
-+	dbus->transport =3D l_strdup(transport);
- =
-
- 	classic->auth_command =3D l_strdup_printf("AUTH EXTERNAL %s\r\n", hexuid);
- 	classic->auth_state =3D WAITING_FOR_OK;
- =
-
--	dbus->negotiate_unix_fd =3D true;
-+	if (!strcmp(transport, "unix"))
-+		dbus->negotiate_unix_fd =3D true;
- 	dbus->support_unix_fd =3D false;
- =
-
- 	l_io_set_read_handler(dbus->io, auth_read_handler, dbus, NULL);
-@@ -1145,7 +1158,131 @@ static struct l_dbus *setup_unix(char *params)
- 		return NULL;
- 	}
- =
-
--	return setup_dbus1(fd, guid);
-+	return setup_dbus1(fd, guid, "unix");
+   <policy context=3D"default">
+     <!-- Allow everything to be sent -->
+diff --git a/unit/test-dbus-tcp.c b/unit/test-dbus-tcp.c
+new file mode 100644
+index 0000000..4e11ca9
+--- /dev/null
++++ b/unit/test-dbus-tcp.c
+@@ -0,0 +1,261 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2011-2014  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#define _GNU_SOURCE
++#include <unistd.h>
++#include <stdlib.h>
++#include <sys/wait.h>
++
++#include <ell/ell.h>
++
++#ifndef WAIT_ANY
++#define WAIT_ANY (-1) /* Any process */
++#endif
++
++#define TEST_BUS_ADDRESS "tcp:host=3Dlocalhost,port=3D1234"
++
++static pid_t dbus_daemon_pid =3D -1;
++
++static void start_dbus_daemon(void)
++{
++	char *prg_argv[6];
++	char *prg_envp[1];
++	pid_t pid;
++
++	prg_argv[0] =3D "/usr/bin/dbus-daemon";
++	prg_argv[1] =3D "--nopidfile";
++	prg_argv[2] =3D "--nofork";
++	prg_argv[3] =3D "--config-file=3D" UNITDIR "dbus.conf";
++	prg_argv[4] =3D "--print-address";
++	prg_argv[5] =3D NULL;
++
++	prg_envp[0] =3D NULL;
++
++	l_info("launching dbus-daemon");
++
++	pid =3D fork();
++	if (pid < 0) {
++		l_error("failed to fork new process");
++		return;
++	}
++
++	if (pid =3D=3D 0) {
++		execve(prg_argv[0], prg_argv, prg_envp);
++		exit(EXIT_SUCCESS);
++	}
++
++	l_info("dbus-daemon process %d created", pid);
++
++	dbus_daemon_pid =3D pid;
 +}
 +
-+static struct l_dbus *setup_tcp(char *params)
++static void signal_handler(uint32_t signo, void *user_data)
 +{
-+	struct addrinfo hints;
-+	struct addrinfo *results, *rp;
-+	fd_set rfds, wfds;
-+	socklen_t optlen;
-+	struct timeval tv;
-+	char *host =3D NULL, *port =3D NULL, *family =3D NULL, *guid =3D NULL;
-+	unsigned long port_number;
-+	int i, err;
-+	int fd =3D -1, socket_fd =3D -1, optval =3D -1;
++	switch (signo) {
++	case SIGINT:
++	case SIGTERM:
++		l_info("Terminate");
++		l_main_quit();
++		break;
++	}
++}
 +
-+	while (params) {
-+		char *key =3D strsep(&params, ",");
-+		char *value;
++static void sigchld_handler(void *user_data)
++{
++	while (1) {
++		pid_t pid;
++		int status;
 +
-+		if (!key)
++		pid =3D waitpid(WAIT_ANY, &status, WNOHANG);
++		if (pid < 0 || pid =3D=3D 0)
 +			break;
 +
-+		value =3D strchr(key, '=3D');
-+		if (!value)
-+			continue;
++		l_info("process %d terminated with status=3D%d\n", pid, status);
 +
-+		*value++ =3D '\0';
-+
-+		if (!strcmp(key, "host"))
-+			host =3D value;
-+		else if (!strcmp(key, "port"))
-+			port =3D value;
-+		else if (!strcmp(key, "family"))
-+			family =3D value;
-+		else if (!strcmp(key, "guid"))
-+			guid =3D value;
-+	}
-+
-+	if (!host || !port)
-+		return NULL;
-+
-+	port_number =3D strtoul(port, NULL, 10);
-+
-+	if (port_number =3D=3D 0 || port_number >=3D 65536)
-+		return NULL;
-+
-+	memset(&hints, 0, sizeof(hints));
-+
-+	hints.ai_family =3D AF_UNSPEC;
-+	if (family) {
-+		if (!strcmp(family, "ipv4"))
-+			hints.ai_family =3D AF_INET;
-+		else if (!strcmp(family, "ipv6"))
-+			hints.ai_family =3D AF_INET6;
-+	}
-+
-+	hints.ai_socktype =3D SOCK_STREAM;
-+	hints.ai_flags =3D 0;
-+	hints.ai_protocol =3D 0;
-+
-+	if (getaddrinfo(host, port, &hints, &results) !=3D 0)
-+		return NULL;
-+
-+	FD_ZERO(&rfds);
-+	FD_ZERO(&wfds);
-+	for (rp =3D results; rp !=3D NULL; rp =3D rp->ai_next) {
-+		fd =3D socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK, rp->ai_pro=
-tocol);
-+		if (fd < 0)
-+			continue;
-+
-+		errno =3D 0;
-+		if (connect(fd, rp->ai_addr, rp->ai_addrlen) =3D=3D -1) {
-+			err =3D errno;
-+			if (err =3D=3D EINPROGRESS) {
-+				FD_SET(fd, &rfds);
-+				FD_SET(fd, &wfds);
-+			} else if (err =3D=3D ECONNREFUSED){
-+				close(fd);
-+			}
++		if (pid =3D=3D dbus_daemon_pid) {
++			dbus_daemon_pid =3D -1;
++			l_main_quit();
 +		}
 +	}
++}
 +
-+	freeaddrinfo(results);
++static void do_debug(const char *str, void *user_data)
++{
++	const char *prefix =3D user_data;
 +
-+	tv.tv_sec =3D 1;
-+	tv.tv_usec =3D 0;
++	l_info("%s%s", prefix, str);
++}
 +
-+	// Wait until sockets be ready, otherwise a timeout is thrown
-+	if (select(fd + 1, &rfds, &wfds, NULL, &tv) =3D=3D 0) {
-+		close(fd);
-+		return NULL;
++static void signal_message(struct l_dbus_message *message, void *user_data)
++{
++	const char *path, *interface, *member, *destination, *sender;
++
++	path =3D l_dbus_message_get_path(message);
++	destination =3D l_dbus_message_get_destination(message);
++
++	l_info("path=3D%s destination=3D%s", path, destination);
++
++	interface =3D l_dbus_message_get_interface(message);
++	member =3D l_dbus_message_get_member(message);
++
++	l_info("interface=3D%s member=3D%s", interface, member);
++
++	sender =3D l_dbus_message_get_sender(message);
++
++	l_info("sender=3D%s", sender);
++
++	if (!strcmp(member, "NameOwnerChanged")) {
++		const char *name, *old_owner, *new_owner;
++
++		if (!l_dbus_message_get_arguments(message, "sss",
++					&name, &old_owner, &new_owner))
++			return;
++
++		l_info("name=3D%s old=3D%s new=3D%s", name, old_owner, new_owner);
++	}
++}
++
++static void request_name_setup(struct l_dbus_message *message, void *user_=
+data)
++{
++	const char *name =3D "org.test";
++
++	l_dbus_message_set_arguments(message, "su", name, 0);
++}
++
++static void request_name_callback(struct l_dbus_message *message,
++							void *user_data)
++{
++	const char *error, *text;
++	uint32_t result;
++
++	if (l_dbus_message_get_error(message, &error, &text)) {
++		l_error("error=3D%s", error);
++		l_error("message=3D%s", text);
++		goto done;
 +	}
 +
-+	for (i =3D 1; i < fd + 1; i++) {
-+		if (!FD_ISSET(i, &wfds) && !FD_ISSET(i, &rfds))
-+			continue;
++	if (!l_dbus_message_get_arguments(message, "u", &result))
++		goto done;
 +
-+		optlen =3D sizeof(optval);
++	l_info("request name result=3D%d", result);
 +
-+		if (getsockopt(i,
-+				SOL_SOCKET, SO_ERROR, &optval,
-+				&optlen) =3D=3D -1)
-+			return NULL;
++done:
++	l_main_quit();
++}
 +
-+		/**
-+			* getsockopt() puts the errno value
-+			* for connect into optval so 0 means
-+			* no-error.
-+			*/
-+		if (optval =3D=3D 0) {
-+			socket_fd =3D i;
-+		} else {
-+			close(i);
-+			return NULL;
-+		}
++static const char *match_rule =3D "type=3Dsignal,sender=3Dorg.freedesktop.=
+DBus";
 +
-+		/* Remove this socket from fd_set */
-+		FD_CLR(i, &wfds);
-+		FD_CLR(i, &rfds);
++static void add_match_setup(struct l_dbus_message *message, void *user_dat=
+a)
++{
++	l_dbus_message_set_arguments(message, "s", match_rule);
++}
++
++static void add_match_callback(struct l_dbus_message *message, void *user_=
+data)
++{
++	const char *error, *text;
++
++	if (l_dbus_message_get_error(message, &error, &text)) {
++		l_error("error=3D%s", error);
++		l_error("message=3D%s", text);
++		return;
 +	}
 +
-+	if (socket_fd < 0)
-+		return NULL;
++	if (!l_dbus_message_get_arguments(message, ""))
++		return;
 +
-+	return setup_dbus1(socket_fd, guid, "tcp");
- }
- =
-
- static struct l_dbus *setup_address(const char *address)
-@@ -1170,6 +1307,9 @@ static struct l_dbus *setup_address(const char *addre=
-ss)
- 			/* Function will modify params string */
- 			dbus =3D setup_unix(params);
- 			break;
-+		} else if (!strcmp(transport, "tcp")) {
-+			dbus =3D setup_tcp(params);
++	l_info("add match");
++}
++
++static void ready_callback(void *user_data)
++{
++	l_info("ready");
++}
++
++static void disconnect_callback(void *user_data)
++{
++	l_main_quit();
++}
++
++int main(int argc, char *argv[])
++{
++	struct l_dbus *dbus;
++	struct l_signal *sigchld;
++	int i;
++
++	if (!l_main_init())
++		return -1;
++
++	l_log_set_stderr();
++
++	start_dbus_daemon();
++
++	for (i =3D 0; i < 10; i++) {
++		usleep(200 * 1000);
++
++		dbus =3D l_dbus_new(TEST_BUS_ADDRESS);
++		if (dbus)
 +			break;
- 		}
- 	}
- =
-
-@@ -1232,6 +1372,7 @@ LIB_EXPORT void l_dbus_destroy(struct l_dbus *dbus)
- =
-
- 	l_free(dbus->guid);
- 	l_free(dbus->unique_name);
-+	l_free(dbus->transport);
- =
-
- 	_dbus_object_tree_free(dbus->tree);
- =
-
++
++	}
++
++	sigchld =3D l_signal_create(SIGCHLD, sigchld_handler, NULL, NULL);
++
++	if (!dbus)
++		goto done;
++
++	l_dbus_set_debug(dbus, do_debug, "[DBUS] ", NULL);
++
++	l_dbus_set_ready_handler(dbus, ready_callback, dbus, NULL);
++	l_dbus_set_disconnect_handler(dbus, disconnect_callback, NULL, NULL);
++
++	l_dbus_register(dbus, signal_message, NULL, NULL);
++
++	l_dbus_method_call(dbus, "org.freedesktop.DBus",
++				"/org/freedesktop/DBus",
++				"org.freedesktop.DBus", "AddMatch",
++				add_match_setup,
++				add_match_callback, NULL, NULL);
++
++	l_dbus_method_call(dbus, "org.freedesktop.DBus",
++				"/org/freedesktop/DBus",
++				"org.freedesktop.DBus", "RequestName",
++				request_name_setup,
++				request_name_callback, NULL, NULL);
++
++	l_main_run_with_signal(signal_handler, NULL);
++
++	l_dbus_destroy(dbus);
++
++done:
++	if (dbus_daemon_pid > 0)
++		kill(dbus_daemon_pid, SIGKILL);
++
++	l_signal_remove(sigchld);
++
++	l_main_exit();
++
++	return 0;
++}
 -- =
 
 2.7.4
 
 
---===============1205874960537287740==--
+--===============5046135690472458572==--
 
