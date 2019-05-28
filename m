@@ -1,200 +1,146 @@
-Content-Type: multipart/mixed; boundary="===============1076050608190742486=="
+Content-Type: multipart/mixed; boundary="===============1991446097207398445=="
 MIME-Version: 1.0
-From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
-Date: Mon, 27 May 2019 22:28:43 +0200
-Message-ID: <3e3c2bdf-a3a2-6a82-8013-a137ac2bb208@geanix.com>
-In-Reply-To: <cccdeab9-7df6-f542-6bc3-b39af8017f6a@gmail.com>
+Date: Tue, 28 May 2019 18:46:15 -0500
+Message-ID: <9309b72d-fc2c-0acd-635c-debcbe81e246@gmail.com>
+In-Reply-To: <3e3c2bdf-a3a2-6a82-8013-a137ac2bb208@geanix.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1076050608190742486==
+--===============1991446097207398445==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi Martin,
 
-I am really sorry for being silent for the past half year - more =
+> I have implemented my ofono driver using libgpiod for now. To use ell =
 
-pressing issues arose that needed my attention.
-
-I hope you can find the time to look into this again.
-
-On 20/12/2018 21.40, Denis Kenzior wrote:
-> On 12/20/2018 01:45 PM, Martin Hundeb=C3=B8ll wrote:
->> On 20/12/2018 18.51, Denis Kenzior wrote:
->>> Ah, okay.=C2=A0 I think I get what you're trying to do.=C2=A0 So you wa=
-nt to =
-
->>> have something like:
->>>
->>> struct l_gpio *l_gpio_new(const char *file_path, ...);
->>>
->>> Which would open(file_path), and issue GPIO_GET_CHIPINFO_IOCTL and =
-
->>> GPIO_GET_LINEINFO_IOCTL to find the right lines, then
->>>
->>> GPIO_GET_LINEHANDLE_IOCTL with GPIOHANDLE_REQUEST_OUTPUT and =
-
->>> GPIOHANDLE_REQUEST_INPUT flags set to obtain exclusive rights to the =
-
->>> lines.
->>>
->>> bool l_gpio_set_values(struct l_gpio *, ...);
->>>
->>> would issue a GPIOHANDLE_SET_LINE_VALUES_IOCTL
->>>
->>> bool l_gpio_get_values(struct l_gpio *, ...);
->>>
->>> would issue a GPIOHANDLE_GET_LINE_VALUES_IOCTL,
->>>
->>> Am I right so far?
->>
->> Yes, this is pretty much how I have come to imagine it.
->>
+> instead it would need to:
 > =
 
-> Okay.=C2=A0 One more doubt I have is what is the practical purpose of =
-
-> obtaining exclusive rights to the GPIO lines for reading only.=C2=A0 That =
-
-> seems kind of useless?=C2=A0 Especially if you need to provide default va=
-lues =
-
-> for GPIOHANDLE_REQUEST_OUTPUT requests?
+> 1. (optionally) lookup a gpio line by label
+> 2. open the gpio line as output with a default value
+> 3. set the value to true/false
 > =
 
-> Perhaps reading should be on a different object?
-
-While looking at this again, I concluded that having separate types for =
-
-input and output gpios makes sense:
-
-struct l_gpio_out;
-struct l_gpio_in;
-
-This also allows doing the two parts in individual steps.
-
->>> And use it something like:
->>>
->>> struct l_gpio *gpio =3D l_gpio_new("/foo/bar", "3v3", "reset", "led", =
-
->>> NULL);
->>> l_gpio_set_values(gpio, true, true, false);
->>> l_gpio_get_values(gpio, &foo, &bar, &baz);
->>>
->>> So the only issue I see here is how does one discover the lines for a =
-
->>> given chip?=C2=A0 You might still want a l_gpio_chip abstraction to =
-
->>> discover lines / line numbers, no?
->>
->> How about a "raw" API like:
->>
->> input_lines =3D l_gpio_lines("/some/chip", L_GPIO_IN, 1, 2, 6, -1);
->> output_lines =3D l_gpio_lines("/some/chip", L_GPIO_OUT, 1, true, 2, =
-
->> false, -1);
->>
->> Output lines need a default value to set when the kernel changes them =
-
->> from high-impedance inputs to outputs. I don't particular like how the =
-
->> defaults are set in the above. Feel free to propose something better!
+> These could be supported by the following:
 > =
 
-> Another issue with varargs is that they presume knowledge at compile =
+>  =C2=A0 struct l_gpio_out;
 
-> time.=C2=A0 So the above works if you don't need to query the chip and =
-
-> dynamically add lines to / from the request.=C2=A0 Perhaps this is the 99=
-% =
-
-> use case anyway.
-> =
-
-> Can you open the chip for both input & output?
-> =
-
->>
->> Lookup by label is then available via helpers:
->>
->> chip_path =3D l_gpio_label_chip("chip-label");
->> input_lines =3D l_gpio_label_lines(chip_path, L_GPIO_IN, "3v3", "reset", =
-
->> "led", NULL);
->>
->> chip_path =3D l_gpio_chip_with_line_labels("3v3", "reset", "led", NULL);
->> output_lines =3D l_gpio_label_lines(chip_path, L_GPIO_OUT, "3v3", "reset=
-", =
+I'm not super excited about the name.  Maybe l_gpio_writer?
 
 > =
 
-> I guess you need the defaults here...
+>  =C2=A0 struct l_gpio_out *l_gpio_out(const char *chip, uint32_t line_num,
+>  =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0 bool default_value);
 > =
 
->> "led", NULL);
->>
+>  =C2=A0 struct l_gpio_out *l_gpio_out_label(const char *chip,
+>  =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0 const char *label,
+>  =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0 bool default_value);
+
+So do you really want to limit yourself to just a single line per object?
+
 > =
 
-> The only other possibility would be to add ability to add lines =
-
-> dynamically. Maybe roughly:
+>  =C2=A0 void l_gpio_out_free(struct l_gpio_out *gpio_out);
 > =
 
-> l_gpio_request *req =3D l_gpio_request_new();
-> int line =3D l_gpio_chip_lookup_line(chip, "3v3");
-> l_gpio_add_line(gpio, line, 0 // default);
-> gpio =3D l_gpio_new("/foo/bar", L_GPIO_OUT, req);
+>  =C2=A0 bool l_gpio_out_set(struct l_gpio_out *gpio_out, bool value);
 > =
 
->  From the above, what is absolutely required for your oFono work?=C2=A0 J=
-ust =
+>  =C2=A0 bool l_gpio_find(char *chip, uint32_t *line_num);
 
-> the vararg style constructor with L_GPIO_OUT and being able to specify =
+I'm guessing this is missing a const char * variable?
 
-> by line or by label?
+> =
 
-I have implemented my ofono driver using libgpiod for now. To use ell =
+> This should allow to add the needed parts for multiple-lines, inputs, =
 
-instead it would need to:
+> and gpio-chips at a later point. I.e. adding API for
+> =
 
-1. (optionally) lookup a gpio line by label
-2. open the gpio line as output with a default value
-3. set the value to true/false
+>  =C2=A0 struct l_gpio_chip;
+>  =C2=A0 struct l_gpio_in;
+> =
 
-These could be supported by the following:
+> and maybe also
+> =
 
-   struct l_gpio_out;
+>  =C2=A0 struct l_gpio_out *l_gpio_out_many(const char *chip,
+>  =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0 uint32_t line_num1, bool val1,
+>  =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0 ..., -1);
 
-   struct l_gpio_out *l_gpio_out(const char *chip, uint32_t line_num,
-                                         bool default_value);
+This still doesn't solve the dynamically discovered lines issue.
 
-   struct l_gpio_out *l_gpio_out_label(const char *chip,
-                                         const char *label,
-                                         bool default_value);
+I would maybe do something like this.  Perhaps some of this might be =
 
-   void l_gpio_out_free(struct l_gpio_out *gpio_out);
+redundant or not needed...
 
-   bool l_gpio_out_set(struct l_gpio_out *gpio_out, bool value);
+struct l_gpio_info *l_gpio_discover_lines(const char *device);
+const char *l_gpio_info_get_name(struct l_gpio_info *);
+const char *l_gpio_info_get_label(struct l_gpio_info *);
+uint32_t l_gpio_info_get_num_lines(struct l_gpio_info *);
+char **l_gpio_get_lines(struct l_gpio_info *);
+uint32_t l_gpio_info_find_offset(struct l_gpio_info *, const char *name);
+const char *l_gpio_info_get_name(struct l_gpio_info *, uint32_t offset);
+void l_gpio_info_free(struct l_gpio_info *);
+int l_gpio_get_values_by_name(const char *device, const char *line, ...);
+int l_gpio_get_values_by_offset(const char *device, int offset, ...);
 
-   bool l_gpio_find(char *chip, uint32_t *line_num);
+struct l_gpio_writer *l_gpio_new(const char *device, uint32_t n_lines, =
 
-This should allow to add the needed parts for multiple-lines, inputs, =
+const uint32_t lines[][2]);
+l_gpio_free(struct l_gpio *);
+bool l_gpio_set_linesv(struct l_gpio *gpio, uint32_t n_lines, const =
 
-and gpio-chips at a later point. I.e. adding API for
+uint32_t lines[][2]);
+bool l_gpio_set_line(struct l_gpio *gpio, uint32_t line, uint32_t value);
+bool l_gpio_set_lines(struct l_gpio *gpio, int line, ...);
 
-   struct l_gpio_chip;
-   struct l_gpio_in;
+So at the bare minimum, you could do:
 
-and maybe also
+struct l_gpio_info *info =3D l_gpio_discover_lines("/foo/bar");
+uint32_t line =3D l_gpio_info_find_offset(info, "gpio_line");
+uint32_t lines[1][2];
+struct l_gpio *gpio;
 
-   struct l_gpio_out *l_gpio_out_many(const char *chip,
-                                         uint32_t line_num1, bool val1,
-                                         ..., -1);
+lines[0][0] =3D line;
+lines[0][1] =3D some_default;
+l_gpio_info_free(info);
 
-// Martin
+gpio =3D l_gpio_new("/foo/bar", 1, lines);
 
---===============1076050608190742486==--
+// off
+l_gpio_set_line(gpio, lines[0][0], 0);
+
+// on
+l_gpio_set_line(gpio, lines[0][0], 1);
+
+> =
+
+> // Martin
+
+Regards,
+-Denis
+
+--===============1991446097207398445==--
 
