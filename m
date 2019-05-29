@@ -1,165 +1,60 @@
-Content-Type: multipart/mixed; boundary="===============8280587831114874623=="
+Content-Type: multipart/mixed; boundary="===============2463934562908612233=="
 MIME-Version: 1.0
-From: Gix, Brian <brian.gix@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH] cipher: add AES-CMAC hashing support
-Date: Wed, 29 May 2019 15:29:42 +0000
-Message-ID: <1559143780.3694.10.camel@intel.com>
+Date: Wed, 29 May 2019 11:14:27 -0500
+Message-ID: <0e1f99ae-34ba-a276-6058-ed3cb3f5e364@gmail.com>
 In-Reply-To: <20190529105234.d5hn6i2gbx4boswj@scytale>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8280587831114874623==
+--===============2463934562908612233==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Micha=C5=82,
 
-On Wed, 2019-05-29 at 12:52 +0200, Micha=C5=82 Lowas-Rzechonek wrote:
-> Hi Brian,
-> =
-
-> On 05/29, Gix, Brian wrote:
-> > > > > The algorythm is supported in the kernel, and it is used heavily =
-by
-> > > > > Bluetooth Mesh, and is the one Mesh required algorythm missing fr=
-om ELL.
-> =
-
 > Is this about mesh_crypto_aes_ccm_encrypt and
 > mesh_crypto_aes_ccm_decrypt functions in mesh/crypto.c?
 
-The code you copy pasted below *is* the usage of AES_CCM that we use in mes=
-h, but it is *not* the topic of the
-patch I posted here to ELL yesterday. AES-CMAC is the algorythm we use in M=
-esh to generate all of the various
-Keys and IDs from master Net and App keys....  It is a simple one-direction=
-al hashing function, and as I also
-learned yesterday, is already supported in ELLs checksum.c code.
+No, this is different.  But *yikes*.  BlueZ implements AEAD cipher in =
 
+terms of ecb(aes)?  That is highly inefficient due to syscall overhead.
 
 > =
 
 > If so, they can be implemented with l_aead_cipher_* API, without any
 > changes to ELL, see below.
+
+That would be much better, yes.
+
 > =
 
 > There is a slight problem, though - this works only on newer kernels
 > (IIRC, 4.9+), and some vendors (particularly Freescale i.MX6) do not
 > provide them :(
-
-
-This is definitely a question worth answering. We are aware that pre-4.9 ke=
-rnels did not correctly support
-AES_CCM, so switching the mesh daemon's crypto to pure ELL supported kernel=
- based encryption and decryption
-will mean that the daemon is not supported on very old kernels.
-
-
-As far as Freescale platforms go, I do not know how to answer that question=
-.  At some point we do need to move
-on from older platforms so that the rest are not "held back". But I do not =
-know if that time is yet now.
-
-I would really like to get Marcel's opinion on this.
-
-
 > =
 
 > What's worse, my experiments show what the kernel does *not* report an
 > error while bind()ing the algo socket, but the results are wrong :(
-> =
 
-> =
+I think there was a bug in AEAD ciphers, the reported length from one of =
 
-> =
+the operations was incorrect.  I believe Mat fixed this and ell deals =
 
-> bool mesh_crypto_aes_ccm_encrypt(const uint8_t nonce[NONCE_LEN],
-> 		const uint8_t key[KEY_LEN],
-> 		const uint8_t *aad, uint16_t aad_len,
-> 		const uint8_t *msg, uint16_t msg_len,
-> 		uint8_t *out_msg,
-> 		void *out_mic, size_t mic_size)
-> {
-> 	bool result;
-> 	struct l_aead_cipher *cipher =3D l_aead_cipher_new(L_AEAD_CIPHER_AES_CCM,
-> 			&key[0], KEY_LEN, mic_size);
-> =
+with this correctly.  See 08be47564b3c49404e5cb6061c0ede94b0a9e783.
 
-> 	if (!cipher)
-> 		return false;
-> =
+But still, 4.9 is a freaking old kernel.  Worst case have the vendor =
 
-> 	if (!out_msg)
-> 		return false;
-> =
+port the fixed aead implementation into their tree.
 
-> 	result =3D l_aead_cipher_encrypt(cipher, (void *)msg, msg_len,
-> 			aad, aad_len, &nonce[0], NONCE_LEN,
-> 			(void *)out_msg, msg_len + mic_size);
-> =
+If this isn't available, you can always hack in a fallback in bluez to =
 
-> 	if (out_mic) {
-> 		switch (mic_size) {
-> 		case 4:
-> 			*(uint32_t *)out_mic =3D l_get_be32(out_msg + msg_len);
-> 			break;
-> 		case 8:
-> 			*(uint64_t *)out_mic =3D l_get_be64(out_msg + msg_len);
-> 			break;
-> 		default:
-> 			/* Unsupported MIC size */
-> 			return false;
-> 		}
-> 	}
-> =
+keep the same ecb(aes) behavior, but that's just painful :)
 
-> 	l_aead_cipher_free(cipher);
-> 	return result;
-> }
-> =
+Regards,
+-Denis
 
-> bool mesh_crypto_aes_ccm_decrypt(const uint8_t nonce[13], const uint8_t k=
-ey[16],
-> 				const uint8_t *aad, uint16_t aad_len,
-> 				const uint8_t *enc_msg, uint16_t enc_msg_len,
-> 				uint8_t *out_msg,
-> 				void *out_mic, size_t mic_size)
-> {
-> 	bool result;
-> 	struct l_aead_cipher *cipher =3D l_aead_cipher_new(L_AEAD_CIPHER_AES_CCM,
-> 			&key[0], KEY_LEN, mic_size);
-> =
-
-> 	if (!cipher)
-> 		return false;
-> =
-
-> 	result =3D l_aead_cipher_decrypt(cipher, (void *)enc_msg, enc_msg_len,
-> 			aad, aad_len, &nonce[0], NONCE_LEN,
-> 			(void *)out_msg, enc_msg_len - mic_size);
-> =
-
-> 	if (out_mic) {
-> 		switch (mic_size) {
-> 		case 4:
-> 			*(uint32_t *)out_mic =3D l_get_be32(out_msg +
-> 					enc_msg_len - mic_size);
-> 			break;
-> 		case 8:
-> 			*(uint64_t *)out_mic =3D l_get_be64(out_msg +
-> 					enc_msg_len - mic_size);
-> 			break;
-> 		default:
-> 			/* Unsupported MIC size */
-> 			return false;
-> 		}
-> 	}
-> =
-
-> 	l_aead_cipher_free(cipher);
-> 	return result;
-> }
->=20
---===============8280587831114874623==--
+--===============2463934562908612233==--
 
