@@ -1,73 +1,45 @@
-Content-Type: multipart/mixed; boundary="===============2931727072478298325=="
+Content-Type: multipart/mixed; boundary="===============7988822921952264303=="
 MIME-Version: 1.0
-From: Gix, Brian <brian.gix@intel.com>
-Subject: Re: [PATCH] cipher: add AES-CMAC hashing support
-Date: Wed, 29 May 2019 20:07:12 +0000
-Message-ID: <1559160429.3694.23.camel@intel.com>
-In-Reply-To: <20190529192627.j32awzp3rq7u5t3p@kynes>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH] netlink: Relax sequence check for the group notifications
+Date: Thu, 30 May 2019 13:20:48 -0700
+Message-ID: <20190530202048.23766-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2931727072478298325==
+--===============7988822921952264303==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Michal,
+Some of the RTNL groups such as RTNLGRP_IPV4_IFADDR set the
+sequence number in the header of the broadcasted messages.
+In order to be able to receive the such messages, we relax the
+check and allow the broadcasted messages with non-zero sequence
+numbers.
+---
+ ell/netlink.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ell/netlink.c b/ell/netlink.c
+index 3d291cf..33d0e5b 100644
+--- a/ell/netlink.c
++++ b/ell/netlink.c
+@@ -275,7 +275,7 @@ static bool can_read_data(struct l_io *io, void *user_d=
+ata)
+ =
+
+ 	for (nlmsg =3D iov.iov_base; NLMSG_OK(nlmsg, (uint32_t) len);
+ 					nlmsg =3D NLMSG_NEXT(nlmsg, len)) {
+-		if (group > 0 && nlmsg->nlmsg_seq =3D=3D 0) {
++		if (group > 0) {
+ 			process_broadcast(netlink, group, nlmsg);
+ 			continue;
+ 		}
+-- =
+
+2.13.6
 
 
-On Wed, 2019-05-29 at 21:26 +0200, michal.lowas-rzechonek(a)silvair.com wro=
-te:
-> Hi Brian, Denis,
-> =
-
-> On 05/29, Gix, Brian wrote:
-> > > Is this about mesh_crypto_aes_ccm_encrypt and
-> > > mesh_crypto_aes_ccm_decrypt functions in mesh/crypto.c?
-> > =
-
-> > The code you copy pasted below *is* the usage of AES_CCM that we use in=
- mesh,
-> =
-
-> Um, it's not - mesh_crypto_aes_ccm_* functions seem to implement AES_CCM
-> on top of ECB, in user space. As Denis mentioned, this is somewhat
-> inefficient, but at least it works on older kernels.
-
-Yes, I understand now...  You wrote the code snippet, that looked an awful =
-lot like the patch I was in the
-middle of writing for mesh_crypto_aes_ccm_*....
-
-my best guess right now is that we will probably decide to go ahead and pat=
-ch mesh such that it assumes an up-
-to-date kernel version, and a working underlying architecture.
-
-It will then be the responsibility of the vendor (you guys) to patch mesh s=
-uch that it continues to work on
-your older kernels and perhaps architectures.  That way future kernels and =
-platforms are not perpetually "held
-back" to support kernels that should be obsoleted or fixed. =
-
-
-> =
-
-> I was thinking about submitting a patch to change that, but then I'd be
-> shooting myself in the foot, because my target platform runs kernel 4.4
-> if I recall correctly ;)
-> =
-
-> > but it is *not* the topic of the patch I posted here to ELL yesterday.
-> > AES-CMAC is the algorithm we use in Mesh to generate all of the
-> > various Keys and IDs from master Net and App keys....
-> =
-
-> Ah, right, it's the K* family of functions. Sorry, I confused CCM and
-> CMAC modes.
-> =
-
-> regards
-
-Best Reagrds,
-Brian
---===============2931727072478298325==--
+--===============7988822921952264303==--
 
