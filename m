@@ -1,79 +1,101 @@
-Content-Type: multipart/mixed; boundary="===============7222945316548733348=="
+Content-Type: multipart/mixed; boundary="===============4606192308733970042=="
 MIME-Version: 1.0
 From: Gix, Brian <brian.gix@intel.com>
-Subject: ELL building broken for 32bit systems
-Date: Fri, 31 May 2019 17:28:35 +0000
-Message-ID: <cb7cb78f01fb933780c895ef93e065f7266d2f93.camel@intel.com>
-In-Reply-To: <0e1f99ae-34ba-a276-6058-ed3cb3f5e364@gmail.com>
+Subject: Re: ELL building broken for 32bit systems
+Date: Fri, 31 May 2019 17:41:12 +0000
+Message-ID: <db86584906ab410ff151ebd77266ab3d4eea3ff3.camel@intel.com>
+In-Reply-To: <cb7cb78f01fb933780c895ef93e065f7266d2f93.camel@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7222945316548733348==
+--===============4606192308733970042==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+On Fri, 2019-05-31 at 17:28 +0000, Gix, Brian wrote:
+> As part of my Bluetooth Mesh change-over from user-space crypto to
+> ELL
+> provided cipher and checksum routines,  I have been building on all
+> the
+> platforms I have available to me, including Fedora-30 running on
+> 32bit
+> i686 architecture.
+> =
 
-As part of my Bluetooth Mesh change-over from user-space crypto to ELL
-provided cipher and checksum routines,  I have been building on all the
-platforms I have available to me, including Fedora-30 running on 32bit
-i686 architecture.
+> Here are the issues I encountered:
+> =
 
-Here are the issues I encountered:
-
-There is an unchecked build dependancy on "xxd", which appears to be
-provided by the vim-common package.  This probably affects all
-platforms, but my 32-bit F30 installation is deliberately kept
-"minimal", so that is where it showed up.
+> There is an unchecked build dependancy on "xxd", which appears to be
+> provided by the vim-common package.  This probably affects all
+> platforms, but my 32-bit F30 installation is deliberately kept
+> "minimal", so that is where it showed up.
 
 
-After installing vim-common, there is a build error that is unique to
-the 32bit F30 (it works fine on 64 bit systems).  When doing a full
-build (and when doing a build of *only* unit/test-cipher) I get the
-following error when building ell/genl.c:
+Actually for this one, xxd is checked for, but it doesn't cause a
+failure of ./bootstrap-configure, even though it correctly determines
+that xxd is missing.
 
-[ell]$ make -k unit/test-cipher
-  CC       ell/genl.lo
-In file included from /usr/include/string.h:494,
-                 from ell/util.h:26,
-                 from ell/genl.c:32:
-In function =E2=80=98strncpy=E2=80=99,
-    inlined from =E2=80=98family_add_mcast=E2=80=99 at ell/genl.c:240:2,
-    inlined from =E2=80=98family_add_mcast.isra.0=E2=80=99 at ell/genl.c:22=
-4:13:
-/usr/include/bits/string_fortified.h:106:10: error: =E2=80=98__builtin_strn=
-cpy=E2=80=99
-specified bound 16 equals destination size [-Werror=3Dstringop-
-truncation]
-  106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos
-(__dest));
-      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~
-In function =E2=80=98strncpy=E2=80=99,
-    inlined from =E2=80=98get_family_callback=E2=80=99 at ell/genl.c:1049:4:
-/usr/include/bits/string_fortified.h:106:10: error: =E2=80=98__builtin_strn=
-cpy=E2=80=99
-specified bound 16 equals destination size [-Werror=3Dstringop-
-truncation]
-  106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos
-(__dest));
-      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~
-In function =E2=80=98strncpy=E2=80=99,
-    inlined from =E2=80=98family_alloc=E2=80=99 at ell/genl.c:164:2:
-/usr/include/bits/string_fortified.h:106:10: error: =E2=80=98__builtin_strn=
-cpy=E2=80=99
-specified bound 16 equals destination size [-Werror=3Dstringop-
-truncation]
-  106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos
-(__dest));
-      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~
-cc1: all warnings being treated as errors
-make: *** [Makefile:1780: ell/genl.lo] Error 1
-make: Target 'unit/test-cipher' not remade because of errors.
+> =
 
---===============7222945316548733348==
+> =
+
+> After installing vim-common, there is a build error that is unique to
+> the 32bit F30 (it works fine on 64 bit systems).  When doing a full
+> build (and when doing a build of *only* unit/test-cipher) I get the
+> following error when building ell/genl.c:
+> =
+
+> [ell]$ make -k unit/test-cipher
+>   CC       ell/genl.lo
+> In file included from /usr/include/string.h:494,
+>                  from ell/util.h:26,
+>                  from ell/genl.c:32:
+> In function =E2=80=98strncpy=E2=80=99,
+>     inlined from =E2=80=98family_add_mcast=E2=80=99 at ell/genl.c:240:2,
+>     inlined from =E2=80=98family_add_mcast.isra.0=E2=80=99 at ell/genl.c:=
+224:13:
+> /usr/include/bits/string_fortified.h:106:10: error:
+> =E2=80=98__builtin_strncpy=E2=80=99
+> specified bound 16 equals destination size [-Werror=3Dstringop-
+> truncation]
+>   106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos
+> (__dest));
+>       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+> ~~
+> ~~~~~~~~
+> In function =E2=80=98strncpy=E2=80=99,
+>     inlined from =E2=80=98get_family_callback=E2=80=99 at ell/genl.c:1049=
+:4:
+> /usr/include/bits/string_fortified.h:106:10: error:
+> =E2=80=98__builtin_strncpy=E2=80=99
+> specified bound 16 equals destination size [-Werror=3Dstringop-
+> truncation]
+>   106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos
+> (__dest));
+>       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+> ~~
+> ~~~~~~~~
+> In function =E2=80=98strncpy=E2=80=99,
+>     inlined from =E2=80=98family_alloc=E2=80=99 at ell/genl.c:164:2:
+> /usr/include/bits/string_fortified.h:106:10: error:
+> =E2=80=98__builtin_strncpy=E2=80=99
+> specified bound 16 equals destination size [-Werror=3Dstringop-
+> truncation]
+>   106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos
+> (__dest));
+>       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+> ~~
+> ~~~~~~~~
+> cc1: all warnings being treated as errors
+> make: *** [Makefile:1780: ell/genl.lo] Error 1
+> make: Target 'unit/test-cipher' not remade because of errors.
+> _______________________________________________
+> ell mailing list
+> ell(a)lists.01.org
+> https://lists.01.org/mailman/listinfo/ell
+
+--===============4606192308733970042==
 Content-Type: application/x-pkcs7-signature
 MIME-Version: 1.0
 Content-Transfer-Encoding: base64
@@ -130,12 +152,12 @@ tLltdkaAwpAE894tf9fUhD+oz7s/o6NV49IxggIXMIICEwIBATCBkDB5MQswCQYDVQQGEwJVUzEL
 MAkGA1UECBMCQ0ExFDASBgNVBAcTC1NhbnRhIENsYXJhMRowGAYDVQQKExFJbnRlbCBDb3Jwb3Jh
 dGlvbjErMCkGA1UEAxMiSW50ZWwgRXh0ZXJuYWwgQmFzaWMgSXNzdWluZyBDQSA0QQITMwAAyrfo
 9lLjvkm/BgAAAADKtzAJBgUrDgMCGgUAoF0wGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkq
-hkiG9w0BCQUxDxcNMTkwNTMxMTcyODM1WjAjBgkqhkiG9w0BCQQxFgQUp5zMohgHKJuVYGuyrR7v
-+3nbY2UwDQYJKoZIhvcNAQEBBQAEggEANcFNUqDM/CnEoNh51E7yQWdac5ONLzQtzvAoruyY/PUf
-6bcli4BXinADtWQtPTZievjqXuny6xg9PRH90WHK2YkJ6u7XzfZrpaXclCd2V72wJ06KKzXCK0Er
-C3hZsgD5mPAwwffXpzhLVDXhBf7veIApGJQMv2qcUdmiZyuKRmn0jC4++QEdr9WWSgwD+qF1Rled
-tnQcFVF/+dToospPM9i9VMzgBforGCYAu5GB9NDFl78/sPhiyPKCjm17Sfdw5Y2ksNk1Kd6/W4Vj
-2u4vVUnN0afaFlWkg92eCXqN5ViBGXjUyUykr+ZxFKA3f/WIWHg5w9TkS82t/K4R8ouMNwAAAAAA
+hkiG9w0BCQUxDxcNMTkwNTMxMTc0MTExWjAjBgkqhkiG9w0BCQQxFgQUVGSeG2R4dEULKebfhyr0
+Rzc3AXkwDQYJKoZIhvcNAQEBBQAEggEAVqMCvIQLdRh8jc78KWRSHMKgtRGvB0s/IWA281MgD1rZ
+FTmdBJU/KjeAQ9b/d9mk6dN9N65G9DLm/iO0jRehx57iHZsXnBpRVqv9KS6ktMZtnQMMKi89pMbg
+hW23MEvnWy9Up8e2ByVW00zlkShAq4syDFUWhhagRi2wg3dopeDNnV5eTarKL+CakpifPrhuAIUd
+WouE4QbjbsMJuzht3/Z/V77y61xv/f7rjQmgnFoU2rSbcB8gh8xKf4M12rzmmwiHDUweC37ioxzC
+TpR0cO6qhWCwZkHh9u+/8uBl4LN2GoDy/2LxxHbK44AC624Hg7sDVqmASQoa060/wZs2rAAAAAAA
 AA==
---===============7222945316548733348==--
+--===============4606192308733970042==--
 
