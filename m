@@ -1,97 +1,60 @@
-Content-Type: multipart/mixed; boundary="===============5157102682710949204=="
+Content-Type: multipart/mixed; boundary="===============5943423829487706174=="
 MIME-Version: 1.0
-From: Gix, Brian <brian.gix@intel.com>
-Subject: RE: ELL building broken for 32bit systems
-Date: Fri, 31 May 2019 20:28:40 +0000
-Message-ID: <DEBB0CAA2616974FAE35E4B560B9A4376CB656EC@ORSMSX103.amr.corp.intel.com>
-In-Reply-To: <02aaf068-03dc-57f5-08f8-a3743c43ddb9@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: ELL building broken for 32bit systems
+Date: Fri, 31 May 2019 15:44:07 -0500
+Message-ID: <2eb55c84-b8cf-90f8-867b-07b47f70dda1@gmail.com>
+In-Reply-To: <DEBB0CAA2616974FAE35E4B560B9A4376CB656EC@ORSMSX103.amr.corp.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5157102682710949204==
+--===============5943423829487706174==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi Brian,
 
+>> What version are you using?  Upstream ell doesn't even use strncpy in ge=
+nl.c
+>> anymore.
 > =
 
-> Hi Brian,
-> =
+> This is unmodified Fedora-30 for i686 32-bit.  I tried chasing down the n=
+esting rabbit-hole to find exactly where the strncpy's were coming from, an=
+d came up empty... I can only assume that some inlined function in string.h=
+ resolves to some version of strncpy on 32-bit fedora...   perhaps relating=
+ to the strlcpy calls.
 
-> > build (and when doing a build of *only* unit/test-cipher) I get the
-> > following error when building ell/genl.c:
-> >
-> =
+No, I meant what version of ell?  The issue comes from gcc9 which is =
 
-> Uhh, no idea why only test-cipher, but okay...
+much more strict about checking strncpy use than before.  The problem is =
 
-Sorry... I was trying to short-cut my own needs to be able to recommend the=
- running of test-cipher in the README file of Bluetooth mesh to determine i=
-f the known "old kernel" AEAD problem existed...  But yes, this is an ELL w=
-ide problem.
+that we used to use something like:
 
-> =
+#define FOO_BUFFER_SIZE
+char buf[FOO_BUFFER_SIZE];
 
-> > [ell]$ make -k unit/test-cipher
-> >    CC       ell/genl.lo
-> > In file included from /usr/include/string.h:494,
-> >                   from ell/util.h:26,
-> >                   from ell/genl.c:32:
-> > In function =E2=80=98strncpy=E2=80=99,
-> >      inlined from =E2=80=98family_add_mcast=E2=80=99 at ell/genl.c:240:=
-2,
-> >      inlined from =E2=80=98family_add_mcast.isra.0=E2=80=99 at ell/genl=
-.c:224:13:
-> > /usr/include/bits/string_fortified.h:106:10: error: =E2=80=98__builtin_=
-strncpy=E2=80=99
-> > specified bound 16 equals destination size [-Werror=3Dstringop-
-> > truncation]
-> >    106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos
-> > (__dest));
-> >        |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-> > ~~~~~~~~
-> > In function =E2=80=98strncpy=E2=80=99,
-> >      inlined from =E2=80=98get_family_callback=E2=80=99 at ell/genl.c:1=
-049:4:
-> > /usr/include/bits/string_fortified.h:106:10: error: =E2=80=98__builtin_=
-strncpy=E2=80=99
-> > specified bound 16 equals destination size [-Werror=3Dstringop-
-> > truncation]
-> >    106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos
-> > (__dest));
-> >        |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-> > ~~~~~~~~
-> > In function =E2=80=98strncpy=E2=80=99,
-> >      inlined from =E2=80=98family_alloc=E2=80=99 at ell/genl.c:164:2:
-> > /usr/include/bits/string_fortified.h:106:10: error: =E2=80=98__builtin_=
-strncpy=E2=80=99
-> > specified bound 16 equals destination size [-Werror=3Dstringop-
-> > truncation]
-> >    106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos
-> > (__dest));
-> >        |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-> > ~~~~~~~~
-> =
+strncpy(buf, some_string, sizeof(buf));
 
-> What version are you using?  Upstream ell doesn't even use strncpy in gen=
-l.c
-> anymore.
+Which would leave the buffer non-null terminated.  Not really a concern =
 
-This is unmodified Fedora-30 for i686 32-bit.  I tried chasing down the nes=
-ting rabbit-hole to find exactly where the strncpy's were coming from, and =
-came up empty... I can only assume that some inlined function in string.h r=
-esolves to some version of strncpy on 32-bit fedora...   perhaps relating t=
-o the strlcpy calls.
+since all the strings came from the kernel and the chances of things =
 
-For what it's worth, this does not appear to be *new*  per se...  Checking =
-out the first labeled ELL version from Jan-2019 causes the same errors.
+ending up badly were small, but still...
 
-I do know that F30 introduced a number of alignment warnings (which are thr=
-own as errors) that did not exist in F29.
+The fix is to either use sizeof(buf) - 1 and null-terminate the string, =
 
+or just use l_strlcpy.
 
+Upstream ell is down to about 4 occurrences of strncpy, none of them in =
 
---===============5157102682710949204==--
+genl.  So if you are having this problem with some previous release of =
+
+ell, then you should simply disable this warning.
+
+Regards,
+-Denis
+
+--===============5943423829487706174==--
 
