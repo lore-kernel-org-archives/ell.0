@@ -1,76 +1,121 @@
-Content-Type: multipart/mixed; boundary="===============7043154962619121273=="
+Content-Type: multipart/mixed; boundary="===============0870101351336609417=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
-Date: Wed, 05 Jun 2019 11:08:59 -0500
-Message-ID: <f15e6483-33e6-bbe9-84ce-ee27303a59c9@gmail.com>
-In-Reply-To: <a8ff4175-dc31-ba16-ad24-36586898cdb9@geanix.com>
+From: Brian Gix <brian.gix@intel.com>
+Subject: [PATCH] unit: Add tests for AES-CMAC hashing
+Date: Wed, 05 Jun 2019 14:24:08 -0700
+Message-ID: <20190605212408.9366-1-brian.gix@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7043154962619121273==
+--===============0870101351336609417==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Martin,
+The two added tests come from the Bluetooth Mesh v1.0 specifications
+sample data section.
+---
+ unit/test-checksum.c | 74 ++++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 1 file changed, 74 insertions(+)
 
-On 06/03/2019 03:56 PM, Martin Hundeb=C3=B8ll wrote:
-> Hi Denis,
-> =
+diff --git a/unit/test-checksum.c b/unit/test-checksum.c
+index f21d0bb..9cba88d 100644
+--- a/unit/test-checksum.c
++++ b/unit/test-checksum.c
+@@ -180,6 +180,75 @@ static void test_updatev(const void *data)
+ 	l_checksum_free(checksum);
+ }
+ =
 
-> On 29/05/2019 18.46, Denis Kenzior wrote:
->>>
->>> // off
->>> l_gpio_writer_set(line, lines[0][0], 0);
->>>
->>> // on
->>> l_gpio_writer_set(line, lines[0][0], 1);
->>>
->>> // many
->>> l_gpio_writer_setv(line, 1, lines);
->>
->> That looks fine to me.
-> =
++struct aes_cmac_test_vector {
++	char *plaintext;
++	char *key;
++	char *ciphertext;
++};
++
++/* Hash AES_CMAC tests based on Bluetooth Mesh published sample data */
++static const struct aes_cmac_test_vector aes_cmac_test1 =3D {
++	.plaintext =3D "74657374",
++	.key =3D "00000000000000000000000000000000",
++	.ciphertext =3D "b73cefbd641ef2ea598c2b6efb62f79c",
++};
++
++static const struct aes_cmac_test_vector aes_cmac_test2 =3D {
++	.plaintext =3D "f7a2a44f8e8a8029064f173ddc1e2b00",
++	.key =3D "4f90480c1871bfbffd16971f4d8d10b1",
++	.ciphertext =3D "2ea6467aa3378c4c545eda62935b9b86",
++};
++
++static void test_aes_cmac(const void *data)
++{
++	struct l_checksum *checksum;
++	char *encbuf;
++	size_t encbuflen;
++	char *decbuf;
++	size_t decbuflen;
++	int r;
++	bool success;
++	const struct aes_cmac_test_vector *tv =3D data;
++
++	size_t ptlen;
++	uint8_t *pt =3D l_util_from_hexstring(tv->plaintext, &ptlen) ?:
++		(uint8_t[]) {};
++	size_t keylen;
++	uint8_t *key =3D l_util_from_hexstring(tv->key, &keylen);
++	size_t ctlen;
++	uint8_t *ct =3D l_util_from_hexstring(tv->ciphertext, &ctlen) ?:
++		(uint8_t[]) {};
++
++	encbuflen =3D ctlen;
++	encbuf =3D alloca(encbuflen);
++	memset(encbuf, 0, encbuflen);
++	decbuflen =3D ptlen;
++	decbuf =3D alloca(decbuflen);
++	memset(decbuf, 0, decbuflen);
++
++	checksum =3D l_checksum_new_cmac_aes(key, keylen);
++	assert(checksum);
++
++	success =3D l_checksum_update(checksum, pt, ptlen);
++	assert(success);
++
++	ctlen =3D l_checksum_get_digest(checksum, encbuf, encbuflen);
++	assert(ctlen =3D=3D encbuflen);
++
++	r =3D memcmp(encbuf, ct, ctlen);
++	assert(!r);
++
++	l_checksum_free(checksum);
++
++	if (ptlen)
++		l_free(pt);
++
++	l_free(key);
++
++	if (ctlen)
++		l_free(ct);
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -202,5 +271,10 @@ int main(int argc, char *argv[])
+ 	if (l_checksum_is_supported(L_CHECKSUM_SHA256, false))
+ 		l_test_add("sha256-1", test_sha256, NULL);
+ =
 
-> While working at implementing this, I realized that the kernel API =
++	if (l_checksum_cmac_aes_supported()) {
++		l_test_add("aes-cmac-1", test_aes_cmac, &aes_cmac_test1);
++		l_test_add("aes-cmac-2", test_aes_cmac, &aes_cmac_test2);
++	}
++
+ 	return l_test_run();
+ }
+-- =
 
-> requires setting all lines at once, so I guess we have to settle with:
-> =
+2.14.5
 
-> l_gpio_writer_set(struct l_gpio_writer *, uint32_t, uint32_t[]);
-> =
 
-> And bail out if the number of values doesn't match the number of lines =
-
-> passed when creating the writer.
-
-I think this is fine for the first iteration.  But one thing occurs to =
-
-me is that since we have exclusive access to the GPIO for writing, we =
-
-still can support the vararg or offset variation by simply storing all =
-
-the values we set into the GPIO and maintain/buffer the values =
-
-persistently.  So if the user provides just a single value out of N, =
-
-then we just update that value and set the whole thing in its entirety.
-
-This can lead to a bit nicer API where you can simply do:
-
-l_gpio_writer_set(writer, "gpio_line_label", value);
-
-With the above, we can safely drop the whole set_one / get_one and use =
-
-the much nicer form above.
-
-> =
-
-> // Martin
-
-Regards,
--Denis
-
---===============7043154962619121273==--
+--===============0870101351336609417==--
 
