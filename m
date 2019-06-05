@@ -1,693 +1,76 @@
-Content-Type: multipart/mixed; boundary="===============6607108659086913549=="
+Content-Type: multipart/mixed; boundary="===============7043154962619121273=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCHv4] gpio: add get/set helpers for GPIO lines
-Date: Wed, 05 Jun 2019 11:04:18 -0500
-Message-ID: <6102f3b7-a8b8-e99e-11ae-6ede07043b1d@gmail.com>
-In-Reply-To: <20190604222557.57022-1-martin@geanix.com>
+Subject: Re: [PATCHv2] gpio: add simple get/set helpers for GPIO lines
+Date: Wed, 05 Jun 2019 11:08:59 -0500
+Message-ID: <f15e6483-33e6-bbe9-84ce-ee27303a59c9@gmail.com>
+In-Reply-To: <a8ff4175-dc31-ba16-ad24-36586898cdb9@geanix.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6607108659086913549==
+--===============7043154962619121273==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Martin,
 
-On 06/04/2019 05:25 PM, Martin Hundeb=C3=B8ll wrote:
-> The Linux kernel GPIO api operates with chips, lines, handles, and events.
+On 06/03/2019 03:56 PM, Martin Hundeb=C3=B8ll wrote:
+> Hi Denis,
 > =
 
-> The chip and line structures represent info about gpio chips, and gpio
-> lines, respectively. They are used to e.g. lookup a line with a certain
-> name, and/or line flags.
+> On 29/05/2019 18.46, Denis Kenzior wrote:
+>>>
+>>> // off
+>>> l_gpio_writer_set(line, lines[0][0], 0);
+>>>
+>>> // on
+>>> l_gpio_writer_set(line, lines[0][0], 1);
+>>>
+>>> // many
+>>> l_gpio_writer_setv(line, 1, lines);
+>>
+>> That looks fine to me.
 > =
 
-> The handle structure is used to "obtain" a handle to one or more gpio
-> lines on a chip. Until the file descriptor in this handle is closed, the
-> gpio lines cannot be used by others. The same file descriptor is used
-> when setting or getting the line values (one can also set the initial
-> value when obtaining handles for output lines).
+> While working at implementing this, I realized that the kernel API =
+
+> requires setting all lines at once, so I guess we have to settle with:
 > =
 
-> The event structure is used to get a file descriptor that can be used
-> with select/poll to wait for changes in line levels.
+> l_gpio_writer_set(struct l_gpio_writer *, uint32_t, uint32_t[]);
 > =
 
-> This commit adds support for setting and getting values for one or more
-> gpio lines. So far three structures are implemented:
+> And bail out if the number of values doesn't match the number of lines =
+
+> passed when creating the writer.
+
+I think this is fine for the first iteration.  But one thing occurs to =
+
+me is that since we have exclusive access to the GPIO for writing, we =
+
+still can support the vararg or offset variation by simply storing all =
+
+the values we set into the GPIO and maintain/buffer the values =
+
+persistently.  So if the user provides just a single value out of N, =
+
+then we just update that value and set the whole thing in its entirety.
+
+This can lead to a bit nicer API where you can simply do:
+
+l_gpio_writer_set(writer, "gpio_line_label", value);
+
+With the above, we can safely drop the whole set_one / get_one and use =
+
+the much nicer form above.
+
 > =
 
->   l_gpio_chip
->   l_gpio_writer
->   l_gpio_reader
-> =
-
-> The chip structure is used to look up line info, and to find line
-> offsets for a certain label. The chip and offset is then used to
-> instantiate writers and readers.
-> =
-
-> The writer and reader are created with one of more offsets on a certain
-> chip. For the writer case, the offsets are accompanied with the default
-> output values to set when requesting the gpio lines.
-> =
-
-> Functionality that could be implemented, but is postponed until the need
-> arises includes:
-> =
-
->   * waiting for events
->   * one-shot wrappers that don't hold on to gpio lines
-> =
-
-> ---
-> Changes since v3:
->   * let lookup-by-label return multiple gpio chips
->   * implemented lookup of line offsets
->   * use separate reader/writer objects
->   * make the multi-line case the common use
-> =
-
-> Changes since v2:
->   * added internal reference counted structure to hold primary fd
->   * added l_gpio_line structure to represent a single line
->   * added function to lookup gpio line by label
-> =
-
-> Changes since v1:
->   * added gpiochip info and corresponding getters
->   * changed "line" to "line_num" a few places
-> =
-
-> Changes since RFC:
->   * added gpio.h to ell.h
->   * changed copyright to Geanix
->   * open gpiochip in l_gpio_chip_new()
->   * open gpiochip read-only
->   * added input checks
->   * clear ioctl structs with memset instead of =3D {0}
->   * reorder error-paths
-> =
-
->   Makefile.am |   6 +-
->   ell/ell.h   |   1 +
->   ell/ell.sym |  22 +++
->   ell/gpio.c  | 415 ++++++++++++++++++++++++++++++++++++++++++++++++++++
->   ell/gpio.h  |  81 ++++++++++
->   5 files changed, 523 insertions(+), 2 deletions(-)
->   create mode 100644 ell/gpio.c
->   create mode 100644 ell/gpio.h
-> =
-
-
-<snip>
-
-> diff --git a/ell/gpio.c b/ell/gpio.c
-> new file mode 100644
-> index 0000000..6655539
-> --- /dev/null
-> +++ b/ell/gpio.c
-> @@ -0,0 +1,415 @@
-> +/*
-> + *
-> + *  Embedded Linux library
-> + *
-> + *  Copyright (C) 2018 Geanix. All rights reserved.
-
-Might want to update the year
-
-> + *
-> + *  This library is free software; you can redistribute it and/or
-> + *  modify it under the terms of the GNU Lesser General Public
-> + *  License as published by the Free Software Foundation; either
-> + *  version 2.1 of the License, or (at your option) any later version.
-> + *
-> + *  This library is distributed in the hope that it will be useful,
-> + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-> + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-> + *  Lesser General Public License for more details.
-> + *
-> + *  You should have received a copy of the GNU Lesser General Public
-> + *  License along with this library; if not, write to the Free Software
-> + *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-130=
-1  USA
-> + *
-> + */
-> +
-> +#ifdef HAVE_CONFIG_H
-> +#include <config.h>
-> +#endif
-> +
-> +#include <unistd.h>
-> +#include <string.h>
-> +#include <sys/ioctl.h>
-> +#include <fcntl.h>
-> +#include <dirent.h>
-> +#include <linux/gpio.h>
-> +
-> +#include "private.h"
-> +#include "strv.h"
-> +#include "util.h"
-> +#include "gpio.h"
-> +
-> +struct l_gpio_chip {
-> +	int fd;
-> +	char *name;
-> +	char *label;
-> +	uint32_t n_lines;
-> +};
-> +
-> +struct l_gpio_writer {
-> +	int fd;
-> +	uint32_t n_offsets;
-> +};
-> +
-> +struct l_gpio_reader {
-> +	int fd;
-> +	uint32_t n_offsets;
-> +};
-> +
-> +static bool chip_has_line_label(const char *chip_name, const char *line_=
-label)
-> +{
-> +	struct l_gpio_chip *chip;
-> +	bool has_label;
-> +
-> +	chip =3D l_gpio_chip_new(chip_name);
-> +	if (!chip)
-> +		return false;
-> +
-> +	has_label =3D l_gpio_chip_find_line_offset(chip, line_label, NULL);
-> +
-> +	l_gpio_chip_free(chip);
-> +
-> +	return has_label;
-> +}
-> +
-> +LIB_EXPORT char **l_gpio_chips_with_line_label(const char *line_label)
-> +{
-> +	struct dirent *entry;
-> +	DIR *dp;
-> +	char **chips =3D NULL;
-> +
-> +	dp =3D opendir("/sys/bus/gpio/devices");
-> +	if (dp =3D=3D NULL)
-> +		return NULL;
-> +
-> +	while ((entry =3D readdir(dp))) {
-
-May want to skip directories.  e.g. something like:
-
-if (entry->d_type !=3D DT_REG)
-	continue;
-
-And actually tools/lsgpio.c in the kernel does:
-
-                         if (check_prefix(ent->d_name, "gpiochip")) {
-                                 ret =3D list_device(ent->d_name);
-
-
-> +		if (chip_has_line_label(entry->d_name, line_label))
-> +			chips =3D l_strv_append(chips, entry->d_name);
-> +	}
-> +
-> +	closedir(dp);
-> +
-> +	return chips;
-> +}
-> +
-> +LIB_EXPORT struct l_gpio_chip *l_gpio_chip_new(const char *chip_name)
-> +{
-> +	struct l_gpio_chip *chip;
-> +	struct gpiochip_info info;
-> +	char *path;
-> +	int fd;
-> +	int ret;
-> +
-> +	if (!chip_name)
-
-Might want to use unlikely()
-
-> +		return NULL;
-> +
-> +	path =3D l_strdup_printf("/dev/%s", chip_name);
-> +	fd =3D open(path, O_RDONLY | O_CLOEXEC);
-> +	l_free(path);
-> +
-> +	if (fd < 0)
-> +		return NULL;
-> +
-> +	memset(&info, 0, sizeof(info));
-> +
-> +	ret =3D ioctl(fd, GPIO_GET_CHIPINFO_IOCTL, &info);
-> +	if (ret < 0) {
-> +		close(fd);
-> +		return NULL;
-> +	}
-> +
-> +	chip =3D l_new(struct l_gpio_chip, 1);
-> +	chip->fd =3D fd;
-> +	chip->n_lines =3D info.lines;
-> +	chip->label =3D l_strndup(info.label, sizeof(info.label));
-> +	chip->name =3D l_strdup(chip_name);
-> +
-> +	return chip;
-> +}
-> +
-> +LIB_EXPORT const char *l_gpio_chip_get_label(struct l_gpio_chip *chip)
-> +{
-> +	if (!chip)
-
-Might want to use unlikely()
-
-> +		return NULL;
-> +
-> +	return chip->label;
-> +}
-> +
-> +LIB_EXPORT const char *l_gpio_chip_get_name(struct l_gpio_chip *chip)
-> +{
-> +	if (!chip)
-> +		return NULL;
-
-Might want to use unlikely()
-
-> +
-> +	return chip->name;
-> +}
-> +
-> +LIB_EXPORT uint32_t l_gpio_chip_get_num_lines(struct l_gpio_chip *chip)
-> +{
-> +	if (!chip)
-
-Might want to use unlikely()
-
-> +		return 0;
-> +
-> +	return chip->n_lines;
-> +}
-> +
-> +LIB_EXPORT void l_gpio_chip_free(struct l_gpio_chip *chip)
-> +{
-> +	if (!chip)
-> +		return;
-> +
-> +	if (chip->fd >=3D 0)
-> +		close(chip->fd);
-> +
-> +	l_free(chip->name);
-> +	l_free(chip->label);
-> +	l_free(chip);
-> +}
-> +
-> +LIB_EXPORT bool l_gpio_chip_find_line_offset(struct l_gpio_chip *chip,
-> +					const char *line_label,
-> +					uint32_t *line_offset)
-> +{
-> +	struct gpioline_info info;
-> +	uint32_t i;
-> +
-> +	if (!chip)
-> +		return false;
-> +
-> +	if (!line_label)
-> +		return false;
-> +
-> +	for (i =3D 0; i < chip->n_lines; i++) {
-> +		memset(&info, 0, sizeof(info));
-> +		info.line_offset =3D i;
-> +
-> +		if (ioctl(chip->fd, GPIO_GET_LINEINFO_IOCTL, &info) < 0)
-> +			return false;
-> +
-> +		if (!info.name)
-> +			continue;
-> +
-> +		if (strcmp(info.name, line_label) !=3D 0)
-> +			continue;
-> +
-> +		if (line_offset)
-> +			*line_offset =3D i;
-> +
-> +		return true;
-> +	}
-> +
-> +	return false;
-> +}
-> +
-> +LIB_EXPORT char *l_gpio_chip_get_line_label(struct l_gpio_chip *chip,
-> +						uint32_t offset)
-
-Is there a particular reason to return char * here?  Why not const char =
-
-* and have the caller l_strdup as needed?
-
-> +{
-> +	struct gpioline_info info;
-> +
-> +	if (!chip)
-> +		return NULL;
-> +
-> +	if (offset >=3D chip->n_lines)
-> +		return NULL;
-> +
-> +	memset(&info, 0, sizeof(info));
-> +	info.line_offset =3D offset;
-> +
-> +	if (ioctl(chip->fd, GPIO_GET_LINEINFO_IOCTL, &info) < 0)
-> +		return NULL;
-> +
-> +	return l_strdup(info.name);
-> +}
-> +
-> +LIB_EXPORT char *l_gpio_chip_get_line_consumer(struct l_gpio_chip *chip,
-> +						uint32_t offset)
-
-Is there a particular reason to return char * here?  Why not const char =
-
-* and have the caller l_strdup as needed?
-
-> +{
-> +	struct gpioline_info info;
-> +
-> +	if (!chip)
-> +		return NULL;
-> +
-> +	if (offset >=3D chip->n_lines)
-> +		return NULL;
-> +
-> +	memset(&info, 0, sizeof(info));
-> +	info.line_offset =3D offset;
-> +
-> +	if (ioctl(chip->fd, GPIO_GET_LINEINFO_IOCTL, &info) < 0)
-> +		return NULL;
-> +
-> +	return l_strdup(info.consumer);
-> +}
-> +
-> +LIB_EXPORT struct l_gpio_writer *l_gpio_writer_new(struct l_gpio_chip *c=
-hip,
-> +							const char *consumer,
-> +							uint32_t n_offsets,
-> +							const uint32_t offsets[],
-> +							const uint32_t values[])
-> +{
-> +	struct l_gpio_writer *writer;
-> +	struct gpiohandle_request request;
-> +	uint32_t i;
-> +
-> +	if (!chip)
-> +		return NULL;
-> +
-> +	if (n_offsets =3D=3D 0 || n_offsets > GPIOHANDLES_MAX)
-> +		return NULL;
-> +
-> +	if (!offsets)
-> +		return NULL;
-> +
-> +	memset(&request, 0, sizeof(request));
-> +	l_strlcpy(request.consumer_label, consumer, 32);
-> +	request.lines =3D n_offsets;
-> +	request.flags =3D GPIOHANDLE_REQUEST_OUTPUT;
-> +
-> +	for (i =3D 0; i < n_offsets; i++) {
-> +		if (offsets[i] >=3D chip->n_lines)
-> +			return NULL;
-> +
-> +		request.lineoffsets[i] =3D offsets[i];
-> +		request.default_values[i] =3D values[i];
-> +	}
-> +
-> +	if (ioctl(chip->fd, GPIO_GET_LINEHANDLE_IOCTL, &request) < 0)
-> +		return NULL;
-> +
-> +	if (request.fd <=3D 0)
-> +		return NULL;
-> +
-> +	writer =3D l_new(struct l_gpio_writer, 1);
-> +	writer->fd =3D request.fd;
-> +	writer->n_offsets =3D n_offsets;
-> +
-> +	return writer;
-> +}
-> +
-> +LIB_EXPORT struct l_gpio_writer *l_gpio_writer_one_new(struct l_gpio_chi=
-p *chip,
-
-ell APIs prefer the constructor qualifier to be after 'new'.  E.g. =
-
-l_gpio_writer_new_one.  But I wonder if it is worth having this at all =
-
-actually.
-
-> +							const char *consumer,
-> +							const uint32_t offset,
-> +							const uint32_t value)
-> +{
-> +	return l_gpio_writer_new(chip, consumer, 1, &offset, &value);
-> +}
-> +
-> +LIB_EXPORT void l_gpio_writer_free(struct l_gpio_writer *writer)
-> +{
-> +	if (!writer)
-> +		return;
-> +
-> +	if (writer->fd >=3D 0)
-> +		close(writer->fd);
-> +
-> +	l_free(writer);
-> +}
-> +
-> +LIB_EXPORT bool l_gpio_writer_set(struct l_gpio_writer *writer, uint32_t=
- n_values,
-> +					const uint32_t values[])
-> +{
-> +	struct gpiohandle_data data;
-> +	uint32_t i;
-> +
-> +	if (!writer)
-> +		return false;
-> +
-> +	if (n_values !=3D writer->n_offsets)
-> +		return false;
-> +
-> +	for (i =3D 0; i < n_values; i++)
-> +		data.values[i] =3D values[i];
-> +
-> +	if (ioctl(writer->fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0)
-> +		return false;
-> +
-> +	return true;
-> +}
-> +
-> +LIB_EXPORT bool l_gpio_writer_set_one(struct l_gpio_writer *writer, uint=
-32_t value)
-
-I would drop this for now
-
-> +{
-> +	return l_gpio_writer_set(writer, 1, &value);
-> +}
-> +
-> +LIB_EXPORT struct l_gpio_reader *l_gpio_reader_new(struct l_gpio_chip *c=
-hip,
-> +							const char *consumer,
-> +							uint32_t n_offsets,
-> +							const uint32_t offsets[])
-> +{
-> +	struct l_gpio_reader *reader;
-> +	struct gpiohandle_request request;
-> +	uint32_t i;
-> +
-> +	if (!chip)
-> +		return NULL;
-> +
-> +	if (n_offsets =3D=3D 0 || n_offsets > GPIOHANDLES_MAX)
-> +		return NULL;
-> +
-> +	if (!offsets)
-> +		return NULL;
-> +
-> +	memset(&request, 0, sizeof(request));
-> +	l_strlcpy(request.consumer_label, consumer, 32);
-> +	request.lines =3D n_offsets;
-> +	request.flags =3D GPIOHANDLE_REQUEST_INPUT;
-> +
-> +	for (i =3D 0; i < n_offsets; i++) {
-> +		if (offsets[i] >=3D chip->n_lines)
-> +			return NULL;
-> +
-> +		request.lineoffsets[i] =3D offsets[i];
-> +	}
-> +
-> +	if (ioctl(chip->fd, GPIO_GET_LINEHANDLE_IOCTL, &request) < 0)
-> +		return NULL;
-> +
-> +	if (request.fd <=3D 0)
-> +		return NULL;
-> +
-> +	reader =3D l_new(struct l_gpio_reader, 1);
-> +	reader->fd =3D request.fd;
-> +	reader->n_offsets =3D n_offsets;
-> +
-> +	return reader;
-> +}
-> +
-> +LIB_EXPORT struct l_gpio_reader *l_gpio_reader_one_new(struct l_gpio_chi=
-p *chip,
-> +							const char *consumer,
-> +							const uint32_t offset)
-
-Same comment here, should be l_gpio_reader_new_one or new_single.  But =
-
-I'd just omit this completely.
-
-> +{
-> +	return l_gpio_reader_new(chip, consumer, 1, &offset);
-> +}
-> +
-> +LIB_EXPORT void l_gpio_reader_free(struct l_gpio_reader *reader)
-> +{
-> +	if (!reader)
-> +		return;
-> +
-> +	if (reader->fd >=3D 0)
-> +		close(reader->fd);
-> +
-> +	l_free(reader);
-> +}
-> +
-> +LIB_EXPORT bool l_gpio_reader_get(struct l_gpio_reader *reader,
-> +					uint32_t n_values, uint32_t values[])
-> +{
-> +	struct gpiohandle_data data;
-> +	uint32_t i;
-> +
-> +	if (!reader)
-> +		return false;
-> +
-> +	if (n_values !=3D reader->n_offsets)
-> +		return false;
-> +
-> +	if (ioctl(reader->fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0)
-> +		return false;
-> +
-> +	for (i =3D 0; i < n_values; i++)
-> +		values[i] =3D data.values[i];
-> +
-> +	return true;
-> +}
-> +
-> +LIB_EXPORT bool l_gpio_reader_get_one(struct l_gpio_reader *reader,
-> +					uint32_t *value)
-
-and drop this one as well
-
-> +{
-> +	return l_gpio_reader_get(reader, 1, value);
-> +}
-> diff --git a/ell/gpio.h b/ell/gpio.h
-> new file mode 100644
-> index 0000000..fb71c13
-> --- /dev/null
-> +++ b/ell/gpio.h
-> @@ -0,0 +1,81 @@
-> +/*
-> + *
-> + *  Embedded Linux library
-> + *
-> + *  Copyright (C) 2018 Geanix. All rights reserved.
-
-Update year?
-
-> + *
-> + *  This library is free software; you can redistribute it and/or
-> + *  modify it under the terms of the GNU Lesser General Public
-> + *  License as published by the Free Software Foundation; either
-> + *  version 2.1 of the License, or (at your option) any later version.
-> + *
-> + *  This library is distributed in the hope that it will be useful,
-> + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-> + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-> + *  Lesser General Public License for more details.
-> + *
-> + *  You should have received a copy of the GNU Lesser General Public
-> + *  License along with this library; if not, write to the Free Software
-> + *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-130=
-1  USA
-> + *
-> + */
-> +
-> +#ifndef __ELL_GPIO_H
-> +#define __ELL_GPIO_H
-> +
-> +#include <stdint.h>
-> +#include <stdbool.h>
-> +
-> +#ifdef __cplusplus
-> +extern "C" {
-> +#endif
-> +
-> +struct l_gpio_chip;
-> +struct l_gpio_writer;
-> +struct l_gpio_reader;
-> +
-> +char **l_gpio_chips_with_line_label(const char *line_label);
-> +struct l_gpio_chip *l_gpio_chip_new(const char *chip_name);
-> +void l_gpio_chip_free(struct l_gpio_chip *chip);
-> +const char *l_gpio_chip_get_label(struct l_gpio_chip *chip);
-> +const char *l_gpio_chip_get_name(struct l_gpio_chip *chip);
-> +uint32_t l_gpio_chip_get_num_lines(struct l_gpio_chip *chip);
-> +bool l_gpio_chip_find_line_offset(struct l_gpio_chip *chip,
-> +					const char *line_label,
-> +					uint32_t *line_offset);
-> +char *l_gpio_chip_get_line_label(struct l_gpio_chip *chip, uint32_t offs=
-et);
-> +char *l_gpio_chip_get_line_consumer(struct l_gpio_chip *chip, uint32_t o=
-ffset);
-> +
-> +struct l_gpio_writer *l_gpio_writer_new(struct l_gpio_chip *chip,
-> +					const char *consumer,
-> +					uint32_t n_offsets,
-> +					const uint32_t offsets[],
-> +					const uint32_t values[]);
-> +struct l_gpio_writer *l_gpio_writer_one_new(struct l_gpio_chip *chip,
-> +						const char *consumer,
-> +						const uint32_t offset,
-> +						const uint32_t value);
-> +void l_gpio_writer_free(struct l_gpio_writer *writer);
-> +bool l_gpio_writer_set(struct l_gpio_writer *writer, uint32_t n_values,
-> +			const uint32_t values[]);
-> +bool l_gpio_writer_set_one(struct l_gpio_writer *writer, uint32_t n_valu=
-e);
-> +const char *l_gpio_writer_get_label(struct l_gpio_writer *writer);
-> +
-> +struct l_gpio_reader *l_gpio_reader_new(struct l_gpio_chip *chip,
-> +					const char *consumer,
-> +					uint32_t n_offsets,
-> +					const uint32_t offsets[]);
-> +struct l_gpio_reader *l_gpio_reader_one_new(struct l_gpio_chip *chip,
-> +						const char *consumer,
-> +						const uint32_t offset);
-> +void l_gpio_reader_free(struct l_gpio_reader *reader);
-> +bool l_gpio_reader_get(struct l_gpio_reader *reader, uint32_t n_values,
-> +			uint32_t values[]);
-> +bool l_gpio_reader_get_one(struct l_gpio_reader *reader, uint32_t *value=
-);
-> +const char *l_gpio_reader_get_label(struct l_gpio_reader *reader);
-> +
-> +#ifdef __cplusplus
-> +}
-> +#endif
-> +
-> +#endif /* __ELL_GPIO_H */
-> =
-
+> // Martin
 
 Regards,
 -Denis
 
---===============6607108659086913549==--
+--===============7043154962619121273==--
 
