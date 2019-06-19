@@ -1,50 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============0967001507851399644=="
+Content-Type: multipart/mixed; boundary="===============0255398080185710925=="
 MIME-Version: 1.0
-From: Martin =?unknown-8bit?q?Hundeb=C3=B8ll?= <martin@geanix.com>
-Subject: Re: [PATCHv4] gpio: add get/set helpers for GPIO lines
-Date: Mon, 17 Jun 2019 23:01:18 +0200
-Message-ID: <76a4c8bc-889b-350b-0264-6b7ce02ce0c5@geanix.com>
-In-Reply-To: <e113f3f8-9fee-d546-5ade-c4d276611f04@gmail.com>
+From: Ossama Othman <ossama.othman@intel.com>
+Subject: [PATCH] gpio: fix clang -Wpointer-bool-conversion warning
+Date: Wed, 19 Jun 2019 13:31:50 -0700
+Message-ID: <20190619203150.8334-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0967001507851399644==
+--===============0255398080185710925==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Remove a check that incorrectly attempted to determine if the "name"
+field of a struct gpioline_info object was NULL.  It relied on a
+pointer-to-bool conversion that didn't work as expected since the
+"name" field is an array, not a pointer.  The address of an array
+always evaluates to true when converted to a boolean.  In this case,
+there is no need for a NULL pointer check.
+---
+ ell/gpio.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-On 17/06/2019 22.42, Denis Kenzior wrote:
->>>> +LIB_EXPORT char *l_gpio_chip_get_line_label(struct l_gpio_chip *chip,
->>>> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 uint3=
-2_t offset)
->>>
->>> Is there a particular reason to return char * here?=C2=A0 Why not const =
+diff --git a/ell/gpio.c b/ell/gpio.c
+index bd0e9c9..c470ba9 100644
+--- a/ell/gpio.c
++++ b/ell/gpio.c
+@@ -189,9 +189,6 @@ LIB_EXPORT bool l_gpio_chip_find_line_offset(struct l_g=
+pio_chip *chip,
+ 		if (ioctl(chip->fd, GPIO_GET_LINEINFO_IOCTL, &info) < 0)
+ 			return false;
+ =
 
->>> char * and have the caller l_strdup as needed?
->>
->> The info object is allocated on the stack, so we cannot return the =
+-		if (!info.name)
+-			continue;
+-
+ 		if (strcmp(info.name, line_label) !=3D 0)
+ 			continue;
+ =
 
->> .name member to the caller.
->>
-> =
+-- =
 
-> Sure, but there's no reason why we couldn't make info a static function =
-
-> scope variable.=C2=A0 Or use a different static char buffer.=C2=A0 Bet yo=
-u'll be =
-
-> the first one that wishes you didn't need to free the label :)
-
-I briefly considered caching the labels in a hashmap in struct =
-
-l_gpiochip, but I deemed it too clumsy :)
-
-// Martin
+2.20.1
 
 
-
---===============0967001507851399644==--
+--===============0255398080185710925==--
 
