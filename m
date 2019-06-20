@@ -1,48 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============0255398080185710925=="
+Content-Type: multipart/mixed; boundary="===============4331646290469909893=="
 MIME-Version: 1.0
-From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH] gpio: fix clang -Wpointer-bool-conversion warning
-Date: Wed, 19 Jun 2019 13:31:50 -0700
-Message-ID: <20190619203150.8334-1-ossama.othman@intel.com>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH] dhcp: Reset lease on client stop
+Date: Thu, 20 Jun 2019 13:48:14 -0700
+Message-ID: <20190620204814.24577-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0255398080185710925==
+--===============4331646290469909893==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Remove a check that incorrectly attempted to determine if the "name"
-field of a struct gpioline_info object was NULL.  It relied on a
-pointer-to-bool conversion that didn't work as expected since the
-"name" field is an array, not a pointer.  The address of an array
-always evaluates to true when converted to a boolean.  In this case,
-there is no need for a NULL pointer check.
----
- ell/gpio.c | 3 ---
- 1 file changed, 3 deletions(-)
+The un-reset lease variable used to be freed multiple times
+when the client is explicitly stopped before being destroyed.
 
-diff --git a/ell/gpio.c b/ell/gpio.c
-index bd0e9c9..c470ba9 100644
---- a/ell/gpio.c
-+++ b/ell/gpio.c
-@@ -189,9 +189,6 @@ LIB_EXPORT bool l_gpio_chip_find_line_offset(struct l_g=
-pio_chip *chip,
- 		if (ioctl(chip->fd, GPIO_GET_LINEINFO_IOCTL, &info) < 0)
- 			return false;
+=3D=3D12374=3D=3D Invalid read of size 8
+=3D=3D12374=3D=3D    at 0x46C889: _dhcp_lease_free (dhcp-lease.c:47)
+=3D=3D12374=3D=3D    by 0x46B5F2: l_dhcp_client_stop (dhcp.c:1220)
+=3D=3D12374=3D=3D    by 0x46B61D: l_dhcp_client_destroy (dhcp.c:1011)
+---
+ ell/dhcp.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index f57f13b..57d5ae2 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -1218,6 +1218,8 @@ LIB_EXPORT bool l_dhcp_client_stop(struct l_dhcp_clie=
+nt *client)
+ 	CLIENT_ENTER_STATE(DHCP_STATE_INIT);
  =
 
--		if (!info.name)
--			continue;
--
- 		if (strcmp(info.name, line_label) !=3D 0)
- 			continue;
+ 	_dhcp_lease_free(client->lease);
++	client->lease =3D NULL;
++
+ 	return true;
+ }
  =
 
 -- =
 
-2.20.1
+2.13.6
 
 
---===============0255398080185710925==--
+--===============4331646290469909893==--
 
