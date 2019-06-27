@@ -1,35 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============0782129583352987462=="
+Content-Type: multipart/mixed; boundary="===============4413626272797272638=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] tools: Add gpio utility
-Date: Fri, 21 Jun 2019 13:04:23 -0500
-Message-ID: <b6a7d776-2645-731c-6688-7fe91a26af41@gmail.com>
-In-Reply-To: <20190621094007.35008-1-martin@geanix.com>
+From: Ossama Othman <ossama.othman@intel.com>
+Subject: [PATCH] genl: Deallocate genl family name
+Date: Thu, 27 Jun 2019 12:03:02 -0700
+Message-ID: <20190627190302.29035-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0782129583352987462==
+--===============4413626272797272638==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Martin,
+---
+ ell/genl.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-On 06/21/2019 04:40 AM, Martin Hundeb=C3=B8ll wrote:
-> ---
->   .gitignore   |   1 +
->   Makefile.am  |   5 +-
->   tools/gpio.c | 264 +++++++++++++++++++++++++++++++++++++++++++++++++++
->   3 files changed, 269 insertions(+), 1 deletion(-)
->   create mode 100644 tools/gpio.c
-> =
+diff --git a/ell/genl.c b/ell/genl.c
+index ea9d182..0f65db2 100644
+--- a/ell/genl.c
++++ b/ell/genl.c
+@@ -496,6 +496,7 @@ static void family_watch_free(void *data)
+ 	if (watch->destroy)
+ 		watch->destroy(watch->user_data);
+ =
+
++	l_free(watch->name);
+ 	l_free(watch);
+ }
+ =
+
+-- =
+
+2.20.1
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
-
---===============0782129583352987462==--
+--===============4413626272797272638==--
 
