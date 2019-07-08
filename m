@@ -1,32 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============0900319053863295446=="
+Content-Type: multipart/mixed; boundary="===============1813806441777917506=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] genl: Correct bad l_genl_family_info free.
-Date: Mon, 01 Jul 2019 16:41:24 -0500
-Message-ID: <956c6d63-c335-de9f-bd7c-b9d233dbb5a9@gmail.com>
-In-Reply-To: <20190701201445.26343-1-ossama.othman@intel.com>
+From: =?unknown-8bit?q?Micha=C5=82?= Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
+Subject: [PATCH] util: Fix increased alignment error in l_container_of
+Date: Mon, 08 Jul 2019 22:15:26 +0200
+Message-ID: <20190708201526.15052-1-michal.lowas-rzechonek@silvair.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0900319053863295446==
+--===============1813806441777917506==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+From: Micha=C5=82 'Khorne' Lowas-Rzechonek <michal@rzechonek.net>
 
-On 07/01/2019 03:14 PM, Ossama Othman wrote:
-> ---
->   ell/genl.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> =
+This fixes build failures when building with -Wcast-align -Werror on
+some platforms (most notably: 32bit ARM).
+---
+ ell/util.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ell/util.h b/ell/util.h
+index 4f20ef0..fe7c7e2 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -37,7 +37,7 @@ extern "C" {
+ =
+
+ #define l_container_of(ptr, type, member) ({				\
+ 		const __typeof__(((type *) 0)->member) *__mptr =3D (ptr);	\
+-		(type *)((char *) __mptr - offsetof(type, member));	\
++		(type *)(void *)((char *) __mptr - offsetof(type, member));	\
+ 	})
+ =
+
+ #define likely(x)   __builtin_expect(!!(x), 1)
+-- =
+
+2.22.0
 
 
-Applied, thanks.
-
-Regards,
--Denis
-
-
---===============0900319053863295446==--
+--===============1813806441777917506==--
 
