@@ -1,132 +1,110 @@
-Content-Type: multipart/mixed; boundary="===============7500050689541598563=="
+Content-Type: multipart/mixed; boundary="===============4017608574777573342=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/4] unit: Update expected peer identity strings in TLS
-Date: Tue, 06 Aug 2019 15:45:12 +0200
-Message-ID: <20190806134514.6340-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/4] tls: Make l_tls_free reentrant
+Date: Tue, 06 Aug 2019 15:45:13 +0200
+Message-ID: <20190806134514.6340-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20190806134514.6340-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7500050689541598563==
+--===============4017608574777573342==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Handle l_tls_free being called from inside user callbacks that our code
+may have called.  Use flags because in this case it's not possible to
+move all of the callbacks to the end of our functions.
 ---
- unit/test-tls.c | 33 ++++++++++++++++++++++-----------
- 1 file changed, 22 insertions(+), 11 deletions(-)
+ ell/tls-private.h |  3 +++
+ ell/tls.c         | 19 +++++++++++++++++++
+ 2 files changed, 22 insertions(+)
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index 03c5370..d701f42 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -326,7 +326,8 @@ static const struct tls_conn_test tls_conn_test_server_=
-auth =3D {
- 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
- 	.server_expect_identity =3D NULL,
- 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.client_expect_identity =3D "Foo Example Organization",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
- };
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index bf9e2ec..c1de257 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -215,6 +215,9 @@ struct l_tls {
  =
 
- static const struct tls_conn_test tls_conn_test_client_auth_attempt =3D {
-@@ -341,7 +342,8 @@ static const struct tls_conn_test tls_conn_test_client_=
-auth =3D {
- 	.server_cert_path =3D CERTDIR "cert-server.pem",
- 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
- 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.server_expect_identity =3D "Bar Example Organization",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
- 	.client_cert_path =3D CERTDIR "cert-client.pem",
- 	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
- 	.client_expect_identity =3D NULL,
-@@ -353,29 +355,34 @@ static const struct tls_conn_test tls_conn_test_full_=
-auth_attempt =3D {
- 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
- 	.server_expect_identity =3D NULL,
- 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.client_expect_identity =3D "Foo Example Organization",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
- };
+ 	struct tls_cipher_suite **cipher_suite_pref_list;
  =
 
- static const struct tls_conn_test tls_conn_test_full_auth =3D {
- 	.server_cert_path =3D CERTDIR "cert-server.pem",
- 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
- 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.server_expect_identity =3D "Bar Example Organization",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
- 	.client_cert_path =3D CERTDIR "cert-client.pem",
- 	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
- 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.client_expect_identity =3D "Foo Example Organization",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
- };
++	bool in_callback;
++	bool pending_destroy;
++
+ 	/* Record layer */
  =
 
- static const struct tls_conn_test tls_conn_test_bad_client_suite =3D {
- 	.server_cert_path =3D CERTDIR "cert-server.pem",
- 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
- 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.server_expect_identity =3D "Bar Example Organization",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
- 	.client_cert_path =3D CERTDIR "cert-client.pem",
- 	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
- 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.client_expect_identity =3D "Foo Example Organization",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
- 	.client_cipher_suites =3D (const char *[]) { "UNKNOWN", NULL },
- 	.expect_client_start_fail =3D true,
- };
-@@ -384,13 +391,15 @@ static const struct tls_conn_test tls_conn_test_suite=
-_mismatch =3D {
- 	.server_cert_path =3D CERTDIR "cert-server.pem",
- 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
- 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.server_expect_identity =3D "Bar Example Organization",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
- 	.server_cipher_suites =3D
- 		(const char *[]) { "TLS_RSA_WITH_AES_128_CBC_SHA256", NULL },
- 	.client_cert_path =3D CERTDIR "cert-client.pem",
- 	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
- 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.client_expect_identity =3D "Foo Example Organization",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
- 	.client_cipher_suites =3D
- 		(const char *[]) { "TLS_RSA_WITH_AES_256_CBC_SHA256", NULL },
- 	.expect_alert =3D true,
-@@ -401,11 +410,13 @@ static const struct tls_conn_test tls_conn_test_versi=
-on_mismatch =3D {
- 	.server_cert_path =3D CERTDIR "cert-server.pem",
- 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
- 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.server_expect_identity =3D "Bar Example Organization",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
- 	.client_cert_path =3D CERTDIR "cert-client.pem",
- 	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
- 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
--	.client_expect_identity =3D "Foo Example Organization",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
- 	.expect_alert =3D true,
- 	.alert_desc =3D TLS_ALERT_PROTOCOL_VERSION,
- };
+ 	uint8_t *record_buf;
+diff --git a/ell/tls.c b/ell/tls.c
+index c3591a8..4b23076 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -2098,7 +2098,9 @@ static void tls_finished(struct l_tls *tls)
+ 	TLS_SET_STATE(TLS_HANDSHAKE_DONE);
+ 	tls->ready =3D true;
+ =
+
++	tls->in_callback =3D true;
+ 	tls->ready_handle(peer_identity, tls->user_data);
++	tls->in_callback =3D false;
+ 	l_free(peer_identity);
+ =
+
+ 	tls_cleanup_handshake(tls);
+@@ -2389,6 +2391,11 @@ LIB_EXPORT void l_tls_free(struct l_tls *tls)
+ 	if (unlikely(!tls))
+ 		return;
+ =
+
++	if (tls->in_callback) {
++		tls->pending_destroy =3D true;
++		return;
++	}
++
+ 	l_tls_set_cacert(tls, NULL);
+ 	l_tls_set_auth_data(tls, NULL, NULL, NULL);
+ =
+
+@@ -2537,6 +2544,11 @@ bool tls_handle_message(struct l_tls *tls, const uin=
+t8_t *message,
+ 					message + TLS_HANDSHAKE_HEADER_SIZE,
+ 					len - TLS_HANDSHAKE_HEADER_SIZE);
+ =
+
++		if (tls->pending_destroy) {
++			l_tls_free(tls);
++			return false;
++		}
++
+ 		return true;
+ =
+
+ 	case TLS_CT_APPLICATION_DATA:
+@@ -2551,7 +2563,14 @@ bool tls_handle_message(struct l_tls *tls, const uin=
+t8_t *message,
+ 		if (!len)
+ 			return true;
+ =
+
++		tls->in_callback =3D true;
+ 		tls->rx(message, len, tls->user_data);
++		tls->in_callback =3D false;
++
++		if (tls->pending_destroy) {
++			l_tls_free(tls);
++			return false;
++		}
+ =
+
+ 		return true;
+ 	}
 -- =
 
 2.20.1
 
 
---===============7500050689541598563==--
+--===============4017608574777573342==--
 
