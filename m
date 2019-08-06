@@ -1,33 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============4654022857248908921=="
+Content-Type: multipart/mixed; boundary="===============7728800453739081207=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dhcp-transport: fix out-of-bounds access
-Date: Tue, 06 Aug 2019 15:14:37 -0500
-Message-ID: <cbe5cd0c-f86f-407b-f5a1-4d2f3d31a898@gmail.com>
-In-Reply-To: <20190806200849.2988-1-james.prestwood@linux.intel.com>
+From: James Prestwood <james.prestwood@linux.intel.com>
+Subject: [PATCH] dhcp: fix T1 timeout crash
+Date: Tue, 06 Aug 2019 13:46:28 -0700
+Message-ID: <20190806204628.17351-1-james.prestwood@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4654022857248908921==
+--===============7728800453739081207==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+The timeout user data was being passed as the address to the
+client object, not the client object itself.
+---
+ ell/dhcp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 8/6/19 3:08 PM, James Prestwood wrote:
-> If len was odd the iovec was getting accessed out of bounds. 'j' needed
-> to be decremented after the for loop. In addition, the iov_len was not
-> being used to access the last byte of iov_base.
-> ---
->   ell/dhcp-transport.c | 4 +++-
->   1 file changed, 3 insertions(+), 1 deletion(-)
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index ca81311..22d903e 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -985,7 +985,7 @@ static void dhcp_client_rx_message(const void *data, si=
+ze_t len, void *userdata)
+ 		client->timeout_lease =3D
+ 			l_timeout_create_ms(dhcp_fuzz_secs(client->lease->t1),
+ 						dhcp_client_t1_expired,
+-						&client, NULL);
++						client, NULL);
+ =
 
-Applied, thanks.
+ 		break;
+ 	case DHCP_STATE_INIT_REBOOT:
+-- =
 
-Regards,
--Denis
+2.17.1
 
 
---===============4654022857248908921==--
+--===============7728800453739081207==--
 
