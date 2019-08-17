@@ -1,72 +1,49 @@
-Content-Type: multipart/mixed; boundary="===============7675612830668294064=="
+Content-Type: multipart/mixed; boundary="===============3488186212990361693=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/4] tls: Escape characters in the peer_identity string
-Date: Sat, 17 Aug 2019 02:28:31 +0200
-Message-ID: <20190817002834.15208-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/4] tls: Disconnect if ls_get_peer_identity_str fails
+Date: Sat, 17 Aug 2019 02:28:32 +0200
+Message-ID: <20190817002834.15208-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20190817002834.15208-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7675612830668294064==
+--===============3488186212990361693==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Escape the /, =3D and \ characters in the strings we take from the peer
-certificate's Subject DN to build the peer_identity string passed to the
-ell client's ready callback to enable it to be parsed unamiguously.
+Make sure the ell client's ready callback can safely assume that
+whenever a CA certificate was set, the peer_identity string is
+non-NULL if that callback is reached.
 ---
- ell/tls.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+ ell/tls.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/ell/tls.c b/ell/tls.c
-index 7405098..37f5b3f 100644
+index 37f5b3f..b1fec9f 100644
 --- a/ell/tls.c
 +++ b/ell/tls.c
-@@ -2021,6 +2021,25 @@ static const struct dn_element_info dn_elements[] =
-=3D {
- 	{}
- };
+@@ -2107,8 +2107,11 @@ static void tls_finished(struct l_tls *tls)
  =
 
-+static void tls_str_escape_append(struct l_string *out, char *str, size_t =
-len)
-+{
-+	while (len--) {
-+		switch (*str) {
-+		case '\\':
-+		case '/':
-+		case '=3D':
-+			l_string_append_c(out, '\\');
-+			l_string_append_c(out, *str);
-+			break;
-+		default:
-+			l_string_append_c(out, *str);
-+			break;
+ 	if (tls->peer_authenticated) {
+ 		peer_identity =3D tls_get_peer_identity_str(tls->peer_cert);
+-		if (!peer_identity)
+-			TLS_DEBUG("tls_get_peer_identity_str failed");
++		if (!peer_identity) {
++			TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
++					"tls_get_peer_identity_str failed");
++			return;
 +		}
-+
-+		str++;
-+	}
-+}
-+
- static char *tls_get_peer_identity_str(struct l_cert *cert)
- {
- 	const uint8_t *dn, *end;
-@@ -2072,7 +2091,7 @@ static char *tls_get_peer_identity_str(struct l_cert =
-*cert)
- 		l_string_append_c(id_str, '/');
- 		l_string_append(id_str, info->str);
- 		l_string_append_c(id_str, '=3D');
--		l_string_append_fixed(id_str, (char *) name, name_len);
-+		tls_str_escape_append(id_str, (char *) name, name_len);
  	}
  =
 
- 	return l_string_unwrap(id_str);
+ 	/* Free up the resources used in the handshake */
 -- =
 
 2.20.1
 
 
---===============7675612830668294064==--
+--===============3488186212990361693==--
 
