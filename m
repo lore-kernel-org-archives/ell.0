@@ -1,140 +1,75 @@
-Content-Type: multipart/mixed; boundary="===============9098004736197319371=="
+Content-Type: multipart/mixed; boundary="===============7534806004322944202=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 4/8] cert: Implement l_cert_get_extension
-Date: Fri, 23 Aug 2019 02:41:34 +0200
-Message-ID: <20190823004138.5480-4-andrew.zaborowski@intel.com>
+Subject: [PATCH 5/8] strv: Implement l_strv_copy
+Date: Fri, 23 Aug 2019 02:41:35 +0200
+Message-ID: <20190823004138.5480-5-andrew.zaborowski@intel.com>
 In-Reply-To: <20190823004138.5480-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============9098004736197319371==
+--===============7534806004322944202==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add a utility to find the contents of a given extension.  It is internal
-only because asn1_oid is currently internal.
 ---
- ell/asn1-private.h |  1 +
- ell/cert-private.h |  6 +++++
- ell/cert.c         | 66 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 73 insertions(+)
+ ell/strv.c | 24 ++++++++++++++++++++++++
+ ell/strv.h |  1 +
+ 2 files changed, 25 insertions(+)
 
-diff --git a/ell/asn1-private.h b/ell/asn1-private.h
-index 7c382ec..90c8913 100644
---- a/ell/asn1-private.h
-+++ b/ell/asn1-private.h
-@@ -25,6 +25,7 @@
+diff --git a/ell/strv.c b/ell/strv.c
+index cd6467f..7c7dbf5 100644
+--- a/ell/strv.c
++++ b/ell/strv.c
+@@ -335,3 +335,27 @@ LIB_EXPORT char **l_strv_append_vprintf(char **str_arr=
+ay,
  =
 
- #define ASN1_ID_SEQUENCE	ASN1_ID(ASN1_CLASS_UNIVERSAL, 1, 0x10)
- #define ASN1_ID_SET		ASN1_ID(ASN1_CLASS_UNIVERSAL, 1, 0x11)
-+#define ASN1_ID_BOOLEAN		ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x01)
- #define ASN1_ID_INTEGER		ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x02)
- #define ASN1_ID_BIT_STRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x03)
- #define ASN1_ID_OCTET_STRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x04)
-diff --git a/ell/cert-private.h b/ell/cert-private.h
-index f89e216..ba9a513 100644
---- a/ell/cert-private.h
-+++ b/ell/cert-private.h
-@@ -20,5 +20,11 @@
-  *
-  */
- =
-
-+struct asn1_oid;
-+
- struct l_certchain *certchain_new_from_leaf(struct l_cert *leaf);
- void certchain_link_issuer(struct l_certchain *chain, struct l_cert *issue=
-r);
-+
-+const uint8_t *cert_get_extension(struct l_cert *cert,
-+					const struct asn1_oid *ext_id,
-+					bool *out_critical, size_t *out_len);
-diff --git a/ell/cert.c b/ell/cert.c
-index 950e562..cf7799c 100644
---- a/ell/cert.c
-+++ b/ell/cert.c
-@@ -171,6 +171,72 @@ LIB_EXPORT const uint8_t *l_cert_get_dn(struct l_cert =
-*cert, size_t *out_len)
- 						-1);
+ 	return ret;
  }
++
++/**
++ * l_strv_copy:
++ * @str_array: a %NULL terminated array of strings or %NULL
++ *
++ * Returns: An independent copy of @str_array.
++ */
++LIB_EXPORT char **l_strv_copy(char **str_array)
++{
++	int i, len;
++	char **copy;
++
++	if (unlikely(!str_array))
++		return NULL;
++
++	for (len =3D 0; str_array[len]; len++);
++
++	copy =3D l_malloc(sizeof(char *) * (len + 1));
++
++	for (i =3D len; i >=3D 0; i--)
++		copy[i] =3D l_strdup(str_array[i]);
++
++	return copy;
++}
+diff --git a/ell/strv.h b/ell/strv.h
+index 11d023a..b0ec17c 100644
+--- a/ell/strv.h
++++ b/ell/strv.h
+@@ -41,6 +41,7 @@ char **l_strv_append_printf(char **str_array, const char =
+*format, ...)
+ 					__attribute__((format(printf, 2, 3)));
+ char **l_strv_append_vprintf(char **str_array, const char *format,
+ 							va_list args);
++char **l_strv_copy(char **str_array);
  =
 
-+const uint8_t *cert_get_extension(struct l_cert *cert,
-+					const struct asn1_oid *ext_id,
-+					bool *out_critical, size_t *out_len)
-+{
-+	const uint8_t *ext, *end;
-+	size_t ext_len;
-+
-+	if (unlikely(!cert))
-+		return NULL;
-+
-+	ext =3D asn1_der_find_elem_by_path(cert->asn1, cert->asn1_len,
-+						ASN1_ID_SEQUENCE, &ext_len,
-+						X509_CERTIFICATE_POS,
-+						X509_TBSCERTIFICATE_POS,
-+						X509_TBSCERT_EXTENSIONS_POS,
-+						-1);
-+	if (unlikely(!ext))
-+		return NULL;
-+
-+	end =3D ext + ext_len;
-+	while (ext < end) {
-+		const uint8_t *seq, *oid, *data;
-+		uint8_t tag;
-+		size_t len, oid_len, data_len;
-+		bool critical;
-+
-+		seq =3D asn1_der_find_elem(ext, end - ext, 0, &tag, &len);
-+		if (unlikely(!seq || tag !=3D ASN1_ID_SEQUENCE))
-+			return false;
-+
-+		ext =3D seq + len;
-+
-+		oid =3D asn1_der_find_elem(seq, len, 0, &tag, &oid_len);
-+		if (unlikely(!oid || tag !=3D ASN1_ID_OID))
-+			return false;
-+
-+		if (!asn1_oid_eq(ext_id, oid_len, oid))
-+			continue;
-+
-+		data =3D asn1_der_find_elem(seq, len, 1, &tag, &data_len);
-+		critical =3D false;
-+
-+		if (data && tag =3D=3D ASN1_ID_BOOLEAN) {
-+			if (data_len !=3D 1)
-+				return false;
-+
-+			critical =3D *data !=3D 0;	/* Tolerate BER booleans */
-+
-+			data =3D asn1_der_find_elem(seq, len, 2, &tag, &data_len);
-+		}
-+
-+		if (unlikely(!data || tag !=3D ASN1_ID_OCTET_STRING))
-+			return false;
-+
-+		if (out_critical)
-+			*out_critical =3D critical;
-+
-+		if (out_len)
-+			*out_len =3D data_len;
-+
-+		return data;
-+	}
-+
-+	return NULL;
-+}
-+
- LIB_EXPORT enum l_cert_key_type l_cert_get_pubkey_type(struct l_cert *cert)
- {
- 	if (unlikely(!cert))
+ #ifdef __cplusplus
+ }
 -- =
 
 2.20.1
 
 
---===============9098004736197319371==--
+--===============7534806004322944202==--
 
