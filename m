@@ -1,233 +1,214 @@
-Content-Type: multipart/mixed; boundary="===============7304855003874883883=="
+Content-Type: multipart/mixed; boundary="===============6993113689471138768=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/8] unit: Add l_tls_set_domain_mask tests
-Date: Fri, 23 Aug 2019 02:41:32 +0200
-Message-ID: <20190823004138.5480-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/8] asn1-private: Handle Context-specific tag class
+Date: Fri, 23 Aug 2019 02:41:33 +0200
+Message-ID: <20190823004138.5480-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20190823004138.5480-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7304855003874883883==
+--===============6993113689471138768==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+In asn1_der_find_elem(_by_path) add a way to properly handle the
+optional elements in x509 certificates.  Until now we were lucky we
+never needed to handle the parts of certificates where some
+OPTIONAL/DEFAULT element was absent (such as Version in
+v1 certificates) but we would be misparsing the certificates in
+those cases.
+
+In the general case an asn1 parser will need the full syntax
+definition to locate an element inside the structure.  To avoid adding
+a lot of .asn1 files like those contained in the kernel, and a parser
+compiler, assume that OPTIONAL/DEFAULT elements use Context-specific
+tags which is mostly the case in the x509 syntax (this is evens noted
+in ftp://ftp.rsasecurity.com/pub/pkcs/ascii/layman.asc).  This way we
+can handle Univeral tags that are always present and optional elements
+that use Context-specific tags and get by with the same few #defines
+we had regarding the x509 structure.
 ---
- unit/test-tls.c | 169 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 169 insertions(+)
+ ell/asn1-private.h | 74 ++++++++++++++++++++++++++++++++++++++--------
+ ell/cert.c         | 20 ++++++-------
+ 2 files changed, 72 insertions(+), 22 deletions(-)
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index d701f42..36f9934 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -309,6 +309,7 @@ struct tls_conn_test {
- 	const char *client_ca_cert_path;
- 	const char *client_expect_identity;
- 	const char **client_cipher_suites;
-+	char **client_domain_mask;
- 	bool expect_alert;
- 	bool expect_client_start_fail;
- 	enum l_tls_alert_desc alert_desc;
-@@ -566,6 +567,9 @@ static void test_tls_with_ver(const struct tls_conn_tes=
-t *test,
- 	assert(l_tls_set_cacert(s[0].tls, test->server_ca_cert_path));
- 	assert(l_tls_set_cacert(s[1].tls, test->client_ca_cert_path));
+diff --git a/ell/asn1-private.h b/ell/asn1-private.h
+index 71a4ae6..7c382ec 100644
+--- a/ell/asn1-private.h
++++ b/ell/asn1-private.h
+@@ -21,6 +21,7 @@
+ #define ASN1_ID(class, pc, tag)	(((class) << 6) | ((pc) << 5) | (tag))
  =
 
-+	if (test->client_domain_mask)
-+		l_tls_set_domain_mask(s[1].tls, test->client_domain_mask);
-+
- 	assert(l_tls_start(s[0].tls));
- 	assert(!!l_tls_start(s[1].tls) =3D=3D !test->expect_client_start_fail);
+ #define ASN1_CLASS_UNIVERSAL	0
++#define ASN1_CLASS_CONTEXT	2
  =
 
-@@ -616,6 +620,152 @@ static void test_tls_version_mismatch_test(const void=
- *data)
- 				L_TLS_V10, L_TLS_V11);
+ #define ASN1_ID_SEQUENCE	ASN1_ID(ASN1_CLASS_UNIVERSAL, 1, 0x10)
+ #define ASN1_ID_SET		ASN1_ID(ASN1_CLASS_UNIVERSAL, 1, 0x11)
+@@ -89,14 +90,24 @@ static inline void asn1_write_definite_length(uint8_t *=
+*buf, size_t len)
+ 		*(*buf)++ =3D len >> (n * 8);
  }
  =
 
-+static const struct tls_conn_test tls_conn_test_domain_match1 =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
-+	.client_domain_mask =3D (char *[]) { "Foo Example Organization", NULL },
-+};
+-/* Return index'th element in a DER SEQUENCE */
++#define ASN1_CONTEXT_IMPLICIT(tag) (0x1000 | (tag))
++#define ASN1_CONTEXT_EXPLICIT(tag) (0x2000 | (tag))
 +
-+static const struct tls_conn_test tls_conn_test_domain_match2 =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
-+	.client_domain_mask =3D (char *[]) {
-+		"Foo Example Organization", "Bar Example Organization", NULL
-+	},
-+};
-+
-+static const struct tls_conn_test tls_conn_test_domain_match3 =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
-+	.client_domain_mask =3D (char *[]) {
-+		"Bar Example Organization", "Foo Example Organization", NULL
-+	},
-+};
-+
-+static const struct tls_conn_test tls_conn_test_domain_match4 =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
-+	.client_domain_mask =3D (char *[]) { "*", NULL },
-+};
-+
-+static const struct tls_conn_test tls_conn_test_domain_mismatch1 =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
-+	.client_domain_mask =3D (char *[]) { "", NULL },
-+	.expect_alert =3D true,
-+	.alert_desc =3D TLS_ALERT_BAD_CERT,
-+};
-+
-+static const struct tls_conn_test tls_conn_test_domain_mismatch2 =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
-+	.client_domain_mask =3D (char *[]) { "Bar Example Organization", NULL },
-+	.expect_alert =3D true,
-+	.alert_desc =3D TLS_ALERT_BAD_CERT,
-+};
-+
-+static const struct tls_conn_test tls_conn_test_domain_mismatch3 =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
-+	.client_domain_mask =3D (char *[]) {
-+		"Foo Example Organization.com", NULL
-+	},
-+	.expect_alert =3D true,
-+	.alert_desc =3D TLS_ALERT_BAD_CERT,
-+};
-+
-+static const struct tls_conn_test tls_conn_test_domain_mismatch4 =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
-+	.client_domain_mask =3D (char *[]) {
-+		"Foo Example Organization.*", NULL
-+	},
-+	.expect_alert =3D true,
-+	.alert_desc =3D TLS_ALERT_BAD_CERT,
-+};
-+
-+static const struct tls_conn_test tls_conn_test_domain_mismatch5 =3D {
-+	.server_cert_path =3D CERTDIR "cert-server.pem",
-+	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
-+	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.server_expect_identity =3D "/O=3DBar Example Organization"
-+		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
-+	.client_cert_path =3D CERTDIR "cert-client.pem",
-+	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
-+	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
-+	.client_expect_identity =3D "/O=3DFoo Example Organization"
-+		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
-+	.client_domain_mask =3D (char *[]) {
-+		"*.Foo Example Organization", NULL
-+	},
-+	.expect_alert =3D true,
-+	.alert_desc =3D TLS_ALERT_BAD_CERT,
-+};
-+
- static void test_tls_suite_test(const void *data)
++/*
++ * Return the tag, length and value of the @index'th
++ * non-context-specific-tagged element in a DER SEQUENCE or one who's
++ * ASN1_CONTEXT_IMPLICIT(tag) matches @index or the inner element of
++ * the one who's ASN1_CONTEXT_EXPLICIT(tag) matches @index.
++ */
+ static inline const uint8_t *asn1_der_find_elem(const uint8_t *buf,
+ 						size_t len_in, int index,
+ 						uint8_t *tag, size_t *len_out)
  {
- 	const char *suite_name =3D data;
-@@ -720,6 +870,25 @@ int main(int argc, char *argv[])
- 	l_test_add("TLS connection version mismatch",
- 			test_tls_version_mismatch_test, NULL);
+-	int tlv_len;
++	int n =3D 0;
  =
 
-+	l_test_add("TLS connection domain match 1", test_tls_test,
-+			&tls_conn_test_domain_match1);
-+	l_test_add("TLS connection domain match 2", test_tls_test,
-+			&tls_conn_test_domain_match2);
-+	l_test_add("TLS connection domain match 3", test_tls_test,
-+			&tls_conn_test_domain_match3);
-+	l_test_add("TLS connection domain match 4", test_tls_test,
-+			&tls_conn_test_domain_match4);
-+	l_test_add("TLS connection domain mismatch 1", test_tls_test,
-+			&tls_conn_test_domain_mismatch1);
-+	l_test_add("TLS connection domain mismatch 2", test_tls_test,
-+			&tls_conn_test_domain_mismatch2);
-+	l_test_add("TLS connection domain mismatch 3", test_tls_test,
-+			&tls_conn_test_domain_mismatch3);
-+	l_test_add("TLS connection domain mismatch 4", test_tls_test,
-+			&tls_conn_test_domain_mismatch4);
-+	l_test_add("TLS connection domain mismatch 5", test_tls_test,
-+			&tls_conn_test_domain_mismatch5);
+ 	while (1) {
++		int tlv_len;
 +
- 	for (i =3D 0; tls_cipher_suite_pref[i]; i++) {
- 		struct tls_cipher_suite *suite =3D tls_cipher_suite_pref[i];
- 		struct tls_bulk_encryption_algorithm *alg =3D suite->encryption;
+ 		if (len_in < 2)
+ 			return NULL;
+ =
+
+@@ -107,9 +118,36 @@ static inline const uint8_t *asn1_der_find_elem(const =
+uint8_t *buf,
+ 		if (tlv_len < 0 || (size_t) tlv_len > len_in)
+ 			return NULL;
+ =
+
+-		if (index-- =3D=3D 0) {
+-			*len_out =3D tlv_len;
+-			return buf;
++		if (*tag >> 6 !=3D ASN1_CLASS_CONTEXT) {
++			if (n++ =3D=3D index) {
++				*len_out =3D tlv_len;
++				return buf;
++			}
++		} else if ((*tag & 0x1f) =3D=3D (index & 0xfff)) {
++			/* Context-specific tag */
++			if (index & 0x1000) {		/* Implicit */
++				*len_out =3D tlv_len;
++				return buf;
++			} else if (index & 0x2000) {	/* Explicit */
++				const uint8_t *outer =3D buf;
++				int inner_len;
++
++				if (!(*tag & 0x20))	/* Primitive */
++					return NULL;
++
++				if (unlikely(tlv_len < 2))
++					return NULL;
++
++				*tag =3D *buf++;
++
++				inner_len =3D asn1_parse_definite_length(
++							(void *) &buf, &len_in);
++				if (outer + tlv_len !=3D buf + inner_len)
++					return NULL;
++
++				*len_out =3D inner_len;
++				return buf;
++			}
+ 		}
+ =
+
+ 		buf +=3D tlv_len;
+@@ -122,20 +160,32 @@ static inline const uint8_t *asn1_der_find_elem_by_pa=
+th(const uint8_t *buf,
+ 						size_t len_in, uint8_t tag,
+ 						size_t *len_out, ...)
+ {
+-	uint8_t elem_tag;
+-	int pos;
++	int index;
+ 	va_list vl;
+ =
+
+ 	va_start(vl, len_out);
+ =
+
+-	pos =3D va_arg(vl, int);
++	index =3D va_arg(vl, int);
++
++	while (index !=3D -1) {
++		uint8_t elem_tag;
++		uint8_t expect_tag;
++		int prev_index =3D index;
++
++		buf =3D asn1_der_find_elem(buf, len_in, index,
++						&elem_tag, &len_in);
+ =
+
+-	while (pos !=3D -1) {
+-		buf =3D asn1_der_find_elem(buf, len_in, pos, &elem_tag, &len_in);
++		index =3D va_arg(vl, int);
+ =
+
+-		pos =3D va_arg(vl, int);
++		if (prev_index & 0x1000)
++			expect_tag =3D ASN1_ID(ASN1_CLASS_CONTEXT,
++						index !=3D -1 ? 1 :
++						((elem_tag >> 5) & 1),
++						prev_index & 0xfff);
++		else
++			expect_tag =3D (index =3D=3D -1) ? tag : ASN1_ID_SEQUENCE;
+ =
+
+-		if (!buf || elem_tag !=3D (pos =3D=3D -1 ? tag : ASN1_ID_SEQUENCE)) {
++		if (!buf || elem_tag !=3D expect_tag) {
+ 			va_end(vl);
+ 			return NULL;
+ 		}
+diff --git a/ell/cert.c b/ell/cert.c
+index d52bfd0..950e562 100644
+--- a/ell/cert.c
++++ b/ell/cert.c
+@@ -34,20 +34,20 @@
+ =
+
+ #define X509_CERTIFICATE_POS			0
+ #define   X509_TBSCERTIFICATE_POS		  0
+-#define     X509_TBSCERT_VERSION_POS		    0
+-#define     X509_TBSCERT_SERIAL_POS		    1
+-#define     X509_TBSCERT_SIGNATURE_POS		    2
++#define     X509_TBSCERT_VERSION_POS		    ASN1_CONTEXT_EXPLICIT(0)
++#define     X509_TBSCERT_SERIAL_POS		    0
++#define     X509_TBSCERT_SIGNATURE_POS		    1
+ #define       X509_ALGORITHM_ID_ALGORITHM_POS	      0
+ #define       X509_ALGORITHM_ID_PARAMS_POS	      1
+-#define     X509_TBSCERT_ISSUER_DN_POS		    3
+-#define     X509_TBSCERT_VALIDITY_POS		    4
+-#define     X509_TBSCERT_SUBJECT_DN_POS		    5
+-#define     X509_TBSCERT_SUBJECT_KEY_POS	    6
++#define     X509_TBSCERT_ISSUER_DN_POS		    2
++#define     X509_TBSCERT_VALIDITY_POS		    3
++#define     X509_TBSCERT_SUBJECT_DN_POS		    4
++#define     X509_TBSCERT_SUBJECT_KEY_POS	    5
+ #define       X509_SUBJECT_KEY_ALGORITHM_POS	      0
+ #define       X509_SUBJECT_KEY_VALUE_POS	      1
+-#define     X509_TBSCERT_ISSUER_UID_POS		    7
+-#define     X509_TBSCERT_SUBJECT_UID_POS	    8
+-#define     X509_TBSCERT_EXTENSIONS_POS		    9
++#define     X509_TBSCERT_ISSUER_UID_POS		    ASN1_CONTEXT_IMPLICIT(1)
++#define     X509_TBSCERT_SUBJECT_UID_POS	    ASN1_CONTEXT_IMPLICIT(2)
++#define     X509_TBSCERT_EXTENSIONS_POS		    ASN1_CONTEXT_EXPLICIT(3)
+ #define   X509_SIGNATURE_ALGORITHM_POS		  1
+ #define   X509_SIGNATURE_VALUE_POS		  2
+ =
+
 -- =
 
 2.20.1
 
 
---===============7304855003874883883==--
+--===============6993113689471138768==--
 
