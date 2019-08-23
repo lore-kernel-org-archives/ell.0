@@ -1,30 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============5234437786634582785=="
+Content-Type: multipart/mixed; boundary="===============1907909061019848103=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 7/8] build: Add DNSNames to the test server cert
-Date: Fri, 23 Aug 2019 09:29:12 -0500
-Message-ID: <d23d3a0a-e611-bb5b-15b2-11e6f49ea223@gmail.com>
-In-Reply-To: <20190823004138.5480-7-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 6/8] tls: Validate peer certificate's DNSNames against mask
+Date: Fri, 23 Aug 2019 19:51:22 +0200
+Message-ID: <CAOq732+caG4yqQtWfR_N=SHwgVD8fYHY2rhrBSR-GW=c_UM+Vw@mail.gmail.com>
+In-Reply-To: <f19e8119-346b-6a28-fe45-53cf98683ec3@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5234437786634582785==
+--===============1907909061019848103==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi Denis,
 
-On 8/22/19 7:41 PM, Andrew Zaborowski wrote:
-> ---
->   Makefile.am       | 2 +-
->   unit/gencerts.cnf | 6 ++++++
->   2 files changed, 7 insertions(+), 1 deletion(-)
+On Fri, 23 Aug 2019 at 18:00, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 8/22/19 7:41 PM, Andrew Zaborowski wrote:
+> > -     if (!cn)
+> > +     if (cn)
+> > +             for (i =3D mask; *i; i++)
+> > +                     if (tls_domain_match_mask(cn, cn_len, *i, strlen(=
+*i)))
+> > +                             return true;
+> > +
+> > +     /*
+> > +      * Locate SubjectAltName (RFC5280 Section 4.2.1.6) and descend in=
+to
+> > +      * the sole SEQUENCE element, check if any DNSName matches.
+> > +      */
+>
+> So I think the recommended approach is to check all SubjectAltName
+> dNSName tags first.  And only then try to match the CN, no?
 
-Applied, thanks.
+Maybe more optimal, so I can switch this around, although as far as
+I've seen in HTTPS certificates the server name is usually right in
+the CN.  The return value is going to be the same independent of the
+order in which we do the checks.
 
-Regards,
--Denis
+Best regards
 
---===============5234437786634582785==--
+--===============1907909061019848103==--
 
