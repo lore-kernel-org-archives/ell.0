@@ -1,117 +1,57 @@
-Content-Type: multipart/mixed; boundary="===============7902465280359525190=="
+Content-Type: multipart/mixed; boundary="===============6127150313704373060=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 6/8] tls: Validate peer certificate's DNSNames against mask
-Date: Fri, 23 Aug 2019 02:41:36 +0200
-Message-ID: <20190823004138.5480-6-andrew.zaborowski@intel.com>
+Subject: [PATCH 7/8] build: Add DNSNames to the test server cert
+Date: Fri, 23 Aug 2019 02:41:37 +0200
+Message-ID: <20190823004138.5480-7-andrew.zaborowski@intel.com>
 In-Reply-To: <20190823004138.5480-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7902465280359525190==
+--===============6127150313704373060==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Also return success in the domain_mask check if any of the DNSNames in
-the peer certificate's subjectAltName extension matches any of the mask
-strings supplied.
 ---
- ell/tls.c | 49 ++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 44 insertions(+), 5 deletions(-)
+ Makefile.am       | 2 +-
+ unit/gencerts.cnf | 6 ++++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/ell/tls.c b/ell/tls.c
-index 3fe2ff5..f1d73bd 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -675,6 +675,10 @@ ok_next:
+diff --git a/Makefile.am b/Makefile.am
+index 420c839..bcee4e7 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -391,7 +391,7 @@ unit/cert-server.csr: unit/cert-server-key.pem unit/gen=
+certs.cnf
+ 			-key $< -out $@
  =
 
- static const struct asn1_oid dn_common_name_oid =3D
- 	{ 3, { 0x55, 0x04, 0x03 } };
-+static const struct asn1_oid subject_alt_name_oid =3D
-+	{ 3, { 0x55, 0x1d, 0x11 } };
+ unit/cert-server.pem: unit/cert-server.csr unit/cert-ca.pem unit/gencerts.=
+cnf
+-	$(AM_V_GEN)openssl x509 -req -extensions cert_ext \
++	$(AM_V_GEN)openssl x509 -req -extensions server_ext \
+ 			-extfile $(srcdir)/unit/gencerts.cnf \
+ 			-in $< -CA $(builddir)/unit/cert-ca.pem \
+ 			-CAkey $(builddir)/unit/cert-ca-key.pem \
+diff --git a/unit/gencerts.cnf b/unit/gencerts.cnf
+index 5328734..dc469e8 100644
+--- a/unit/gencerts.cnf
++++ b/unit/gencerts.cnf
+@@ -17,3 +17,9 @@ authorityKeyIdentifier =3D keyid:always,issuer:always
+ basicConstraints =3D CA:FALSE
+ subjectKeyIdentifier =3D hash
+ authorityKeyIdentifier =3D keyid:always,issuer:always
 +
-+#define SAN_DNS_NAME_ID ASN1_CONTEXT_IMPLICIT(2)
- =
-
- static bool tls_cert_domains_match_mask(struct l_cert *cert, char **mask)
- {
-@@ -682,10 +686,14 @@ static bool tls_cert_domains_match_mask(struct l_cert=
- *cert, char **mask)
- 	size_t dn_size;
- 	const char *cn =3D NULL;
- 	size_t cn_len;
-+	const uint8_t *san;
-+	size_t san_len;
-+	uint8_t san_tag;
-+	char **i;
- =
-
- 	/*
- 	 * Retrieve the Common Name from the Subject DN and check if it
--	 * matches.  TODO: possibly also look at SubjectAltName.
-+	 * matches.
- 	 */
- =
-
- 	dn =3D l_cert_get_dn(cert, &dn_size);
-@@ -725,12 +733,43 @@ static bool tls_cert_domains_match_mask(struct l_cert=
- *cert, char **mask)
- 		}
- 	}
- =
-
--	if (!cn)
-+	if (cn)
-+		for (i =3D mask; *i; i++)
-+			if (tls_domain_match_mask(cn, cn_len, *i, strlen(*i)))
-+				return true;
-+
-+	/*
-+	 * Locate SubjectAltName (RFC5280 Section 4.2.1.6) and descend into
-+	 * the sole SEQUENCE element, check if any DNSName matches.
-+	 */
-+	san =3D cert_get_extension(cert, &subject_alt_name_oid, NULL, &san_len);
-+	if (!san)
- 		return false;
- =
-
--	for (; *mask; mask++)
--		if (tls_domain_match_mask(cn, cn_len, *mask, strlen(*mask)))
--			return true;
-+	san =3D asn1_der_find_elem(san, san_len, 0, &san_tag, &san_len);
-+	if (unlikely(!san || san_tag !=3D ASN1_ID_SEQUENCE))
-+		return NULL;
-+
-+	end =3D san + san_len;
-+	while (san < end) {
-+		const uint8_t *value;
-+		uint8_t tag;
-+		size_t len;
-+
-+		value =3D asn1_der_find_elem(san, end - san, SAN_DNS_NAME_ID,
-+						&tag, &len);
-+		if (!value)
-+			return false;
-+
-+		/* Type is implicitly IA5STRING */
-+
-+		for (i =3D mask; *i; i++)
-+			if (tls_domain_match_mask((const char *) value, len,
-+							*i, strlen(*i)))
-+				return true;
-+
-+		san =3D value + len;
-+	}
- =
-
- 	return false;
- }
++[ server_ext ]
++basicConstraints =3D CA:FALSE
++subjectKeyIdentifier =3D hash
++authorityKeyIdentifier =3D keyid:always,issuer:always
++subjectAltName =3D DNS:foo.int.example,DNS:foo.int.com
 -- =
 
 2.20.1
 
 
---===============7902465280359525190==--
+--===============6127150313704373060==--
 
