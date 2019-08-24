@@ -1,136 +1,73 @@
-Content-Type: multipart/mixed; boundary="===============6886968898481985244=="
+Content-Type: multipart/mixed; boundary="===============2059819874465662185=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/2] dbus: Add l_dbus_object_get_data
-Date: Sat, 24 Aug 2019 02:53:36 +0200
-Message-ID: <20190824005337.24469-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] dbus: Use ptr match instead of string match where possible
+Date: Sat, 24 Aug 2019 02:53:37 +0200
+Message-ID: <20190824005337.24469-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20190824005337.24469-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6886968898481985244==
+--===============2059819874465662185==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This function can be used by DBus method implementations that receive
-an object path as a parameter to directly look up the user_data by the
-path and interface name.
+Slightly optimize the interface lookup where we already have the pointer
+to the interface struct to only look for that pointer instead of the
+interface name match.
 ---
- ell/dbus-private.h |  3 +++
- ell/dbus-service.c | 19 +++++++++++++++++++
- ell/dbus.c         | 13 +++++++++++++
- ell/dbus.h         |  2 ++
- ell/ell.sym        |  1 +
- 5 files changed, 38 insertions(+)
+ ell/dbus-service.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index 799c743..be62691 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -219,6 +219,9 @@ bool _dbus_object_tree_add_interface(struct _dbus_objec=
-t_tree *tree,
- bool _dbus_object_tree_remove_interface(struct _dbus_object_tree *tree,
- 					const char *path,
- 					const char *interface);
-+void *_dbus_object_tree_get_interface_data(struct _dbus_object_tree *tree,
-+						const char *path,
-+						const char *interface);
- =
-
- void _dbus_object_tree_introspect(struct _dbus_object_tree *tree,
- 					const char *path, struct l_string *buf);
 diff --git a/ell/dbus-service.c b/ell/dbus-service.c
-index 531b710..a1a7a74 100644
+index a1a7a74..9b23613 100644
 --- a/ell/dbus-service.c
 +++ b/ell/dbus-service.c
-@@ -1556,6 +1556,25 @@ bool _dbus_object_tree_add_interface(struct _dbus_ob=
-ject_tree *tree,
- 	return true;
+@@ -524,6 +524,13 @@ static bool match_interface_instance(const void *a, co=
+nst void *b)
+ 	return false;
  }
  =
 
-+void *_dbus_object_tree_get_interface_data(struct _dbus_object_tree *tree,
-+						const char *path,
-+						const char *interface)
++static bool match_interface_instance_ptr(const void *a, const void *b)
 +{
-+	struct object_node *object;
-+	struct interface_instance *instance;
++	const struct interface_instance *instance =3D a;
 +
-+	object =3D l_hashmap_lookup(tree->objects, path);
-+	if (!object)
-+		return NULL;
-+
-+	instance =3D l_queue_find(object->instances, match_interface_instance,
-+				(char *) interface);
-+	if (!instance)
-+		return NULL;
-+
-+	return instance->user_data;
++	return instance->interface =3D=3D b;
 +}
 +
- static bool match_object_manager_path(const void *a, const void *b)
+ static void interface_add_record_free(void *data)
  {
- 	const struct object_manager *manager =3D a;
-diff --git a/ell/dbus.c b/ell/dbus.c
-index b11225f..fb44b86 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -1585,6 +1585,19 @@ LIB_EXPORT bool l_dbus_object_remove_interface(struc=
-t l_dbus *dbus,
- 							interface);
- }
+ 	struct interface_add_record *rec =3D data;
+@@ -1499,8 +1506,7 @@ bool _dbus_object_tree_add_interface(struct _dbus_obj=
+ect_tree *tree,
+ 	 * Check to make sure we do not have this interface already
+ 	 * registered for this object
+ 	 */
+-	if (l_queue_find(object->instances, match_interface_instance,
+-				(char *) interface))
++	if (l_queue_find(object->instances, match_interface_instance_ptr, dbi))
+ 		return false;
  =
 
-+LIB_EXPORT void *l_dbus_object_get_data(struct l_dbus *dbus, const char *o=
-bject,
-+					const char *interface)
-+{
-+	if (unlikely(!dbus))
-+		return false;
-+
-+	if (unlikely(!dbus->tree))
-+		return false;
-+
-+	return _dbus_object_tree_get_interface_data(dbus->tree, object,
-+							interface);
-+}
-+
- LIB_EXPORT bool l_dbus_object_manager_enable(struct l_dbus *dbus)
- {
- 	if (unlikely(!dbus))
-diff --git a/ell/dbus.h b/ell/dbus.h
-index d3af5d7..212c60e 100644
---- a/ell/dbus.h
-+++ b/ell/dbus.h
-@@ -239,6 +239,8 @@ bool l_dbus_object_add_interface(struct l_dbus *dbus, c=
-onst char *object,
- 					const char *interface, void *user_data);
- bool l_dbus_object_remove_interface(struct l_dbus *dbus, const char *objec=
-t,
- 					const char *interface);
-+void *l_dbus_object_get_data(struct l_dbus *dbus, const char *object,
-+				const char *interface);
+ 	instance =3D l_new(struct interface_instance, 1);
+@@ -1892,8 +1898,7 @@ static struct l_dbus_message *properties_set(struct l=
+_dbus *dbus,
+ 	/* If we got here the object must exist */
  =
 
- bool l_dbus_object_manager_enable(struct l_dbus *dbus);
- =
-
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 0d6422f..d54a874 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -210,6 +210,7 @@ global:
- 	l_dbus_unregister_object;
- 	l_dbus_object_add_interface;
- 	l_dbus_object_remove_interface;
-+	l_dbus_object_get_data;
- 	l_dbus_object_manager_enable;
- 	l_dbus_add_disconnect_watch;
- 	l_dbus_add_service_watch;
+ 	instance =3D l_queue_find(object->instances,
+-				match_interface_instance,
+-				(char *) interface_name);
++				match_interface_instance_ptr, interface);
+ 	if (!instance)
+ 		return l_dbus_message_new_error(message,
+ 						"org.freedesktop.DBus.Error."
 -- =
 
 2.20.1
 
 
---===============6886968898481985244==--
+--===============2059819874465662185==--
 
