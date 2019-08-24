@@ -1,142 +1,315 @@
-Content-Type: multipart/mixed; boundary="===============8433022996763910716=="
+Content-Type: multipart/mixed; boundary="===============1777895895006364407=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/2] tls: Validate peer certificate's DNSNames against mask
-Date: Sat, 24 Aug 2019 02:47:30 +0200
-Message-ID: <20190824004731.24274-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] unit: Add TLS tests for cert's DNSName matching
+Date: Sat, 24 Aug 2019 02:47:31 +0200
+Message-ID: <20190824004731.24274-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20190824004731.24274-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8433022996763910716==
+--===============1777895895006364407==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Also return success in the domain_mask check if any of the DNSNames in
-the peer certificate's subjectAltName extension matches any of the mask
-strings supplied.
+Note we switch around the server and client certificates in the test
+cases for the Common Name because now the code only looks at the CN if
+no DNSNames are present which is only the case in the client-cert.
 ---
- ell/tls.c | 70 ++++++++++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 62 insertions(+), 8 deletions(-)
+ unit/test-tls.c | 170 +++++++++++++++++++++++++++++++++---------------
+ 1 file changed, 119 insertions(+), 51 deletions(-)
 
-diff --git a/ell/tls.c b/ell/tls.c
-index cbcdfa4..d0e2a66 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -673,26 +673,80 @@ ok_next:
- 	}
+diff --git a/unit/test-tls.c b/unit/test-tls.c
+index 36f9934..f4c5cb1 100644
+--- a/unit/test-tls.c
++++ b/unit/test-tls.c
+@@ -621,36 +621,66 @@ static void test_tls_version_mismatch_test(const void=
+ *data)
  }
  =
 
-+static const struct asn1_oid subject_alt_name_oid =3D
-+	{ 3, { 0x55, 0x1d, 0x11 } };
- static const struct asn1_oid dn_common_name_oid =3D
- 	{ 3, { 0x55, 0x04, 0x03 } };
+ static const struct tls_conn_test tls_conn_test_domain_match1 =3D {
+-	.server_cert_path =3D CERTDIR "cert-server.pem",
+-	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.server_cert_path =3D CERTDIR "cert-client.pem",
++	.server_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.server_expect_identity =3D "/O=3DBar Example Organization"
+-		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
+-	.client_cert_path =3D CERTDIR "cert-client.pem",
+-	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
+-	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.client_expect_identity =3D "/O=3DFoo Example Organization"
++	.server_expect_identity =3D "/O=3DFoo Example Organization"
+ 		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
+-	.client_domain_mask =3D (char *[]) { "Foo Example Organization", NULL },
++	.client_cert_path =3D CERTDIR "cert-server.pem",
++	.client_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.client_expect_identity =3D "/O=3DBar Example Organization"
++		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
++	.client_domain_mask =3D (char *[]) { "Bar Example Organization", NULL },
+ };
  =
 
-+#define SAN_DNS_NAME_ID ASN1_CONTEXT_IMPLICIT(2)
+ static const struct tls_conn_test tls_conn_test_domain_match2 =3D {
+-	.server_cert_path =3D CERTDIR "cert-server.pem",
+-	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.server_cert_path =3D CERTDIR "cert-client.pem",
++	.server_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.server_expect_identity =3D "/O=3DBar Example Organization"
+-		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
+-	.client_cert_path =3D CERTDIR "cert-client.pem",
+-	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
++	.server_expect_identity =3D "/O=3DFoo Example Organization"
++		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
++	.client_cert_path =3D CERTDIR "cert-server.pem",
++	.client_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
+ 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.client_expect_identity =3D "/O=3DFoo Example Organization"
++	.client_expect_identity =3D "/O=3DBar Example Organization"
++		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
++	.client_domain_mask =3D (char *[]) {
++		"Bar Example Organization", "Foo Example Organization", NULL
++	},
++};
 +
- static bool tls_cert_domains_match_mask(struct l_cert *cert, char **mask)
- {
--	const uint8_t *dn, *end;
--	size_t dn_size;
-+	const uint8_t *san, *dn, *end;
-+	size_t san_len, dn_len;
-+	uint8_t san_tag;
- 	const char *cn =3D NULL;
- 	size_t cn_len;
-+	char **i;
-+	bool dns_name_present =3D false;
-+
-+	/*
-+	 * Locate SubjectAltName (RFC5280 Section 4.2.1.6) and descend into
-+	 * the sole SEQUENCE element, check if any DNSName matches.
-+	 */
-+	san =3D cert_get_extension(cert, &subject_alt_name_oid, NULL, &san_len);
-+	if (san) {
-+		san =3D asn1_der_find_elem(san, san_len, 0, &san_tag, &san_len);
-+		if (unlikely(!san || san_tag !=3D ASN1_ID_SEQUENCE))
-+			return false;
-+
-+		end =3D san + san_len;
-+		while (san < end) {
-+			const uint8_t *value;
-+			uint8_t tag;
-+			size_t len;
-+
-+			value =3D asn1_der_find_elem(san, end - san,
-+							SAN_DNS_NAME_ID,
-+							&tag, &len);
-+			if (!value)
-+				break;
-+
-+			/* Type is implicitly IA5STRING */
-+
-+			for (i =3D mask; *i; i++)
-+				if (tls_domain_match_mask((const char *) value,
-+							len, *i, strlen(*i)))
-+					return true;
-+
-+			san =3D value + len;
-+			dns_name_present =3D true;
-+		}
-+	}
++static const struct tls_conn_test tls_conn_test_domain_match3 =3D {
++	.server_cert_path =3D CERTDIR "cert-client.pem",
++	.server_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
++	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.server_expect_identity =3D "/O=3DFoo Example Organization"
+ 		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
++	.client_cert_path =3D CERTDIR "cert-server.pem",
++	.client_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.client_expect_identity =3D "/O=3DBar Example Organization"
++		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
+ 	.client_domain_mask =3D (char *[]) {
+ 		"Foo Example Organization", "Bar Example Organization", NULL
+ 	},
+ };
  =
 
- 	/*
- 	 * Retrieve the Common Name from the Subject DN and check if it
--	 * matches.  TODO: possibly also look at SubjectAltName.
-+	 * matches.
-+	 *
-+	 * We look at the Common Name only if no DNSNames were present in
-+	 * the certificate, following Wi-Fi Alliance's Hotspot 2.0
-+	 * Specification v3.1 section 7.3.3.2 step 2:
-+	 * "Verify in the AAA server certificate that the domain name from
-+	 * the FQDN [...] is a suffix match of the domain name in@least
-+	 * one of the DNSName SubjectAltName extensions. If a SubjectAltName
-+	 * of type DNSName is not present, then the domain name from the
-+	 * FQDN shall be a suffix match to the CommonName portion of the
-+	 * SubjectName. If neither of these conditions holds, then
-+	 * verification fails."
- 	 */
-+	if (unlikely(dns_name_present))
-+		return false;
+-static const struct tls_conn_test tls_conn_test_domain_match3 =3D {
++static const struct tls_conn_test tls_conn_test_domain_match4 =3D {
++	.server_cert_path =3D CERTDIR "cert-client.pem",
++	.server_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
++	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.server_expect_identity =3D "/O=3DFoo Example Organization"
++		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
++	.client_cert_path =3D CERTDIR "cert-server.pem",
++	.client_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.client_expect_identity =3D "/O=3DBar Example Organization"
++		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
++	.client_domain_mask =3D (char *[]) { "*", NULL },
++};
++
++static const struct tls_conn_test tls_conn_test_domain_match5 =3D {
+ 	.server_cert_path =3D CERTDIR "cert-server.pem",
+ 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
+@@ -661,12 +691,10 @@ static const struct tls_conn_test tls_conn_test_domai=
+n_match3 =3D {
+ 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
+ 	.client_expect_identity =3D "/O=3DFoo Example Organization"
+ 		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
+-	.client_domain_mask =3D (char *[]) {
+-		"Bar Example Organization", "Foo Example Organization", NULL
+-	},
++	.client_domain_mask =3D (char *[]) { "foo.int.com", NULL },
+ };
  =
 
--	dn =3D l_cert_get_dn(cert, &dn_size);
-+	dn =3D l_cert_get_dn(cert, &dn_len);
- 	if (unlikely(!dn))
- 		return false;
+-static const struct tls_conn_test tls_conn_test_domain_match4 =3D {
++static const struct tls_conn_test tls_conn_test_domain_match6 =3D {
+ 	.server_cert_path =3D CERTDIR "cert-server.pem",
+ 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
+@@ -677,10 +705,10 @@ static const struct tls_conn_test tls_conn_test_domai=
+n_match4 =3D {
+ 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
+ 	.client_expect_identity =3D "/O=3DFoo Example Organization"
+ 		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
+-	.client_domain_mask =3D (char *[]) { "*", NULL },
++	.client_domain_mask =3D (char *[]) { "*.*", NULL },
+ };
  =
 
--	end =3D dn + dn_size;
-+	end =3D dn + dn_len;
- 	while (dn < end) {
- 		const uint8_t *set, *seq, *oid, *name;
- 		uint8_t tag;
-@@ -725,11 +779,11 @@ static bool tls_cert_domains_match_mask(struct l_cert=
- *cert, char **mask)
- 		}
- 	}
+-static const struct tls_conn_test tls_conn_test_domain_mismatch1 =3D {
++static const struct tls_conn_test tls_conn_test_domain_match7 =3D {
+ 	.server_cert_path =3D CERTDIR "cert-server.pem",
+ 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
+@@ -691,64 +719,96 @@ static const struct tls_conn_test tls_conn_test_domai=
+n_mismatch1 =3D {
+ 	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
+ 	.client_expect_identity =3D "/O=3DFoo Example Organization"
+ 		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
++	.client_domain_mask =3D (char *[]) { "*.*.*", NULL },
++};
++
++static const struct tls_conn_test tls_conn_test_domain_mismatch1 =3D {
++	.server_cert_path =3D CERTDIR "cert-client.pem",
++	.server_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
++	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.server_expect_identity =3D "/O=3DFoo Example Organization"
++		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
++	.client_cert_path =3D CERTDIR "cert-server.pem",
++	.client_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.client_expect_identity =3D "/O=3DBar Example Organization"
++		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
+ 	.client_domain_mask =3D (char *[]) { "", NULL },
+ 	.expect_alert =3D true,
+ 	.alert_desc =3D TLS_ALERT_BAD_CERT,
+ };
  =
 
--	if (!cn)
-+	if (unlikely(!cn))
- 		return false;
+ static const struct tls_conn_test tls_conn_test_domain_mismatch2 =3D {
+-	.server_cert_path =3D CERTDIR "cert-server.pem",
+-	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.server_cert_path =3D CERTDIR "cert-client.pem",
++	.server_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.server_expect_identity =3D "/O=3DBar Example Organization"
+-		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
+-	.client_cert_path =3D CERTDIR "cert-client.pem",
+-	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
+-	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.client_expect_identity =3D "/O=3DFoo Example Organization"
++	.server_expect_identity =3D "/O=3DFoo Example Organization"
+ 		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
+-	.client_domain_mask =3D (char *[]) { "Bar Example Organization", NULL },
++	.client_cert_path =3D CERTDIR "cert-server.pem",
++	.client_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.client_expect_identity =3D "/O=3DBar Example Organization"
++		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
++	.client_domain_mask =3D (char *[]) { "Foo Example Organization", NULL },
+ 	.expect_alert =3D true,
+ 	.alert_desc =3D TLS_ALERT_BAD_CERT,
+ };
  =
 
--	for (; *mask; mask++)
--		if (tls_domain_match_mask(cn, cn_len, *mask, strlen(*mask)))
-+	for (i =3D mask; *i; i++)
-+		if (tls_domain_match_mask(cn, cn_len, *i, strlen(*i)))
- 			return true;
+ static const struct tls_conn_test tls_conn_test_domain_mismatch3 =3D {
+-	.server_cert_path =3D CERTDIR "cert-server.pem",
+-	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.server_cert_path =3D CERTDIR "cert-client.pem",
++	.server_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.server_expect_identity =3D "/O=3DBar Example Organization"
+-		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
+-	.client_cert_path =3D CERTDIR "cert-client.pem",
+-	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
+-	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.client_expect_identity =3D "/O=3DFoo Example Organization"
++	.server_expect_identity =3D "/O=3DFoo Example Organization"
+ 		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
++	.client_cert_path =3D CERTDIR "cert-server.pem",
++	.client_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.client_expect_identity =3D "/O=3DBar Example Organization"
++		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
+ 	.client_domain_mask =3D (char *[]) {
+-		"Foo Example Organization.com", NULL
++		"Bar Example Organization.com", NULL
+ 	},
+ 	.expect_alert =3D true,
+ 	.alert_desc =3D TLS_ALERT_BAD_CERT,
+ };
  =
 
- 	return false;
+ static const struct tls_conn_test tls_conn_test_domain_mismatch4 =3D {
+-	.server_cert_path =3D CERTDIR "cert-server.pem",
+-	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.server_cert_path =3D CERTDIR "cert-client.pem",
++	.server_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.server_expect_identity =3D "/O=3DBar Example Organization"
+-		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
+-	.client_cert_path =3D CERTDIR "cert-client.pem",
+-	.client_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
+-	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
+-	.client_expect_identity =3D "/O=3DFoo Example Organization"
++	.server_expect_identity =3D "/O=3DFoo Example Organization"
+ 		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
++	.client_cert_path =3D CERTDIR "cert-server.pem",
++	.client_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.client_expect_identity =3D "/O=3DBar Example Organization"
++		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
+ 	.client_domain_mask =3D (char *[]) {
+-		"Foo Example Organization.*", NULL
++		"Bar Example Organization.*", NULL
+ 	},
+ 	.expect_alert =3D true,
+ 	.alert_desc =3D TLS_ALERT_BAD_CERT,
+ };
+ =
+
+ static const struct tls_conn_test tls_conn_test_domain_mismatch5 =3D {
++	.server_cert_path =3D CERTDIR "cert-client.pem",
++	.server_key_path =3D CERTDIR "cert-client-key-pkcs8.pem",
++	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.server_expect_identity =3D "/O=3DFoo Example Organization"
++		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
++	.client_cert_path =3D CERTDIR "cert-server.pem",
++	.client_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path =3D CERTDIR "cert-ca.pem",
++	.client_expect_identity =3D "/O=3DBar Example Organization"
++		"/CN=3DBar Example Organization/emailAddress=3Dbar(a)mail.example",
++	.client_domain_mask =3D (char *[]) {
++		"*.Bar Example Organization", NULL
++	},
++	.expect_alert =3D true,
++	.alert_desc =3D TLS_ALERT_BAD_CERT,
++};
++
++static const struct tls_conn_test tls_conn_test_domain_mismatch6 =3D {
+ 	.server_cert_path =3D CERTDIR "cert-server.pem",
+ 	.server_key_path =3D CERTDIR "cert-server-key-pkcs8.pem",
+ 	.server_ca_cert_path =3D CERTDIR "cert-ca.pem",
+@@ -760,7 +820,7 @@ static const struct tls_conn_test tls_conn_test_domain_=
+mismatch5 =3D {
+ 	.client_expect_identity =3D "/O=3DFoo Example Organization"
+ 		"/CN=3DFoo Example Organization/emailAddress=3Dfoo(a)mail.example",
+ 	.client_domain_mask =3D (char *[]) {
+-		"*.Foo Example Organization", NULL
++		"foo.*", NULL
+ 	},
+ 	.expect_alert =3D true,
+ 	.alert_desc =3D TLS_ALERT_BAD_CERT,
+@@ -878,6 +938,12 @@ int main(int argc, char *argv[])
+ 			&tls_conn_test_domain_match3);
+ 	l_test_add("TLS connection domain match 4", test_tls_test,
+ 			&tls_conn_test_domain_match4);
++	l_test_add("TLS connection domain match 5", test_tls_test,
++			&tls_conn_test_domain_match5);
++	l_test_add("TLS connection domain match 6", test_tls_test,
++			&tls_conn_test_domain_match6);
++	l_test_add("TLS connection domain match 7", test_tls_test,
++			&tls_conn_test_domain_match7);
+ 	l_test_add("TLS connection domain mismatch 1", test_tls_test,
+ 			&tls_conn_test_domain_mismatch1);
+ 	l_test_add("TLS connection domain mismatch 2", test_tls_test,
+@@ -888,6 +954,8 @@ int main(int argc, char *argv[])
+ 			&tls_conn_test_domain_mismatch4);
+ 	l_test_add("TLS connection domain mismatch 5", test_tls_test,
+ 			&tls_conn_test_domain_mismatch5);
++	l_test_add("TLS connection domain mismatch 6", test_tls_test,
++			&tls_conn_test_domain_mismatch6);
+ =
+
+ 	for (i =3D 0; tls_cipher_suite_pref[i]; i++) {
+ 		struct tls_cipher_suite *suite =3D tls_cipher_suite_pref[i];
 -- =
 
 2.20.1
 
 
---===============8433022996763910716==--
+--===============1777895895006364407==--
 
