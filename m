@@ -1,64 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============2178793912052530082=="
+Content-Type: multipart/mixed; boundary="===============6075457276668861173=="
 MIME-Version: 1.0
-From: Ossama Othman <ossama.othman@intel.com>
-Subject: [PATCH 1/2] unit: Add l_uintset_isempty() test
-Date: Mon, 16 Sep 2019 13:36:09 -0700
-Message-ID: <20190916203610.19722-2-ossama.othman@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 0/2] Correct l_uintset_isempty() logic
+Date: Mon, 16 Sep 2019 15:43:18 -0500
+Message-ID: <54919aa1-90e4-ea7c-2796-8bc1f50a94c6@gmail.com>
 In-Reply-To: <20190916203610.19722-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2178793912052530082==
+--===============6075457276668861173==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-uintset.c | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+Hi Ossama,
 
-diff --git a/unit/test-uintset.c b/unit/test-uintset.c
-index 99888b3..3c9790e 100644
---- a/unit/test-uintset.c
-+++ b/unit/test-uintset.c
-@@ -347,6 +347,22 @@ static void test_uintset_intersect_test(const void *us=
-er_data)
- 	l_uintset_free(set_r);
- }
- =
+On 9/16/19 3:36 PM, Ossama Othman wrote:
+> The loop iteration over the 'bits' array in l_uintset_isempty()
+> exceeded the maximum offset for the given l_uintset, resulting in
+> out-of-bounds bits being considered for emptiness.  Add a test that
+> demonstrates the problem, and correct the maximum offset when
+> iterating over the l_uintset 'bits' field.
+> =
 
-+static void test_uintset_isempty(const void *user_data)
-+{
-+	struct l_uintset *a =3D NULL;
-+	struct l_uintset *b =3D l_uintset_new(32);
-+	struct l_uintset *c =3D l_uintset_new(32);
-+
-+	assert(l_uintset_put(c, 10));
-+
-+	assert(l_uintset_isempty(a));
-+	assert(l_uintset_isempty(b));
-+	assert(!l_uintset_isempty(c));
-+
-+	l_uintset_free(c);
-+	l_uintset_free(b);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -364,6 +380,7 @@ int main(int argc, char *argv[])
- 							&intersect_data_1);
- 	l_test_add("l_uintset intersect test 2", test_uintset_intersect_test,
- 							&intersect_data_2);
-+	l_test_add("l_uintset isempty", test_uintset_isempty, NULL);
- =
+> Ossama Othman (2):
+>    unit: Add l_uintset_isempty() test
+>    uintset: Do not exceed max offset in empty check
+> =
 
- 	return l_test_run();
- }
--- =
-
-2.20.1
+>   ell/uintset.c       |  5 ++++-
+>   unit/test-uintset.c | 17 +++++++++++++++++
+>   2 files changed, 21 insertions(+), 1 deletion(-)
+> =
 
 
---===============2178793912052530082==--
+Nice catch, both applied.
+
+Regards,
+-Denis
+
+--===============6075457276668861173==--
 
