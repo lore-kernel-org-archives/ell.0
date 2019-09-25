@@ -1,43 +1,59 @@
-Content-Type: multipart/mixed; boundary="===============6075457276668861173=="
+Content-Type: multipart/mixed; boundary="===============8966480295783531680=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 0/2] Correct l_uintset_isempty() logic
-Date: Mon, 16 Sep 2019 15:43:18 -0500
-Message-ID: <54919aa1-90e4-ea7c-2796-8bc1f50a94c6@gmail.com>
-In-Reply-To: <20190916203610.19722-1-ossama.othman@intel.com>
+From: Jonas Witschel <diabonas@gmx.de>
+Subject: [PATCH] tls: raise min DH prime modulus length to 1536 bit
+Date: Wed, 25 Sep 2019 18:45:24 +0200
+Message-ID: <20190925164524.80994-1-diabonas@gmx.de>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6075457276668861173==
+--===============8966480295783531680==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+The minimum prime length required by the Linux kernel for DH
+calculations is 1536 bit. If a smaller prime is used,
+keyctl_dh_compute() will fail with EINVAL, cf. dh_check_params_length()
+and dh_set_params() in crypto/dh.c of the kernel sources.
 
-On 9/16/19 3:36 PM, Ossama Othman wrote:
-> The loop iteration over the 'bits' array in l_uintset_isempty()
-> exceeded the maximum offset for the given l_uintset, resulting in
-> out-of-bounds bits being considered for emptiness.  Add a test that
-> demonstrates the problem, and correct the maximum offset when
-> iterating over the l_uintset 'bits' field.
-> =
+On encountering a smaller prime, ELL currently fails in
+tls_send_dhe_client_key_xchg() with the not very instructive error
+message "l_key_compute_dh_public failed". Since any prime smaller than
+1536 bit is guaranteed to fail at this step, raise the already existing
+minimum length check so that the handshake fails with the message
+"Server DH prime modulus invalid" instead. This does not have any
+compatibility implications since smaller primes never worked in the
+first place, but gives a clearer indication of what went wrong.
+---
+ ell/tls-suites.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-> Ossama Othman (2):
->    unit: Add l_uintset_isempty() test
->    uintset: Do not exceed max offset in empty check
-> =
+diff --git a/ell/tls-suites.c b/ell/tls-suites.c
+index 9e020bd..ecaa2ec 100644
+--- a/ell/tls-suites.c
++++ b/ell/tls-suites.c
+@@ -880,13 +880,13 @@ static void tls_handle_dhe_server_key_xchg(struct l_t=
+ls *tls,
+ 	 * We have no way to confirm that it's actually prime or that it's a
+ 	 * "safe prime" or that it forms a group without small sub-groups.
+ 	 * There's also no way to whitelist all valid values.  But we do a
+-	 * basic sanity check and require it to be 1024-bit or longer
+-	 * (see weakdh.org), might need to move to 2048 bits actually.
++	 * basic sanity check and require it to be 1536-bit or longer, the
++	 * minimum length required by the Linux kernel for keyctl_dh_compute().
+ 	 * The generator must also be at least within the min & max interval
+ 	 * for the private/public values.
+ 	 */
 
->   ell/uintset.c       |  5 ++++-
->   unit/test-uintset.c | 17 +++++++++++++++++
->   2 files changed, 21 insertions(+), 1 deletion(-)
-> =
+-	if (params->prime_len > TLS_DHE_MAX_SIZE || params->prime_len < 128 ||
++	if (params->prime_len > TLS_DHE_MAX_SIZE || params->prime_len < 192 ||
+ 			!(prime_buf[params->prime_len - 1] & 1)) {
+ 		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
+ 				"Server DH prime modulus invalid");
+--
+2.23.0
 
 
-Nice catch, both applied.
-
-Regards,
--Denis
-
---===============6075457276668861173==--
+--===============8966480295783531680==--
 
