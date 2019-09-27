@@ -1,46 +1,51 @@
-Content-Type: multipart/mixed; boundary="===============1425955563501724472=="
+Content-Type: multipart/mixed; boundary="===============6626880088639003879=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] tls: raise min DH prime modulus length to 1536 bit
-Date: Wed, 25 Sep 2019 21:30:39 -0500
-Message-ID: <a8ba65ab-d722-c388-c7af-3281573d9a08@gmail.com>
-In-Reply-To: <20190925164524.80994-1-diabonas@gmx.de>
+From: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH 0/5] Extended group format
+Date: Fri, 27 Sep 2019 12:30:04 -0700
+Message-ID: <20190927193009.30262-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1425955563501724472==
+--===============6626880088639003879==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Jonas,
+Most of the details are explained in the patch notes, but the main
+reasoning for this is to allow embedding PEMs inside an l_settings
+file. We have found that some systems are provisioned with certificates
+in /home/<user>/.cert/. System services are not really intended to have
+access to /home (though this is not always the case), and for IWD
+we do not want to allow that. For this reason it makes a lot of sense
+to include the certs in the provisioning file. This also makes
+provisioning much easier from both an admin and user perspective as you
+just need to supply a single file rather than the network config plus
+certificates/keys.
 
-On 9/25/19 11:45 AM, Jonas Witschel wrote:
-> The minimum prime length required by the Linux kernel for DH
-> calculations is 1536 bit. If a smaller prime is used,
-> keyctl_dh_compute() will fail with EINVAL, cf. dh_check_params_length()
-> and dh_set_params() in crypto/dh.c of the kernel sources.
-> =
+James Prestwood (5):
+  pem: add _from_data variants to pem APIs
+  unit/test-pem: add tests for new _from_data APIs
+  pem: expose is_{start,end}_boundary
+  settings: introduce extended groups concept
+  unit/test-settings: add pem extended type tests
 
-> On encountering a smaller prime, ELL currently fails in
-> tls_send_dhe_client_key_xchg() with the not very instructive error
-> message "l_key_compute_dh_public failed". Since any prime smaller than
-> 1536 bit is guaranteed to fail at this step, raise the already existing
-> minimum length check so that the handshake fails with the message
-> "Server DH prime modulus invalid" instead. This does not have any
-> compatibility implications since smaller primes never worked in the
-> first place, but gives a clearer indication of what went wrong.
-> ---
->   ell/tls-suites.c | 6 +++---
->   1 file changed, 3 insertions(+), 3 deletions(-)
-> =
+ ell/ell.sym          |   5 +
+ ell/pem.c            | 152 ++++++++++++++++++++--------
+ ell/pem.h            |   7 ++
+ ell/settings.c       | 231 +++++++++++++++++++++++++++++++++++++++++-
+ ell/settings.h       |   5 +
+ pem-private.h        |  33 ++++++
+ unit/settings.test   |  28 ++++++
+ unit/test-pem.c      | 163 ++++++++++++++++++++++++++++++
+ unit/test-settings.c | 234 ++++++++++++++++++++++++++++++++++++++++++-
+ 9 files changed, 806 insertions(+), 52 deletions(-)
+ create mode 100644 pem-private.h
 
+-- =
 
-Applied, thanks.
-
-Regards,
--Denis
+2.17.1
 
 
---===============1425955563501724472==--
+--===============6626880088639003879==--
 
