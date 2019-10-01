@@ -1,258 +1,427 @@
-Content-Type: multipart/mixed; boundary="===============3376189997983233299=="
+Content-Type: multipart/mixed; boundary="===============6119523611795930463=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v4 1/3] pem: refactor to expose pem iterator privately
-Date: Tue, 01 Oct 2019 14:21:46 -0700
-Message-ID: <20191001212148.19721-1-prestwoj@gmail.com>
+Subject: [PATCH v4 2/3] settings: introduce extended groups concept
+Date: Tue, 01 Oct 2019 14:21:47 -0700
+Message-ID: <20191001212148.19721-2-prestwoj@gmail.com>
+In-Reply-To: <20191001212148.19721-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3376189997983233299==
+--===============6119523611795930463==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This refactors pem.c to expose a new internal API, pem_next. This
-API will allow iteration/parsing of PEM(s). Other APIs in pem.c were
-updated to use pem_next.
+This patch introduces a new extended format for settings files. This new
+format allows raw data to be provided under a given group rather than
+key/value pairs. A group using an extended format will contain both the
+extended type and group name in the format, for example:
 
-pem_next behaves similar to pem_load_buffer, except it does not do
-any base64 decoding. Instead it just returns the start of the PEM as
-a string, and the length as an out parameter. This allows simple
-PEM iteration loops. Strictly for pem.c usage we decode the base64
-string in the loop, but settings.c will need this for parsing PEMs
-from settings files and returning the PEM as a full string, including
-the start/end tags.
+[@pem(a)certificate]
 
-endp was removed from pem_load_buffer as it was no longer being used.
+Where 'pem' is the type and 'certificate' is the name. The type of
+format requires an extension specific parser implementation in settings
+as the parser must know when to start/stop parsing data. This allows for
+any textual characters to be present after the group is declared,
+including special characters like [] (its completely up to the parser to
+decide whats valid and what is not).
+
+Three new l_settings APIs were added:
+
+l_settings_has_embedded_group
+l_settings_get_embedded_groups
+l_settings_get_embedded_value
+
+In this patch, the 'pem' extension type is also introduced, and for now
+is the only extended type. The pem extended type expects a base64 encoded
+PEM (or list of PEMs) after the group. The pem parser will stop after the
+last PEM is found. Examples can be found in unit/test-settings.c
 ---
- ell/pem-private.h | 32 ++++++++++++++++++++
- ell/pem.c         | 77 ++++++++++++++++++++++++++++++++---------------
- 2 files changed, 85 insertions(+), 24 deletions(-)
- create mode 100644 ell/pem-private.h
+ ell/ell.sym    |   3 +
+ ell/settings.c | 234 ++++++++++++++++++++++++++++++++++++++++++++++---
+ ell/settings.h |   7 ++
+ 3 files changed, 233 insertions(+), 11 deletions(-)
 
 -v4:
- * Added 'stict' argument to pem_next. =
+ * Updated to properly detect parsing error vs no more certs (using endp)
 
-
-diff --git a/ell/pem-private.h b/ell/pem-private.h
-new file mode 100644
-index 0000000..bb0127f
---- /dev/null
-+++ b/ell/pem-private.h
-@@ -0,0 +1,32 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2019  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#define _GNU_SOURCE
-+#include <sys/types.h>
-+
-+const char *pem_next(const void *buf, size_t buf_len, char **type_label,
-+				size_t *len, size_t *base64_len,
-+				const char **endp, bool strict);
-diff --git a/ell/pem.c b/ell/pem.c
-index c2bf7ba..79e4d07 100644
---- a/ell/pem.c
-+++ b/ell/pem.c
-@@ -45,6 +45,7 @@
- #include "cipher.h"
- #include "cert-private.h"
+diff --git a/ell/ell.sym b/ell/ell.sym
+index e02f0fe..32d94f5 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -425,6 +425,9 @@ global:
+ 	l_settings_set_float;
+ 	l_settings_remove_group;
+ 	l_settings_remove_key;
++	l_settings_has_embedded_group;
++	l_settings_get_embedded_groups;
++	l_settings_get_embedded_value;
+ 	/* signal */
+ 	l_signal_create;
+ 	l_signal_remove;
+diff --git a/ell/settings.c b/ell/settings.c
+index 98f0cfd..70dc7d0 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -48,15 +48,23 @@
+ #include "settings.h"
+ #include "private.h"
  #include "missing.h"
 +#include "pem-private.h"
  =
 
- #define PEM_START_BOUNDARY	"-----BEGIN "
- #define PEM_END_BOUNDARY	"-----END "
-@@ -126,15 +127,15 @@ static bool is_end_boundary(const void *buf, size_t b=
-uf_len,
- 	return true;
+ struct setting_data {
+ 	char *key;
+ 	char *value;
+ };
+ =
+
++struct embedded_group_data {
++	char type[32];
++	size_t len;
++	char data[0];
++};
++
+ struct group_data {
+ 	char *name;
+ 	struct l_queue *settings;
++	struct embedded_group_data *embedded_data;
+ };
+ =
+
+ struct l_settings {
+@@ -81,7 +89,11 @@ static void group_destroy(void *data)
+ 	struct group_data *group =3D data;
+ =
+
+ 	l_free(group->name);
+-	l_queue_destroy(group->settings, setting_destroy);
++
++	if (group->settings)
++		l_queue_destroy(group->settings, setting_destroy);
++	else
++		l_free(group->embedded_data);
+ =
+
+ 	l_free(group);
+ }
+@@ -222,6 +234,128 @@ static char *escape_value(const char *value)
+ 	return ret;
  }
  =
 
--static uint8_t *pem_load_buffer(const void *buf, size_t buf_len,
--				char **type_label, size_t *len,
--				const uint8_t **endp)
-+const char *pem_next(const void *buf, size_t buf_len, char **type_label,
-+				size_t *len, size_t *base64_len,
-+				const char **endp, bool strict)
- {
- 	const char *buf_ptr =3D buf;
- 	const char *base64_data =3D NULL, *eol;
- 	const char *label =3D NULL;
--	uint8_t *data;
- 	size_t label_len =3D 0;
-+	const char *start =3D NULL;
- =
-
- 	/*
- 	 * The base64 parser uses the RFC7468 laxbase64text grammar but we
-@@ -148,26 +149,28 @@ static uint8_t *pem_load_buffer(const void *buf, size=
-_t buf_len,
- 				break;
- =
-
- 		if (!base64_data) {
--			label =3D is_start_boundary(buf, eol - buf_ptr,
-+			label =3D is_start_boundary(buf_ptr, eol - buf_ptr,
- 							&label_len);
--
--			if (label)
-+			if (label) {
-+				start =3D label - strlen("-----BEGIN ");
- 				base64_data =3D eol;
--		} else if (is_end_boundary(buf_ptr, eol - buf_ptr, label,
--							label_len)) {
--			data =3D l_base64_decode(
--					(const char *) base64_data,
--					buf_ptr - base64_data, len);
--			if (!data)
--				return NULL;
-+			} else if (strict)
-+				break;
-+		} else if (start && is_end_boundary(buf_ptr, eol - buf_ptr,
-+							label, label_len)) {
-+			if (len)
-+				*len =3D eol - start + 1;
- =
-
--			*type_label =3D l_strndup((const char *) label,
--							label_len);
-+			if (type_label)
-+				*type_label =3D l_strndup(label, label_len);
++static ssize_t parse_pem(const char *data, size_t len)
++{
++	const char *ptr, *end;
++	size_t count =3D 0;
 +
-+			if (base64_len)
-+				*base64_len =3D buf_ptr - base64_data - 1;
++	ptr =3D data;
++	end =3D data + len;
++
++	while (ptr && ptr < end) {
++		size_t out_len =3D 0;
++
++		if (!pem_next(ptr, len, NULL, &out_len, NULL, &ptr, true)) {
++			if (ptr)
++				return -EINVAL;
++
++			break;
++		}
++
++		len -=3D out_len;
++		count +=3D out_len;
++	}
++
++	return count;
++}
++
++struct group_extension {
++	char *name;
++	ssize_t (*parse)(const char *data, size_t len);
++};
++
++static struct group_extension pem_extension =3D {
++	.name =3D "pem",
++	.parse =3D parse_pem,
++};
++
++struct group_extension *extensions[] =3D {
++	&pem_extension,
++	NULL
++};
++
++static struct group_extension *find_group_extension(const char *type)
++{
++	unsigned int i;
++
++	for (i =3D 0; extensions[i]; i++) {
++		if (!strcmp(type, extensions[i]->name))
++			return extensions[i];
++	}
++
++	return NULL;
++}
++
++static ssize_t parse_embedded_group(struct l_settings *setting, const char=
+ *data,
++					size_t line_len, size_t len)
++{
++	struct group_data *group;
++	struct group_extension *ext;
++	const char *ptr1, *ptr2;
++	L_AUTO_FREE_VAR(char *, type) =3D NULL;
++	char *name;
++	ssize_t bytes;
++
++	/* Must be at least [@a(a)b]\n */
++	if (line_len < 7)
++		return -EINVAL;
++
++	/* caller checked data[1] =3D=3D '@' */
++	ptr1 =3D data + 1;
++
++	ptr2 =3D ptr1 + 1;
++
++	while (*ptr2 !=3D '@' && (size_t)(ptr2 - data) < line_len)
++		ptr2++;
++
++	if (*ptr2 !=3D '@')
++		return -EINVAL;
++
++	type =3D l_strndup(ptr1 + 1, ptr2 - ptr1 - 1);
++
++	ptr1 =3D ptr2;
++
++	while (*ptr1 !=3D ']' && (size_t)(ptr1 - data) < line_len)
++		ptr1++;
++
++	if (*ptr1 !=3D ']')
++		return -EINVAL;
++
++	if (ptr1[1] !=3D '\n')
++		return -EINVAL;
++
++	if (ptr1 - ptr2 - 1 < 1)
++		return -EINVAL;
++
++	name =3D l_strndup(ptr2 + 1, ptr1 - ptr2 - 1);
++
++	ext =3D find_group_extension(type);
++	if (!ext)
++		goto free_name;
++
++	bytes =3D ext->parse(ptr1 + 2, len - line_len);
++	if (bytes < 0)
++		goto free_name;
++
++	group =3D l_new(struct group_data, 1);
++
++	group->name =3D name;
++	group->embedded_data =3D l_malloc(sizeof(struct embedded_group_data) +
++						bytes + 1);
++	strcpy(group->embedded_data->type, type);
++	group->embedded_data->len =3D bytes;
++	memcpy(group->embedded_data->data, ptr1 + 2, bytes);
++	group->embedded_data->data[bytes] =3D '\0';
++
++	l_queue_push_tail(setting->groups, group);
++
++	return bytes;
++
++free_name:
++	l_free(name);
++	return -EINVAL;
++}
++
+ static bool parse_group(struct l_settings *settings, const char *data,
+ 			size_t len, size_t line)
+ {
+@@ -404,7 +538,20 @@ LIB_EXPORT bool l_settings_load_from_data(struct l_set=
+tings *settings,
  =
 
- 			if (endp)
--				*endp =3D (uint8_t *)eol + 1;
-+				*endp =3D eol + 1;
+ 		line_len =3D eol - data - pos;
  =
 
--			return data;
-+			return base64_data;
+-		if (data[pos] =3D=3D '[') {
++		if (line_len > 1 && data[pos] =3D=3D '[' && data[pos + 1] =3D=3D '@') {
++			ssize_t ret;
++
++			ret =3D parse_embedded_group(settings, data + pos,
++							line_len, len - pos);
++			if (ret < 0)
++				return false;
++
++			/*
++			 * This is the offset for the actual raw data, the
++			 * group line will be offset below
++			 */
++			pos +=3D ret;
++		} else if (data[pos] =3D=3D '[') {
+ 			r =3D parse_group(settings, data + pos, line_len, line);
+ 			if (r)
+ 				has_group =3D true;
+@@ -437,10 +584,18 @@ LIB_EXPORT char *l_settings_to_data(const struct l_se=
+ttings *settings,
+ 	group_entry =3D l_queue_get_entries(settings->groups);
+ 	while (group_entry) {
+ 		struct group_data *group =3D group_entry->data;
+-		const struct l_queue_entry *setting_entry =3D
+-				l_queue_get_entries(group->settings);
++		const struct l_queue_entry *setting_entry;
++
++		if (group->embedded_data) {
++			l_string_append_printf(buf, "[@%s@%s]\n%s",
++					group->embedded_data->type,
++					group->name,
++					group->embedded_data->data);
++			goto group_done;
++		} else
++			l_string_append_printf(buf, "[%s]\n", group->name);
+ =
+
+-		l_string_append_printf(buf, "[%s]\n", group->name);
++		setting_entry =3D l_queue_get_entries(group->settings);
+ =
+
+ 		while (setting_entry) {
+ 			struct setting_data *setting =3D setting_entry->data;
+@@ -450,6 +605,7 @@ LIB_EXPORT char *l_settings_to_data(const struct l_sett=
+ings *settings,
+ 			setting_entry =3D setting_entry->next;
  		}
  =
 
- 		if (eol =3D=3D buf_ptr + buf_len)
-@@ -189,10 +192,24 @@ static uint8_t *pem_load_buffer(const void *buf, size=
-_t buf_len,
- 	return NULL;
++group_done:
+ 		if (group_entry->next)
+ 			l_string_append_c(buf, '\n');
+ =
+
+@@ -552,24 +708,24 @@ static void gather_groups(void *data, void *user_data)
+ 	struct group_data *group_data =3D data;
+ 	struct gather_data *gather =3D user_data;
+ =
+
+-	gather->v[gather->cur++] =3D l_strdup(group_data->name);
++	if (!group_data->settings)
++		return;
++
++	gather->v =3D l_strv_append(gather->v, group_data->name);
  }
  =
 
-+static uint8_t *pem_load_buffer(const void *buf, size_t buf_len,
-+				char **type_label, size_t *len)
+ LIB_EXPORT char **l_settings_get_groups(const struct l_settings *settings)
+ {
+-	char **ret;
+ 	struct gather_data gather;
+ =
+
+ 	if (unlikely(!settings))
+ 		return NULL;
+ =
+
+-	ret =3D l_new(char *, l_queue_length(settings->groups) + 1);
+-	gather.v =3D ret;
+-	gather.cur =3D 0;
++	gather.v =3D l_strv_new();
+ =
+
+ 	l_queue_foreach(settings->groups, gather_groups, &gather);
+ =
+
+-	return ret;
++	return gather.v;
+ }
+ =
+
+ LIB_EXPORT bool l_settings_has_group(const struct l_settings *settings,
+@@ -1176,3 +1332,59 @@ LIB_EXPORT bool l_settings_remove_key(struct l_setti=
+ngs *settings,
+ =
+
+ 	return true;
+ }
++
++static void gather_embedded_groups(void *data, void *user_data)
 +{
-+	size_t base64_len;
-+	const char *base64;
++	struct group_data *group_data =3D data;
++	struct gather_data *gather =3D user_data;
 +
-+	base64 =3D pem_next(buf, buf_len, type_label, NULL, &base64_len,
-+				NULL, false);
-+	if (!base64)
-+		return NULL;
++	if (!group_data->embedded_data)
++		return;
 +
-+	return l_base64_decode(base64, base64_len, len);
++	gather->v =3D l_strv_append(gather->v, group_data->name);
 +}
 +
- LIB_EXPORT uint8_t *l_pem_load_buffer(const void *buf, size_t buf_len,
- 					char **type_label, size_t *out_len)
- {
--	return pem_load_buffer(buf, buf_len, type_label, out_len, NULL);
-+	return pem_load_buffer(buf, buf_len, type_label, out_len);
- }
- =
-
- struct pem_file_info {
-@@ -242,7 +259,7 @@ LIB_EXPORT uint8_t *l_pem_load_file(const char *filenam=
-e,
- 		return NULL;
- =
-
- 	result =3D pem_load_buffer(file.data, file.st.st_size,
--					type_label, len, NULL);
-+					type_label, len);
- 	pem_file_close(&file);
- 	return result;
- }
-@@ -288,7 +305,7 @@ LIB_EXPORT struct l_certchain *l_pem_load_certificate_c=
-hain(
- LIB_EXPORT struct l_queue *l_pem_load_certificate_list_from_data(
- 						const void *buf, size_t len)
- {
--	const uint8_t *ptr, *end;
-+	const char *ptr, *end;
- 	struct l_queue *list =3D NULL;
- =
-
- 	ptr =3D buf;
-@@ -297,10 +314,22 @@ LIB_EXPORT struct l_queue *l_pem_load_certificate_lis=
-t_from_data(
- 	while (ptr && ptr < end) {
- 		uint8_t *der;
- 		size_t der_len;
--		char *label;
-+		char *label =3D NULL;
- 		struct l_cert *cert;
-+		size_t out_len =3D 0;
-+		const char *base64;
-+		size_t base64_len;
++LIB_EXPORT char **l_settings_get_embedded_groups(struct l_settings *settin=
+gs)
++{
++	struct gather_data gather;
 +
-+		base64 =3D pem_next(ptr, len, &label, &out_len, &base64_len,
-+					&ptr, false);
-+		/* if ptr is set but we got NULL, this was a parse error */
-+		if (!base64 && ptr)
-+			goto error;
++	if (unlikely(!settings))
++		return NULL;
 +
-+		if (!base64)
-+			break;
- =
-
--		der =3D pem_load_buffer(ptr, end - ptr, &label, &der_len, &ptr);
-+		der =3D l_base64_decode(base64, base64_len, &der_len);
- =
-
- 		if (!der || strcmp(label, "CERTIFICATE")) {
- 			if (der)
-@@ -470,7 +499,7 @@ LIB_EXPORT struct l_key *l_pem_load_private_key_from_da=
-ta(const void *buf,
- 	if (encrypted)
- 		*encrypted =3D false;
- =
-
--	content =3D pem_load_buffer(buf, buf_len, &label, &len, NULL);
-+	content =3D pem_load_buffer(buf, buf_len, &label, &len);
- =
-
- 	if (!content)
- 		return NULL;
++	gather.v =3D l_strv_new();
++
++	l_queue_foreach(settings->groups, gather_embedded_groups, &gather);
++
++	return gather.v;
++}
++
++LIB_EXPORT bool l_settings_has_embedded_group(struct l_settings *settings,
++						const char *group)
++{
++	struct group_data *group_data;
++
++	if (unlikely(!settings))
++		return false;
++
++	group_data =3D l_queue_find(settings->groups, group_match, group);
++
++	return group_data->embedded_data !=3D NULL;
++}
++
++LIB_EXPORT const char *l_settings_get_embedded_value(struct l_settings *se=
+ttings,
++							const char *group_name,
++							const char **out_type)
++{
++	struct group_data *group;
++
++	if (unlikely(!settings))
++		return false;
++
++	group =3D l_queue_find(settings->groups, group_match, group_name);
++	if (!group || !group->embedded_data)
++		return NULL;
++
++	*out_type =3D group->embedded_data->type;
++
++	return group->embedded_data->data;
++}
+diff --git a/ell/settings.h b/ell/settings.h
+index 0da9f55..e4203af 100644
+--- a/ell/settings.h
++++ b/ell/settings.h
+@@ -123,6 +123,13 @@ bool l_settings_remove_key(struct l_settings *settings=
+, const char *group_name,
+ 				const char *key);
+ bool l_settings_remove_group(struct l_settings *settings,
+ 				const char *group_name);
++
++char **l_settings_get_embedded_groups(struct l_settings *settings);
++bool l_settings_has_embedded_group(struct l_settings *settings,
++					const char *group);
++const char *l_settings_get_embedded_value(struct l_settings *settings,
++						const char *group_name,
++						const char **out_type);
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
 2.17.1
 
---===============3376189997983233299==--
+--===============6119523611795930463==--
 
