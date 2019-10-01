@@ -1,82 +1,91 @@
-Content-Type: multipart/mixed; boundary="===============5866619359698458690=="
+Content-Type: multipart/mixed; boundary="===============0367571900756392460=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v2 2/3] unit: update test-tls to use new API definition
-Date: Tue, 01 Oct 2019 14:31:39 -0700
-Message-ID: <20191001213140.2163-2-prestwoj@gmail.com>
+Subject: [PATCH v2 3/3] examples: update https server/client with new TLS APIs
+Date: Tue, 01 Oct 2019 14:31:40 -0700
+Message-ID: <20191001213140.2163-3-prestwoj@gmail.com>
 In-Reply-To: <20191001213140.2163-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5866619359698458690==
+--===============0367571900756392460==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-tls.c | 32 ++++++++++++++++++++++++--------
- 1 file changed, 24 insertions(+), 8 deletions(-)
+ examples/https-client-test.c | 11 +++++++++--
+ examples/https-server-test.c | 11 +++++++++--
+ 2 files changed, 18 insertions(+), 4 deletions(-)
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index 9243e16..2c0ea5c 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -528,6 +528,13 @@ static void test_tls_with_ver(const struct tls_conn_te=
-st *test,
- 		},
- 	};
+diff --git a/examples/https-client-test.c b/examples/https-client-test.c
+index 9a765c6..281bdb8 100644
+--- a/examples/https-client-test.c
++++ b/examples/https-client-test.c
+@@ -134,6 +134,9 @@ int main(int argc, char *argv[])
+ 	struct sockaddr_in addr;
+ 	int fd;
+ 	bool auth_ok;
++	struct l_certchain *cert;
++	struct l_key *priv_key;
++	struct l_queue *ca_cert;
  =
 
-+	struct l_certchain *server_cert;
-+	struct l_certchain *client_cert;
-+	struct l_key *server_key;
-+	struct l_key *client_key;
-+	struct l_queue *server_ca;
-+	struct l_queue *client_ca;
-+
- 	/* Server */
- 	s[0].tls =3D l_tls_new(true, tls_test_new_data, tls_test_write,
- 				tls_test_ready, tls_test_disconnected, &s[0]);
-@@ -556,16 +563,25 @@ static void test_tls_with_ver(const struct tls_conn_t=
-est *test,
+ 	if (argc !=3D 2 && argc !=3D 3 && argc !=3D 6) {
+ 		printf("Usage: %s <https-host-name> [<ca-cert-path> "
+@@ -189,9 +192,13 @@ int main(int argc, char *argv[])
  	if (getenv("TLS_DEBUG"))
- 		l_tls_set_debug(s[1].tls, tls_debug_cb, "client", NULL);
+ 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
  =
 
--	auth_ok =3D l_tls_set_auth_data(s[0].tls, test->server_cert_path,
--					test->server_key_path,
--					test->server_key_passphrase);
-+	server_cert =3D l_pem_load_certificate_chain(test->server_cert_path);
-+	client_cert =3D l_pem_load_certificate_chain(test->client_cert_path);
+-	auth_ok =3D (argc <=3D 2 || l_tls_set_cacert(tls, argv[2])) &&
++	ca_cert =3D l_pem_load_certificate_list(argv[2]);
++	cert =3D l_pem_load_certificate_chain(argv[3]);
++	priv_key =3D l_pem_load_private_key(argv[4], argv[5], NULL);
 +
-+	server_key =3D l_pem_load_private_key(test->server_key_path,
-+						test->server_key_passphrase,
-+						NULL);
-+	client_key =3D l_pem_load_private_key(test->client_key_path,
-+						test->client_key_passphrase,
-+						NULL);
-+
-+	server_ca =3D l_pem_load_certificate_list(test->server_ca_cert_path);
-+	client_ca =3D l_pem_load_certificate_list(test->client_ca_cert_path);
-+
-+	auth_ok =3D l_tls_set_auth_data(s[0].tls, server_cert, server_key);
- 	assert(auth_ok);
--	auth_ok =3D l_tls_set_auth_data(s[1].tls, test->client_cert_path,
--					test->client_key_path,
--					test->client_key_passphrase);
-+	auth_ok =3D l_tls_set_auth_data(s[1].tls, client_cert, client_key);
- 	assert(auth_ok);
--	assert(l_tls_set_cacert(s[0].tls, test->server_ca_cert_path));
--	assert(l_tls_set_cacert(s[1].tls, test->client_ca_cert_path));
-+	assert(l_tls_set_cacert(s[0].tls, server_ca));
-+	assert(l_tls_set_cacert(s[1].tls, client_ca));
++	auth_ok =3D (argc <=3D 2 || l_tls_set_cacert(tls, ca_cert)) &&
+ 		(argc <=3D 5 ||
+-		 l_tls_set_auth_data(tls, argv[3], argv[4], argv[5])) &&
++		 l_tls_set_auth_data(tls, cert, priv_key)) &&
+ 		l_tls_start(tls);
  =
 
- 	if (test->client_domain_mask)
- 		l_tls_set_domain_mask(s[1].tls, test->client_domain_mask);
+ 	if (tls && auth_ok)
+diff --git a/examples/https-server-test.c b/examples/https-server-test.c
+index 4f706ca..93c0bcf 100644
+--- a/examples/https-server-test.c
++++ b/examples/https-server-test.c
+@@ -120,6 +120,9 @@ int main(int argc, char *argv[])
+ 	struct sockaddr_in addr;
+ 	int fd, listenfd;
+ 	bool auth_ok;
++	struct l_certchain *cert;
++	struct l_key *priv_key;
++	struct l_queue *ca_cert;
+ =
+
+ 	if (argc !=3D 4 && argc !=3D 5) {
+ 		printf("Usage: %s <server-cert-path> <server-key-path> "
+@@ -174,8 +177,12 @@ int main(int argc, char *argv[])
+ 	if (getenv("TLS_DEBUG"))
+ 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
+ =
+
+-	auth_ok =3D l_tls_set_auth_data(tls, argv[1], argv[2], argv[3]) &&
+-		(argc <=3D 4 || l_tls_set_cacert(tls, argv[4])) &&
++	cert =3D l_pem_load_certificate_chain(argv[1]);
++	priv_key =3D l_pem_load_private_key(argv[2], argv[3], NULL);
++	ca_cert =3D l_pem_load_certificate_list(argv[4]);
++
++	auth_ok =3D l_tls_set_auth_data(tls, cert, priv_key) &&
++		(argc <=3D 4 || l_tls_set_cacert(tls, ca_cert)) &&
+ 		l_tls_start(tls);
+ =
+
+ 	if (tls && auth_ok)
 -- =
 
 2.17.1
 
---===============5866619359698458690==--
+--===============0367571900756392460==--
 
