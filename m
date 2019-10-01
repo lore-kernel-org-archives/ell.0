@@ -1,91 +1,67 @@
-Content-Type: multipart/mixed; boundary="===============5663268890202990933=="
+Content-Type: multipart/mixed; boundary="===============0195568051139465020=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 3/4] examples: update https server/client with new TLS APIs
-Date: Tue, 01 Oct 2019 11:27:32 -0700
-Message-ID: <20191001182733.16176-3-prestwoj@gmail.com>
+Subject: [PATCH 4/4] cert: allow l_certchain_free use in l_queue_destroy
+Date: Tue, 01 Oct 2019 11:27:33 -0700
+Message-ID: <20191001182733.16176-4-prestwoj@gmail.com>
 In-Reply-To: <20191001182733.16176-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5663268890202990933==
+--===============0195568051139465020==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+l_pem_load_certificate_list returns a queue of l_certchains and
+cleaning up this queue requires l_certchain_free to be wrapped
+in a queue destroy function.
+
+This patch changes l_certchain_free to take a void * so it can
+be used directly in l_queue_destroy.
 ---
- examples/https-client-test.c | 11 +++++++++--
- examples/https-server-test.c | 11 +++++++++--
- 2 files changed, 18 insertions(+), 4 deletions(-)
+ ell/cert.c | 4 +++-
+ ell/cert.h | 2 +-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/examples/https-client-test.c b/examples/https-client-test.c
-index 9a765c6..281bdb8 100644
---- a/examples/https-client-test.c
-+++ b/examples/https-client-test.c
-@@ -134,6 +134,9 @@ int main(int argc, char *argv[])
- 	struct sockaddr_in addr;
- 	int fd;
- 	bool auth_ok;
-+	struct l_certchain *cert;
-+	struct l_key *priv_key;
-+	struct l_queue *ca_cert;
+diff --git a/ell/cert.c b/ell/cert.c
+index 7d6ae3a..52be01d 100644
+--- a/ell/cert.c
++++ b/ell/cert.c
+@@ -304,8 +304,10 @@ static struct l_cert *certchain_pop_ca(struct l_certch=
+ain *chain)
+ 	return ca;
+ }
  =
 
- 	if (argc !=3D 2 && argc !=3D 3 && argc !=3D 6) {
- 		printf("Usage: %s <https-host-name> [<ca-cert-path> "
-@@ -189,9 +192,13 @@ int main(int argc, char *argv[])
- 	if (getenv("TLS_DEBUG"))
- 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
- =
-
--	auth_ok =3D (argc <=3D 2 || l_tls_set_cacert(tls, argv[2])) &&
-+	ca_cert =3D l_pem_load_certificate_list(argv[2]);
-+	cert =3D l_pem_load_certificate_chain(argv[3]);
-+	priv_key =3D l_pem_load_private_key(argv[4], argv[5], NULL);
+-LIB_EXPORT void l_certchain_free(struct l_certchain *chain)
++LIB_EXPORT void l_certchain_free(void *data)
+ {
++	struct l_certchain *chain =3D data;
 +
-+	auth_ok =3D (argc <=3D 2 || l_tls_set_cacert(tls, ca_cert)) &&
- 		(argc <=3D 5 ||
--		 l_tls_set_auth_data(tls, argv[3], argv[4], argv[5])) &&
-+		 l_tls_set_auth_data(tls, cert, priv_key)) &&
- 		l_tls_start(tls);
+ 	while (chain && chain->ca)
+ 		l_cert_free(certchain_pop_ca(chain));
  =
 
- 	if (tls && auth_ok)
-diff --git a/examples/https-server-test.c b/examples/https-server-test.c
-index 4f706ca..93c0bcf 100644
---- a/examples/https-server-test.c
-+++ b/examples/https-server-test.c
-@@ -120,6 +120,9 @@ int main(int argc, char *argv[])
- 	struct sockaddr_in addr;
- 	int fd, listenfd;
- 	bool auth_ok;
-+	struct l_certchain *cert;
-+	struct l_key *priv_key;
-+	struct l_queue *ca_cert;
+diff --git a/ell/cert.h b/ell/cert.h
+index 0dc86a2..8c1b8fb 100644
+--- a/ell/cert.h
++++ b/ell/cert.h
+@@ -48,7 +48,7 @@ const uint8_t *l_cert_get_dn(struct l_cert *cert, size_t =
+*out_len);
+ enum l_cert_key_type l_cert_get_pubkey_type(struct l_cert *cert);
+ struct l_key *l_cert_get_pubkey(struct l_cert *cert);
  =
 
- 	if (argc !=3D 4 && argc !=3D 5) {
- 		printf("Usage: %s <server-cert-path> <server-key-path> "
-@@ -174,8 +177,12 @@ int main(int argc, char *argv[])
- 	if (getenv("TLS_DEBUG"))
- 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
+-void l_certchain_free(struct l_certchain *chain);
++void l_certchain_free(void *data);
  =
 
--	auth_ok =3D l_tls_set_auth_data(tls, argv[1], argv[2], argv[3]) &&
--		(argc <=3D 4 || l_tls_set_cacert(tls, argv[4])) &&
-+	cert =3D l_pem_load_certificate_chain(argv[1]);
-+	priv_key =3D l_pem_load_private_key(argv[2], argv[3], NULL);
-+	ca_cert =3D l_pem_load_certificate_list(argv[4]);
-+
-+	auth_ok =3D l_tls_set_auth_data(tls, cert, priv_key) &&
-+		(argc <=3D 4 || l_tls_set_cacert(tls, ca_cert)) &&
- 		l_tls_start(tls);
- =
-
- 	if (tls && auth_ok)
+ struct l_cert *l_certchain_get_leaf(struct l_certchain *chain);
+ void l_certchain_walk_from_leaf(struct l_certchain *chain,
 -- =
 
 2.17.1
 
---===============5663268890202990933==--
+--===============0195568051139465020==--
 
