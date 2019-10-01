@@ -1,226 +1,291 @@
-Content-Type: multipart/mixed; boundary="===============4826865088531352245=="
+Content-Type: multipart/mixed; boundary="===============3417120392063261695=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v3 3/6] pem: convert l_pem_load_buffer to take void*
-Date: Tue, 01 Oct 2019 09:47:40 -0700
-Message-ID: <20191001164743.23088-3-prestwoj@gmail.com>
+Subject: [PATCH v3 4/6] pem: refactor to expose pem iterator privately
+Date: Tue, 01 Oct 2019 09:47:41 -0700
+Message-ID: <20191001164743.23088-4-prestwoj@gmail.com>
 In-Reply-To: <20191001164743.23088-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4826865088531352245==
+--===============3417120392063261695==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This handles both cases of PEM's being loaded as text data and
-as raw bytes. is_{start,end}_boundary was also converted.
----
- ell/pem.c | 55 ++++++++++++++++++++++++++++++-------------------------
- ell/pem.h |  4 ++--
- 2 files changed, 32 insertions(+), 27 deletions(-)
+This refactors pem.c to expose a new internal API, pem_next. This
+API will allow iteration/parsing of PEM(s). Other APIs in pem.c were
+updated to use pem_next.
 
+pem_next behaves similar to pem_load_buffer, except it does not do
+any base64 decoding. Instead it just returns the start of the PEM as
+a string, and the length as an out parameter. This allows simple
+PEM iteration loops. Strictly for pem.c usage we decode the base64
+string in the loop, but settings.c will need this for parsing PEMs
+from settings files and returning the PEM as a full string, including
+the start/end tags.
+
+endp was removed from pem_load_buffer as it was no longer being used.
+---
+ ell/pem-private.h |  31 ++++++++++++++
+ ell/pem.c         | 103 ++++++++++++++++++++++++++++++----------------
+ 2 files changed, 98 insertions(+), 36 deletions(-)
+ create mode 100644 ell/pem-private.h
+
+-v3:
+ * kept pem_load_buffer definition the same. This patch was accidentally
+   chainging it back to take a uint8_t * rather than void *
+ * Removed 'pem' initalization in pem_load_buffer. This was not required
+   as pem_next took the original buffer.
+
+diff --git a/ell/pem-private.h b/ell/pem-private.h
+new file mode 100644
+index 0000000..0073e65
+--- /dev/null
++++ b/ell/pem-private.h
+@@ -0,0 +1,31 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2019  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#define _GNU_SOURCE
++#include <sys/types.h>
++
++const char *pem_next(const void *buf, size_t buf_len, char **type_label,
++				size_t *len);
 diff --git a/ell/pem.c b/ell/pem.c
-index 721a05b..671f162 100644
+index 671f162..9169ebf 100644
 --- a/ell/pem.c
 +++ b/ell/pem.c
-@@ -49,11 +49,12 @@
+@@ -45,10 +45,25 @@
+ #include "cipher.h"
+ #include "cert-private.h"
+ #include "missing.h"
++#include "pem-private.h"
+ =
+
  #define PEM_START_BOUNDARY	"-----BEGIN "
  #define PEM_END_BOUNDARY	"-----END "
  =
 
--static const uint8_t *is_start_boundary(const uint8_t *buf, size_t buf_len,
-+static const void *is_start_boundary(const void *buf, size_t buf_len,
++/*
++ * Gets the base64 data offset of a PEM string (advances past BEGIN tag)
++ */
++#define PEM_BASE64_OFFSET(pem, label) \
++	(pem + strlen(label) + strlen("-----BEGIN -----\n"))
++
++/*
++ * Gets the base64 length from a PEM string. This takes the total PEM leng=
+th
++ * and subtracts the length of the BEGIN and END tags
++ */
++#define PEM_BASE64_LEN_OFFSET(label, len) \
++	(len - (strlen(label) + strlen(label) + \
++	strlen("-----BEGIN -----\n") + strlen("-----END -----\n")))
++
+ static const void *is_start_boundary(const void *buf, size_t buf_len,
  					size_t *label_len)
  {
- 	const uint8_t *start, *end, *ptr;
- 	int prev_special, special;
-+	const uint8_t *buf_ptr =3D buf;
- =
-
- 	if (buf_len < strlen(PEM_START_BOUNDARY))
- 		return NULL;
-@@ -74,7 +75,7 @@ static const uint8_t *is_start_boundary(const uint8_t *bu=
-f, size_t buf_len,
- 	end =3D start;
- 	prev_special =3D 1;
- =
-
--	while (end < buf + buf_len && l_ascii_isprint(*end)) {
-+	while (end < buf_ptr + buf_len && l_ascii_isprint(*end)) {
- 		special =3D *end =3D=3D ' ' || *end =3D=3D '-';
- =
-
- 		if (prev_special && special)
-@@ -89,11 +90,11 @@ static const uint8_t *is_start_boundary(const uint8_t *=
-buf, size_t buf_len,
- 		end--;
- =
-
- 	/* Check we have a "-----" (RFC7468 section 2) */
--	if (end + 5 > buf + buf_len || memcmp(end, "-----", 5))
-+	if (end + 5 > buf_ptr + buf_len || memcmp(end, "-----", 5))
- 		return NULL;
- =
-
- 	/* Check all remaining characters are horizontal whitespace (WSP) */
--	for (ptr =3D end + 5; ptr < buf + buf_len; ptr++)
-+	for (ptr =3D end + 5; ptr < buf_ptr + buf_len; ptr++)
- 		if (*ptr !=3D ' ' && *ptr !=3D '\t')
- 			return NULL;
- =
-
-@@ -102,33 +103,36 @@ static const uint8_t *is_start_boundary(const uint8_t=
- *buf, size_t buf_len,
- 	return start;
- }
- =
-
--static bool is_end_boundary(const uint8_t *buf, size_t buf_len,
--				const uint8_t *label, size_t label_len)
-+static bool is_end_boundary(const void *buf, size_t buf_len,
-+				const char *label, size_t label_len)
- {
-+	const uint8_t *buf_ptr =3D buf;
- 	size_t len =3D strlen(PEM_END_BOUNDARY) + label_len + 5;
- =
-
- 	if (buf_len < len)
- 		return false;
- =
-
--	if (memcmp(buf, PEM_END_BOUNDARY, strlen(PEM_END_BOUNDARY)) ||
--			memcmp(buf + strlen(PEM_END_BOUNDARY),
-+	if (memcmp(buf_ptr, PEM_END_BOUNDARY, strlen(PEM_END_BOUNDARY)) ||
-+			memcmp(buf_ptr + strlen(PEM_END_BOUNDARY),
- 				label, label_len) ||
--			memcmp(buf + (len - 5), "-----", 5))
-+			memcmp(buf_ptr + (len - 5), "-----", 5))
- 		return false;
- =
-
- 	/* Check all remaining characters are horizontal whitespace (WSP) */
- 	for (; len < buf_len; len++)
--		if (buf[len] !=3D ' ' && buf[len] !=3D '\t')
-+		if (buf_ptr[len] !=3D ' ' && buf_ptr[len] !=3D '\t')
- 			return false;
- =
-
+@@ -126,48 +141,36 @@ static bool is_end_boundary(const void *buf, size_t b=
+uf_len,
  	return true;
  }
  =
 
--static uint8_t *pem_load_buffer(const uint8_t *buf, size_t buf_len,
-+static uint8_t *pem_load_buffer(const void *buf, size_t buf_len,
- 				char **type_label, size_t *len,
- 				const uint8_t **endp)
+-static uint8_t *pem_load_buffer(const void *buf, size_t buf_len,
+-				char **type_label, size_t *len,
+-				const uint8_t **endp)
++const char *pem_next(const void *buf, size_t buf_len, char **type_label,
++				size_t *len)
  {
--	const uint8_t *base64_data =3D NULL, *label =3D NULL, *eol;
-+	const char *buf_ptr =3D buf;
-+	const char *base64_data =3D NULL, *eol;
-+	const char *label =3D NULL;
- 	uint8_t *data;
+ 	const char *buf_ptr =3D buf;
+-	const char *base64_data =3D NULL, *eol;
++	const char *eol;
+ 	const char *label =3D NULL;
+-	uint8_t *data;
  	size_t label_len =3D 0;
++	const char *start =3D NULL;
  =
 
-@@ -139,19 +143,21 @@ static uint8_t *pem_load_buffer(const uint8_t *buf, s=
-ize_t buf_len,
- 	 * are not confused for actual PEM "textual encoding".
- 	 */
+-	/*
+-	 * The base64 parser uses the RFC7468 laxbase64text grammar but we
+-	 * do full checks on the encapsulation boundary lines, i.e. no
+-	 * leading spaces allowed, making sure quoted text and similar
+-	 * are not confused for actual PEM "textual encoding".
+-	 */
  	while (buf_len) {
--		for (eol =3D buf; eol < buf + buf_len; eol++)
-+		for (eol =3D buf_ptr; eol < buf_ptr + buf_len; eol++)
+ 		for (eol =3D buf_ptr; eol < buf_ptr + buf_len; eol++)
  			if (*eol =3D=3D '\r' || *eol =3D=3D '\n')
  				break;
  =
 
- 		if (!base64_data) {
--			label =3D is_start_boundary(buf, eol - buf, &label_len);
-+			label =3D is_start_boundary(buf, eol - buf_ptr,
-+							&label_len);
- =
-
+-		if (!base64_data) {
+-			label =3D is_start_boundary(buf, eol - buf_ptr,
++		if (!start) {
++			label =3D is_start_boundary(buf_ptr, eol - buf_ptr,
+ 							&label_len);
+-
  			if (label)
- 				base64_data =3D eol;
--		} else if (is_end_boundary(buf, eol - buf, label, label_len)) {
-+		} else if (is_end_boundary(buf_ptr, eol - buf_ptr, label,
-+							label_len)) {
- 			data =3D l_base64_decode(
- 					(const char *) base64_data,
--					buf - base64_data, len);
-+					buf_ptr - base64_data, len);
- 			if (!data)
+-				base64_data =3D eol;
+-		} else if (is_end_boundary(buf_ptr, eol - buf_ptr, label,
+-							label_len)) {
+-			data =3D l_base64_decode(
+-					(const char *) base64_data,
+-					buf_ptr - base64_data, len);
+-			if (!data)
++				start =3D label - strlen("-----BEGIN ");
++			else
  				return NULL;
  =
 
-@@ -159,19 +165,19 @@ static uint8_t *pem_load_buffer(const uint8_t *buf, s=
-ize_t buf_len,
- 							label_len);
+-			*type_label =3D l_strndup((const char *) label,
+-							label_len);
++		} else if (start && is_end_boundary(buf_ptr, eol - buf_ptr,
++							label, label_len)) {
++			*len =3D eol - start + 1;
  =
 
- 			if (endp)
--				*endp =3D eol + 1;
-+				*endp =3D (uint8_t *)eol + 1;
+-			if (endp)
+-				*endp =3D (uint8_t *)eol + 1;
++			if (type_label)
++				*type_label =3D l_strndup(label, label_len);
  =
 
- 			return data;
+-			return data;
++			return start;
  		}
  =
 
--		if (eol =3D=3D buf + buf_len)
-+		if (eol =3D=3D buf_ptr + buf_len)
- 			break;
- =
-
--		buf_len -=3D eol + 1 - buf;
--		buf =3D eol + 1;
-+		buf_len -=3D eol + 1 - buf_ptr;
-+		buf_ptr =3D eol + 1;
- =
-
--		if (buf_len && *eol =3D=3D '\r' && *buf =3D=3D '\n') {
--			buf++;
-+		if (buf_len && *eol =3D=3D '\r' && *buf_ptr =3D=3D '\n') {
-+			buf_ptr++;
- 			buf_len--;
+ 		if (eol =3D=3D buf_ptr + buf_len)
+@@ -182,17 +185,35 @@ static uint8_t *pem_load_buffer(const void *buf, size=
+_t buf_len,
  		}
  	}
-@@ -183,9 +189,8 @@ static uint8_t *pem_load_buffer(const uint8_t *buf, siz=
-e_t buf_len,
+ =
+
+-	/* If we found no label signal EOF rather than parse error */
+-	if (!base64_data && endp)
+-		*endp =3D NULL;
+-
  	return NULL;
  }
  =
 
--LIB_EXPORT uint8_t *l_pem_load_buffer(const uint8_t *buf, size_t buf_len,
--					char **type_label,
--					size_t *out_len)
-+LIB_EXPORT uint8_t *l_pem_load_buffer(const void *buf, size_t buf_len,
-+					char **type_label, size_t *out_len)
++static uint8_t *pem_load_buffer(const void *buf, size_t buf_len,
++				char **type_label, size_t *len)
++{
++	const char *pem;
++	size_t out_len;
++
++	/*
++	 * The base64 parser uses the RFC7468 laxbase64text grammar but we
++	 * do full checks on the encapsulation boundary lines, i.e. no
++	 * leading spaces allowed, making sure quoted text and similar
++	 * are not confused for actual PEM "textual encoding".
++	 */
++
++	pem =3D pem_next(buf, buf_len, type_label, &out_len);
++	if (!pem)
++		return NULL;
++
++	return l_base64_decode(PEM_BASE64_OFFSET(pem, *type_label),
++				PEM_BASE64_LEN_OFFSET(*type_label, out_len),
++				len);
++}
++
+ LIB_EXPORT uint8_t *l_pem_load_buffer(const void *buf, size_t buf_len,
+ 					char **type_label, size_t *out_len)
  {
- 	return pem_load_buffer(buf, buf_len, type_label, out_len, NULL);
+-	return pem_load_buffer(buf, buf_len, type_label, out_len, NULL);
++	return pem_load_buffer(buf, buf_len, type_label, out_len);
  }
-diff --git a/ell/pem.h b/ell/pem.h
-index da5e273..1c93e7a 100644
---- a/ell/pem.h
-+++ b/ell/pem.h
-@@ -32,8 +32,8 @@ struct l_key;
- struct l_cert;
- struct l_certchain;
  =
 
--uint8_t *l_pem_load_buffer(const uint8_t *buf, size_t buf_len,
--				char **type_label, size_t *out_len);
-+uint8_t *l_pem_load_buffer(const void *buf, size_t buf_len, char **type_la=
-bel,
-+				size_t *out_len);
- uint8_t *l_pem_load_file(const char *filename, char **type_label, size_t *=
-len);
+ struct pem_file_info {
+@@ -242,7 +263,7 @@ LIB_EXPORT uint8_t *l_pem_load_file(const char *filenam=
+e,
+ 		return NULL;
  =
 
- struct l_certchain *l_pem_load_certificate_chain(const char *filename);
+ 	result =3D pem_load_buffer(file.data, file.st.st_size,
+-					type_label, len, NULL);
++					type_label, len);
+ 	pem_file_close(&file);
+ 	return result;
+ }
+@@ -297,17 +318,27 @@ LIB_EXPORT struct l_queue *l_pem_load_certificate_lis=
+t_from_data(
+ 	while (ptr && ptr < end) {
+ 		uint8_t *der;
+ 		size_t der_len;
+-		char *label;
++		char *label =3D NULL;
+ 		struct l_cert *cert;
++		size_t out_len =3D 0;
++		const char *pem;
++
++		pem =3D pem_next(ptr, len, &label, &out_len);
++		if (!pem)
++			break;
++
++		der =3D l_base64_decode(PEM_BASE64_OFFSET(pem, label),
++					PEM_BASE64_LEN_OFFSET(label, out_len),
++					&der_len);
+ =
+
+-		der =3D pem_load_buffer(ptr, end - ptr, &label, &der_len, &ptr);
++		ptr +=3D out_len;
+ =
+
+ 		if (!der || strcmp(label, "CERTIFICATE")) {
+ 			if (der)
+ 				l_free(label);
+ 			l_free(der);
+ =
+
+-			if (!ptr)	/* EOF */
++			if (ptr >=3D end)	/* EOF */
+ 				break;
+ 			else
+ 				goto error;
+@@ -470,7 +501,7 @@ LIB_EXPORT struct l_key *l_pem_load_private_key_from_da=
+ta(const void *buf,
+ 	if (encrypted)
+ 		*encrypted =3D false;
+ =
+
+-	content =3D pem_load_buffer(buf, buf_len, &label, &len, NULL);
++	content =3D pem_load_buffer(buf, buf_len, &label, &len);
+ =
+
+ 	if (!content)
+ 		return NULL;
 -- =
 
 2.17.1
 
---===============4826865088531352245==--
+--===============3417120392063261695==--
 
