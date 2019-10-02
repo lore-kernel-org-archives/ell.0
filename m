@@ -1,91 +1,51 @@
-Content-Type: multipart/mixed; boundary="===============0367571900756392460=="
+Content-Type: multipart/mixed; boundary="===============9100717641281217751=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v2 3/3] examples: update https server/client with new TLS APIs
-Date: Tue, 01 Oct 2019 14:31:40 -0700
-Message-ID: <20191001213140.2163-3-prestwoj@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v2 1/3] tls: change APIs to use l_cert/l_certchain/l_key
+Date: Wed, 02 Oct 2019 10:07:59 -0500
+Message-ID: <1b227152-5645-5a46-9058-223ca5ca2192@gmail.com>
 In-Reply-To: <20191001213140.2163-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0367571900756392460==
+--===============9100717641281217751==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- examples/https-client-test.c | 11 +++++++++--
- examples/https-server-test.c | 11 +++++++++--
- 2 files changed, 18 insertions(+), 4 deletions(-)
+Hi James,
 
-diff --git a/examples/https-client-test.c b/examples/https-client-test.c
-index 9a765c6..281bdb8 100644
---- a/examples/https-client-test.c
-+++ b/examples/https-client-test.c
-@@ -134,6 +134,9 @@ int main(int argc, char *argv[])
- 	struct sockaddr_in addr;
- 	int fd;
- 	bool auth_ok;
-+	struct l_certchain *cert;
-+	struct l_key *priv_key;
-+	struct l_queue *ca_cert;
- =
+On 10/1/19 4:31 PM, James Prestwood wrote:
+> l_tls_set_auth_data/l_tls_set_cacert both expected file paths to be
+> passed in, and the certs/keys would be loaded internally. This prevents
+> the caller from loading certs any way but from files. This makes
+> loading certs/keys from data impossible if using TLS. For example,
+> a certificate may be embedded inside a file which has additional data.
+> =
 
- 	if (argc !=3D 2 && argc !=3D 3 && argc !=3D 6) {
- 		printf("Usage: %s <https-host-name> [<ca-cert-path> "
-@@ -189,9 +192,13 @@ int main(int argc, char *argv[])
- 	if (getenv("TLS_DEBUG"))
- 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
- =
+> To handle both file/data cases its now up to the caller to load the
+> cert/key as an l_cert/l_certchain/l_key/l_queue and pass that structure
+> in directly.
+> =
 
--	auth_ok =3D (argc <=3D 2 || l_tls_set_cacert(tls, argv[2])) &&
-+	ca_cert =3D l_pem_load_certificate_list(argv[2]);
-+	cert =3D l_pem_load_certificate_chain(argv[3]);
-+	priv_key =3D l_pem_load_private_key(argv[4], argv[5], NULL);
-+
-+	auth_ok =3D (argc <=3D 2 || l_tls_set_cacert(tls, ca_cert)) &&
- 		(argc <=3D 5 ||
--		 l_tls_set_auth_data(tls, argv[3], argv[4], argv[5])) &&
-+		 l_tls_set_auth_data(tls, cert, priv_key)) &&
- 		l_tls_start(tls);
- =
+> The structure being passed in will now be owned by l_tls, and will be
+> freed on l_tls_free.
+> ---
+>   ell/tls.c | 42 +++++++++++-------------------------------
+>   ell/tls.h | 27 +++++++++++++++------------
+>   2 files changed, 26 insertions(+), 43 deletions(-)
+> =
 
- 	if (tls && auth_ok)
-diff --git a/examples/https-server-test.c b/examples/https-server-test.c
-index 4f706ca..93c0bcf 100644
---- a/examples/https-server-test.c
-+++ b/examples/https-server-test.c
-@@ -120,6 +120,9 @@ int main(int argc, char *argv[])
- 	struct sockaddr_in addr;
- 	int fd, listenfd;
- 	bool auth_ok;
-+	struct l_certchain *cert;
-+	struct l_key *priv_key;
-+	struct l_queue *ca_cert;
- =
+> -v2:
+>   * Updated API comments
+>   * Removed debug prints
+> =
 
- 	if (argc !=3D 4 && argc !=3D 5) {
- 		printf("Usage: %s <server-cert-path> <server-key-path> "
-@@ -174,8 +177,12 @@ int main(int argc, char *argv[])
- 	if (getenv("TLS_DEBUG"))
- 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
- =
 
--	auth_ok =3D l_tls_set_auth_data(tls, argv[1], argv[2], argv[3]) &&
--		(argc <=3D 4 || l_tls_set_cacert(tls, argv[4])) &&
-+	cert =3D l_pem_load_certificate_chain(argv[1]);
-+	priv_key =3D l_pem_load_private_key(argv[2], argv[3], NULL);
-+	ca_cert =3D l_pem_load_certificate_list(argv[4]);
-+
-+	auth_ok =3D l_tls_set_auth_data(tls, cert, priv_key) &&
-+		(argc <=3D 4 || l_tls_set_cacert(tls, ca_cert)) &&
- 		l_tls_start(tls);
- =
+Patches 1 & 3 applied, thanks.
 
- 	if (tls && auth_ok)
--- =
+Regards,
+-Denis
 
-2.17.1
-
---===============0367571900756392460==--
+--===============9100717641281217751==--
 
