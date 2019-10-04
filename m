@@ -1,49 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============6845855623692091963=="
+Content-Type: multipart/mixed; boundary="===============0829537355894158440=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v8 4/4] unit: fix memory leak in test-pem
-Date: Fri, 04 Oct 2019 11:53:07 -0700
-Message-ID: <20191004185307.22707-4-prestwoj@gmail.com>
-In-Reply-To: <20191004185307.22707-1-prestwoj@gmail.com>
+Subject: [PATCH v9 1/4] pem: make endp setting smarter
+Date: Fri, 04 Oct 2019 12:21:21 -0700
+Message-ID: <20191004192124.16536-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6845855623692091963==
+--===============0829537355894158440==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Always doing eol + 1 could result in endp pointing past the bounds
+of the PEM if the PEM does not have a final newline. Now we check
+that we aren't going past the bounds of the buffer before setting
+endp, and if we are just set endp to eol.
 ---
- unit/test-pem.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ ell/pem.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/unit/test-pem.c b/unit/test-pem.c
-index 6a927fc..f1c202f 100644
---- a/unit/test-pem.c
-+++ b/unit/test-pem.c
-@@ -226,7 +226,7 @@ static void test_pem(const void *data)
- {
- 	const struct pem_test *test =3D data;
- 	uint8_t *decoded;
--	char *label;
-+	char *label =3D NULL;
- 	size_t decoded_size;
+diff --git a/ell/pem.c b/ell/pem.c
+index d8f57ed..9da2071 100644
+--- a/ell/pem.c
++++ b/ell/pem.c
+@@ -164,8 +164,12 @@ const char *pem_next(const void *buf, size_t buf_len, =
+char **type_label,
+ 			if (base64_len)
+ 				*base64_len =3D buf_ptr - base64_data;
  =
 
- 	decoded =3D l_pem_load_buffer((const uint8_t *) test->input,
-@@ -234,6 +234,8 @@ static void test_pem(const void *data)
- 					&label, &decoded_size);
+-			if (endp)
+-				*endp =3D eol + 1;
++			if (endp) {
++				if (eol =3D=3D buf + buf_len)
++					*endp =3D eol;
++				else
++					*endp =3D eol + 1;
++			}
  =
 
- 	if (!test->valid) {
-+		if (label)
-+			l_free(label);
- 		assert(!decoded);
- 		return;
- 	}
+ 			return base64_data;
+ 		}
 -- =
 
 2.17.1
 
---===============6845855623692091963==--
+--===============0829537355894158440==--
 
