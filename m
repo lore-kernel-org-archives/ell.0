@@ -1,49 +1,30 @@
-Content-Type: multipart/mixed; boundary="===============1813261509926246618=="
+Content-Type: multipart/mixed; boundary="===============7194880004862454370=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v9 4/4] unit: fix memory leak in test-pem
-Date: Fri, 04 Oct 2019 12:21:24 -0700
-Message-ID: <20191004192124.16536-4-prestwoj@gmail.com>
-In-Reply-To: <20191004192124.16536-1-prestwoj@gmail.com>
+From: Othman, Ossama <ossama.othman@intel.com>
+Subject: Re: [PATCH v8 4/4] unit: fix memory leak in test-pem
+Date: Fri, 04 Oct 2019 12:36:10 -0700
+Message-ID: <CAPyD+=CkxnCjUYrbc4f-_1R6SGjkgGoDTGRQi04VayDBGz5GBA@mail.gmail.com>
+In-Reply-To: <20191004185307.22707-4-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1813261509926246618==
+--===============7194880004862454370==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-pem.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Hi James,
 
-diff --git a/unit/test-pem.c b/unit/test-pem.c
-index 6a927fc..f1c202f 100644
---- a/unit/test-pem.c
-+++ b/unit/test-pem.c
-@@ -226,7 +226,7 @@ static void test_pem(const void *data)
- {
- 	const struct pem_test *test =3D data;
- 	uint8_t *decoded;
--	char *label;
-+	char *label =3D NULL;
- 	size_t decoded_size;
- =
+On Fri, Oct 4, 2019 at 11:55 AM James Prestwood <prestwoj@gmail.com> wrot=
+e:
+>         if (!test->valid) {
+> +               if (label)
+> +                       l_free(label);
 
- 	decoded =3D l_pem_load_buffer((const uint8_t *) test->input,
-@@ -234,6 +234,8 @@ static void test_pem(const void *data)
- 					&label, &decoded_size);
- =
+Checking for NULL before calling l_free() is unnecessary and
+redundant.  l_free() and the underlying free() are no-ops when the
+pointer argument is NULL.
 
- 	if (!test->valid) {
-+		if (label)
-+			l_free(label);
- 		assert(!decoded);
- 		return;
- 	}
--- =
-
-2.17.1
-
---===============1813261509926246618==--
+-Ossama
+--===============7194880004862454370==--
 
