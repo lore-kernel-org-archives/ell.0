@@ -1,35 +1,70 @@
-Content-Type: multipart/mixed; boundary="===============4257776760540275125=="
+Content-Type: multipart/mixed; boundary="===============2976267968918094403=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] pem: ensure we dont side-effect type_label
-Date: Mon, 07 Oct 2019 11:33:42 -0500
-Message-ID: <7c490ba1-bd23-54b4-f92c-f33e75d81945@gmail.com>
-In-Reply-To: <20191004224024.3541-1-prestwoj@gmail.com>
+From: Natanael Copa <ncopa@alpinelinux.org>
+Subject: Re: [PATCH] unit: fix build with musl libc
+Date: Wed, 09 Oct 2019 11:33:12 +0200
+Message-ID: <20191009113312.4c29d5a1@ncopa-desktop.copa.dup.pw>
+In-Reply-To: <1b318150-9b2b-4c14-9f10-82e84601d4bb@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4257776760540275125==
+--===============2976267968918094403==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+On Thu, 3 Oct 2019 10:58:53 -0500
+Denis Kenzior <denkenz@gmail.com> wrote:
 
-On 10/4/19 5:40 PM, James Prestwood wrote:
-> In pem_load_buffer, l_base64_decode could fail. If it does we were
-> still keeping type_label set. Instead use a temporary variable to
-> hold the label, and only set if l_base64_decode succeeds. Otherwise
-> free the temp label and return NULL.
-> ---
->   ell/pem.c | 14 ++++++++++++--
->   1 file changed, 12 insertions(+), 2 deletions(-)
+> Hi Natanael,
 > =
 
+> On 10/3/19 10:03 AM, Natanael Copa wrote:
+> > Define WAIT_ANY if needed. It is not specified in POSIX so we cannot
+> > expect it to be defined.
+> > =
 
-Applied, thanks.
+> > This fixes build with musl libc.
+> > ---
+> >   unit/test-dbus-message-fds.c | 4 ++++
+> >   unit/test-dbus-properties.c  | 4 ++++
+> >   unit/test-dbus.c             | 4 ++++
+> >   3 files changed, 12 insertions(+)
+> > =
 
-Regards,
--Denis
+> > diff --git a/unit/test-dbus-message-fds.c b/unit/test-dbus-message-fds.c
+> > index 6f68bae..6a23141 100644
+> > --- a/unit/test-dbus-message-fds.c
+> > +++ b/unit/test-dbus-message-fds.c
+> > @@ -41,6 +41,10 @@
+> >   #define WAIT_ANY (-1) /* Any process */
+> >   #endif
+> >   =
 
---===============4257776760540275125==--
+> > +#ifndef WAIT_ANY
+> > +#define WAIT_ANY (-1)
+> > +#endif
+> > +  =
+
+> =
+
+> I'm confused.  Don't we have the exact same 3 lines just above?
+> =
+
+> >   #define TEST_BUS_ADDRESS "unix:path=3D/tmp/ell-test-bus"
+> >   =
+
+> >   static pid_t dbus_daemon_pid =3D -1;  =
+
+
+Yup, sorry, my bad.
+
+This was fixed in commit 696c8eac917e (unit: Define WAIT_ANY if
+necessary). I didn't pay enough attention when upstreaming the patch we
+use in Alpine.
+
+Sorry.
+
+-nc
+--===============2976267968918094403==--
 
