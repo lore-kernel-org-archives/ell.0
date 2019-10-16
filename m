@@ -1,70 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============2976267968918094403=="
+Content-Type: multipart/mixed; boundary="===============4462309068062053809=="
 MIME-Version: 1.0
-From: Natanael Copa <ncopa@alpinelinux.org>
-Subject: Re: [PATCH] unit: fix build with musl libc
-Date: Wed, 09 Oct 2019 11:33:12 +0200
-Message-ID: <20191009113312.4c29d5a1@ncopa-desktop.copa.dup.pw>
-In-Reply-To: <1b318150-9b2b-4c14-9f10-82e84601d4bb@gmail.com>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH 1/2] dhcp: Stop client before notifying owner
+Date: Wed, 16 Oct 2019 15:14:57 -0700
+Message-ID: <20191016221458.3175-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2976267968918094403==
+--===============4462309068062053809==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, 3 Oct 2019 10:58:53 -0500
-Denis Kenzior <denkenz@gmail.com> wrote:
+This enables the owner of the client object to restart it.
+---
+ ell/dhcp.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-> Hi Natanael,
-> =
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index 22d903e..132d973 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -950,9 +950,11 @@ static void dhcp_client_rx_message(const void *data, s=
+ize_t len, void *userdata)
+ 	case DHCP_STATE_RENEWING:
+ 	case DHCP_STATE_REBINDING:
+ 		if (msg_type =3D=3D DHCP_MESSAGE_TYPE_NAK) {
++			l_dhcp_client_stop(client);
++
+ 			dhcp_client_event_notify(client,
+ 					L_DHCP_CLIENT_EVENT_NO_LEASE);
+-			goto error;
++			return;
+ 		}
+ =
 
-> On 10/3/19 10:03 AM, Natanael Copa wrote:
-> > Define WAIT_ANY if needed. It is not specified in POSIX so we cannot
-> > expect it to be defined.
-> > =
+ 		if (msg_type !=3D DHCP_MESSAGE_TYPE_ACK)
+-- =
 
-> > This fixes build with musl libc.
-> > ---
-> >   unit/test-dbus-message-fds.c | 4 ++++
-> >   unit/test-dbus-properties.c  | 4 ++++
-> >   unit/test-dbus.c             | 4 ++++
-> >   3 files changed, 12 insertions(+)
-> > =
+2.13.6
 
-> > diff --git a/unit/test-dbus-message-fds.c b/unit/test-dbus-message-fds.c
-> > index 6f68bae..6a23141 100644
-> > --- a/unit/test-dbus-message-fds.c
-> > +++ b/unit/test-dbus-message-fds.c
-> > @@ -41,6 +41,10 @@
-> >   #define WAIT_ANY (-1) /* Any process */
-> >   #endif
-> >   =
-
-> > +#ifndef WAIT_ANY
-> > +#define WAIT_ANY (-1)
-> > +#endif
-> > +  =
-
-> =
-
-> I'm confused.  Don't we have the exact same 3 lines just above?
-> =
-
-> >   #define TEST_BUS_ADDRESS "unix:path=3D/tmp/ell-test-bus"
-> >   =
-
-> >   static pid_t dbus_daemon_pid =3D -1;  =
-
-
-Yup, sorry, my bad.
-
-This was fixed in commit 696c8eac917e (unit: Define WAIT_ANY if
-necessary). I didn't pay enough attention when upstreaming the patch we
-use in Alpine.
-
-Sorry.
-
--nc
---===============2976267968918094403==--
+--===============4462309068062053809==--
 
