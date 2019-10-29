@@ -1,31 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============6228916178001196365=="
+Content-Type: multipart/mixed; boundary="===============6836056443553809961=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] utf8: cast to avoid left shift of negative value (ubsan)
-Date: Mon, 28 Oct 2019 15:12:08 -0500
-Message-ID: <b16d4520-3040-5164-e0a6-03869d2b56a3@gmail.com>
-In-Reply-To: <20191028194100.11762-1-w@wdtz.org>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/5] tls: Fix tls12_prf buffer size
+Date: Tue, 29 Oct 2019 01:24:39 +0100
+Message-ID: <20191029002443.23574-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6228916178001196365==
+--===============6836056443553809961==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Will,
+Enlarge the A(i) buffer to be able to hold the biggest possible hash
+result (64) + the label + the biggest possible seed (64).  As reported
+by Will Dietz the buffer size issue could cause crashes with the bigger
+hashes when built under clang.
 
-On 10/28/19 2:41 PM, Will Dietz wrote:
-> ---
->   ell/utf8.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> =
+Reported-by: Will Dietz <w@wdtz.org>
+---
+ ell/tls.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/ell/tls.c b/ell/tls.c
+index 0e06c27..5efd928 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -92,7 +92,7 @@ bool tls12_prf(enum l_checksum_type type,
+ {
+ 	struct l_checksum *hmac =3D l_checksum_new_hmac(type, secret, secret_len);
+ 	size_t a_len, chunk_len, prfseed_len =3D strlen(label) + seed_len;
+-	uint8_t a[128], prfseed[prfseed_len];
++	uint8_t a[64 + prfseed_len], prfseed[prfseed_len];
+ =
 
-Applied, thanks.
+ 	if (!hmac)
+ 		return false;
+-- =
 
-Regards,
--Denis
+2.20.1
 
---===============6228916178001196365==--
+--===============6836056443553809961==--
 
