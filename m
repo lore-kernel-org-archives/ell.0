@@ -1,38 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============1677729925758518434=="
+Content-Type: multipart/mixed; boundary="===============3481808084512202873=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/5] tls: Fix tls12_prf buffer size
-Date: Mon, 28 Oct 2019 21:09:03 -0500
-Message-ID: <3afc8e13-75a9-39e9-e600-f3b894136f1c@gmail.com>
-In-Reply-To: <20191029002443.23574-1-andrew.zaborowski@intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH] genl: Include system header to fix build warning
+Date: Wed, 30 Oct 2019 13:16:07 -0700
+Message-ID: <20191030201607.21168-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1677729925758518434==
+--===============3481808084512202873==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+The l_genl_msg_append_attrv() declaration in genl.h uses struct iovec *,
+but there's no guarantee that sys/uio.h has been included already (and
+the genl user might not need that header itself). Within the ell code,
+uio.h is already included by util.h which prevents build errors in ell
+itself.
+---
+ ell/genl.h | 1 +
+ 1 file changed, 1 insertion(+)
 
-On 10/28/19 7:24 PM, Andrew Zaborowski wrote:
-> Enlarge the A(i) buffer to be able to hold the biggest possible hash
-> result (64) + the label + the biggest possible seed (64).  As reported
-> by Will Dietz the buffer size issue could cause crashes with the bigger
-> hashes when built under clang.
-> =
+diff --git a/ell/genl.h b/ell/genl.h
+index 5df688b..3a37ed5 100644
+--- a/ell/genl.h
++++ b/ell/genl.h
+@@ -26,6 +26,7 @@
+ #include <stdbool.h>
+ #include <stddef.h>
+ #include <stdint.h>
++#include <sys/uio.h>
+ =
 
-> Reported-by: Will Dietz <w@wdtz.org>
-> ---
->   ell/tls.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> =
+ #ifdef __cplusplus
+ extern "C" {
+-- =
 
+2.23.0
 
-All applied, thanks.
-
-Regards,
--Denis
-
---===============1677729925758518434==--
+--===============3481808084512202873==--
 
