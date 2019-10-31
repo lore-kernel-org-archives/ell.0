@@ -1,46 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============0610911716139046129=="
+Content-Type: multipart/mixed; boundary="===============6223726905643883251=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel@holtmann.org>
-Subject: Re: [PATCH] genl: Include system header to fix build warning
-Date: Thu, 31 Oct 2019 07:14:45 +0100
-Message-ID: <AB1D2E09-A59D-4140-BDA2-438553386643@holtmann.org>
-In-Reply-To: <20191030201607.21168-1-mathew.j.martineau@linux.intel.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v2] genl: Add forward declaration to fix build warning
+Date: Thu, 31 Oct 2019 10:44:16 -0700
+Message-ID: <20191031174416.16580-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0610911716139046129==
+--===============6223726905643883251==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+The l_genl_msg_append_attrv() declaration in genl.h uses struct iovec *,
+but there's no guarantee that sys/uio.h has been included (and
+the genl user might not need that header itself).
+---
 
-> The l_genl_msg_append_attrv() declaration in genl.h uses struct iovec *,
-> but there's no guarantee that sys/uio.h has been included already (and
-> the genl user might not need that header itself). Within the ell code,
-> uio.h is already included by util.h which prevents build errors in ell
-> itself.
-> ---
-> ell/genl.h | 1 +
-> 1 file changed, 1 insertion(+)
-> =
+v2: Use forward declaration instead of including system header
 
-> diff --git a/ell/genl.h b/ell/genl.h
-> index 5df688b..3a37ed5 100644
-> --- a/ell/genl.h
-> +++ b/ell/genl.h
-> @@ -26,6 +26,7 @@
-> #include <stdbool.h>
-> #include <stddef.h>
-> #include <stdint.h>
-> +#include <sys/uio.h>
+ ell/genl.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-I would rather forward declare struct iovec than including a header from a =
-public ELL header.
+diff --git a/ell/genl.h b/ell/genl.h
+index 5df688b..c3f641f 100644
+--- a/ell/genl.h
++++ b/ell/genl.h
+@@ -31,6 +31,8 @@
+ extern "C" {
+ #endif
+ =
 
-Regards
++struct iovec;
++
+ struct l_genl;
+ struct l_genl_family_info;
+ struct l_genl_family;
+-- =
 
-Marcel
+2.23.0
 
---===============0610911716139046129==--
+--===============6223726905643883251==--
 
