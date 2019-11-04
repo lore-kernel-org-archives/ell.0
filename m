@@ -1,39 +1,36 @@
-Content-Type: multipart/mixed; boundary="===============6848814403529054847=="
+Content-Type: multipart/mixed; boundary="===============5537270253193841105=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2] genl: Add forward declaration to fix build warning
-Date: Thu, 31 Oct 2019 13:07:20 -0500
-Message-ID: <ed676e87-0fcd-2e89-9b49-84fea74a50a9@gmail.com>
-In-Reply-To: <20191031174416.16580-1-mathew.j.martineau@linux.intel.com>
+From: Brian Gix <brian.gix@intel.com>
+Subject: [PATCH 0/1] Make PKCS8 dependant unit tests fail gracefully
+Date: Mon, 04 Nov 2019 12:20:59 -0800
+Message-ID: <20191104202100.21115-1-brian.gix@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6848814403529054847==
+--===============5537270253193841105==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
-
-On 10/31/19 12:44 PM, Mat Martineau wrote:
-> The l_genl_msg_append_attrv() declaration in genl.h uses struct iovec *,
-> but there's no guarantee that sys/uio.h has been included (and
-> the genl user might not need that header itself).
-> ---
-> =
-
-> v2: Use forward declaration instead of including system header
-> =
-
->   ell/genl.h | 2 ++
->   1 file changed, 2 insertions(+)
-> =
+This patch is based on the failure check in unit/test-cipher, which
+gives mitigation instructions for known and easily correctable
+deficiencies in Kernel space.  In the case of these three unit tests,
+the pkcs8_key_parser must be loaded for the unit test to pass. If not
+loaded the mitigation is given, and the test exits with an exit(1)
+rather than an assert fail.
 
 
-Applied, thanks.
+Brian Gix (1):
+  unit: Add graceful fail of pem, tls and key tests
 
-Regards,
--Denis
+ unit/test-key.c |  9 +++++++++
+ unit/test-pem.c |  9 +++++++++
+ unit/test-tls.c | 12 +++++++++++-
+ 3 files changed, 29 insertions(+), 1 deletion(-)
 
---===============6848814403529054847==--
+-- =
+
+2.21.0
+
+--===============5537270253193841105==--
 
