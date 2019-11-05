@@ -1,100 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============3395556693687755188=="
+Content-Type: multipart/mixed; boundary="===============7708877316795935401=="
 MIME-Version: 1.0
-From: Brian Gix <brian.gix@intel.com>
-Subject: [PATCH 1/1] unit: Add graceful fail of pem, tls and key tests
-Date: Mon, 04 Nov 2019 12:21:00 -0800
-Message-ID: <20191104202100.21115-2-brian.gix@intel.com>
-In-Reply-To: <20191104202100.21115-1-brian.gix@intel.com>
+From: Gix, Brian <brian.gix@intel.com>
+Subject: ELL double free during  debug exit cleanup
+Date: Tue, 05 Nov 2019 16:22:48 +0000
+Message-ID: <4b68cc4c9fbaa9f7351d18449ab02f843c8340c6.camel@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3395556693687755188==
+--===============7708877316795935401==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Unit tests for PEM, TLS and KEY require the pkcs8_key_parser module
-to be running in the kernel, however not all kernels have this
-running by default. This checks for this possibility and aborts
-these tests with exit(1) rather than an assert, and includes instruction
-to correct the issue.
----
- unit/test-key.c |  9 +++++++++
- unit/test-pem.c |  9 +++++++++
- unit/test-tls.c | 12 +++++++++++-
- 3 files changed, 29 insertions(+), 1 deletion(-)
+Hi Guys,
 
-diff --git a/unit/test-key.c b/unit/test-key.c
-index 697ff47..240a02c 100644
---- a/unit/test-key.c
-+++ b/unit/test-key.c
-@@ -569,6 +569,15 @@ static void test_key_crypto(const void *data)
- =
+I am copying this over to the ELL reflector, hoping for some insight. The n=
+ew bluez-5.52 release has a unit
+test segfaulting in a test I added.  This only occurs on Link Time Optimiza=
+tion (LTO) builds, but that appears
+to be the favored build flavor of openSUSE.
 
- 	privkey =3D l_pem_load_private_key(CERTDIR "cert-client-key-pkcs8.pem",
- 						NULL, NULL);
-+	if (!privkey) {
-+		l_info("* Some kernel versions do not automatically load\n"
-+			"* the pkcs8_key_parser module. If the system running\n"
-+			"* test has not loaded this module, a failure here is\n"
-+			"* likely. Running \"modprobe pkcs8_key_parser\" may\n"
-+			"* correct this issue.\n");
-+		exit(1);
-+	}
-+
- 	assert(privkey);
- 	success =3D l_key_get_info(privkey, rsa, hash, &keybits, &is_public);
- 	assert(success);
-diff --git a/unit/test-pem.c b/unit/test-pem.c
-index d39003e..a1e8110 100644
---- a/unit/test-pem.c
-+++ b/unit/test-pem.c
-@@ -216,6 +216,15 @@ static void test_priv_key_from_data(const void *data)
- 	key =3D l_pem_load_private_key_from_data(raw_private_key,
- 						strlen(raw_private_key),
- 						"abc", &is_encrypted);
-+	if (!key) {
-+		l_info("* Some kernel versions do not automatically load\n"
-+			"* the pkcs8_key_parser module. If the system running\n"
-+			"* test has not loaded this module, a failure here is\n"
-+			"* likely. Running \"modprobe pkcs8_key_parser\" may\n"
-+			"* correct this issue.\n");
-+		exit(1);
-+	}
-+
- 	assert(key);
- 	assert(is_encrypted);
- =
+The segfault occurs in the ELL code during exit, specifically due to a doub=
+le call of:
+> l_queue_destroy(debug_sections, l_free);
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index 1d47787..3519376 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -562,8 +562,18 @@ static void test_tls_with_ver(const struct tls_conn_te=
-st *test,
- 			l_pem_load_private_key(test->server_key_path,
- 						test->server_key_passphrase,
- 						NULL);
--		assert(server_cert);
-+		if (!server_key) {
-+			l_info("* Some kernel versions do not automatically\n"
-+				"* load the pkcs8_key_parser module. If the\n"
-+				"* system running test has not loaded this\n"
-+				"* module, a failure here is likely. Running\n"
-+				"* \"modprobe pkcs8_key_parser\" may correct\n"
-+				"* this issue.\n");
-+			exit(1);
-+		}
-+
- 		assert(server_key);
-+		assert(server_cert);
- =
+Here is a bug report, that disects the problem, and suggests an ELL patch (=
+scroll down in the bug report to
+"Comment 6":
 
- 		assert(l_tls_set_auth_data(s[0].tls, server_cert, server_key));
- 	}
--- =
+https://bugzilla.opensuse.org/show_bug.cgi?id=3D1155889#c6
 
-2.21.0
+I would like your opinion before creating a patch to submit.
 
---===============3395556693687755188==--
+Regards,
+Brian Gix
+
+--===============7708877316795935401==--
 
