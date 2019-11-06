@@ -1,43 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============2833994517615237834=="
+Content-Type: multipart/mixed; boundary="===============1963791856904519811=="
 MIME-Version: 1.0
-From: Othman, Ossama <ossama.othman@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: ELL unit test problem with Link Time Optimization, l_getrandom,
  test-ecdh
-Date: Wed, 06 Nov 2019 09:17:11 -0800
-Message-ID: <CAPyD+=DM5Gg4JieKittU9e7bcTaBHvJu3-+EzQpiJ1f4XP-P+g@mail.gmail.com>
+Date: Wed, 06 Nov 2019 11:58:07 -0600
+Message-ID: <d826a57f-ec8f-fd58-4119-7bbe8f4c93ce@gmail.com>
 In-Reply-To: <c5629468613b76d7fe650006c2276f7f49a42e2b.camel@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2833994517615237834==
+--===============1963791856904519811==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Nov 6, 2019 at 8:50 AM Gix, Brian <brian.gix@intel.com> wrote:
->   CCLD     unit/test-ecdh
-> /usr/lib64/gcc/x86_64-suse-linux/9/../../../../x86_64-suse-linux/bin/ld: =
-/tmp/test-
-> ecdh.XGzxNu.ltrans0.ltrans.o: in function `__wrap_l_getrandom':
-> /home/bgix/work/user_space/ell/unit/test-ecdh.c:52: undefined reference t=
-o `l_getrandom'
-> collect2: error: ld returned 1 exit status
-> make[1]: *** [Makefile:1541: unit/test-ecdh] Error 1
-> make: *** [Makefile:1190: all] Error 2
+Hi Brian,
 
-FWIW, I can reproduce this issue on my Ubuntu 19.10 box:
+On 11/6/19 10:50 AM, Gix, Brian wrote:
+> While examining my BlueZ issues with building with LTO, I came accross
+> the following issue in the ELL unit test of ECDH:
 
-$ make CFLAGS=3D-flto check
-...
-  CC       unit/test-ecdh.o
- CCLD     unit/test-ecdh
-/usr/bin/ld: /tmp/test-ecdh.guYgVf.ltrans0.ltrans.o: in function `__wrap_l_=
-getra
-ndom':
-<artificial>:(.text+0x2a): undefined reference to `l_getrandom'
-collect2: error: ld returned 1 exit status
-make[3]: *** [Makefile:1542: unit/test-ecdh] Error 1
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=3D88643
 
--Ossama
---===============2833994517615237834==--
+May I suggest that the distro in question figures this out by =
+
+themselves, there's nothing wrong in ell.
+
+If they insist on using LTO, then at least disable it for that test.
+
+Regards,
+-Denis
+--===============1963791856904519811==--
 
