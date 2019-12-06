@@ -1,38 +1,119 @@
-Content-Type: multipart/mixed; boundary="===============6527154236923613004=="
+Content-Type: multipart/mixed; boundary="===============5921050471141762714=="
 MIME-Version: 1.0
-From: Gix, Brian <brian.gix@intel.com>
-Date: Tue, 05 Nov 2019 16:18:52 +0000
-Message-ID: <ce2b205a95449e9fde47e6eff3f9571a0cfa6121.camel@intel.com>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH] dhcp: Add domain name option handler
+Date: Fri, 06 Dec 2019 15:21:44 -0800
+Message-ID: <20191206232144.3331-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6527154236923613004==
+--===============5921050471141762714==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Guys,
+Add parser and accessor for the domain name lease option.
+---
+ ell/dhcp-lease.c   | 24 +++++++++++++++++++++++-
+ ell/dhcp-private.h |  1 +
+ ell/dhcp.h         |  1 +
+ 3 files changed, 25 insertions(+), 1 deletion(-)
 
-I am copying this over to the ELL reflector, hoping for some insight. The n=
-ew bluez-5.52 release has a unit
-test segfaulting in a test I added.  This only occurs on Link Time Optimiza=
-tion (LTO) builds, but that appears
-to be the favored build flavor of openSUSE.
+diff --git a/ell/dhcp-lease.c b/ell/dhcp-lease.c
+index 5f801e7..06ef76a 100644
+--- a/ell/dhcp-lease.c
++++ b/ell/dhcp-lease.c
+@@ -45,6 +45,8 @@ void _dhcp_lease_free(struct l_dhcp_lease *lease)
+ 		return;
+ =
 
-The segfault occurs in the ELL code during exit, specifically due to a doub=
-le call of:
-> l_queue_destroy(debug_sections, l_free);
+ 	l_free(lease->dns);
++	l_free(lease->domain_name);
++
+ 	l_free(lease);
+ }
+ =
 
-Here is a bug report, that disects the problem, and suggests an ELL patch (=
-scroll down in the bug report to
-"Comment 6":
+@@ -99,6 +101,18 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct d=
+hcp_message_iter *iter)
+ 				}
+ 			}
+ 			break;
++		case L_DHCP_OPTION_DOMAIN_NAME:
++			if (l < 1)
++				break;
++
++			lease->domain_name =3D l_new(char, l + 1);
++
++			memcpy(lease->domain_name, v, l);
++
++			if (lease->domain_name[l - 1] !=3D '\0')
++				lease->domain_name[l] =3D '\0';
++
++			break;
+ 		default:
+ 			break;
+ 		}
+@@ -135,7 +149,7 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct d=
+hcp_message_iter *iter)
+ =
 
-https://bugzilla.opensuse.org/show_bug.cgi?id=3D1155889#c6
+ 	return lease;
+ error:
+-	l_free(lease);
++	_dhcp_lease_free(lease);
+ 	return NULL;
+ }
+ =
 
-I would like your opinion before creating a patch to submit.
+@@ -212,6 +226,14 @@ LIB_EXPORT char **l_dhcp_lease_get_dns(const struct l_=
+dhcp_lease *lease)
+ 	return dns_list;
+ }
+ =
 
-Regards,
-Brian Gix
++LIB_EXPORT char *l_dhcp_lease_get_domain_name(const struct l_dhcp_lease *l=
+ease)
++{
++	if (unlikely(!lease))
++		return NULL;
++
++	return l_strdup(lease->domain_name);
++}
++
+ LIB_EXPORT uint32_t l_dhcp_lease_get_t1(const struct l_dhcp_lease *lease)
+ {
+ 	if (unlikely(!lease))
+diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
+index 6554fc6..a75bb8b 100644
+--- a/ell/dhcp-private.h
++++ b/ell/dhcp-private.h
+@@ -120,6 +120,7 @@ struct l_dhcp_lease {
+ 	uint32_t t2;
+ 	uint32_t router;
+ 	uint32_t *dns;
++	char *domain_name;
+ };
+ =
 
---===============6527154236923613004==--
+ struct l_dhcp_lease *_dhcp_lease_new(void);
+diff --git a/ell/dhcp.h b/ell/dhcp.h
+index c3a4988..b8a5b41 100644
+--- a/ell/dhcp.h
++++ b/ell/dhcp.h
+@@ -95,6 +95,7 @@ char *l_dhcp_lease_get_netmask(const struct l_dhcp_lease =
+*lease);
+ char *l_dhcp_lease_get_broadcast(const struct l_dhcp_lease *lease);
+ char *l_dhcp_lease_get_server_id(const struct l_dhcp_lease *lease);
+ char **l_dhcp_lease_get_dns(const struct l_dhcp_lease *lease);
++char *l_dhcp_lease_get_domain_name(const struct l_dhcp_lease *lease);
+ =
+
+ uint32_t l_dhcp_lease_get_t1(const struct l_dhcp_lease *lease);
+ uint32_t l_dhcp_lease_get_t2(const struct l_dhcp_lease *lease);
+-- =
+
+2.13.6
+
+--===============5921050471141762714==--
 
