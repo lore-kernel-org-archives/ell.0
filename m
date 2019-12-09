@@ -1,119 +1,71 @@
-Content-Type: multipart/mixed; boundary="===============5921050471141762714=="
+Content-Type: multipart/mixed; boundary="===============6621824452741281213=="
 MIME-Version: 1.0
-From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH] dhcp: Add domain name option handler
-Date: Fri, 06 Dec 2019 15:21:44 -0800
-Message-ID: <20191206232144.3331-1-tim.a.kourt@linux.intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] dhcp: Add domain name option handler
+Date: Mon, 09 Dec 2019 09:20:11 -0600
+Message-ID: <55d6b0de-f096-450c-0592-a5cd3afbfd74@gmail.com>
+In-Reply-To: <20191206232144.3331-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5921050471141762714==
+--===============6621824452741281213==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add parser and accessor for the domain name lease option.
----
- ell/dhcp-lease.c   | 24 +++++++++++++++++++++++-
- ell/dhcp-private.h |  1 +
- ell/dhcp.h         |  1 +
- 3 files changed, 25 insertions(+), 1 deletion(-)
+Hi Tim,
 
-diff --git a/ell/dhcp-lease.c b/ell/dhcp-lease.c
-index 5f801e7..06ef76a 100644
---- a/ell/dhcp-lease.c
-+++ b/ell/dhcp-lease.c
-@@ -45,6 +45,8 @@ void _dhcp_lease_free(struct l_dhcp_lease *lease)
- 		return;
- =
+On 12/6/19 5:21 PM, Tim Kourt wrote:
+> Add parser and accessor for the domain name lease option.
+> ---
+>   ell/dhcp-lease.c   | 24 +++++++++++++++++++++++-
+>   ell/dhcp-private.h |  1 +
+>   ell/dhcp.h         |  1 +
+>   3 files changed, 25 insertions(+), 1 deletion(-)
+> =
 
- 	l_free(lease->dns);
-+	l_free(lease->domain_name);
-+
- 	l_free(lease);
- }
- =
 
-@@ -99,6 +101,18 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct d=
-hcp_message_iter *iter)
- 				}
- 			}
- 			break;
-+		case L_DHCP_OPTION_DOMAIN_NAME:
-+			if (l < 1)
-+				break;
-+
-+			lease->domain_name =3D l_new(char, l + 1);
-+
-+			memcpy(lease->domain_name, v, l);
-+
-+			if (lease->domain_name[l - 1] !=3D '\0')
-+				lease->domain_name[l] =3D '\0';
-+
-+			break;
- 		default:
- 			break;
- 		}
-@@ -135,7 +149,7 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct d=
-hcp_message_iter *iter)
- =
+<snip>
 
- 	return lease;
- error:
--	l_free(lease);
-+	_dhcp_lease_free(lease);
- 	return NULL;
- }
- =
+> @@ -99,6 +101,18 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct=
+ dhcp_message_iter *iter)
+>   				}
+>   			}
+>   			break;
+> +		case L_DHCP_OPTION_DOMAIN_NAME:
+> +			if (l < 1)
+> +				break;
+> +
+> +			lease->domain_name =3D l_new(char, l + 1);
+> +
+> +			memcpy(lease->domain_name, v, l);
+> +
+> +			if (lease->domain_name[l - 1] !=3D '\0')
+> +				lease->domain_name[l] =3D '\0';
 
-@@ -212,6 +226,14 @@ LIB_EXPORT char **l_dhcp_lease_get_dns(const struct l_=
-dhcp_lease *lease)
- 	return dns_list;
- }
- =
+So strictly speaking this if is not necessary as you already use l_new =
 
-+LIB_EXPORT char *l_dhcp_lease_get_domain_name(const struct l_dhcp_lease *l=
-ease)
-+{
-+	if (unlikely(!lease))
-+		return NULL;
-+
-+	return l_strdup(lease->domain_name);
-+}
-+
- LIB_EXPORT uint32_t l_dhcp_lease_get_t1(const struct l_dhcp_lease *lease)
- {
- 	if (unlikely(!lease))
-diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
-index 6554fc6..a75bb8b 100644
---- a/ell/dhcp-private.h
-+++ b/ell/dhcp-private.h
-@@ -120,6 +120,7 @@ struct l_dhcp_lease {
- 	uint32_t t2;
- 	uint32_t router;
- 	uint32_t *dns;
-+	char *domain_name;
- };
- =
+which memsets returned memory to 0.  However, you might want to be much =
 
- struct l_dhcp_lease *_dhcp_lease_new(void);
-diff --git a/ell/dhcp.h b/ell/dhcp.h
-index c3a4988..b8a5b41 100644
---- a/ell/dhcp.h
-+++ b/ell/dhcp.h
-@@ -95,6 +95,7 @@ char *l_dhcp_lease_get_netmask(const struct l_dhcp_lease =
-*lease);
- char *l_dhcp_lease_get_broadcast(const struct l_dhcp_lease *lease);
- char *l_dhcp_lease_get_server_id(const struct l_dhcp_lease *lease);
- char **l_dhcp_lease_get_dns(const struct l_dhcp_lease *lease);
-+char *l_dhcp_lease_get_domain_name(const struct l_dhcp_lease *lease);
- =
+more strict about accepting NULs at the end.  One is okay, multiple is =
 
- uint32_t l_dhcp_lease_get_t1(const struct l_dhcp_lease *lease);
- uint32_t l_dhcp_lease_get_t2(const struct l_dhcp_lease *lease);
--- =
+likely not ok.  Embedded NULs are probably not okay either.
 
-2.13.6
+Also, it might be a good idea to more strictly check the domain name =
 
---===============5921050471141762714==--
+here.  Fail if we get an empty string, a dot or localhost.  I believe =
+
+hostnames has a max length as well.  And we should maybe limit these to =
+
+ascii or at least valid utf8 for now.
+
+> +
+> +			break;
+>   		default:
+>   			break;
+>   		}
+
+Regards,
+-Denis
+--===============6621824452741281213==--
 
