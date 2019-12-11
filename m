@@ -1,71 +1,72 @@
-Content-Type: multipart/mixed; boundary="===============6621824452741281213=="
+Content-Type: multipart/mixed; boundary="===============5145073765513335095=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dhcp: Add domain name option handler
-Date: Mon, 09 Dec 2019 09:20:11 -0600
-Message-ID: <55d6b0de-f096-450c-0592-a5cd3afbfd74@gmail.com>
-In-Reply-To: <20191206232144.3331-1-tim.a.kourt@linux.intel.com>
+From: Tim Kourt <tim.a.kourt@linux.intel.com>
+Subject: [PATCH 1/5] net: Add l_net_hostname_is_root
+Date: Wed, 11 Dec 2019 15:21:17 -0800
+Message-ID: <20191211232121.23129-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6621824452741281213==
+--===============5145073765513335095==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Tim,
+The function identifies if the given hostname is root domain name.
+---
+ ell/net.c | 23 +++++++++++++++++++++++
+ ell/net.h |  1 +
+ 2 files changed, 24 insertions(+)
 
-On 12/6/19 5:21 PM, Tim Kourt wrote:
-> Add parser and accessor for the domain name lease option.
-> ---
->   ell/dhcp-lease.c   | 24 +++++++++++++++++++++++-
->   ell/dhcp-private.h |  1 +
->   ell/dhcp.h         |  1 +
->   3 files changed, 25 insertions(+), 1 deletion(-)
-> =
+diff --git a/ell/net.c b/ell/net.c
+index b5b5f9d..3b6e0dc 100644
+--- a/ell/net.c
++++ b/ell/net.c
+@@ -110,3 +110,26 @@ LIB_EXPORT char *l_net_get_name(uint32_t ifindex)
+ =
 
+ 	return l_strdup(ifr.ifr_name);
+ }
++
++/**
++ * l_net_hostname_is_root:
++ * @hostname: Hostname to validate
++ *
++ * Identifies if the hostname given by @hostname is root domain name or
++ * not.
++ *
++ * Returns: #true if the given hostname is root and #false otherwise.
++ **/
++LIB_EXPORT bool l_net_hostname_is_root(const char *hostname)
++{
++	if (unlikely(!hostname))
++		return false;
++
++	if (!strcmp(hostname, ""))
++		return true;
++
++	if (!strcmp(hostname, "."))
++		return true;
++
++	return false;
++}
+diff --git a/ell/net.h b/ell/net.h
+index 25b1ca2..7afcf86 100644
+--- a/ell/net.h
++++ b/ell/net.h
+@@ -32,6 +32,7 @@ extern "C" {
+ =
 
-<snip>
+ bool l_net_get_mac_address(uint32_t ifindex, uint8_t *out_addr);
+ char *l_net_get_name(uint32_t ifindex);
++bool l_net_hostname_is_root(const char *hostname);
+ =
 
-> @@ -99,6 +101,18 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct=
- dhcp_message_iter *iter)
->   				}
->   			}
->   			break;
-> +		case L_DHCP_OPTION_DOMAIN_NAME:
-> +			if (l < 1)
-> +				break;
-> +
-> +			lease->domain_name =3D l_new(char, l + 1);
-> +
-> +			memcpy(lease->domain_name, v, l);
-> +
-> +			if (lease->domain_name[l - 1] !=3D '\0')
-> +				lease->domain_name[l] =3D '\0';
+ #ifdef __cplusplus
+ }
+-- =
 
-So strictly speaking this if is not necessary as you already use l_new =
+2.13.6
 
-which memsets returned memory to 0.  However, you might want to be much =
-
-more strict about accepting NULs at the end.  One is okay, multiple is =
-
-likely not ok.  Embedded NULs are probably not okay either.
-
-Also, it might be a good idea to more strictly check the domain name =
-
-here.  Fail if we get an empty string, a dot or localhost.  I believe =
-
-hostnames has a max length as well.  And we should maybe limit these to =
-
-ascii or at least valid utf8 for now.
-
-> +
-> +			break;
->   		default:
->   			break;
->   		}
-
-Regards,
--Denis
---===============6621824452741281213==--
+--===============5145073765513335095==--
 
