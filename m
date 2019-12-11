@@ -1,127 +1,142 @@
-Content-Type: multipart/mixed; boundary="===============9202334467205799902=="
+Content-Type: multipart/mixed; boundary="===============2804381799429650832=="
 MIME-Version: 1.0
 From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH 3/5] unit: Add tests for net
-Date: Wed, 11 Dec 2019 15:21:19 -0800
-Message-ID: <20191211232121.23129-3-tim.a.kourt@linux.intel.com>
+Subject: [PATCH 4/5] dhcp-lease: Add domain name option handler
+Date: Wed, 11 Dec 2019 15:21:20 -0800
+Message-ID: <20191211232121.23129-4-tim.a.kourt@linux.intel.com>
 In-Reply-To: <20191211232121.23129-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============9202334467205799902==
+--===============2804381799429650832==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Add parser and accessor for the domain name lease option.
+The parser validates value by disallowing embedded NUL bytes,
+non-utf8 characters, usage of root and localhost domain names.
 ---
- Makefile.am     |  5 ++++-
- unit/test-net.c | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++++=
-++++
- 2 files changed, 70 insertions(+), 1 deletion(-)
- create mode 100644 unit/test-net.c
+ ell/dhcp-lease.c   | 36 +++++++++++++++++++++++++++++++++++-
+ ell/dhcp-private.h |  1 +
+ ell/dhcp.h         |  1 +
+ 3 files changed, 37 insertions(+), 1 deletion(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index ead9fd5..3ead678 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -178,7 +178,8 @@ unit_tests =3D unit/test-unit \
- 			unit/test-ecc \
- 			unit/test-ecdh \
- 			unit/test-time \
--			unit/test-path
-+			unit/test-path \
-+			unit/test-net
+diff --git a/ell/dhcp-lease.c b/ell/dhcp-lease.c
+index 5f801e7..8f044fb 100644
+--- a/ell/dhcp-lease.c
++++ b/ell/dhcp-lease.c
+@@ -31,6 +31,8 @@
+ #include "private.h"
+ #include "dhcp.h"
+ #include "dhcp-private.h"
++#include "utf8.h"
++#include "net.h"
  =
 
- dbus_tests =3D unit/test-hwdb \
- 			unit/test-dbus \
-@@ -304,6 +305,8 @@ unit_test_time_LDADD =3D ell/libell-private.la
+ struct l_dhcp_lease *_dhcp_lease_new(void)
+ {
+@@ -45,6 +47,8 @@ void _dhcp_lease_free(struct l_dhcp_lease *lease)
+ 		return;
  =
 
- unit_test_path_LDADD =3D ell/libell-private.la
+ 	l_free(lease->dns);
++	l_free(lease->domain_name);
++
+ 	l_free(lease);
+ }
  =
 
-+unit_test_net_LDADD =3D ell/libell-private.la
+@@ -99,6 +103,28 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct d=
+hcp_message_iter *iter)
+ 				}
+ 			}
+ 			break;
++		case L_DHCP_OPTION_DOMAIN_NAME:
++			if (l < 1 && l > 253)
++				goto error;
 +
- if MAINTAINER_MODE
- noinst_LTLIBRARIES +=3D unit/example-plugin.la
- endif
-diff --git a/unit/test-net.c b/unit/test-net.c
-new file mode 100644
-index 0000000..2f7bf48
---- /dev/null
-+++ b/unit/test-net.c
-@@ -0,0 +1,66 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2019  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
++			/* Disallow embedded NUL bytes. */
++			if (memchr(v, 0, l - 1))
++				goto error;
 +
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
++			if (!l_utf8_validate(v, l, NULL))
++				goto error;
 +
-+#include <assert.h>
++			lease->domain_name =3D l_new(char, l + 1);
 +
-+#include <ell/ell.h>
++			memcpy(lease->domain_name, v, l);
 +
-+static void test_net_hostname_is_localhost(const void *data)
++			if (l_net_hostname_is_root(lease->domain_name))
++				goto error;
++
++			if (l_net_hostname_is_localhost(lease->domain_name))
++				goto error;
++
++			break;
+ 		default:
+ 			break;
+ 		}
+@@ -135,7 +161,7 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct d=
+hcp_message_iter *iter)
+ =
+
+ 	return lease;
+ error:
+-	l_free(lease);
++	_dhcp_lease_free(lease);
+ 	return NULL;
+ }
+ =
+
+@@ -212,6 +238,14 @@ LIB_EXPORT char **l_dhcp_lease_get_dns(const struct l_=
+dhcp_lease *lease)
+ 	return dns_list;
+ }
+ =
+
++LIB_EXPORT char *l_dhcp_lease_get_domain_name(const struct l_dhcp_lease *l=
+ease)
 +{
-+	assert(l_net_hostname_is_localhost("localhost"));
-+	assert(l_net_hostname_is_localhost("localhost."));
-+	assert(l_net_hostname_is_localhost("localhost.localdomain"));
-+	assert(l_net_hostname_is_localhost("localhost.localdomain."));
-+	assert(l_net_hostname_is_localhost("other.localhost"));
-+	assert(l_net_hostname_is_localhost("other.localhost."));
-+	assert(l_net_hostname_is_localhost("other.localhost.localdomain"));
-+	assert(l_net_hostname_is_localhost("other.localhost.localdomain."));
++	if (unlikely(!lease))
++		return NULL;
 +
-+	assert(l_net_hostname_is_localhost("LOCALHOST"));
-+
-+	assert(!l_net_hostname_is_localhost("notsolocalhost"));
-+	assert(!l_net_hostname_is_localhost("localhost.com"));
-+	assert(!l_net_hostname_is_localhost(""));
++	return l_strdup(lease->domain_name);
 +}
 +
-+static void test_net_hostname_is_root(const void *data)
-+{
-+	assert(l_net_hostname_is_root(""));
-+	assert(l_net_hostname_is_root("."));
-+	assert(!l_net_hostname_is_root("notsoroot"));
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	l_test_init(&argc, &argv);
-+
-+	l_test_add("net/hostname_is_localhost", test_net_hostname_is_localhost,
-+									NULL);
-+	l_test_add("net/hostname_is_root", test_net_hostname_is_root,
-+									NULL);
-+
-+	return l_test_run();
-+}
+ LIB_EXPORT uint32_t l_dhcp_lease_get_t1(const struct l_dhcp_lease *lease)
+ {
+ 	if (unlikely(!lease))
+diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
+index 6554fc6..a75bb8b 100644
+--- a/ell/dhcp-private.h
++++ b/ell/dhcp-private.h
+@@ -120,6 +120,7 @@ struct l_dhcp_lease {
+ 	uint32_t t2;
+ 	uint32_t router;
+ 	uint32_t *dns;
++	char *domain_name;
+ };
+ =
+
+ struct l_dhcp_lease *_dhcp_lease_new(void);
+diff --git a/ell/dhcp.h b/ell/dhcp.h
+index c3a4988..b8a5b41 100644
+--- a/ell/dhcp.h
++++ b/ell/dhcp.h
+@@ -95,6 +95,7 @@ char *l_dhcp_lease_get_netmask(const struct l_dhcp_lease =
+*lease);
+ char *l_dhcp_lease_get_broadcast(const struct l_dhcp_lease *lease);
+ char *l_dhcp_lease_get_server_id(const struct l_dhcp_lease *lease);
+ char **l_dhcp_lease_get_dns(const struct l_dhcp_lease *lease);
++char *l_dhcp_lease_get_domain_name(const struct l_dhcp_lease *lease);
+ =
+
+ uint32_t l_dhcp_lease_get_t1(const struct l_dhcp_lease *lease);
+ uint32_t l_dhcp_lease_get_t2(const struct l_dhcp_lease *lease);
 -- =
 
 2.13.6
 
---===============9202334467205799902==--
+--===============2804381799429650832==--
 
