@@ -1,95 +1,127 @@
-Content-Type: multipart/mixed; boundary="===============4384398887332817995=="
+Content-Type: multipart/mixed; boundary="===============9202334467205799902=="
 MIME-Version: 1.0
 From: Tim Kourt <tim.a.kourt@linux.intel.com>
-Subject: [PATCH 2/5] net: Add l_net_hostname_is_localhost
-Date: Wed, 11 Dec 2019 15:21:18 -0800
-Message-ID: <20191211232121.23129-2-tim.a.kourt@linux.intel.com>
+Subject: [PATCH 3/5] unit: Add tests for net
+Date: Wed, 11 Dec 2019 15:21:19 -0800
+Message-ID: <20191211232121.23129-3-tim.a.kourt@linux.intel.com>
 In-Reply-To: <20191211232121.23129-1-tim.a.kourt@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4384398887332817995==
+--===============9202334467205799902==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Identifies if the given hostname is localhost.
 ---
- ell/net.c | 45 +++++++++++++++++++++++++++++++++++++++++++++
- ell/net.h |  1 +
- 2 files changed, 46 insertions(+)
+ Makefile.am     |  5 ++++-
+ unit/test-net.c | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++++=
+++++
+ 2 files changed, 70 insertions(+), 1 deletion(-)
+ create mode 100644 unit/test-net.c
 
-diff --git a/ell/net.c b/ell/net.c
-index 3b6e0dc..350340a 100644
---- a/ell/net.c
-+++ b/ell/net.c
-@@ -133,3 +133,48 @@ LIB_EXPORT bool l_net_hostname_is_root(const char *hos=
-tname)
+diff --git a/Makefile.am b/Makefile.am
+index ead9fd5..3ead678 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -178,7 +178,8 @@ unit_tests =3D unit/test-unit \
+ 			unit/test-ecc \
+ 			unit/test-ecdh \
+ 			unit/test-time \
+-			unit/test-path
++			unit/test-path \
++			unit/test-net
  =
 
- 	return false;
- }
-+
-+static bool str_has_suffix(const char *str, const char *suffix)
-+{
-+	size_t str_len;
-+	size_t suffix_len;
-+	size_t len_diff;
-+
-+	str_len =3D strlen(str);
-+	suffix_len =3D strlen(suffix);
-+
-+	if (str_len < suffix_len)
-+		return false;
-+
-+	len_diff =3D str_len - suffix_len;
-+
-+	return !strcasecmp(&str[len_diff], suffix);
-+}
-+
-+/**
-+ * l_net_hostname_is_localhost:
-+ * @hostname: Hostname to validate
-+ *
-+ * Identifies if the hostname given by @hostname is localhost or not.
-+ *
-+ * Returns: #true if the given hostname is localhost and #false otherwise.
-+ **/
-+LIB_EXPORT bool l_net_hostname_is_localhost(const char *hostname)
-+{
-+	if (unlikely(!hostname))
-+		return false;
-+
-+	if (!strcasecmp(hostname, "localhost") ||
-+			!strcasecmp(hostname, "localhost.") ||
-+			!strcasecmp(hostname, "localhost.localdomain") ||
-+			!strcasecmp(hostname, "localhost.localdomain."))
-+		return true;
-+
-+	if (str_has_suffix(hostname, ".localhost") ||
-+			str_has_suffix(hostname, ".localhost.") ||
-+			str_has_suffix(hostname, ".localhost.localdomain") ||
-+			str_has_suffix(hostname, ".localhost.localdomain."))
-+		return true;
-+
-+	return false;
-+}
-diff --git a/ell/net.h b/ell/net.h
-index 7afcf86..6808e07 100644
---- a/ell/net.h
-+++ b/ell/net.h
-@@ -33,6 +33,7 @@ extern "C" {
- bool l_net_get_mac_address(uint32_t ifindex, uint8_t *out_addr);
- char *l_net_get_name(uint32_t ifindex);
- bool l_net_hostname_is_root(const char *hostname);
-+bool l_net_hostname_is_localhost(const char *hostname);
+ dbus_tests =3D unit/test-hwdb \
+ 			unit/test-dbus \
+@@ -304,6 +305,8 @@ unit_test_time_LDADD =3D ell/libell-private.la
  =
 
- #ifdef __cplusplus
- }
+ unit_test_path_LDADD =3D ell/libell-private.la
+ =
+
++unit_test_net_LDADD =3D ell/libell-private.la
++
+ if MAINTAINER_MODE
+ noinst_LTLIBRARIES +=3D unit/example-plugin.la
+ endif
+diff --git a/unit/test-net.c b/unit/test-net.c
+new file mode 100644
+index 0000000..2f7bf48
+--- /dev/null
++++ b/unit/test-net.c
+@@ -0,0 +1,66 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2019  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <assert.h>
++
++#include <ell/ell.h>
++
++static void test_net_hostname_is_localhost(const void *data)
++{
++	assert(l_net_hostname_is_localhost("localhost"));
++	assert(l_net_hostname_is_localhost("localhost."));
++	assert(l_net_hostname_is_localhost("localhost.localdomain"));
++	assert(l_net_hostname_is_localhost("localhost.localdomain."));
++	assert(l_net_hostname_is_localhost("other.localhost"));
++	assert(l_net_hostname_is_localhost("other.localhost."));
++	assert(l_net_hostname_is_localhost("other.localhost.localdomain"));
++	assert(l_net_hostname_is_localhost("other.localhost.localdomain."));
++
++	assert(l_net_hostname_is_localhost("LOCALHOST"));
++
++	assert(!l_net_hostname_is_localhost("notsolocalhost"));
++	assert(!l_net_hostname_is_localhost("localhost.com"));
++	assert(!l_net_hostname_is_localhost(""));
++}
++
++static void test_net_hostname_is_root(const void *data)
++{
++	assert(l_net_hostname_is_root(""));
++	assert(l_net_hostname_is_root("."));
++	assert(!l_net_hostname_is_root("notsoroot"));
++}
++
++int main(int argc, char *argv[])
++{
++	l_test_init(&argc, &argv);
++
++	l_test_add("net/hostname_is_localhost", test_net_hostname_is_localhost,
++									NULL);
++	l_test_add("net/hostname_is_root", test_net_hostname_is_root,
++									NULL);
++
++	return l_test_run();
++}
 -- =
 
 2.13.6
 
---===============4384398887332817995==--
+--===============9202334467205799902==--
 
