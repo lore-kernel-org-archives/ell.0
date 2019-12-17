@@ -1,32 +1,57 @@
-Content-Type: multipart/mixed; boundary="===============8731728947208891119=="
+Content-Type: multipart/mixed; boundary="===============8613860659341854120=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dhcp-lease: Fix typo
-Date: Thu, 12 Dec 2019 17:04:50 -0600
-Message-ID: <68881398-a4cd-3808-0bad-5b7deeb20667@gmail.com>
-In-Reply-To: <20191212230003.25020-1-tim.a.kourt@linux.intel.com>
+From: Brian Gix <brian.gix@intel.com>
+Subject: [PATCH] dbus: NULL check proxy on method calls
+Date: Tue, 17 Dec 2019 09:24:38 -0800
+Message-ID: <20191217172438.2688-1-brian.gix@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8731728947208891119==
+--===============8613860659341854120==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Tim,
+l_dbus_proxy_method_call() seg-faults when called with a NULL proxy
+pointer.  This NULL check follows the pattern of NULL checks in the
+other LIB_EXPORT methods in module.
+---
+ ell/dbus-client.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-On 12/12/19 5:00 PM, Tim Kourt wrote:
-> Replace logical AND with OR.
-> ---
->   ell/dhcp-lease.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> =
+diff --git a/ell/dbus-client.c b/ell/dbus-client.c
+index 541f3e8..70131a8 100644
+--- a/ell/dbus-client.c
++++ b/ell/dbus-client.c
+@@ -301,6 +301,9 @@ LIB_EXPORT uint32_t l_dbus_proxy_method_call(struct l_d=
+bus_proxy *proxy,
+ {
+ 	struct method_call_request *req;
+ =
 
++	if (unlikely(!proxy))
++		return NULL;
++
+ 	req =3D l_new(struct method_call_request, 1);
+ 	req->proxy =3D proxy;
+ 	req->setup =3D setup;
+@@ -648,8 +651,8 @@ LIB_EXPORT void l_dbus_client_destroy(struct l_dbus_cli=
+ent *client)
+ 		client->proxy_cb_data_destroy(client->proxy_cb_data);
+ =
 
-Applied, thanks.
+ 	if (client->objects_call)
+-		l_dbus_cancel(client->dbus, client->objects_call)
+-;
++		l_dbus_cancel(client->dbus, client->objects_call);
++
+ 	l_queue_destroy(client->proxies,
+ 				(l_queue_destroy_func_t)dbus_proxy_destroy);
+ =
 
-Regards,
--Denis
+-- =
 
---===============8731728947208891119==--
+2.21.0
+
+--===============8613860659341854120==--
 
