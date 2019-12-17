@@ -1,13 +1,13 @@
-Content-Type: multipart/mixed; boundary="===============6635007093524475334=="
+Content-Type: multipart/mixed; boundary="===============1112182880277225735=="
 MIME-Version: 1.0
 From: Brian Gix <brian.gix@intel.com>
-Subject: [PATCH] dbus: NULL check proxy on method calls
-Date: Tue, 17 Dec 2019 09:27:46 -0800
-Message-ID: <20191217172746.3814-1-brian.gix@intel.com>
+Subject: [PATCH v2] dbus: NULL check proxy on method calls
+Date: Tue, 17 Dec 2019 09:27:53 -0800
+Message-ID: <20191217172753.3899-1-brian.gix@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6635007093524475334==
+--===============1112182880277225735==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -53,5 +53,5 @@ ent *client)
 
 2.21.0
 
---===============6635007093524475334==--
+--===============1112182880277225735==--
 
