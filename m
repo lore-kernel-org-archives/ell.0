@@ -1,13 +1,13 @@
-Content-Type: multipart/mixed; boundary="===============8613860659341854120=="
+Content-Type: multipart/mixed; boundary="===============6635007093524475334=="
 MIME-Version: 1.0
 From: Brian Gix <brian.gix@intel.com>
 Subject: [PATCH] dbus: NULL check proxy on method calls
-Date: Tue, 17 Dec 2019 09:24:38 -0800
-Message-ID: <20191217172438.2688-1-brian.gix@intel.com>
+Date: Tue, 17 Dec 2019 09:27:46 -0800
+Message-ID: <20191217172746.3814-1-brian.gix@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8613860659341854120==
+--===============6635007093524475334==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -20,7 +20,7 @@ other LIB_EXPORT methods in module.
  1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/ell/dbus-client.c b/ell/dbus-client.c
-index 541f3e8..70131a8 100644
+index 541f3e8..f735f33 100644
 --- a/ell/dbus-client.c
 +++ b/ell/dbus-client.c
 @@ -301,6 +301,9 @@ LIB_EXPORT uint32_t l_dbus_proxy_method_call(struct l_d=
@@ -30,7 +30,7 @@ bus_proxy *proxy,
  =
 
 +	if (unlikely(!proxy))
-+		return NULL;
++		return 0;
 +
  	req =3D l_new(struct method_call_request, 1);
  	req->proxy =3D proxy;
@@ -53,5 +53,5 @@ ent *client)
 
 2.21.0
 
---===============8613860659341854120==--
+--===============6635007093524475334==--
 
