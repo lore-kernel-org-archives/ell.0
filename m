@@ -1,57 +1,69 @@
-Content-Type: multipart/mixed; boundary="===============1112182880277225735=="
+Content-Type: multipart/mixed; boundary="===============8374501410628282871=="
 MIME-Version: 1.0
-From: Brian Gix <brian.gix@intel.com>
-Subject: [PATCH v2] dbus: NULL check proxy on method calls
-Date: Tue, 17 Dec 2019 09:27:53 -0800
-Message-ID: <20191217172753.3899-1-brian.gix@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v2] dbus: NULL check proxy on method calls
+Date: Tue, 17 Dec 2019 17:38:25 -0600
+Message-ID: <1200cabb-6e24-2cdf-aa9a-2e9b0b50e4a9@gmail.com>
+In-Reply-To: <20191217172753.3899-1-brian.gix@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1112182880277225735==
+--===============8374501410628282871==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-l_dbus_proxy_method_call() seg-faults when called with a NULL proxy
-pointer.  This NULL check follows the pattern of NULL checks in the
-other LIB_EXPORT methods in module.
----
- ell/dbus-client.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+Hi Brian,
 
-diff --git a/ell/dbus-client.c b/ell/dbus-client.c
-index 541f3e8..f735f33 100644
---- a/ell/dbus-client.c
-+++ b/ell/dbus-client.c
-@@ -301,6 +301,9 @@ LIB_EXPORT uint32_t l_dbus_proxy_method_call(struct l_d=
-bus_proxy *proxy,
- {
- 	struct method_call_request *req;
- =
+On 12/17/19 11:27 AM, Brian Gix wrote:
+> l_dbus_proxy_method_call() seg-faults when called with a NULL proxy
+> pointer.  This NULL check follows the pattern of NULL checks in the
+> other LIB_EXPORT methods in module.
+> ---
+>   ell/dbus-client.c | 7 +++++--
+>   1 file changed, 5 insertions(+), 2 deletions(-)
+> =
 
-+	if (unlikely(!proxy))
-+		return 0;
-+
- 	req =3D l_new(struct method_call_request, 1);
- 	req->proxy =3D proxy;
- 	req->setup =3D setup;
-@@ -648,8 +651,8 @@ LIB_EXPORT void l_dbus_client_destroy(struct l_dbus_cli=
-ent *client)
- 		client->proxy_cb_data_destroy(client->proxy_cb_data);
- =
 
- 	if (client->objects_call)
--		l_dbus_cancel(client->dbus, client->objects_call)
--;
-+		l_dbus_cancel(client->dbus, client->objects_call);
-+
- 	l_queue_destroy(client->proxies,
- 				(l_queue_destroy_func_t)dbus_proxy_destroy);
- =
+Good catch...
 
--- =
+> diff --git a/ell/dbus-client.c b/ell/dbus-client.c
+> index 541f3e8..f735f33 100644
+> --- a/ell/dbus-client.c
+> +++ b/ell/dbus-client.c
+> @@ -301,6 +301,9 @@ LIB_EXPORT uint32_t l_dbus_proxy_method_call(struct l=
+_dbus_proxy *proxy,
+>   {
+>   	struct method_call_request *req;
+>   =
 
-2.21.0
+> +	if (unlikely(!proxy))
+> +		return 0;
+> +
+>   	req =3D l_new(struct method_call_request, 1);
+>   	req->proxy =3D proxy;
+>   	req->setup =3D setup;
+> @@ -648,8 +651,8 @@ LIB_EXPORT void l_dbus_client_destroy(struct l_dbus_c=
+lient *client)
+>   		client->proxy_cb_data_destroy(client->proxy_cb_data);
+>   =
 
---===============1112182880277225735==--
+>   	if (client->objects_call)
+> -		l_dbus_cancel(client->dbus, client->objects_call)
+> -;
+> +		l_dbus_cancel(client->dbus, client->objects_call);
+> +
+
+... but this part belongs in a separate commit.
+
+>   	l_queue_destroy(client->proxies,
+>   				(l_queue_destroy_func_t)dbus_proxy_destroy);
+>   =
+
+> =
+
+
+Regards,
+-Denis
+--===============8374501410628282871==--
 
