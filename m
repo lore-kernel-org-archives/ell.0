@@ -1,49 +1,47 @@
-Content-Type: multipart/mixed; boundary="===============1230279063156294399=="
+Content-Type: multipart/mixed; boundary="===============7557226697190692850=="
 MIME-Version: 1.0
-From: Gix, Brian <brian.gix@intel.com>
-Subject: Re: Warn-to-error on -Werror=cast-align
-Date: Tue, 07 Jan 2020 18:18:18 +0000
-Message-ID: <b1ae840114c17afceb5347a4c1be6fac651b8f5f.camel@intel.com>
-In-Reply-To: <6018104577b417880e4cb4bf828a300be0ea1f2b.camel@intel.com>
+From: =?unknown-8bit?q?Micha=C5=82?= Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
+Subject: [PATCH] util: Fix -Wcast-align error in l_container_of
+Date: Tue, 07 Jan 2020 23:34:31 +0100
+Message-ID: <20200107223431.4573-1-michal.lowas-rzechonek@silvair.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1230279063156294399==
+--===============7557226697190692850==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+This fixes the following build warning:
 
-On Tue, 2020-01-07 at 10:07 -0800, Brian Gix wrote:
-> On Tue, 2020-01-07 at 11:56 -0600, Denis Kenzior wrote:
-> > =
+ell/util.h:40:3: error: cast increases required alignment of target type [-=
+Werror=3Dcast-align]
+   (type *)((char *) __mptr - offsetof(type, member)); \
 
+Which is a false positive, as recalculating struct pointer does
+not affect alignment requirements of the pointer in any way.
+---
+ ell/util.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-<...>
+diff --git a/ell/util.h b/ell/util.h
+index 4f20ef0..fe7c7e2 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -37,7 +37,7 @@ extern "C" {
+ =
 
-> > And really, why are we trying to fix something that isn't broken? :)
-> =
+ #define l_container_of(ptr, type, member) ({				\
+ 		const __typeof__(((type *) 0)->member) *__mptr =3D (ptr);	\
+-		(type *)((char *) __mptr - offsetof(type, member));	\
++		(type *)(void *)((char *) __mptr - offsetof(type, member));	\
+ 	})
+ =
 
-> I guess I wasn't clear...   This is broken in BlueZ, which compiles every=
-thing with -Werror=3Dcast-align,
-> when compiling for ARM-8 architectures.
-> =
+ #define likely(x)   __builtin_expect(!!(x), 1)
+-- =
 
-> > Look carefully at what that macro is doing, it is casting to (char *) =
+2.23.0
 
-> > only for purposes of pointer arithmetic.  There's no possibility of any =
-
-> > misalignment.  The compiler is just being silly.
-> > =
-
-
-If this is indeed the "compiler being silly" then this would seem to be an =
-argument in *favor* of void-casting
-the final macro output, before casting to the desired type...  This is Mich=
-a=C5=82's original solution, and should
-work pretty universally.  It is also what Marcel has signalled that he beli=
-eves is acceptable.
-
---===============1230279063156294399==--
+--===============7557226697190692850==--
 
