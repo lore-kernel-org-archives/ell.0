@@ -1,47 +1,147 @@
-Content-Type: multipart/mixed; boundary="===============7557226697190692850=="
+Content-Type: multipart/mixed; boundary="===============3364227556330051318=="
 MIME-Version: 1.0
-From: =?unknown-8bit?q?Micha=C5=82?= Lowas-Rzechonek <michal.lowas-rzechonek@silvair.com>
-Subject: [PATCH] util: Fix -Wcast-align error in l_container_of
-Date: Tue, 07 Jan 2020 23:34:31 +0100
-Message-ID: <20200107223431.4573-1-michal.lowas-rzechonek@silvair.com>
+From: =?unknown-8bit?q?Przemys=C5=82aw?= Fierek <przemyslaw.fierek@silvair.com>
+Subject: [PATCH] ringbuf: Add l_ringbuf_append function
+Date: Tue, 21 Jan 2020 09:15:06 +0100
+Message-ID: <20200121081506.19626-1-przemyslaw.fierek@silvair.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7557226697190692850==
+--===============3364227556330051318==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This fixes the following build warning:
-
-ell/util.h:40:3: error: cast increases required alignment of target type [-=
-Werror=3Dcast-align]
-   (type *)((char *) __mptr - offsetof(type, member)); \
-
-Which is a false positive, as recalculating struct pointer does
-not affect alignment requirements of the pointer in any way.
+This patch adds `l_ringbuf_append` function which allows to append
+data to the ring buffer.
 ---
- ell/util.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ ell/ringbuf.c | 69 ++++++++++++++++++++++++++++++++++++---------------
+ ell/ringbuf.h |  2 ++
+ 2 files changed, 51 insertions(+), 20 deletions(-)
 
-diff --git a/ell/util.h b/ell/util.h
-index 4f20ef0..fe7c7e2 100644
---- a/ell/util.h
-+++ b/ell/util.h
-@@ -37,7 +37,7 @@ extern "C" {
+diff --git a/ell/ringbuf.c b/ell/ringbuf.c
+index 49f370c..a23f91a 100644
+--- a/ell/ringbuf.c
++++ b/ell/ringbuf.c
+@@ -321,7 +321,7 @@ LIB_EXPORT int l_ringbuf_printf(struct l_ringbuf *ringb=
+uf,
+ LIB_EXPORT int l_ringbuf_vprintf(struct l_ringbuf *ringbuf,
+ 						const char *format, va_list ap)
+ {
+-	size_t avail, offset, end;
++	size_t avail;
+ 	char *str;
+ 	int len;
  =
 
- #define l_container_of(ptr, type, member) ({				\
- 		const __typeof__(((type *) 0)->member) *__mptr =3D (ptr);	\
--		(type *)((char *) __mptr - offsetof(type, member));	\
-+		(type *)(void *)((char *) __mptr - offsetof(type, member));	\
- 	})
+@@ -342,28 +342,10 @@ LIB_EXPORT int l_ringbuf_vprintf(struct l_ringbuf *ri=
+ngbuf,
+ 		return -1;
+ 	}
  =
 
- #define likely(x)   __builtin_expect(!!(x), 1)
+-	/* Determine possible length of string before wrapping */
+-	offset =3D ringbuf->in & (ringbuf->size - 1);
+-	end =3D minsize((size_t) len, ringbuf->size - offset);
+-	memcpy(ringbuf->buffer + offset, str, end);
+-
+-	if (ringbuf->in_tracing)
+-		ringbuf->in_tracing(ringbuf->buffer + offset, end,
+-							ringbuf->in_data);
+-
+-	if (len - end > 0) {
+-		/* Put the remainder of string at the beginning */
+-		memcpy(ringbuf->buffer, str + end, len - end);
+-
+-		if (ringbuf->in_tracing)
+-			ringbuf->in_tracing(ringbuf->buffer, len - end,
+-							ringbuf->in_data);
+-	}
++	len =3D l_ringbuf_append(ringbuf, str, len);
+ =
+
+ 	l_free(str);
+ =
+
+-	ringbuf->in +=3D len;
+-
+ 	return len;
+ }
+ =
+
+@@ -420,3 +402,50 @@ LIB_EXPORT ssize_t l_ringbuf_read(struct l_ringbuf *ri=
+ngbuf, int fd)
+ =
+
+ 	return consumed;
+ }
++
++/**
++ * l_ringbuf_append:
++ * @ringbuf: Ring Buffer object
++ * @data: data to be appended
++ * @len: data length
++ *
++ * Appends data to the ring buffer.
++ *
++ * Returns: Number of appended bytes or -1 if the append failed.
++ **/
++ssize_t l_ringbuf_append(struct l_ringbuf *ringbuf, void *data, ssize_t le=
+n)
++{
++	size_t avail, offset, end, left;
++
++	if (!ringbuf || data =3D=3D NULL)
++		return -1;
++
++	/* Determine how much can actually be appended */
++	avail =3D ringbuf->size - ringbuf->in + ringbuf->out;
++
++	if (!avail)
++		return -1;
++
++	/* Determine how much to append before wrapping */
++	offset =3D ringbuf->in & (ringbuf->size - 1);
++	end =3D minsize((size_t) len, ringbuf->size - offset);
++	memcpy(ringbuf->buffer + offset, data, end);
++
++	if (ringbuf->in_tracing)
++		ringbuf->in_tracing(ringbuf->buffer + offset, end,
++						ringbuf->in_data);
++
++	left =3D minsize(avail - end, len - end);
++
++	if (left > 0) {
++		memcpy(ringbuf->buffer, data + end, left);
++
++		if (ringbuf->in_tracing)
++			ringbuf->in_tracing(ringbuf->buffer, left,
++						ringbuf->in_data);
++	}
++
++	ringbuf->in +=3D end + left;
++
++	return (end + left);
++}
+diff --git a/ell/ringbuf.h b/ell/ringbuf.h
+index 846f7a5..05a37d2 100644
+--- a/ell/ringbuf.h
++++ b/ell/ringbuf.h
+@@ -58,6 +58,8 @@ int l_ringbuf_vprintf(struct l_ringbuf *ringbuf, const ch=
+ar *format,
+ 					va_list ap);
+ ssize_t l_ringbuf_read(struct l_ringbuf *ringbuf, int fd);
+ =
+
++ssize_t l_ringbuf_append(struct l_ringbuf *ringbuf, void *data, ssize_t le=
+n);
++
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
-2.23.0
+2.17.1
 
---===============7557226697190692850==--
+--===============3364227556330051318==--
 
