@@ -1,147 +1,130 @@
-Content-Type: multipart/mixed; boundary="===============3364227556330051318=="
+Content-Type: multipart/mixed; boundary="===============8384448516471683128=="
 MIME-Version: 1.0
 From: =?unknown-8bit?q?Przemys=C5=82aw?= Fierek <przemyslaw.fierek@silvair.com>
-Subject: [PATCH] ringbuf: Add l_ringbuf_append function
-Date: Tue, 21 Jan 2020 09:15:06 +0100
-Message-ID: <20200121081506.19626-1-przemyslaw.fierek@silvair.com>
+Subject: [PATCH] unit: Add test-casese for l_ringbuf_append function
+Date: Tue, 21 Jan 2020 09:17:49 +0100
+Message-ID: <20200121081749.20090-1-przemyslaw.fierek@silvair.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3364227556330051318==
+--===============8384448516471683128==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This patch adds `l_ringbuf_append` function which allows to append
-data to the ring buffer.
+This patch adds unit-tests for previously submitted `l_ringbuf_append`
+function.
 ---
- ell/ringbuf.c | 69 ++++++++++++++++++++++++++++++++++++---------------
- ell/ringbuf.h |  2 ++
- 2 files changed, 51 insertions(+), 20 deletions(-)
+ unit/test-ringbuf.c | 83 ++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 82 insertions(+), 1 deletion(-)
 
-diff --git a/ell/ringbuf.c b/ell/ringbuf.c
-index 49f370c..a23f91a 100644
---- a/ell/ringbuf.c
-+++ b/ell/ringbuf.c
-@@ -321,7 +321,7 @@ LIB_EXPORT int l_ringbuf_printf(struct l_ringbuf *ringb=
-uf,
- LIB_EXPORT int l_ringbuf_vprintf(struct l_ringbuf *ringbuf,
- 						const char *format, va_list ap)
- {
--	size_t avail, offset, end;
-+	size_t avail;
- 	char *str;
- 	int len;
- =
-
-@@ -342,28 +342,10 @@ LIB_EXPORT int l_ringbuf_vprintf(struct l_ringbuf *ri=
-ngbuf,
- 		return -1;
- 	}
- =
-
--	/* Determine possible length of string before wrapping */
--	offset =3D ringbuf->in & (ringbuf->size - 1);
--	end =3D minsize((size_t) len, ringbuf->size - offset);
--	memcpy(ringbuf->buffer + offset, str, end);
--
--	if (ringbuf->in_tracing)
--		ringbuf->in_tracing(ringbuf->buffer + offset, end,
--							ringbuf->in_data);
--
--	if (len - end > 0) {
--		/* Put the remainder of string at the beginning */
--		memcpy(ringbuf->buffer, str + end, len - end);
--
--		if (ringbuf->in_tracing)
--			ringbuf->in_tracing(ringbuf->buffer, len - end,
--							ringbuf->in_data);
--	}
-+	len =3D l_ringbuf_append(ringbuf, str, len);
- =
-
- 	l_free(str);
- =
-
--	ringbuf->in +=3D len;
--
- 	return len;
+diff --git a/unit/test-ringbuf.c b/unit/test-ringbuf.c
+index 906161b..ce2c5f9 100644
+--- a/unit/test-ringbuf.c
++++ b/unit/test-ringbuf.c
+@@ -131,6 +131,86 @@ static void test_printf(const void *data)
+ 	l_ringbuf_free(rb);
  }
  =
 
-@@ -420,3 +402,50 @@ LIB_EXPORT ssize_t l_ringbuf_read(struct l_ringbuf *ri=
-ngbuf, int fd)
- =
-
- 	return consumed;
- }
-+
-+/**
-+ * l_ringbuf_append:
-+ * @ringbuf: Ring Buffer object
-+ * @data: data to be appended
-+ * @len: data length
-+ *
-+ * Appends data to the ring buffer.
-+ *
-+ * Returns: Number of appended bytes or -1 if the append failed.
-+ **/
-+ssize_t l_ringbuf_append(struct l_ringbuf *ringbuf, void *data, ssize_t le=
-n)
++static void test_append(const void *unused)
 +{
-+	size_t avail, offset, end, left;
++	static uint8_t data[6] =3D {1, 2, 3, 4, 5, 6};
++	static size_t rb_size =3D 12;
++	static size_t rb_capa =3D 16;
++	static size_t len_no_wrap;
++	static ssize_t appended, space_left;
++	static void *rb_data;
++	struct l_ringbuf *rb;
 +
-+	if (!ringbuf || data =3D=3D NULL)
-+		return -1;
++	rb =3D l_ringbuf_new(rb_size);
++	assert(rb !=3D NULL);
++	assert(l_ringbuf_capacity(rb) =3D=3D rb_capa);
 +
-+	/* Determine how much can actually be appended */
-+	avail =3D ringbuf->size - ringbuf->in + ringbuf->out;
++	appended =3D l_ringbuf_append(rb, data, sizeof(data));
++	assert(appended =3D=3D sizeof(data));
 +
-+	if (!avail)
-+		return -1;
++	appended =3D l_ringbuf_append(rb, data, sizeof(data));
++	assert(appended =3D=3D sizeof(data));
 +
-+	/* Determine how much to append before wrapping */
-+	offset =3D ringbuf->in & (ringbuf->size - 1);
-+	end =3D minsize((size_t) len, ringbuf->size - offset);
-+	memcpy(ringbuf->buffer + offset, data, end);
++	space_left =3D minsize(l_ringbuf_avail(rb), sizeof(data));
++	appended =3D l_ringbuf_append(rb, data, sizeof(data));
++	assert(appended =3D=3D space_left);
 +
-+	if (ringbuf->in_tracing)
-+		ringbuf->in_tracing(ringbuf->buffer + offset, end,
-+						ringbuf->in_data);
++	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
++	assert(memcmp(rb_data, data, sizeof(data)) =3D=3D 0);
++	l_ringbuf_drain(rb, sizeof(data));
 +
-+	left =3D minsize(avail - end, len - end);
++	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
++	assert(memcmp(rb_data, data, sizeof(data)) =3D=3D 0);
++	l_ringbuf_drain(rb, sizeof(data));
 +
-+	if (left > 0) {
-+		memcpy(ringbuf->buffer, data + end, left);
++	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
++	assert(memcmp(rb_data, data, len_no_wrap) =3D=3D 0);
++	l_ringbuf_drain(rb, len_no_wrap);
 +
-+		if (ringbuf->in_tracing)
-+			ringbuf->in_tracing(ringbuf->buffer, left,
-+						ringbuf->in_data);
-+	}
-+
-+	ringbuf->in +=3D end + left;
-+
-+	return (end + left);
++	l_ringbuf_free(rb);
 +}
-diff --git a/ell/ringbuf.h b/ell/ringbuf.h
-index 846f7a5..05a37d2 100644
---- a/ell/ringbuf.h
-+++ b/ell/ringbuf.h
-@@ -58,6 +58,8 @@ int l_ringbuf_vprintf(struct l_ringbuf *ringbuf, const ch=
-ar *format,
- 					va_list ap);
- ssize_t l_ringbuf_read(struct l_ringbuf *ringbuf, int fd);
++
++static void test_append2(const void *unused)
++{
++	static uint8_t expected_data1[14] =3D {3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2=
+, 3, 4};
++	static uint8_t expected_data2[2] =3D {5, 6};
++	static uint8_t data[6] =3D {1, 2, 3, 4, 5, 6};
++	static size_t rb_size =3D 12;
++	static size_t rb_capa =3D 16;
++	static size_t len_no_wrap;
++	static ssize_t appended, space_left;
++	static void *rb_data;
++	struct l_ringbuf *rb;
++
++	rb =3D l_ringbuf_new(rb_size);
++	assert(rb !=3D NULL);
++	assert(l_ringbuf_capacity(rb) =3D=3D rb_capa);
++
++	appended =3D l_ringbuf_append(rb, data, sizeof(data));
++	assert(appended =3D=3D sizeof(data));
++
++	appended =3D l_ringbuf_append(rb, data, sizeof(data));
++	assert(appended =3D=3D sizeof(data));
++
++	space_left =3D minsize(l_ringbuf_avail(rb), sizeof(data));
++	l_ringbuf_drain(rb, sizeof(data) - space_left);
++
++	appended =3D l_ringbuf_append(rb, data, sizeof(data));
++	assert(appended =3D=3D sizeof(data));
++
++	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
++	assert(len_no_wrap =3D=3D sizeof(expected_data1));
++	assert(memcmp(expected_data1, rb_data, len_no_wrap) =3D=3D 0);
++
++	l_ringbuf_drain(rb, len_no_wrap);
++
++	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
++	assert(len_no_wrap =3D=3D sizeof(expected_data2));
++	assert(memcmp(expected_data2, rb_data, len_no_wrap) =3D=3D 0);
++
++	l_ringbuf_free(rb);
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -138,7 +218,8 @@ int main(int argc, char *argv[])
+ 	l_test_add("/ringbuf/power2", test_power2, NULL);
+ 	l_test_add("/ringbuf/alloc", test_alloc, NULL);
+ 	l_test_add("/ringbuf/printf", test_printf, NULL);
++	l_test_add("/ringbuf/append", test_append, NULL);
++	l_test_add("/ringbuf/append2", test_append2, NULL);
  =
 
-+ssize_t l_ringbuf_append(struct l_ringbuf *ringbuf, void *data, ssize_t le=
-n);
-+
- #ifdef __cplusplus
+ 	return l_test_run();
+-
  }
- #endif
 -- =
 
 2.17.1
 
---===============3364227556330051318==--
+--===============8384448516471683128==--
 
