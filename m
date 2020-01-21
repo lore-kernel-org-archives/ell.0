@@ -1,130 +1,90 @@
-Content-Type: multipart/mixed; boundary="===============8384448516471683128=="
+Content-Type: multipart/mixed; boundary="===============6748809431438903184=="
 MIME-Version: 1.0
-From: =?unknown-8bit?q?Przemys=C5=82aw?= Fierek <przemyslaw.fierek@silvair.com>
-Subject: [PATCH] unit: Add test-casese for l_ringbuf_append function
-Date: Tue, 21 Jan 2020 09:17:49 +0100
-Message-ID: <20200121081749.20090-1-przemyslaw.fierek@silvair.com>
+From: Othman, Ossama <ossama.othman@intel.com>
+Subject: Re: [PATCH] ringbuf: Add l_ringbuf_append function
+Date: Tue, 21 Jan 2020 10:04:33 -0800
+Message-ID: <CAPyD+=DFELkYyFS6bbe1zXWg0NpihyeZ76CnNGtWJ-HSvPDKhA@mail.gmail.com>
+In-Reply-To: <20200121081506.19626-1-przemyslaw.fierek@silvair.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8384448516471683128==
+--===============6748809431438903184==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This patch adds unit-tests for previously submitted `l_ringbuf_append`
-function.
----
- unit/test-ringbuf.c | 83 ++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 82 insertions(+), 1 deletion(-)
+On Tue, Jan 21, 2020 at 12:15 AM Przemys=C5=82aw Fierek
+<przemyslaw.fierek@silvair.com> wrote:
+> +ssize_t l_ringbuf_append(struct l_ringbuf *ringbuf, void *data, ssize_t =
+len)
+> +{
+> +       size_t avail, offset, end, left;
+> +
+> +       if (!ringbuf || data =3D=3D NULL)
+> +               return -1;
 
-diff --git a/unit/test-ringbuf.c b/unit/test-ringbuf.c
-index 906161b..ce2c5f9 100644
---- a/unit/test-ringbuf.c
-+++ b/unit/test-ringbuf.c
-@@ -131,6 +131,86 @@ static void test_printf(const void *data)
- 	l_ringbuf_free(rb);
- }
- =
+"len" can be less than zero since ssize_t is signed.  I believe you
+should also return -1 in that case as well.
 
-+static void test_append(const void *unused)
-+{
-+	static uint8_t data[6] =3D {1, 2, 3, 4, 5, 6};
-+	static size_t rb_size =3D 12;
-+	static size_t rb_capa =3D 16;
-+	static size_t len_no_wrap;
-+	static ssize_t appended, space_left;
-+	static void *rb_data;
-+	struct l_ringbuf *rb;
-+
-+	rb =3D l_ringbuf_new(rb_size);
-+	assert(rb !=3D NULL);
-+	assert(l_ringbuf_capacity(rb) =3D=3D rb_capa);
-+
-+	appended =3D l_ringbuf_append(rb, data, sizeof(data));
-+	assert(appended =3D=3D sizeof(data));
-+
-+	appended =3D l_ringbuf_append(rb, data, sizeof(data));
-+	assert(appended =3D=3D sizeof(data));
-+
-+	space_left =3D minsize(l_ringbuf_avail(rb), sizeof(data));
-+	appended =3D l_ringbuf_append(rb, data, sizeof(data));
-+	assert(appended =3D=3D space_left);
-+
-+	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
-+	assert(memcmp(rb_data, data, sizeof(data)) =3D=3D 0);
-+	l_ringbuf_drain(rb, sizeof(data));
-+
-+	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
-+	assert(memcmp(rb_data, data, sizeof(data)) =3D=3D 0);
-+	l_ringbuf_drain(rb, sizeof(data));
-+
-+	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
-+	assert(memcmp(rb_data, data, len_no_wrap) =3D=3D 0);
-+	l_ringbuf_drain(rb, len_no_wrap);
-+
-+	l_ringbuf_free(rb);
-+}
-+
-+static void test_append2(const void *unused)
-+{
-+	static uint8_t expected_data1[14] =3D {3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2=
-, 3, 4};
-+	static uint8_t expected_data2[2] =3D {5, 6};
-+	static uint8_t data[6] =3D {1, 2, 3, 4, 5, 6};
-+	static size_t rb_size =3D 12;
-+	static size_t rb_capa =3D 16;
-+	static size_t len_no_wrap;
-+	static ssize_t appended, space_left;
-+	static void *rb_data;
-+	struct l_ringbuf *rb;
-+
-+	rb =3D l_ringbuf_new(rb_size);
-+	assert(rb !=3D NULL);
-+	assert(l_ringbuf_capacity(rb) =3D=3D rb_capa);
-+
-+	appended =3D l_ringbuf_append(rb, data, sizeof(data));
-+	assert(appended =3D=3D sizeof(data));
-+
-+	appended =3D l_ringbuf_append(rb, data, sizeof(data));
-+	assert(appended =3D=3D sizeof(data));
-+
-+	space_left =3D minsize(l_ringbuf_avail(rb), sizeof(data));
-+	l_ringbuf_drain(rb, sizeof(data) - space_left);
-+
-+	appended =3D l_ringbuf_append(rb, data, sizeof(data));
-+	assert(appended =3D=3D sizeof(data));
-+
-+	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
-+	assert(len_no_wrap =3D=3D sizeof(expected_data1));
-+	assert(memcmp(expected_data1, rb_data, len_no_wrap) =3D=3D 0);
-+
-+	l_ringbuf_drain(rb, len_no_wrap);
-+
-+	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
-+	assert(len_no_wrap =3D=3D sizeof(expected_data2));
-+	assert(memcmp(expected_data2, rb_data, len_no_wrap) =3D=3D 0);
-+
-+	l_ringbuf_free(rb);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -138,7 +218,8 @@ int main(int argc, char *argv[])
- 	l_test_add("/ringbuf/power2", test_power2, NULL);
- 	l_test_add("/ringbuf/alloc", test_alloc, NULL);
- 	l_test_add("/ringbuf/printf", test_printf, NULL);
-+	l_test_add("/ringbuf/append", test_append, NULL);
-+	l_test_add("/ringbuf/append2", test_append2, NULL);
- =
+Assuming your want to make this function part of the public l_ringbuf
+API, shouldn't you also add l_ringbuf_append to the symbol table in
+ell.sym?
 
- 	return l_test_run();
--
- }
--- =
+-Ossama
 
-2.17.1
 
---===============8384448516471683128==--
+
+-Ossama
+
+> +
+> +       /* Determine how much can actually be appended */
+> +       avail =3D ringbuf->size - ringbuf->in + ringbuf->out;
+> +
+> +       if (!avail)
+> +               return -1;
+> +
+> +       /* Determine how much to append before wrapping */
+> +       offset =3D ringbuf->in & (ringbuf->size - 1);
+> +       end =3D minsize((size_t) len, ringbuf->size - offset);
+> +       memcpy(ringbuf->buffer + offset, data, end);
+> +
+> +       if (ringbuf->in_tracing)
+> +               ringbuf->in_tracing(ringbuf->buffer + offset, end,
+> +                                               ringbuf->in_data);
+> +
+> +       left =3D minsize(avail - end, len - end);
+> +
+> +       if (left > 0) {
+> +               memcpy(ringbuf->buffer, data + end, left);
+> +
+> +               if (ringbuf->in_tracing)
+> +                       ringbuf->in_tracing(ringbuf->buffer, left,
+> +                                               ringbuf->in_data);
+> +       }
+> +
+> +       ringbuf->in +=3D end + left;
+> +
+> +       return (end + left);
+> +}
+> diff --git a/ell/ringbuf.h b/ell/ringbuf.h
+> index 846f7a5..05a37d2 100644
+> --- a/ell/ringbuf.h
+> +++ b/ell/ringbuf.h
+> @@ -58,6 +58,8 @@ int l_ringbuf_vprintf(struct l_ringbuf *ringbuf, const =
+char *format,
+>                                         va_list ap);
+>  ssize_t l_ringbuf_read(struct l_ringbuf *ringbuf, int fd);
+>
+> +ssize_t l_ringbuf_append(struct l_ringbuf *ringbuf, void *data, ssize_t =
+len);
+> +
+>  #ifdef __cplusplus
+>  }
+>  #endif
+> --
+> 2.17.1
+> _______________________________________________
+> ell mailing list -- ell(a)lists.01.org
+> To unsubscribe send an email to ell-leave(a)lists.01.org
+--===============6748809431438903184==--
 
