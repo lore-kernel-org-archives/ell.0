@@ -1,50 +1,154 @@
-Content-Type: multipart/mixed; boundary="===============3480687733934878510=="
+Content-Type: multipart/mixed; boundary="===============2197316909081781918=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v2] ringbuf: Add l_ringbuf_append function
-Date: Fri, 24 Jan 2020 14:39:25 -0600
-Message-ID: <efa1261a-1e5e-025b-a754-c47f082f5304@gmail.com>
-In-Reply-To: <20200122115606.19382-1-przemyslaw.fierek@silvair.com>
+Subject: Re: [PATCH] unit: Add test-casese for l_ringbuf_append function
+Date: Fri, 24 Jan 2020 14:41:18 -0600
+Message-ID: <842de316-dbf6-cc29-33fe-b1270534c7cb@gmail.com>
+In-Reply-To: <20200121081749.20090-1-przemyslaw.fierek@silvair.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3480687733934878510==
+--===============2197316909081781918==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Przemys=C5=82aw,
 
-On 1/22/20 5:56 AM, Przemys=C5=82aw Fierek wrote:
+On 1/21/20 2:17 AM, Przemys=C5=82aw Fierek wrote:
+> This patch adds unit-tests for previously submitted `l_ringbuf_append`
+> function.
 > ---
->   ell/ell.sym   |  1 +
->   ell/ringbuf.c | 69 ++++++++++++++++++++++++++++++++++++---------------
->   ell/ringbuf.h |  2 ++
->   3 files changed, 52 insertions(+), 20 deletions(-)
+>   unit/test-ringbuf.c | 83 ++++++++++++++++++++++++++++++++++++++++++++-
+>   1 file changed, 82 insertions(+), 1 deletion(-)
+> =
+
+> diff --git a/unit/test-ringbuf.c b/unit/test-ringbuf.c
+> index 906161b..ce2c5f9 100644
+> --- a/unit/test-ringbuf.c
+> +++ b/unit/test-ringbuf.c
+> @@ -131,6 +131,86 @@ static void test_printf(const void *data)
+>   	l_ringbuf_free(rb);
+>   }
+>   =
+
+> +static void test_append(const void *unused)
+> +{
+> +	static uint8_t data[6] =3D {1, 2, 3, 4, 5, 6};
+> +	static size_t rb_size =3D 12;
+> +	static size_t rb_capa =3D 16;
+
+static const?
+
+> +	static size_t len_no_wrap;
+> +	static ssize_t appended, space_left;
+
+one variable per line please
+
+> +	static void *rb_data;
+
+Why are all these static?
+
+> +	struct l_ringbuf *rb;
+> +
+> +	rb =3D l_ringbuf_new(rb_size);
+> +	assert(rb !=3D NULL);
+> +	assert(l_ringbuf_capacity(rb) =3D=3D rb_capa);
+> +
+> +	appended =3D l_ringbuf_append(rb, data, sizeof(data));
+> +	assert(appended =3D=3D sizeof(data));
+> +
+> +	appended =3D l_ringbuf_append(rb, data, sizeof(data));
+> +	assert(appended =3D=3D sizeof(data));
+> +
+> +	space_left =3D minsize(l_ringbuf_avail(rb), sizeof(data));
+> +	appended =3D l_ringbuf_append(rb, data, sizeof(data));
+> +	assert(appended =3D=3D space_left);
+> +
+> +	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
+> +	assert(memcmp(rb_data, data, sizeof(data)) =3D=3D 0);
+> +	l_ringbuf_drain(rb, sizeof(data));
+> +
+> +	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
+> +	assert(memcmp(rb_data, data, sizeof(data)) =3D=3D 0);
+> +	l_ringbuf_drain(rb, sizeof(data));
+> +
+> +	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
+> +	assert(memcmp(rb_data, data, len_no_wrap) =3D=3D 0);
+> +	l_ringbuf_drain(rb, len_no_wrap);
+> +
+> +	l_ringbuf_free(rb);
+> +}
+> +
+> +static void test_append2(const void *unused)
+> +{
+> +	static uint8_t expected_data1[14] =3D {3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1,=
+ 2, 3, 4};
+
+80 char line limit exceeded
+
+> +	static uint8_t expected_data2[2] =3D {5, 6};
+> +	static uint8_t data[6] =3D {1, 2, 3, 4, 5, 6};
+> +	static size_t rb_size =3D 12;
+> +	static size_t rb_capa =3D 16;
+
+static const?
+
+> +	static size_t len_no_wrap;
+> +	static ssize_t appended, space_left;
+> +	static void *rb_data;
+
+Why static?
+
+> +	struct l_ringbuf *rb;
+> +
+> +	rb =3D l_ringbuf_new(rb_size);
+> +	assert(rb !=3D NULL);
+> +	assert(l_ringbuf_capacity(rb) =3D=3D rb_capa);
+> +
+> +	appended =3D l_ringbuf_append(rb, data, sizeof(data));
+> +	assert(appended =3D=3D sizeof(data));
+> +
+> +	appended =3D l_ringbuf_append(rb, data, sizeof(data));
+> +	assert(appended =3D=3D sizeof(data));
+> +
+> +	space_left =3D minsize(l_ringbuf_avail(rb), sizeof(data));
+> +	l_ringbuf_drain(rb, sizeof(data) - space_left);
+> +
+> +	appended =3D l_ringbuf_append(rb, data, sizeof(data));
+> +	assert(appended =3D=3D sizeof(data));
+> +
+> +	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
+> +	assert(len_no_wrap =3D=3D sizeof(expected_data1));
+> +	assert(memcmp(expected_data1, rb_data, len_no_wrap) =3D=3D 0);
+> +
+> +	l_ringbuf_drain(rb, len_no_wrap);
+> +
+> +	rb_data =3D l_ringbuf_peek(rb, 0, &len_no_wrap);
+> +	assert(len_no_wrap =3D=3D sizeof(expected_data2));
+> +	assert(memcmp(expected_data2, rb_data, len_no_wrap) =3D=3D 0);
+> +
+> +	l_ringbuf_free(rb);
+> +}
+> +
+>   int main(int argc, char *argv[])
+>   {
+>   	l_test_init(&argc, &argv);
+> @@ -138,7 +218,8 @@ int main(int argc, char *argv[])
+>   	l_test_add("/ringbuf/power2", test_power2, NULL);
+>   	l_test_add("/ringbuf/alloc", test_alloc, NULL);
+>   	l_test_add("/ringbuf/printf", test_printf, NULL);
+> +	l_test_add("/ringbuf/append", test_append, NULL);
+> +	l_test_add("/ringbuf/append2", test_append2, NULL);
+>   =
+
+>   	return l_test_run();
+> -
+>   }
 > =
 
 
-<snip>
-
-> +ssize_t l_ringbuf_append(struct l_ringbuf *ringbuf, void *data, size_t l=
-en)
-> +{
-> +	size_t avail, offset, end, left;
-> +
-
-Do note that Linux Kernel coding style wants one variable declaration =
-
-per line.  I know the current code is a bit lax in doing that, but for =
-
-new code or changes this is what we prefer.  Refer to: =
-
-https://www.kernel.org/doc/html/latest/process/coding-style.html, =
-
-Section 8, last paragraph.
-
-I manually amended this patch to fix that and applied.
-
 Regards,
 -Denis
---===============3480687733934878510==--
+--===============2197316909081781918==--
 
