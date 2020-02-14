@@ -1,55 +1,88 @@
-Content-Type: multipart/mixed; boundary="===============1966286560534496901=="
+Content-Type: multipart/mixed; boundary="===============3660276975576955662=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] dbus-service: Do not auto-emit property changes
-Date: Wed, 29 Jan 2020 10:53:01 -0600
-Message-ID: <94f11a42-7730-31ad-e112-455ab42bf9d4@gmail.com>
-In-Reply-To: <20200128201348.28916-1-denkenz@gmail.com>
+From: Daniel Wagner <wagi@monom.org>
+Subject: [PATCH 0/2] Import rntlutil from iwd
+Date: Fri, 14 Feb 2020 17:33:26 +0100
+Message-ID: <20200214163328.17647-1-wagi@monom.org>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1966286560534496901==
+--===============3660276975576955662==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi,
+This just copies over the code from iwd. No changes there except the
+prefix of the functions name.
 
-On 1/28/20 2:13 PM, Denis Kenzior wrote:
-> This is a behavioral change to not emit property changes by default
-> after the set callback 'complete' method is called.  This allows
-> applications a bit more flexibility in if & when they actually emit the
-> property changed signal.  Two common scenarios are:
-> =
+Unfortunatly, the unit test can only test the get/dump function
+because the setters need root permissions. For this we need some sort
+of sandbox. Does anyone have any ideas for this?
 
-> 	- The property is set to value 'A' and a D-Bus client requests
-> 	the property to be set to 'A'.  Generally most D-Bus
-> 	applications would want to silently accept such a request and
-> 	not emit a PropertyChanged signal needlessly.  With ell's
-> 	current behavior the signal is emitted regardless.
-> 	- A property 'set' might be set successfully, but its actual
-> 	value is updated via some asynchronous means (perhaps inotify,
-> 	netlink, etc).  So it would be advantageous for applications to
-> 	call the 'complete' callback and have the property changed
-> 	signal be emitted when the relevant async notification arrives.
-> =
+While writing the test case I noticed some inconsistency in the naming
+sceme:
 
-> The implications of this behavior change is that property setter
-> implementations must manually invoke l_dbus_property_changed whenever
-> the underlying property value has been updated in order for the relevant
-> signal to be emitted.  Alternatively, supplying
-> L_DBUS_PROPERTY_FLAG_AUTO_EMIT flag in l_dbus_interface_property() will
-> preserve the current behavior.
-> ---
->   ell/dbus-service.c | 43 +++++++++++++++++++++++++++++++++++--------
->   ell/dbus-service.h |  1 +
->   2 files changed, 36 insertions(+), 8 deletions(-)
-> =
+The IPv6 functions are consistent in the naming sceme, always
+append ipv6 after the first name:
+
+  rtnl_ifaddr_ipv6_extract
+  rtnl_ifaddr_ipv6_get
+  rtnl_ifaddr_ipv6_add
+  rtnl_ifaddr_ipv6_delete
+
+  rtnl_route_ipv6_add_gateway
+  rtnl_route_ipv6_delete_gateway
 
 
-Both applied
+For the IPv4 functions it's either a plain 'ifaddr' infix or somewhere ipv4
+in the name:
 
-Regards,
--Denis
---===============1966286560534496901==--
+
+  rtnl_ifaddr_extract
+  rtnl_ifaddr_get
+  rtnl_ifaddr_add
+  rtnl_ifaddr_delete
+
+  rtnl_route_extract_ipv4
+  rtnl_route_dump_ipv4
+
+  -> drop ipv4?
+
+  rtnl_route_ipv4_add_connected
+  rtnl_route_ipv4_add_gateway
+
+  -> drop ipv4?
+
+
+And there are the setters:
+
+  rtnl_set_linkmode_and_operstate
+  rtnl_set_mac
+  rtnl_set_powered
+
+
+Is this the standard naming sceme?
+
+Thanks,
+Daniel
+
+Daniel Wagner (2):
+  rtnl: Add initial rtnl support
+  unit: Add l_rtnl_* unit tests
+
+ .gitignore       |   1 +
+ Makefile.am      |   5 +
+ ell/ell.h        |   1 +
+ ell/rtnl.c       | 641 +++++++++++++++++++++++++++++++++++++++++++++++
+ ell/rtnl.h       | 119 +++++++++
+ unit/test-rtnl.c | 236 +++++++++++++++++
+ 6 files changed, 1003 insertions(+)
+ create mode 100644 ell/rtnl.c
+ create mode 100644 ell/rtnl.h
+ create mode 100644 unit/test-rtnl.c
+
+-- =
+
+2.25.0
+--===============3660276975576955662==--
 
