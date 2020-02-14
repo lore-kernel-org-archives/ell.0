@@ -1,45 +1,51 @@
-Content-Type: multipart/mixed; boundary="===============5714594203349340848=="
+Content-Type: multipart/mixed; boundary="===============3610266033782616697=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 0/3] rtnl: add missing APIs
-Date: Fri, 14 Feb 2020 13:05:15 -0600
-Message-ID: <d0019dfc-2df9-6d22-c8d3-c594e77f02c2@gmail.com>
-In-Reply-To: <20200214185253.32658-1-wagi@monom.org>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/4] genl: Update genl refcount when creating/freeing a family
+Date: Sat, 15 Feb 2020 00:37:29 +0100
+Message-ID: <20200214233732.20146-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5714594203349340848==
+--===============3610266033782616697==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Daniel,
+Since struct l_genl is already refcounted we can hold references to the
+l_genl object in an l_genl_family to allow the user to free them in
+arbitrary order.
+---
+ ell/genl.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-On 2/14/20 12:52 PM, Daniel Wagner wrote:
-> The first two patches make the API for both protocol version
-> complete. The last patch adds the table, priority and preference to
-> the extract functions, which is a very uselful information.
-> =
+diff --git a/ell/genl.c b/ell/genl.c
+index 431ed05..ca4fa62 100644
+--- a/ell/genl.c
++++ b/ell/genl.c
+@@ -1800,7 +1800,7 @@ LIB_EXPORT struct l_genl_family *l_genl_family_new(st=
+ruct l_genl *genl,
+ 	if (!entry)
+ 		return NULL;
+ =
 
-> This series is based on the cleanup series send before.
-> =
+-	family =3D family_alloc(genl, info->id);
++	family =3D family_alloc(l_genl_ref(genl), info->id);
+ =
 
-> Daniel Wagner (3):
->    rtnl: Add l_rtnl_route6_dump() and l_rtnl_route6_extract()
->    unit: Add unit test for l_rtnl_route6_{dump|extract}
->    rtnl: Extract table, priority and pref
-> =
+ 	return family;
+ }
+@@ -2059,4 +2059,5 @@ LIB_EXPORT void l_genl_family_free(struct l_genl_fami=
+ly *family)
+ 	}
+ =
 
->   ell/rtnl.c       | 130 ++++++++++++++++++++++++++++++++---------------
->   ell/rtnl.h       |  10 +++-
->   unit/test-rtnl.c |  42 +++++++++++++--
->   3 files changed, 137 insertions(+), 45 deletions(-)
-> =
+ 	l_free(family);
++	l_genl_unref(genl);
+ }
+-- =
 
+2.20.1
 
-All applied.  I did split the last patch into two.
-
-Regards,
--Denis
---===============5714594203349340848==--
+--===============3610266033782616697==--
 
