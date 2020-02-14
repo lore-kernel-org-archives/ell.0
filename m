@@ -1,78 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============5196025316167357394=="
+Content-Type: multipart/mixed; boundary="===============7489218552411199755=="
 MIME-Version: 1.0
-From: Daniel Wagner <wagi@monom.org>
-Subject: [PATCH 2/3] unit: Add unit test for l_rtnl_route6_{dump|extract}
-Date: Fri, 14 Feb 2020 19:52:52 +0100
-Message-ID: <20200214185253.32658-3-wagi@monom.org>
-In-Reply-To: <20200214185253.32658-1-wagi@monom.org>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/2] rtnl: Make IPv4 and IPv6 naming scheme consistent
+Date: Fri, 14 Feb 2020 12:58:50 -0600
+Message-ID: <e30cac8e-d66a-e614-350e-46a07fbf2f5e@gmail.com>
+In-Reply-To: <20200214182337.11132-2-wagi@monom.org>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5196025316167357394==
+--===============7489218552411199755==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-rtnl.c | 32 ++++++++++++++++++++++++++++++++
- 1 file changed, 32 insertions(+)
+Hi Daniel,
 
-diff --git a/unit/test-rtnl.c b/unit/test-rtnl.c
-index c0659c4378da..37db73dc6f2f 100644
---- a/unit/test-rtnl.c
-+++ b/unit/test-rtnl.c
-@@ -139,6 +139,37 @@ static void test_route4_dump(struct l_netlink *rtnl, v=
-oid *user_data)
- 					NULL, route4_dump_destroy_cb));
- }
- =
+On 2/14/20 12:23 PM, Daniel Wagner wrote:
+> Add the protocol version into into the function names and drop the
+> infix 'ipv6' string. This makes it more consistent with the existing
+> APIs.
+> ---
+>   ell/rtnl.c       | 52 ++++++++++++++++++++++++------------------------
+>   ell/rtnl.h       | 28 +++++++++++++-------------
+>   unit/test-rtnl.c | 42 +++++++++++++++++++-------------------
+>   3 files changed, 61 insertions(+), 61 deletions(-)
+> =
 
-+static void route6_dump_cb(int error,
-+			uint16_t type, const void *data,
-+			uint32_t len, void *user_data)
-+{
-+	const struct rtmsg *rtmsg =3D data;
-+	char *dst =3D NULL, *gateway =3D NULL, *src =3D NULL;
-+	uint32_t idx;
-+
-+	test_assert(!error);
-+	test_assert(type =3D=3D RTM_NEWROUTE);
-+
-+	l_rtnl_route6_extract(rtmsg, len, &idx, &dst, &gateway, &src);
-+
-+	l_info("idx %d dst %s gateway %s src %s", idx, dst, gateway, src);
-+
-+	l_free(dst);
-+	l_free(gateway);
-+	l_free(src);
-+}
-+
-+static void route6_dump_destroy_cb(void *user_data)
-+{
-+	test_next();
-+}
-+
-+static void test_route6_dump(struct l_netlink *rtnl, void *user_data)
-+{
-+	test_assert(l_rtnl_route6_dump(rtnl, route6_dump_cb,
-+					NULL, route6_dump_destroy_cb));
-+}
-+
- static void ifaddr4_dump_cb(int error,
- 				uint16_t type, const void *data,
- 				uint32_t len, void *user_data)
-@@ -211,6 +242,7 @@ int main(int argc, char *argv[])
- 		return -1;
- =
 
- 	test_add("Dump IPv4 routing table", test_route4_dump, NULL);
-+	test_add("Dump IPv6 routing table", test_route6_dump, NULL);
- 	test_add("Dump IPv4 addresses", test_ifaddr4_dump, NULL);
- 	test_add("Dump IPv6 addresses", test_ifaddr6_dump, NULL);
- =
+Applied after splitting this patch in two.  One for rtnl.[ch] changes =
 
--- =
+and one for unit/ directory changes.
 
-2.25.0
---===============5196025316167357394==--
+Regards,
+-Denis
+
+--===============7489218552411199755==--
 
