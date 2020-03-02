@@ -1,33 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============2032677108527498509=="
+Content-Type: multipart/mixed; boundary="===============7422175412367426491=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] path: Fix an integer overflow in l_path_get_mtime
-Date: Mon, 02 Mar 2020 11:16:52 -0600
-Message-ID: <246c5979-e943-e967-48e7-72b42c4cb857@gmail.com>
-In-Reply-To: <20200302151011.2125-1-andrew.zaborowski@intel.com>
+From: Ossama Othman <ossama.othman@intel.com>
+Subject: [PATCH 0/4] Refactor timespec to microsecond conversion
+Date: Mon, 02 Mar 2020 13:28:13 -0800
+Message-ID: <20200302212817.15524-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2032677108527498509==
+--===============7422175412367426491==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+An integer overflow fix for a timespec to microsecond conversion in
+l_path_get_mtime() was previously committed but two overflows could
+still occur: (1) the multiplication in the seconds (tv_sec) to
+microsecond conversion could still exceed UINT64_MAX, and (2) addition
+of the microseconds obtained from the nanoseconds (tv_nsec) member
+could also result in a sum that exceeds UINT64_MAX.
 
-On 3/2/20 9:10 AM, Andrew Zaborowski wrote:
-> time_t may be 32 bits wide (also signed) so we need to cast
-> timespec.tv_sec to uint64_t before multiplying by 1000000.
-> ---
->   ell/path.c | 3 ++-
->   1 file changed, 2 insertions(+), 1 deletion(-)
-> =
+This set of patches refactors the timespec to microsecond to a new
+l_timespec_to_usecs() function that checks for overflow in both of the
+cases mentioned above.  The l_path_get_mtime() function now uses
+l_timespec_to_usecs() to address the remaining potential integer
+overflows.  A potential integer overflow in the l_time_now() function
+was corrected in a similar manner.
 
 
-Applied, thanks.
+Ossama Othman (4):
+  time: Add timespec to microseconds converter
+  unit: Add l_timespec_to_usecs() unit test.
+  time: Use l_timespec_to_usecs() to avoid overflow.
+  path: Use l_timespec_to_usecs() to avoid overflow.
 
-Regards,
--Denis
+ ell/ell.sym      |  1 +
+ ell/path.c       |  3 +--
+ ell/time.c       | 26 +++++++++++++++++++++++++-
+ ell/time.h       |  3 +++
+ unit/test-time.c | 34 ++++++++++++++++++++++++++++++++++
+ 5 files changed, 64 insertions(+), 3 deletions(-)
 
---===============2032677108527498509==--
+-- =
+
+2.20.1
+
+--===============7422175412367426491==--
 
