@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============7357062356835575323=="
+Content-Type: multipart/mixed; boundary="===============1649139829193105593=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/4] time: Add timespec to microseconds converter
-Date: Mon, 02 Mar 2020 15:34:49 -0600
-Message-ID: <27cdcb4f-0af4-dc01-a69d-3b583630a3bb@gmail.com>
-In-Reply-To: <20200302212817.15524-2-ossama.othman@intel.com>
+Subject: Re: [PATCH 2/4] unit: Add l_timespec_to_usecs() unit test.
+Date: Mon, 02 Mar 2020 15:40:16 -0600
+Message-ID: <88b28e45-d2db-6d2a-8499-a280a1ee40a9@gmail.com>
+In-Reply-To: <20200302212817.15524-3-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7357062356835575323==
+--===============1649139829193105593==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,105 +16,82 @@ Content-Transfer-Encoding: quoted-printable
 Hi Ossama,
 
 On 3/2/20 3:28 PM, Ossama Othman wrote:
-> Implement a new function, l_timespec_to_usecs(), that checks for
-> integer overflow in the multiplication and addition operations that
-> occur during the conversion of the timespec members to microseconds.
 > ---
->   ell/ell.sym |  1 +
->   ell/time.c  | 24 ++++++++++++++++++++++++
->   ell/time.h  |  3 +++
->   3 files changed, 28 insertions(+)
-
-ell/time.c: In function =E2=80=98l_timespec_to_usecs=E2=80=99:
-ell/time.c:48:2: error: ISO C90 forbids mixed declarations and code =
-
-[-Werror=3Ddeclaration-after-statement]
-    48 |  uint64_t usecs =3D t->tv_sec * L_USEC_PER_SEC;
-       |  ^~~~~~~~
-ell/time.c:51:29: error: comparison of integer expressions of different =
-
-signedness: =E2=80=98long long unsigned int=E2=80=99 and =E2=80=98__time_t=
-=E2=80=99 {aka =E2=80=98const long =
-
-int=E2=80=99} [-Werror=3Dsign-compare]
-    51 |  if (usecs / L_USEC_PER_SEC !=3D t->tv_sec)
-       |                             ^~
-cc1: all warnings being treated as errors
-
-
+>   unit/test-time.c | 34 ++++++++++++++++++++++++++++++++++
+>   1 file changed, 34 insertions(+)
 > =
 
-> diff --git a/ell/ell.sym b/ell/ell.sym
-> index 0c83b87..776a94c 100644
-> --- a/ell/ell.sym
-> +++ b/ell/ell.sym
-> @@ -526,6 +526,7 @@ global:
->   	l_ecdh_generate_key_pair;
->   	l_ecdh_generate_shared_secret;
->   	/* time */
-> +	l_timespec_to_usecs;
->   	l_time_now;
->   	/* gpio */
->   	l_gpio_chips_with_line_label;
-> diff --git a/ell/time.c b/ell/time.c
-> index 6150d03..becf985 100644
-> --- a/ell/time.c
-> +++ b/ell/time.c
-> @@ -30,6 +30,30 @@
->   #include "time.h"
->   #include "private.h"
+> diff --git a/unit/test-time.c b/unit/test-time.c
+> index 1301891..3c8fd0d 100644
+> --- a/unit/test-time.c
+> +++ b/unit/test-time.c
+> @@ -25,6 +25,7 @@
+>   #endif
 >   =
 
-> +/**
-> + * l_timespec_to_usecs() - convert timespec value to microseconds
-> + * @t: pointer to timespec value to be converted to microseconds.
-> + *
-> + * Convert the timespec value @t to microseconds, being careful to
-> + * avoid integer overflows during the conversion.
-> + *
-> + * Return: Number of microseconds in @t, UINT64_MAX on overflow, and
-> + *         zero if @t is NULL.
-> + */
-> +LIB_EXPORT uint64_t l_timespec_to_usecs(const struct timespec *t)
+>   #include <assert.h>
+> +#include <limits.h>
+>   =
+
+>   #include <ell/ell.h>
+>   =
+
+> @@ -49,12 +50,45 @@ static void test_offset(const void *data)
+>   	assert(l_time_offset(max_minus, 1001) =3D=3D UINT64_MAX);
+>   }
+>   =
+
+> +static void test_timespec_to_usecs(const void *data)
 > +{
-> +	if (!t)
-> +		return 0;
-> +
-> +	uint64_t usecs =3D t->tv_sec * L_USEC_PER_SEC;
-> +
-> +	/* check overflow */
-> +	if (usecs / L_USEC_PER_SEC !=3D t->tv_sec)
+> +	static const time_t max_secs =3D
+> +		sizeof(time_t) =3D=3D 4 ? UINT32_MAX : UINT64_MAX;
+> +	static const long max_nsecs =3D LONG_MAX;
 
-There has to be a better way than this division...
+The maximum is 999 999 999.  man clock_gettime
 
-> +		return UINT64_MAX;
 > +
-> +	return l_time_offset(usecs, t->tv_nsec / L_NSEC_PER_USEC);
+> +	static const time_t secs =3D 2000;
+> +	static const long nsecs =3D 1001;
+> +
+> +	/* force integer multiplication overflow */
+> +	static const struct timespec t_max_secs =3D { .tv_sec  =3D max_secs };
+> +
+> +	/* force integer addition overflow */
+> +	static const struct timespec t_max_nsecs =3D {
+> +		.tv_sec	 =3D (max_secs / L_USEC_PER_SEC) - 1,
+> +		.tv_nsec =3D max_nsecs
+> +	};
+> +
+> +	static const struct timespec t =3D {
+> +		.tv_sec	 =3D secs,
+> +		.tv_nsec =3D nsecs
+> +	};
+> +
+> +	uint64_t usecs =3D t.tv_sec * L_USEC_PER_SEC +
+> +		t.tv_nsec / L_NSEC_PER_USEC;
+> +
+> +	assert(l_timespec_to_usecs(&t_max_secs) =3D=3D UINT64_MAX);
+> +	assert(l_timespec_to_usecs(&t_max_nsecs) =3D=3D UINT64_MAX);
+> +	assert(l_timespec_to_usecs(&t) =3D=3D usecs);
+> +	assert(l_timespec_to_usecs(NULL) =3D=3D 0);
 > +}
 > +
->   /**
->    * l_time_now:
->    *
-> diff --git a/ell/time.h b/ell/time.h
-> index 6976280..6011b80 100644
-> --- a/ell/time.h
-> +++ b/ell/time.h
-> @@ -38,6 +38,9 @@ extern "C" {
->   #define L_NSEC_PER_USEC 1000ULL
->   #define L_TIME_INVALID ((uint64_t) -1)
+>   int main(int argc, char *argv[])
+>   {
+>   	l_test_init(&argc, &argv);
 >   =
 
-> +struct timespec;
-> +
-> +uint64_t l_timespec_to_usecs(const struct timespec *t);
->   uint64_t l_time_now(void);
+>   	l_test_add("Test before/after/diff", test_before_after_diff, NULL);
+>   	l_test_add("Test offset", test_offset, NULL);
+> +	l_test_add("Test timespec to usecs", test_timespec_to_usecs, NULL);
 >   =
 
->   static inline bool l_time_after(uint64_t a, uint64_t b)
+>   	return l_test_run();
+>   }
 > =
 
 
 Regards,
 -Denis
---===============7357062356835575323==--
+--===============1649139829193105593==--
 
