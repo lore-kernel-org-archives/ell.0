@@ -1,35 +1,75 @@
-Content-Type: multipart/mixed; boundary="===============5402246135303621975=="
+Content-Type: multipart/mixed; boundary="===============0658533749842110971=="
 MIME-Version: 1.0
-From: Othman, Ossama <ossama.othman@intel.com>
-Subject: Re: [PATCH 4/4] path: Use l_timespec_to_usecs() to avoid overflow.
-Date: Mon, 02 Mar 2020 15:13:15 -0800
-Message-ID: <CAPyD+=CVX+oexu4Y_ywv1m8KzFhmD3R2Cdv5j-tbX8P7pvDvJg@mail.gmail.com>
-In-Reply-To: <6d498de9-6ea7-1f26-e158-c1b743f8c5da@gmail.com>
+From: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH] rtnl: add 'power_up' flag to l_rtnl_set_mac
+Date: Wed, 11 Mar 2020 18:51:54 -0400
+Message-ID: <20200311225154.1322714-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5402246135303621975==
+--===============0658533749842110971==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+The use of l_rtnl_set_mac in IWD is always followed by powering up the
+device. Bringing the device back up requires calling l_rtnl_set_powered
+which makes another async call into the kernel. In order to reduce
+complexity we can include the IFF_UP flag to the MAC change message which
+will both change the MAC and bring the interface up all in one go.
 
-On Mon, Mar 2, 2020 at 2:06 PM Denis Kenzior <denkenz@gmail.com> wrote:
-> So while theoretically possible to overflow, this is _highly_ unlikely.
-> I think we are looking at 35-36 bits of sec info, which is 1-2 thousand
-> years in the future.
+The existing behavior is maintained by passing false to 'power_up'.
+---
+ ell/rtnl.c | 5 +++++
+ ell/rtnl.h | 1 +
+ 2 files changed, 6 insertions(+)
 
-That's a good point.
+diff --git a/ell/rtnl.c b/ell/rtnl.c
+index 4600a7e..bf84cbd 100644
+--- a/ell/rtnl.c
++++ b/ell/rtnl.c
+@@ -167,6 +167,7 @@ uint32_t l_rtnl_set_linkmode_and_operstate(struct l_net=
+link *rtnl, int ifindex,
+ =
 
-> I guess I'm ok if we try and deal with overflow just in case someone is
-> setting some really large mtime values as long as l_timespec_to_usecs
-> isn't overly expensive.
+ uint32_t l_rtnl_set_mac(struct l_netlink *rtnl, int ifindex,
+ 					const uint8_t addr[static 6],
++					bool power_up,
+ 					l_netlink_command_func_t cb,
+ 					void *user_data,
+ 					l_netlink_destroy_func_t destroy)
+@@ -183,6 +184,10 @@ uint32_t l_rtnl_set_mac(struct l_netlink *rtnl, int if=
+index,
+ =
 
-As you point out that the overflows are highly unlikely to occur, I'm
-fine with dropping my patches.
+ 	rtmmsg->ifi_family =3D AF_UNSPEC;
+ 	rtmmsg->ifi_index =3D ifindex;
++	if (power_up) {
++		rtmmsg->ifi_change =3D IFF_UP;
++		rtmmsg->ifi_flags =3D IFF_UP;
++	}
+ =
 
-Thanks Denis!
--Ossama
---===============5402246135303621975==--
+ 	rta_buf =3D (void *) rtmmsg + NLMSG_ALIGN(sizeof(struct ifinfomsg));
+ =
+
+diff --git a/ell/rtnl.h b/ell/rtnl.h
+index ea283c1..60b8db4 100644
+--- a/ell/rtnl.h
++++ b/ell/rtnl.h
+@@ -38,6 +38,7 @@ uint32_t l_rtnl_set_linkmode_and_operstate(struct l_netli=
+nk *rtnl, int ifindex,
+ =
+
+ uint32_t l_rtnl_set_mac(struct l_netlink *rtnl, int ifindex,
+ 					const uint8_t addr[static 6],
++					bool power_up,
+ 					l_netlink_command_func_t cb,
+ 					void *user_data,
+ 					l_netlink_destroy_func_t destroy);
+-- =
+
+2.24.1
+
+--===============0658533749842110971==--
 
