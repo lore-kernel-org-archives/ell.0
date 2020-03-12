@@ -1,33 +1,31 @@
-Content-Type: multipart/mixed; boundary="===============0501647777312770530=="
+Content-Type: multipart/mixed; boundary="===============1990242284938086144=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] rtnl: add 'power_up' flag to l_rtnl_set_mac
-Date: Thu, 12 Mar 2020 10:43:51 -0500
-Message-ID: <7bbe08bb-79db-cc7f-b96c-a275b3fa652e@gmail.com>
-In-Reply-To: <20200311225154.1322714-1-prestwoj@gmail.com>
+Subject: Re: [PATCH] unit: Add graceful fail of pem, tls and key tests
+Date: Thu, 12 Mar 2020 10:45:28 -0500
+Message-ID: <403944ad-a6e1-7cc0-3da2-fb66af18f5b7@gmail.com>
+In-Reply-To: <20200226175416.31769-1-brian.gix@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0501647777312770530==
+--===============1990242284938086144==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Hi Brian,
 
-On 3/11/20 5:51 PM, James Prestwood wrote:
-> The use of l_rtnl_set_mac in IWD is always followed by powering up the
-> device. Bringing the device back up requires calling l_rtnl_set_powered
-> which makes another async call into the kernel. In order to reduce
-> complexity we can include the IFF_UP flag to the MAC change message which
-> will both change the MAC and bring the interface up all in one go.
-> =
-
-> The existing behavior is maintained by passing false to 'power_up'.
+On 2/26/20 11:54 AM, Brian Gix wrote:
+> Unit tests for PEM, TLS and KEY require the pkcs8_key_parser module
+> to be running in the kernel, however not all kernels have this
+> running by default. This checks for this possibility and aborts
+> these tests with exit(1) rather than an assert, and includes instruction
+> to correct the issue.
 > ---
->   ell/rtnl.c | 5 +++++
->   ell/rtnl.h | 1 +
->   2 files changed, 6 insertions(+)
+>   unit/test-key.c |  9 +++++++++
+>   unit/test-pem.c |  9 +++++++++
+>   unit/test-tls.c | 12 +++++++++++-
+>   3 files changed, 29 insertions(+), 1 deletion(-)
 > =
 
 
@@ -36,5 +34,5 @@ Applied, thanks.
 Regards,
 -Denis
 
---===============0501647777312770530==--
+--===============1990242284938086144==--
 
