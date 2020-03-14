@@ -1,38 +1,20 @@
-Content-Type: multipart/mixed; boundary="===============1990242284938086144=="
+Content-Type: multipart/mixed; boundary="===============2741114840947000265=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] unit: Add graceful fail of pem, tls and key tests
-Date: Thu, 12 Mar 2020 10:45:28 -0500
-Message-ID: <403944ad-a6e1-7cc0-3da2-fb66af18f5b7@gmail.com>
-In-Reply-To: <20200226175416.31769-1-brian.gix@intel.com>
+From: Phil Hodges <philip.hodges@bluewin.ch>
+Subject: overflow with 32 bit time_t: fixed in path but not time, no unit test
+Date: Sat, 14 Mar 2020 12:03:12 +0100
+Message-ID: <6a282fd5-6252-e8fa-725b-d92d31c247ec@bluewin.ch>
+In-Reply-To: <323CFD33-9B37-4089-BFE4-7D9CBBAA8C8C@bluewin.ch>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1990242284938086144==
+--===============2741114840947000265==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Brian,
+./ell/ell/time.c:46:	return now.tv_sec * 1000000 + now.tv_nsec / 1000;
+./ell/ell/path.c:165:	return (uint64_t) sb.st_mtim.tv_sec * 1000000 +
 
-On 2/26/20 11:54 AM, Brian Gix wrote:
-> Unit tests for PEM, TLS and KEY require the pkcs8_key_parser module
-> to be running in the kernel, however not all kernels have this
-> running by default. This checks for this possibility and aborts
-> these tests with exit(1) rather than an assert, and includes instruction
-> to correct the issue.
-> ---
->   unit/test-key.c |  9 +++++++++
->   unit/test-pem.c |  9 +++++++++
->   unit/test-tls.c | 12 +++++++++++-
->   3 files changed, 29 insertions(+), 1 deletion(-)
-> =
-
-
-Applied, thanks.
-
-Regards,
--Denis
-
---===============1990242284938086144==--
+--===============2741114840947000265==--
 
