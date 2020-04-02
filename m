@@ -1,95 +1,156 @@
-Content-Type: multipart/mixed; boundary="===============8386521796974865171=="
+Content-Type: multipart/mixed; boundary="===============5507760478669252112=="
 MIME-Version: 1.0
 From: Rosen Penev <rosenp@gmail.com>
-Subject: [PATCH 1/4] ell: add missing void to function declarations
-Date: Wed, 01 Apr 2020 20:36:29 -0700
-Message-ID: <20200402033632.961701-1-rosenp@gmail.com>
+Subject: [PATCH 2/4] ell: add missing format attribute
+Date: Wed, 01 Apr 2020 20:36:30 -0700
+Message-ID: <20200402033632.961701-2-rosenp@gmail.com>
+In-Reply-To: <20200402033632.961701-1-rosenp@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8386521796974865171==
+--===============5507760478669252112==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Found with -Wstrict-prototypes.
+Found with clang's -Wformat-nonliteral
 ---
- ell/checksum.h     | 2 +-
- ell/dbus-private.h | 2 +-
- ell/main.h         | 2 +-
- ell/random.h       | 2 +-
- 4 files changed, 4 insertions(+), 4 deletions(-)
+ ell/dbus.h    | 3 ++-
+ ell/hwdb.h    | 3 ++-
+ ell/log.c     | 3 +++
+ ell/ringbuf.h | 3 ++-
+ ell/string.h  | 3 ++-
+ ell/strv.h    | 3 ++-
+ ell/util.h    | 3 ++-
+ 7 files changed, 15 insertions(+), 6 deletions(-)
 
-diff --git a/ell/checksum.h b/ell/checksum.h
-index 08d74b7..531fcb0 100644
---- a/ell/checksum.h
-+++ b/ell/checksum.h
-@@ -64,7 +64,7 @@ ssize_t l_checksum_get_digest(struct l_checksum *checksum,
- char *l_checksum_get_string(struct l_checksum *checksum);
+diff --git a/ell/dbus.h b/ell/dbus.h
+index cbfb0b0..af01359 100644
+--- a/ell/dbus.h
++++ b/ell/dbus.h
+@@ -114,7 +114,8 @@ struct l_dbus_message *l_dbus_message_new_method_return(
+ struct l_dbus_message *l_dbus_message_new_error_valist(
+ 					struct l_dbus_message *method_call,
+ 					const char *name,
+-					const char *format, va_list args);
++					const char *format, va_list args)
++					__attribute__((format(printf, 3, 0)));
+ struct l_dbus_message *l_dbus_message_new_error(
+ 					struct l_dbus_message *method_call,
+ 					const char *name,
+diff --git a/ell/hwdb.h b/ell/hwdb.h
+index f37dac7..439f316 100644
+--- a/ell/hwdb.h
++++ b/ell/hwdb.h
+@@ -46,7 +46,8 @@ struct l_hwdb_entry {
+ struct l_hwdb_entry *l_hwdb_lookup(struct l_hwdb *hwdb, const char *format=
+, ...)
+ 					__attribute__((format(printf, 2, 3)));
+ struct l_hwdb_entry *l_hwdb_lookup_valist(struct l_hwdb *hwdb,
+-					const char *format, va_list args);
++					const char *format, va_list args)
++					__attribute__((format(printf, 2, 0)));
+ void l_hwdb_lookup_free(struct l_hwdb_entry *entries);
  =
 
- bool l_checksum_is_supported(enum l_checksum_type type, bool check_hmac);
--bool l_checksum_cmac_aes_supported();
-+bool l_checksum_cmac_aes_supported(void);
+ typedef void (*l_hwdb_foreach_func_t)(const char *modalias,
+diff --git a/ell/log.c b/ell/log.c
+index f3f4b0c..4e99b57 100644
+--- a/ell/log.c
++++ b/ell/log.c
+@@ -139,6 +139,7 @@ LIB_EXPORT void l_log_set_null(void)
+ 	log_func =3D log_null;
+ }
  =
 
- ssize_t l_checksum_digest_length(enum l_checksum_type type);
++__attribute__((format(printf, 5, 0)))
+ static void log_stderr(int priority, const char *file, const char *line,
+ 			const char *func, const char *format, va_list ap)
+ {
+@@ -157,6 +158,7 @@ LIB_EXPORT void l_log_set_stderr(void)
+ 	log_func =3D log_stderr;
+ }
  =
 
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index be62691..d34a298 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -189,7 +189,7 @@ struct _dbus_signal *_dbus_interface_find_signal(struct=
- l_dbus_interface *i,
- struct _dbus_property *_dbus_interface_find_property(struct l_dbus_interfa=
-ce *i,
- 						const char *property);
++__attribute__((format(printf, 5, 0)))
+ static void log_syslog(int priority, const char *file, const char *line,
+ 			const char *func, const char *format, va_list ap)
+ {
+@@ -205,6 +207,7 @@ LIB_EXPORT void l_log_set_syslog(void)
+ 	log_func =3D log_syslog;
+ }
  =
 
--struct _dbus_object_tree *_dbus_object_tree_new();
-+struct _dbus_object_tree *_dbus_object_tree_new(void);
- void _dbus_object_tree_free(struct _dbus_object_tree *tree);
++__attribute__((format(printf, 5, 0)))
+ static void log_journal(int priority, const char *file, const char *line,
+ 			const char *func, const char *format, va_list ap)
+ {
+diff --git a/ell/ringbuf.h b/ell/ringbuf.h
+index 44672ad..e9604c8 100644
+--- a/ell/ringbuf.h
++++ b/ell/ringbuf.h
+@@ -55,7 +55,8 @@ size_t l_ringbuf_avail(struct l_ringbuf *ringbuf);
+ int l_ringbuf_printf(struct l_ringbuf *ringbuf, const char *format, ...)
+ 					__attribute__((format(printf, 2, 3)));
+ int l_ringbuf_vprintf(struct l_ringbuf *ringbuf, const char *format,
+-					va_list ap);
++					va_list ap)
++					__attribute__((format(printf, 2, 0)));
+ ssize_t l_ringbuf_read(struct l_ringbuf *ringbuf, int fd);
  =
 
- struct object_node *_dbus_object_tree_makepath(struct _dbus_object_tree *t=
-ree,
-diff --git a/ell/main.h b/ell/main.h
-index 99b34ad..51e051a 100644
---- a/ell/main.h
-+++ b/ell/main.h
-@@ -42,7 +42,7 @@ typedef void (*l_main_signal_cb_t) (uint32_t signo, void =
-*user_data);
+ ssize_t l_ringbuf_append(struct l_ringbuf *ringbuf,
+diff --git a/ell/string.h b/ell/string.h
+index c1948ec..3f47e0d 100644
+--- a/ell/string.h
++++ b/ell/string.h
+@@ -41,7 +41,8 @@ struct l_string *l_string_append_fixed(struct l_string *d=
+est, const char *src,
+ 					size_t max);
  =
 
- int l_main_run_with_signal(l_main_signal_cb_t callback, void *user_data);
+ void l_string_append_vprintf(struct l_string *dest,
+-					const char *format, va_list args);
++					const char *format, va_list args)
++					__attribute__((format(printf, 2, 0)));
+ void l_string_append_printf(struct l_string *dest, const char *format, ...)
+ 					__attribute__((format(printf, 2, 3)));
  =
 
--int l_main_get_epoll_fd();
-+int l_main_get_epoll_fd(void);
+diff --git a/ell/strv.h b/ell/strv.h
+index b0ec17c..3582e56 100644
+--- a/ell/strv.h
++++ b/ell/strv.h
+@@ -40,7 +40,8 @@ char **l_strv_append(char **str_array, const char *str);
+ char **l_strv_append_printf(char **str_array, const char *format, ...)
+ 					__attribute__((format(printf, 2, 3)));
+ char **l_strv_append_vprintf(char **str_array, const char *format,
+-							va_list args);
++							va_list args)
++					__attribute__((format(printf, 2, 0)));
+ char **l_strv_copy(char **str_array);
  =
 
  #ifdef __cplusplus
- }
-diff --git a/ell/random.h b/ell/random.h
-index 49a4637..acc278b 100644
---- a/ell/random.h
-+++ b/ell/random.h
-@@ -32,7 +32,7 @@ extern "C" {
- #include <stdint.h>
+diff --git a/ell/util.h b/ell/util.h
+index 3b56d5d..6e88505 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -280,7 +280,8 @@ char *l_strdup(const char *str);
+ char *l_strndup(const char *str, size_t max);
+ char *l_strdup_printf(const char *format, ...)
+ 			__attribute__((format(printf, 1, 2)));
+-char *l_strdup_vprintf(const char *format, va_list args);
++char *l_strdup_vprintf(const char *format, va_list args)
++			__attribute__((format(printf, 1, 0)));
  =
 
- bool l_getrandom(void *buf, size_t len);
--bool l_getrandom_is_supported();
-+bool l_getrandom_is_supported(void);
- =
-
- uint32_t l_getrandom_uint32(void);
+ size_t l_strlcpy(char* dst, const char *src, size_t len);
  =
 
 -- =
 
 2.25.1
 
---===============8386521796974865171==--
+--===============5507760478669252112==--
 
