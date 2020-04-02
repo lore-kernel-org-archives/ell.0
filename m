@@ -1,156 +1,97 @@
-Content-Type: multipart/mixed; boundary="===============5507760478669252112=="
+Content-Type: multipart/mixed; boundary="===============3384404557481399687=="
 MIME-Version: 1.0
 From: Rosen Penev <rosenp@gmail.com>
-Subject: [PATCH 2/4] ell: add missing format attribute
-Date: Wed, 01 Apr 2020 20:36:30 -0700
-Message-ID: <20200402033632.961701-2-rosenp@gmail.com>
+Subject: [PATCH 3/4] ell: remove extra/unnecessary semicolons
+Date: Wed, 01 Apr 2020 20:36:31 -0700
+Message-ID: <20200402033632.961701-3-rosenp@gmail.com>
 In-Reply-To: <20200402033632.961701-1-rosenp@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5507760478669252112==
+--===============3384404557481399687==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Found with clang's -Wformat-nonliteral
+Found with clang's -Wextra-semi-stmt
 ---
- ell/dbus.h    | 3 ++-
- ell/hwdb.h    | 3 ++-
- ell/log.c     | 3 +++
- ell/ringbuf.h | 3 ++-
- ell/string.h  | 3 ++-
- ell/strv.h    | 3 ++-
- ell/util.h    | 3 ++-
- 7 files changed, 15 insertions(+), 6 deletions(-)
+ ell/dbus-client.c | 2 +-
+ ell/dbus.c        | 2 +-
+ ell/dhcp.c        | 4 ++--
+ ell/siphash.c     | 2 +-
+ 4 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/ell/dbus.h b/ell/dbus.h
-index cbfb0b0..af01359 100644
---- a/ell/dbus.h
-+++ b/ell/dbus.h
-@@ -114,7 +114,8 @@ struct l_dbus_message *l_dbus_message_new_method_return(
- struct l_dbus_message *l_dbus_message_new_error_valist(
- 					struct l_dbus_message *method_call,
- 					const char *name,
--					const char *format, va_list args);
-+					const char *format, va_list args)
-+					__attribute__((format(printf, 3, 0)));
- struct l_dbus_message *l_dbus_message_new_error(
- 					struct l_dbus_message *method_call,
- 					const char *name,
-diff --git a/ell/hwdb.h b/ell/hwdb.h
-index f37dac7..439f316 100644
---- a/ell/hwdb.h
-+++ b/ell/hwdb.h
-@@ -46,7 +46,8 @@ struct l_hwdb_entry {
- struct l_hwdb_entry *l_hwdb_lookup(struct l_hwdb *hwdb, const char *format=
-, ...)
- 					__attribute__((format(printf, 2, 3)));
- struct l_hwdb_entry *l_hwdb_lookup_valist(struct l_hwdb *hwdb,
--					const char *format, va_list args);
-+					const char *format, va_list args)
-+					__attribute__((format(printf, 2, 0)));
- void l_hwdb_lookup_free(struct l_hwdb_entry *entries);
+diff --git a/ell/dbus-client.c b/ell/dbus-client.c
+index f735f33..d98631a 100644
+--- a/ell/dbus-client.c
++++ b/ell/dbus-client.c
+@@ -414,7 +414,7 @@ static struct l_dbus_proxy *dbus_proxy_new(struct l_dbu=
+s_client *client,
+ 	proxy->interface =3D l_strdup(interface);
+ 	proxy->path =3D l_strdup(path);
+ 	proxy->properties =3D l_queue_new();
+-	proxy->pending_calls =3D l_queue_new();;
++	proxy->pending_calls =3D l_queue_new();
  =
 
- typedef void (*l_hwdb_foreach_func_t)(const char *modalias,
-diff --git a/ell/log.c b/ell/log.c
-index f3f4b0c..4e99b57 100644
---- a/ell/log.c
-+++ b/ell/log.c
-@@ -139,6 +139,7 @@ LIB_EXPORT void l_log_set_null(void)
- 	log_func =3D log_null;
+ 	l_queue_push_tail(client->proxies, proxy);
+ =
+
+diff --git a/ell/dbus.c b/ell/dbus.c
+index 845ccb3..fb520e2 100644
+--- a/ell/dbus.c
++++ b/ell/dbus.c
+@@ -1496,7 +1496,7 @@ LIB_EXPORT bool l_dbus_register_object(struct l_dbus =
+*dbus, const char *path,
+ 	va_list args;
+ 	const char *interface;
+ 	void *if_user_data;
+-	bool r =3D true;;
++	bool r =3D true;
+ =
+
+ 	if (unlikely(!dbus))
+ 		return false;
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index f1e1595..bc3994e 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -153,7 +153,7 @@ const char *_dhcp_option_to_string(uint8_t option)
+ 		return "End";
+ 	default:
+ 		return "unknown";
+-	};
++	}
  }
  =
 
-+__attribute__((format(printf, 5, 0)))
- static void log_stderr(int priority, const char *file, const char *line,
- 			const char *func, const char *format, va_list ap)
- {
-@@ -157,6 +158,7 @@ LIB_EXPORT void l_log_set_stderr(void)
- 	log_func =3D log_stderr;
+ bool _dhcp_message_iter_init(struct dhcp_message_iter *iter,
+@@ -768,7 +768,7 @@ static void dhcp_client_timeout_resend(struct l_timeout=
+ *timeout,
+ 	case DHCP_STATE_REBOOTING:
+ 	case DHCP_STATE_BOUND:
+ 		break;
+-	};
++	}
+ =
+
+ 	if (next_timeout)
+ 		l_timeout_modify_ms(timeout, dhcp_fuzz_secs(next_timeout));
+diff --git a/ell/siphash.c b/ell/siphash.c
+index a37d228..52542d4 100644
+--- a/ell/siphash.c
++++ b/ell/siphash.c
+@@ -134,5 +134,5 @@ void _siphash24(uint8_t out[8], const uint8_t *in, size=
+_t inlen,
+ 	SIPROUND;
+ 	SIPROUND;
+ 	b =3D v0 ^ v1 ^ v2  ^ v3;
+-	U64TO8_LE(out, b);
++	U64TO8_LE(out, b)
  }
- =
-
-+__attribute__((format(printf, 5, 0)))
- static void log_syslog(int priority, const char *file, const char *line,
- 			const char *func, const char *format, va_list ap)
- {
-@@ -205,6 +207,7 @@ LIB_EXPORT void l_log_set_syslog(void)
- 	log_func =3D log_syslog;
- }
- =
-
-+__attribute__((format(printf, 5, 0)))
- static void log_journal(int priority, const char *file, const char *line,
- 			const char *func, const char *format, va_list ap)
- {
-diff --git a/ell/ringbuf.h b/ell/ringbuf.h
-index 44672ad..e9604c8 100644
---- a/ell/ringbuf.h
-+++ b/ell/ringbuf.h
-@@ -55,7 +55,8 @@ size_t l_ringbuf_avail(struct l_ringbuf *ringbuf);
- int l_ringbuf_printf(struct l_ringbuf *ringbuf, const char *format, ...)
- 					__attribute__((format(printf, 2, 3)));
- int l_ringbuf_vprintf(struct l_ringbuf *ringbuf, const char *format,
--					va_list ap);
-+					va_list ap)
-+					__attribute__((format(printf, 2, 0)));
- ssize_t l_ringbuf_read(struct l_ringbuf *ringbuf, int fd);
- =
-
- ssize_t l_ringbuf_append(struct l_ringbuf *ringbuf,
-diff --git a/ell/string.h b/ell/string.h
-index c1948ec..3f47e0d 100644
---- a/ell/string.h
-+++ b/ell/string.h
-@@ -41,7 +41,8 @@ struct l_string *l_string_append_fixed(struct l_string *d=
-est, const char *src,
- 					size_t max);
- =
-
- void l_string_append_vprintf(struct l_string *dest,
--					const char *format, va_list args);
-+					const char *format, va_list args)
-+					__attribute__((format(printf, 2, 0)));
- void l_string_append_printf(struct l_string *dest, const char *format, ...)
- 					__attribute__((format(printf, 2, 3)));
- =
-
-diff --git a/ell/strv.h b/ell/strv.h
-index b0ec17c..3582e56 100644
---- a/ell/strv.h
-+++ b/ell/strv.h
-@@ -40,7 +40,8 @@ char **l_strv_append(char **str_array, const char *str);
- char **l_strv_append_printf(char **str_array, const char *format, ...)
- 					__attribute__((format(printf, 2, 3)));
- char **l_strv_append_vprintf(char **str_array, const char *format,
--							va_list args);
-+							va_list args)
-+					__attribute__((format(printf, 2, 0)));
- char **l_strv_copy(char **str_array);
- =
-
- #ifdef __cplusplus
-diff --git a/ell/util.h b/ell/util.h
-index 3b56d5d..6e88505 100644
---- a/ell/util.h
-+++ b/ell/util.h
-@@ -280,7 +280,8 @@ char *l_strdup(const char *str);
- char *l_strndup(const char *str, size_t max);
- char *l_strdup_printf(const char *format, ...)
- 			__attribute__((format(printf, 1, 2)));
--char *l_strdup_vprintf(const char *format, va_list args);
-+char *l_strdup_vprintf(const char *format, va_list args)
-+			__attribute__((format(printf, 1, 0)));
- =
-
- size_t l_strlcpy(char* dst, const char *src, size_t len);
- =
-
 -- =
 
 2.25.1
 
---===============5507760478669252112==--
+--===============3384404557481399687==--
 
