@@ -1,73 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============8392944085428485267=="
+Content-Type: multipart/mixed; boundary="===============8127141988804820526=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] settings: clear copies of values in set_value
-Date: Fri, 03 Apr 2020 18:44:10 +0200
-Message-ID: <20200403164410.18943-1-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] settings: clear copies of values in set_value
+Date: Tue, 07 Apr 2020 15:58:52 +0000
+Message-ID: <0f1bb40b-813c-8dc4-2e11-8519b0ac1d42@gmail.com>
+In-Reply-To: <20200403164410.18943-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8392944085428485267==
+--===============8127141988804820526==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-We bzero the setting values before they're free elsewhere in the file
-but not in set_value, and we do use it in iwd to set a PIN.
----
- ell/settings.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+Hi Andrew,
 
-diff --git a/ell/settings.c b/ell/settings.c
-index f4326d6..945dff7 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -885,17 +885,13 @@ static bool set_value(struct l_settings *settings, co=
-nst char *group_name,
- 	if (!validate_group_name(group_name)) {
- 		l_util_debug(settings->debug_handler, settings->debug_data,
- 				"Invalid group name %s", group_name);
--		l_free(value);
--
--		return false;
-+		goto error;
- 	}
- =
+On 4/3/20 11:44 AM, Andrew Zaborowski wrote:
+> We bzero the setting values before they're free elsewhere in the file
+> but not in set_value, and we do use it in iwd to set a PIN.
+> ---
+>   ell/settings.c | 14 ++++++++------
+>   1 file changed, 8 insertions(+), 6 deletions(-)
+> =
 
- 	if (!validate_key(key)) {
- 		l_util_debug(settings->debug_handler, settings->debug_data,
- 				"Invalid key %s", key);
--		l_free(value);
--
--		return false;
-+		goto error;
- 	}
- =
 
- 	group =3D l_queue_find(settings->groups, group_match, group_name);
-@@ -919,10 +915,16 @@ add_pair:
- 		return true;
- 	}
- =
+Applied, thanks.
 
-+	explicit_bzero(pair->value, strlen(pair->value));
- 	l_free(pair->value);
- 	pair->value =3D value;
- =
-
- 	return true;
-+
-+error:
-+	explicit_bzero(value, strlen(value));
-+	l_free(value);
-+	return false;
- }
- =
-
- LIB_EXPORT bool l_settings_set_value(struct l_settings *settings,
--- =
-
-2.20.1
-
---===============8392944085428485267==--
+Regards,
+-Denis
+--===============8127141988804820526==--
 
