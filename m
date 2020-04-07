@@ -1,32 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============8127141988804820526=="
+Content-Type: multipart/mixed; boundary="===============5886109068252347328=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] settings: clear copies of values in set_value
-Date: Tue, 07 Apr 2020 15:58:52 +0000
-Message-ID: <0f1bb40b-813c-8dc4-2e11-8519b0ac1d42@gmail.com>
-In-Reply-To: <20200403164410.18943-1-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH] ell/ecc.h: fix build with uclibc
+Date: Tue, 07 Apr 2020 16:02:07 +0000
+Message-ID: <bd38cabc-0ee8-5906-6792-718f4740c0fc@gmail.com>
+In-Reply-To: <20200328114041.1084249-1-fontaine.fabrice@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8127141988804820526==
+--===============5886109068252347328==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi Fabrice,
 
-On 4/3/20 11:44 AM, Andrew Zaborowski wrote:
-> We bzero the setting values before they're free elsewhere in the file
-> but not in set_value, and we do use it in iwd to set a PIN.
-> ---
->   ell/settings.c | 14 ++++++++------
->   1 file changed, 8 insertions(+), 6 deletions(-)
+On 3/28/20 6:40 AM, Fabrice Fontaine wrote:
+> ssize_t is defined in sys/types.h
 > =
 
+> Fixes:
+>   - http://autobuild.buildroot.org/results/444c9deb728fb041e560d940145f96=
+cc4f455080
+> =
 
-Applied, thanks.
+> Signed-off-by: Fabrice Fontaine <fontaine.fabrice@gmail.com>
+
+Dropped the SoB (ell doesn't use these) and applied, thanks.
 
 Regards,
 -Denis
---===============8127141988804820526==--
+--===============5886109068252347328==--
 
