@@ -1,34 +1,35 @@
-Content-Type: multipart/mixed; boundary="===============5886109068252347328=="
+Content-Type: multipart/mixed; boundary="===============0631933507543065185=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] ell/ecc.h: fix build with uclibc
-Date: Tue, 07 Apr 2020 16:02:07 +0000
-Message-ID: <bd38cabc-0ee8-5906-6792-718f4740c0fc@gmail.com>
-In-Reply-To: <20200328114041.1084249-1-fontaine.fabrice@gmail.com>
+Subject: Re: [PATCH 1/4] ell: add missing void to function declarations
+Date: Tue, 07 Apr 2020 16:07:28 +0000
+Message-ID: <d6dcacb1-d3a1-54a3-362e-e84014cbad63@gmail.com>
+In-Reply-To: <20200402033632.961701-1-rosenp@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5886109068252347328==
+--===============0631933507543065185==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Fabrice,
+Hi Rosen,
 
-On 3/28/20 6:40 AM, Fabrice Fontaine wrote:
-> ssize_t is defined in sys/types.h
+On 4/1/20 10:36 PM, Rosen Penev wrote:
+> Found with -Wstrict-prototypes.
+> ---
+>   ell/checksum.h     | 2 +-
+>   ell/dbus-private.h | 2 +-
+>   ell/main.h         | 2 +-
+>   ell/random.h       | 2 +-
+>   4 files changed, 4 insertions(+), 4 deletions(-)
 > =
 
-> Fixes:
->   - http://autobuild.buildroot.org/results/444c9deb728fb041e560d940145f96=
-cc4f455080
-> =
 
-> Signed-off-by: Fabrice Fontaine <fontaine.fabrice@gmail.com>
-
-Dropped the SoB (ell doesn't use these) and applied, thanks.
+All applied, thanks.
 
 Regards,
 -Denis
---===============5886109068252347328==--
+
+--===============0631933507543065185==--
 
