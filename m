@@ -1,107 +1,101 @@
-Content-Type: multipart/mixed; boundary="===============8738851754628632794=="
+Content-Type: multipart/mixed; boundary="===============6589392764511986158=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/5] cert: Fix verification of the 2nd certificate in chain
-Date: Thu, 09 Apr 2020 01:37:20 +0200
-Message-ID: <20200408233724.25721-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/5] build: Generate test certs with no AKID / SKID extensions
+Date: Thu, 09 Apr 2020 01:37:21 +0200
+Message-ID: <20200408233724.25721-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20200408233724.25721-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8738851754628632794==
+--===============6589392764511986158==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-In the case that the trusted CA certificates are provided to
-l_certchain_verify() and one of them binary-matches the top CA
-certificate in the chain being verified, we'd skip linking it to the
-keyring and we'd link the next certificate directly.  As a result
-that second certificate would be linked to an empty unrestricted keyring
-and would not be verified at all.
-
-Instead add the top CA to the keyring and restrict it the same way we
-proceed when no trusted CAs are provided.
 ---
- ell/cert.c | 33 +++++++++++++++++++--------------
- 1 file changed, 19 insertions(+), 14 deletions(-)
+ Makefile.am       | 29 +++++++++++++++++++++++++++--
+ unit/gencerts.cnf |  7 +++++++
+ 2 files changed, 34 insertions(+), 2 deletions(-)
 
-diff --git a/ell/cert.c b/ell/cert.c
-index d1f58d7..eb04765 100644
---- a/ell/cert.c
-+++ b/ell/cert.c
-@@ -454,6 +454,7 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain *=
-chain,
- 	struct l_cert *cert;
- 	struct l_key *prev_key =3D NULL;
- 	int verified =3D 0;
-+	bool ca_match;
- 	static char error_buf[200];
+diff --git a/Makefile.am b/Makefile.am
+index abe0dab..e0841fc 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -209,12 +209,14 @@ cert_files =3D unit/cert-chain.pem \
+ 			unit/cert-client-key-v2-des.pem \
+ 			unit/cert-client-key-v2-des-ede3.pem \
+ 			unit/cert-client-key-v2-aes128.pem \
+-			unit/cert-client-key-v2-aes256.pem
++			unit/cert-client-key-v2-aes256.pem \
++			unit/cert-no-keyid.pem
  =
 
- 	if (unlikely(!chain || !chain->leaf))
-@@ -464,6 +465,7 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain *=
-chain,
- 		RETURN_ERROR("Can't create verify keyring");
+ cert_checks =3D unit/cert-intca \
+ 			unit/cert-entity-int \
+ 			unit/cert-server \
+-			unit/cert-client
++			unit/cert-client \
++			unit/cert-no-keyid
  =
 
- 	cert =3D chain->ca;
-+	ca_match =3D cert_is_in_set(cert, ca_certs);
+ if MAINTAINER_MODE
+ noinst_PROGRAMS +=3D $(unit_tests) $(dbus_tests) $(cert_tests)
+@@ -499,6 +501,29 @@ unit/cert-entity-int.pem: unit/cert-entity-int.csr uni=
+t/cert-intca.pem unit/genc
+ unit/cert-entity-int: unit/cert-entity-int.pem unit/cert-chain.pem
+ 	$(AM_V_GEN)openssl verify -CAfile $(builddir)/unit/cert-chain.pem $<
  =
 
- 	/*
- 	 * For TLS compatibility the trusted root CA certificate is
-@@ -477,19 +479,22 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain=
- *chain,
- 	 * already possess it in order to validate it in any case."
- 	 *
- 	 * The following is an optimization to skip verifying the root
--	 * cert in the chain if it is identical to one of the trusted CA
--	 * certificates.  It also happens to work around a kernel issue
--	 * preventing self-signed certificates missing the AKID
--	 * extension from being linked to a keyring.
-+	 * cert in the chain if it is bitwise-identical to one of the
-+	 * trusted CA certificates.  In that case we don't have to load
-+	 * all of the trusted certificates into the kernel, link them
-+	 * to @ca_ring or link @ca_ring to @verify_ring, instead we
-+	 * load the first certificate into @verify_ring before we set
-+	 * the restric mode on it, same as when no trusted CAs are
-+	 * provided.
-+	 *
-+	 * Note this happens to work around a kernel issue preventing
-+	 * self-signed certificates missing the optional AKID extension
-+	 * from being linked to a restricted keyring.  That issue would
-+	 * have affected us if the trusted CA set included such
-+	 * certificate and the same certificate was at the root of
-+	 * the chain.
- 	 */
--	if (cert_is_in_set(cert, ca_certs)) {
--		verified++;
--		cert =3D cert->issued;
--		if (!cert)
--			return true;
--
--		prev_key =3D cert_try_link(cert, verify_ring);
--	} else if (ca_certs) {
-+	if (ca_certs && !ca_match) {
- 		ca_ring =3D cert_set_to_keyring(ca_certs, error_buf);
- 		if (!ca_ring) {
- 			if (error)
-@@ -550,8 +555,8 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain *=
-chain,
- 				"verified against trusted CA(s) and the "
- 				"following %i top certificates verified ok",
- 				verified + 1, total,
--				ca_certs && verified ? "" : "not ",
--				verified ? verified - 1 : 0);
-+				ca_certs && (ca_match || verified) ? "" :
-+				"not ", verified ? verified - 1 : 0);
- 	}
++unit/cert-ca2.pem: unit/cert-ca-key.pem unit/gencerts.cnf
++	$(AM_V_GEN)openssl req -x509 -new -nodes -extensions ca_no_akid_ext \
++			-config $(srcdir)/unit/gencerts.cnf \
++			-subj '/O=3DInternational Union of Example Organizations/CN=3DCertifica=
+te issuer guy/emailAddress=3Dca-no-akid(a)mail.example' \
++			-key $< -sha256 -days 10000 -out $@
++
++unit/cert-no-keyid.csr: unit/cert-client-key.pem unit/gencerts.cnf
++	$(AM_V_GEN)openssl req -new \
++			-config $(srcdir)/unit/gencerts.cnf \
++			-subj '/O=3DBaz Example Organization/CN=3DBaz Example Organization/emai=
+lAddress=3Dbaz@mail.example' \
++			-key $< -out $@
++
++unit/cert-no-keyid.pem: unit/cert-no-keyid.csr unit/cert-ca2.pem unit/genc=
+erts.cnf
++	$(AM_V_GEN)openssl x509 -req -extensions no_keyid_ext \
++			-extfile $(srcdir)/unit/gencerts.cnf \
++			-in $< -CA $(builddir)/unit/cert-ca2.pem \
++			-CAkey $(builddir)/unit/cert-ca-key.pem \
++			-CAserial $(builddir)/unit/cert-ca2.srl \
++			-CAcreateserial -sha256 -days 10000 -out $@ $($(AM_V_P)_redirect_openss=
+l)
++
++unit/cert-no-keyid: unit/cert-no-keyid.pem unit/cert-ca2.pem
++	$(AM_V_GEN)openssl verify -CAfile $(builddir)/unit/cert-ca2.pem $<
++
+ unit/key-plaintext.h: unit/plaintext.txt
+ 	$(AM_V_GEN)xxd -i < $< > $@
  =
 
- 	l_key_free(prev_key);
+diff --git a/unit/gencerts.cnf b/unit/gencerts.cnf
+index dc469e8..dc4dad2 100644
+--- a/unit/gencerts.cnf
++++ b/unit/gencerts.cnf
+@@ -23,3 +23,10 @@ basicConstraints =3D CA:FALSE
+ subjectKeyIdentifier =3D hash
+ authorityKeyIdentifier =3D keyid:always,issuer:always
+ subjectAltName =3D DNS:foo.int.example,DNS:foo.int.com
++
++[ ca_no_akid_ext ]
++basicConstraints =3D CA:TRUE
++
++[ no_keyid_ext ]
++basicConstraints =3D CA:FALSE
++authorityKeyIdentifier =3D issuer:always
 -- =
 
 2.20.1
 
---===============8738851754628632794==--
+--===============6589392764511986158==--
 
