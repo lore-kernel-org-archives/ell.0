@@ -1,100 +1,81 @@
-Content-Type: multipart/mixed; boundary="===============6115272268443325460=="
+Content-Type: multipart/mixed; boundary="===============7921896006743817976=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 4/5] cert: Relax trused CA matching in l_certchain_verify
-Date: Thu, 09 Apr 2020 01:37:23 +0200
-Message-ID: <20200408233724.25721-4-andrew.zaborowski@intel.com>
+Subject: [PATCH 5/5] unit: Relax test-tls certificate chain checks
+Date: Thu, 09 Apr 2020 01:37:24 +0200
+Message-ID: <20200408233724.25721-5-andrew.zaborowski@intel.com>
 In-Reply-To: <20200408233724.25721-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6115272268443325460==
+--===============7921896006743817976==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Check if any of the certificates in the chain matched any of the
-trusted CA certificates (if given) and treat the chain as trusted even
-if the matching certificate was not the top CA in the chain.
-We also don't require that the trusted certificates or the root in the
-chain are self-signed.
-
-This allows a user to pin a specific certificate to a server/client or
-trust a subtree of all of the certificates emitted by the root CA.
+Make the l_certchain_verify() failure tests pass after the previous
+commit.
 ---
- ell/cert.c | 30 ++++++++++++++++++++++--------
- 1 file changed, 22 insertions(+), 8 deletions(-)
+ unit/test-tls.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/ell/cert.c b/ell/cert.c
-index eb04765..cfe9a8d 100644
---- a/ell/cert.c
-+++ b/ell/cert.c
-@@ -454,7 +454,8 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain *=
-chain,
- 	struct l_cert *cert;
- 	struct l_key *prev_key =3D NULL;
- 	int verified =3D 0;
--	bool ca_match;
-+	int ca_match =3D 0;
-+	int i =3D 0;
- 	static char error_buf[200];
+diff --git a/unit/test-tls.c b/unit/test-tls.c
+index 92747b4..89dcb9a 100644
+--- a/unit/test-tls.c
++++ b/unit/test-tls.c
+@@ -228,6 +228,7 @@ static void test_certificates(const void *data)
+ {
+ 	struct l_queue *cacert;
+ 	struct l_queue *wrongca;
++	struct l_queue *wrongca2;
+ 	struct l_queue *twocas;
+ 	struct l_certchain *chain;
  =
 
- 	if (unlikely(!chain || !chain->leaf))
-@@ -464,8 +465,13 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain =
-*chain,
- 	if (!verify_ring)
- 		RETURN_ERROR("Can't create verify keyring");
+@@ -237,6 +238,9 @@ static void test_certificates(const void *data)
+ 	wrongca =3D l_pem_load_certificate_list(CERTDIR "cert-intca.pem");
+ 	assert(wrongca && !l_queue_isempty(wrongca));
  =
 
-+	for (cert =3D chain->ca; cert; cert =3D cert->issued, i++)
-+		if (cert_is_in_set(cert, ca_certs)) {
-+			ca_match =3D i + 1;
-+			break;
-+		}
++	wrongca2 =3D l_pem_load_certificate_list(CERTDIR "cert-server.pem");
++	assert(wrongca2 && !l_queue_isempty(wrongca2));
 +
- 	cert =3D chain->ca;
--	ca_match =3D cert_is_in_set(cert, ca_certs);
+ 	twocas =3D l_pem_load_certificate_list(CERTDIR "cert-chain.pem");
+ 	assert(twocas);
  =
 
- 	/*
- 	 * For TLS compatibility the trusted root CA certificate is
-@@ -549,14 +555,22 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain=
- *chain,
+@@ -253,7 +257,7 @@ static void test_certificates(const void *data)
+ 	chain =3D l_pem_load_certificate_chain(CERTDIR "cert-chain.pem");
+ 	assert(chain);
  =
 
- 	if (!prev_key) {
- 		int total =3D 0;
-+		char str[100];
+-	assert(!l_certchain_verify(chain, wrongca, NULL));
++	assert(!l_certchain_verify(chain, wrongca2, NULL));
+ 	assert(l_certchain_verify(chain, cacert, NULL));
+ 	assert(l_certchain_verify(chain, NULL, NULL));
+ 	assert(l_certchain_verify(chain, twocas, NULL));
+@@ -285,7 +289,7 @@ static void test_certificates(const void *data)
+ 			load_cert_file(CERTDIR "cert-ca.pem"));
+ 	assert(chain);
  =
 
- 		for (cert =3D chain->ca; cert; cert =3D cert->issued, total++);
--		RETURN_ERROR("Linking certificate %i / %i failed, root %s"
--				"verified against trusted CA(s) and the "
--				"following %i top certificates verified ok",
--				verified + 1, total,
--				ca_certs && (ca_match || verified) ? "" :
--				"not ", verified ? verified - 1 : 0);
-+
-+		if (ca_match)
-+			snprintf(str, sizeof(str), "%i / %i matched a trusted "
-+					"certificate, root not verified",
-+					ca_match, total);
-+		else
-+			snprintf(str, sizeof(str), "root %sverified against "
-+					"trusted CA(s)",
-+					ca_certs && !ca_match && verified ? "" :
-+					"not ");
-+
-+		RETURN_ERROR("Linking certificate %i / %i failed, %s",
-+				verified + 1, total, str);
- 	}
+-	assert(!l_certchain_verify(chain, wrongca, NULL));
++	assert(!l_certchain_verify(chain, wrongca2, NULL));
+ 	assert(l_certchain_verify(chain, cacert, NULL));
+ 	assert(l_certchain_verify(chain, NULL, NULL));
+ 	assert(l_certchain_verify(chain, twocas, NULL));
+@@ -316,6 +320,7 @@ static void test_certificates(const void *data)
+ 	l_certchain_free(chain);
+ 	l_queue_destroy(cacert, (l_queue_destroy_func_t) l_cert_free);
+ 	l_queue_destroy(wrongca, (l_queue_destroy_func_t) l_cert_free);
++	l_queue_destroy(wrongca2, (l_queue_destroy_func_t) l_cert_free);
+ 	l_queue_destroy(twocas, (l_queue_destroy_func_t) l_cert_free);
+ }
  =
 
- 	l_key_free(prev_key);
 -- =
 
 2.20.1
 
---===============6115272268443325460==--
+--===============7921896006743817976==--
 
