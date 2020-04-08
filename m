@@ -1,152 +1,100 @@
-Content-Type: multipart/mixed; boundary="===============7858628480086999345=="
+Content-Type: multipart/mixed; boundary="===============6115272268443325460=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 3/5] unit: Test l_certchain_verify with no-keyid certificates
-Date: Thu, 09 Apr 2020 01:37:22 +0200
-Message-ID: <20200408233724.25721-3-andrew.zaborowski@intel.com>
+Subject: [PATCH 4/5] cert: Relax trused CA matching in l_certchain_verify
+Date: Thu, 09 Apr 2020 01:37:23 +0200
+Message-ID: <20200408233724.25721-4-andrew.zaborowski@intel.com>
 In-Reply-To: <20200408233724.25721-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7858628480086999345==
+--===============6115272268443325460==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-In test-tls slightly refactor test_certificates() to avoid having so
-many variables and add new asserts to check that l_certchain_verify()
-can load a self-signed CA certificate with no SKID or AKID extension
-(the kernel has a problem with these certificates) and also that it can
-be looked up when verifying a leaf certificate pointing to that CA only
-by name+serial combination.
+Check if any of the certificates in the chain matched any of the
+trusted CA certificates (if given) and treat the chain as trusted even
+if the matching certificate was not the top CA in the chain.
+We also don't require that the trusted certificates or the root in the
+chain are self-signed.
+
+This allows a user to pin a specific certificate to a server/client or
+trust a subtree of all of the certificates emitted by the root CA.
 ---
- unit/test-tls.c | 81 +++++++++++++++++++++++++++++++------------------
- 1 file changed, 52 insertions(+), 29 deletions(-)
+ ell/cert.c | 30 ++++++++++++++++++++++--------
+ 1 file changed, 22 insertions(+), 8 deletions(-)
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index 3519376..92747b4 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -230,9 +230,6 @@ static void test_certificates(const void *data)
- 	struct l_queue *wrongca;
- 	struct l_queue *twocas;
- 	struct l_certchain *chain;
--	struct l_certchain *chain2;
--	struct l_certchain *chain3;
--	struct l_certchain *chain4;
+diff --git a/ell/cert.c b/ell/cert.c
+index eb04765..cfe9a8d 100644
+--- a/ell/cert.c
++++ b/ell/cert.c
+@@ -454,7 +454,8 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain *=
+chain,
+ 	struct l_cert *cert;
+ 	struct l_key *prev_key =3D NULL;
+ 	int verified =3D 0;
+-	bool ca_match;
++	int ca_match =3D 0;
++	int i =3D 0;
+ 	static char error_buf[200];
  =
 
- 	cacert =3D l_pem_load_certificate_list(CERTDIR "cert-ca.pem");
- 	assert(cacert && !l_queue_isempty(cacert));
-@@ -251,46 +248,72 @@ static void test_certificates(const void *data)
- 	assert(l_certchain_verify(chain, NULL, NULL));
- 	assert(l_certchain_verify(chain, twocas, NULL));
+ 	if (unlikely(!chain || !chain->leaf))
+@@ -464,8 +465,13 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain =
+*chain,
+ 	if (!verify_ring)
+ 		RETURN_ERROR("Can't create verify keyring");
  =
 
--	chain2 =3D l_pem_load_certificate_chain(CERTDIR "cert-chain.pem");
--	assert(chain2);
-+	l_certchain_free(chain);
++	for (cert =3D chain->ca; cert; cert =3D cert->issued, i++)
++		if (cert_is_in_set(cert, ca_certs)) {
++			ca_match =3D i + 1;
++			break;
++		}
 +
-+	chain =3D l_pem_load_certificate_chain(CERTDIR "cert-chain.pem");
-+	assert(chain);
+ 	cert =3D chain->ca;
+-	ca_match =3D cert_is_in_set(cert, ca_certs);
  =
 
--	assert(!l_certchain_verify(chain2, wrongca, NULL));
--	assert(l_certchain_verify(chain2, cacert, NULL));
--	assert(l_certchain_verify(chain2, NULL, NULL));
--	assert(l_certchain_verify(chain2, twocas, NULL));
-+	assert(!l_certchain_verify(chain, wrongca, NULL));
-+	assert(l_certchain_verify(chain, cacert, NULL));
-+	assert(l_certchain_verify(chain, NULL, NULL));
-+	assert(l_certchain_verify(chain, twocas, NULL));
-+
-+	l_certchain_free(chain);
+ 	/*
+ 	 * For TLS compatibility the trusted root CA certificate is
+@@ -549,14 +555,22 @@ LIB_EXPORT bool l_certchain_verify(struct l_certchain=
+ *chain,
  =
 
--	chain3 =3D certchain_new_from_leaf(
-+	chain =3D certchain_new_from_leaf(
- 			load_cert_file(CERTDIR "cert-server.pem"));
--	certchain_link_issuer(chain3,
-+	certchain_link_issuer(chain,
- 			load_cert_file(CERTDIR "cert-entity-int.pem"));
--	certchain_link_issuer(chain3,
-+	certchain_link_issuer(chain,
- 			load_cert_file(CERTDIR "cert-intca.pem"));
--	certchain_link_issuer(chain3,
-+	certchain_link_issuer(chain,
- 			load_cert_file(CERTDIR "cert-ca.pem"));
--	assert(chain3);
-+	assert(chain);
-+
-+	assert(!l_certchain_verify(chain, wrongca, NULL));
-+	assert(!l_certchain_verify(chain, cacert, NULL));
-+	assert(!l_certchain_verify(chain, NULL, NULL));
-+	assert(!l_certchain_verify(chain, twocas, NULL));
+ 	if (!prev_key) {
+ 		int total =3D 0;
++		char str[100];
  =
 
--	assert(!l_certchain_verify(chain3, wrongca, NULL));
--	assert(!l_certchain_verify(chain3, cacert, NULL));
--	assert(!l_certchain_verify(chain3, NULL, NULL));
--	assert(!l_certchain_verify(chain3, twocas, NULL));
-+	l_certchain_free(chain);
+ 		for (cert =3D chain->ca; cert; cert =3D cert->issued, total++);
+-		RETURN_ERROR("Linking certificate %i / %i failed, root %s"
+-				"verified against trusted CA(s) and the "
+-				"following %i top certificates verified ok",
+-				verified + 1, total,
+-				ca_certs && (ca_match || verified) ? "" :
+-				"not ", verified ? verified - 1 : 0);
++
++		if (ca_match)
++			snprintf(str, sizeof(str), "%i / %i matched a trusted "
++					"certificate, root not verified",
++					ca_match, total);
++		else
++			snprintf(str, sizeof(str), "root %sverified against "
++					"trusted CA(s)",
++					ca_certs && !ca_match && verified ? "" :
++					"not ");
++
++		RETURN_ERROR("Linking certificate %i / %i failed, %s",
++				verified + 1, total, str);
+ 	}
  =
 
--	chain4 =3D certchain_new_from_leaf(
-+	chain =3D certchain_new_from_leaf(
- 			load_cert_file(CERTDIR "cert-entity-int.pem"));
--	certchain_link_issuer(chain4,
-+	certchain_link_issuer(chain,
- 			load_cert_file(CERTDIR "cert-intca.pem"));
--	certchain_link_issuer(chain4,
-+	certchain_link_issuer(chain,
- 			load_cert_file(CERTDIR "cert-ca.pem"));
--	assert(chain4);
-+	assert(chain);
-+
-+	assert(!l_certchain_verify(chain, wrongca, NULL));
-+	assert(l_certchain_verify(chain, cacert, NULL));
-+	assert(l_certchain_verify(chain, NULL, NULL));
-+	assert(l_certchain_verify(chain, twocas, NULL));
-+
-+	l_certchain_free(chain);
-+	l_queue_destroy(cacert, (l_queue_destroy_func_t) l_cert_free);
-+
-+	cacert =3D l_pem_load_certificate_list(CERTDIR "cert-ca2.pem");
-+	assert(cacert && !l_queue_isempty(cacert));
-+
-+	chain =3D certchain_new_from_leaf(
-+			load_cert_file(CERTDIR "cert-no-keyid.pem"));
-+	assert(chain);
- =
-
--	assert(!l_certchain_verify(chain4, wrongca, NULL));
--	assert(l_certchain_verify(chain4, cacert, NULL));
--	assert(l_certchain_verify(chain4, NULL, NULL));
--	assert(l_certchain_verify(chain4, twocas, NULL));
-+	assert(!l_certchain_verify(chain, wrongca, NULL));
-+	assert(l_certchain_verify(chain, cacert, NULL));
-+	assert(l_certchain_verify(chain, NULL, NULL));
-+	assert(!l_certchain_verify(chain, twocas, NULL));
-+
-+	certchain_link_issuer(chain,
-+			load_cert_file(CERTDIR "cert-ca2.pem"));
-+
-+	assert(!l_certchain_verify(chain, wrongca, NULL));
-+	assert(l_certchain_verify(chain, cacert, NULL));
-+	assert(l_certchain_verify(chain, NULL, NULL));
-+	assert(!l_certchain_verify(chain, twocas, NULL));
- =
-
- 	l_certchain_free(chain);
--	l_certchain_free(chain2);
--	l_certchain_free(chain3);
--	l_certchain_free(chain4);
- 	l_queue_destroy(cacert, (l_queue_destroy_func_t) l_cert_free);
- 	l_queue_destroy(wrongca, (l_queue_destroy_func_t) l_cert_free);
- 	l_queue_destroy(twocas, (l_queue_destroy_func_t) l_cert_free);
+ 	l_key_free(prev_key);
 -- =
 
 2.20.1
 
---===============7858628480086999345==--
+--===============6115272268443325460==--
 
