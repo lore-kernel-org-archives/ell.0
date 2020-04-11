@@ -1,58 +1,36 @@
-Content-Type: multipart/mixed; boundary="===============3517282706529873440=="
+Content-Type: multipart/mixed; boundary="===============0184596471999099841=="
 MIME-Version: 1.0
-From: Gix, Brian <brian.gix@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: RFC: DBus send_with_reply wrapper doesn't time out
-Date: Sat, 11 Apr 2020 17:46:59 +0000
-Message-ID: <51EC6F27-47B7-4AFB-A692-757E7C750154@intel.com>
-In-Reply-To: <93b7f2b0-3c61-ae78-daff-22505557b159@gmail.com>
+Date: Sat, 11 Apr 2020 20:55:10 +0000
+Message-ID: <c0ed64f0-199a-60f1-3d95-4aa0be7a9e7f@gmail.com>
+In-Reply-To: <51EC6F27-47B7-4AFB-A692-757E7C750154@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3517282706529873440==
+--===============0184596471999099841==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Thanks Denis,
+Hi Brian,
 
-> On Apr 11, 2020, at 9:00 AM, Denis Kenzior <denkenz@gmail.com> wrote:
-> =
+> It does, however, create the potential for at least a temporary resource =
+leak. The hashmap gets saved for as long as it takes...   if we time out th=
+e on the responde, is there anyway to tell ELL to cancel and cleanup the ha=
+shmap?
 
-> =EF=BB=BFHi Brian,
-> =
+That is what the destroy callback of l_dbus_send_with_reply is for.  The =
 
->> Is timing out reply required methods the dbus daemon responsibility?  Is=
- it the l_dbus_send_with_reply()
->> responsibility?  The mesh daemon responsibility?  Ideally, the App just =
-responds, but we have no control over
->> how Apps respond to method calls.
-> =
+destroy callback gets called on userdata in all cases to free up any =
 
-> Timeouts do not exist at the protocol level, their implementation is pure=
-ly a higher level feature.
-> =
+resources.
 
-> dbus-daemon can be configured to limit the maximum time an application ca=
-n take to respond, but the default reply_timeout is set to -1 (infinite).
-> =
+In the normal case it is called after the callback is invoked, but can =
 
-> ell does not enable or enforce any timeouts for dbus method calls. Starti=
-ng a timer for each dbus call is quite expensive, so for now we have left t=
-his up to the application to manage.
+also be called as a result of l_dbus_cancel, etc.
 
-I suspect this is what we need to do... we have perhaps just the one method=
- that absolutely requires this time-out, so I agree that pushing this into =
-all =E2=80=9Csend-with-reply=E2=80=9D calls might be overkill.
-
-It does, however, create the potential for at least a temporary resource le=
-ak. The hashmap gets saved for as long as it takes...   if we time out the =
-on the responde, is there anyway to tell ELL to cancel and cleanup the hash=
-map?
-
-> =
-
-> Regards,
-> -Denis
-
---===============3517282706529873440==--
+Regards,
+-Denis
+--===============0184596471999099841==--
 
