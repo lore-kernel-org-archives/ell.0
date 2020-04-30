@@ -1,52 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============8249516771128704194=="
+Content-Type: multipart/mixed; boundary="===============6895781305439068022=="
 MIME-Version: 1.0
-From: Gix, Brian <brian.gix@intel.com>
-Subject: Re: RFC: DBus send_with_reply wrapper doesn't time out
-Date: Sun, 12 Apr 2020 02:16:25 +0000
-Message-ID: <c48cf681be84fe8cb3ed2b3d50c15f81e16ee5a0.camel@intel.com>
-In-Reply-To: <c0ed64f0-199a-60f1-3d95-4aa0be7a9e7f@gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/2] dbus: Call destroy function in l_dbus_remove_watch
+Date: Thu, 30 Apr 2020 15:23:39 +0200
+Message-ID: <20200430132340.58244-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8249516771128704194==
+--===============6895781305439068022==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, 2020-04-09 at 02:52 -0500, Denis Kenzior wrote:
-> Hi Brian,
-> =
+l_dbus_remove_watch (_dbus_name_cache_remove_watch) marks name watches
+as removed and schedules a service_watch_remove_all call.  Do the
+watch's destroy callback when marking the watch as removed instead of
+waiting until the service_watch_remove_all idle callback to do this.
 
-> > It does, however, create the potential for at least a temporary resourc=
-e leak. The hashmap gets saved for
-> > as long as it takes...   if we time out the on the responde, is there a=
-nyway to tell ELL to cancel and
-> > cleanup the hashmap?
-> =
+Semantically it may be ok to do the destroy callback later but I think
+it's easier on the user if they can be sure they'll get no more
+callbacks after using l_dbus_remove_watch.
+---
+ ell/dbus-name-cache.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-> That is what the destroy callback of l_dbus_send_with_reply is for.  The =
+diff --git a/ell/dbus-name-cache.c b/ell/dbus-name-cache.c
+index cb6a516..b09cc97 100644
+--- a/ell/dbus-name-cache.c
++++ b/ell/dbus-name-cache.c
+@@ -283,6 +283,12 @@ static void service_watch_mark(const void *key, void *=
+value, void *user_data)
+ 			watch->removed =3D true;
+ 			watch->connect_func =3D NULL;
+ 			watch->disconnect_func =3D NULL;
++
++			if (watch->destroy) {
++				watch->destroy(watch->user_data);
++				watch->destroy =3D NULL;
++			}
++
+ 			*id =3D 0;
+ 			break;
+ 		}
+-- =
 
-> destroy callback gets called on userdata in all cases to free up any =
+2.25.1
 
-> resources.
-> =
-
-> In the normal case it is called after the callback is invoked, but can =
-
-> also be called as a result of l_dbus_cancel, etc.
-
-Ah...  That is the API I need.  l_dbus_send_with_reply() returns a serial n=
-umber, and l_dbus_cancel() accepts a
-serial number to cancel.  So we can add our own timeouts, and call the dbus=
-_cancel with the saved serial number
-if we don't get the timeout we are waiting for.
-
-Thanks.
-
-> =
-
-> Regards,
-> -Denis
-
---===============8249516771128704194==--
+--===============6895781305439068022==--
 
