@@ -1,44 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============1112810674694022145=="
+Content-Type: multipart/mixed; boundary="===============0380624121665799435=="
 MIME-Version: 1.0
-From: Thomas Petazzoni <thomas.petazzoni@bootlin.com>
-Subject: ell 0.31 fails to build with pre-4.12 kernel headers
-Date: Sun, 07 Jun 2020 10:51:07 +0200
-Message-ID: <20200607105107.3e4158de@windsurf>
+From: Rosen Penev <rosenp@gmail.com>
+Subject: [PATCH 1/3] ell: cast printf call to double
+Date: Tue, 21 Jul 2020 15:39:57 -0700
+Message-ID: <20200721223959.87135-1-rosenp@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1112810674694022145==
+--===============0380624121665799435==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hello,
+%f confusingly enough takes a bool, not a float.
+---
+ ell/settings.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Since commit fa950995a48bbcd8f0d3dfbbe9a7f768aba5c50f ("genl: enable
-extended error messages"), ell makes use of the extended ACK reporting
-mechanism added by Linux commit
-2d4bc93368f5a0ddb57c8c885cdad9c9b7a10ed5.
+diff --git a/ell/settings.c b/ell/settings.c
+index 945dff7..dac45c9 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -1320,7 +1320,7 @@ LIB_EXPORT bool l_settings_set_float(struct l_setting=
+s *settings,
+ {
+ 	L_AUTO_FREE_VAR(char *, buf);
+ =
 
-Due to this, the build of ell 0.31 fails when the toolchain uses kernel
-headers older than Linux 4.12, as NLM_F_ACK_TLVS and NETLINK_EXT_ACK
-are not defined.
+-	buf =3D l_strdup_printf("%f", in);
++	buf =3D l_strdup_printf("%f", (double)in);
+ =
 
-See an example build failure:
-
-  http://autobuild.buildroot.net/results/baf/bafc0ee2a3bcb2418a3612da38eb9d=
-cd586b57d4/build-end.log
-
-It would probably be good to make this feature optional in ell, based
-on some configure.ac checks of the availability of extended ACK
-reporting.
-
-Thanks!
-
-Thomas
+ 	return l_settings_set_value(settings, group_name, key, buf);
+ }
 -- =
 
-Thomas Petazzoni, CTO, Bootlin
-Embedded Linux and Kernel engineering
-https://bootlin.com
---===============1112810674694022145==--
+2.26.2
+
+--===============0380624121665799435==--
 
