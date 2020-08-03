@@ -1,70 +1,59 @@
-Content-Type: multipart/mixed; boundary="===============4483565642371983072=="
+Content-Type: multipart/mixed; boundary="===============4334939989065308875=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCHv2] Fix side channel leak in l_ecc_scalar_new
-Date: Mon, 03 Aug 2020 14:21:32 -0500
-Message-ID: <b6b86dde-e197-285e-75c5-260467ecf111@gmail.com>
-In-Reply-To: <20200803090619.62347-1-daniel.de-almeida-braga@irisa.fr>
+Subject: Re: [PATCH 0/2] drop RC4 support
+Date: Mon, 03 Aug 2020 16:48:33 -0500
+Message-ID: <a8c1b496-51b2-7228-a7f9-a8e6f73e27b5@gmail.com>
+In-Reply-To: <20200803105449.124714-1-ardb@kernel.org>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4483565642371983072==
+--===============4334939989065308875==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Daniel,
+Hi Ard,
 
-On 8/3/20 4:06 AM, Daniel DE ALMEIDA BRAGA wrote:
-> A secure (constant time and memory access) memory comparaison function
-> is needed to handle secret data. Namely, l_ecc_scalar tends to be
-> instantiated with secret, and _vli_cmp leak "how much" different it is
-> from the prime p.
-> The secure memcmp is defined in ell/util.h to be available to projects
-> using ELL.
-> ---
->   ell/ecc-private.h | 33 +++++++++++++++++++++
->   ell/ecc.c         |  2 +-
->   ell/util.h        | 73 +++++++++++++++++++++++++++++++++++++++++++++++
->   3 files changed, 107 insertions(+), 1 deletion(-)
+On 8/3/20 5:54 AM, Ard Biesheuvel wrote:
+> RC4 support in libell is based on the ecb(arc4) skcipher exposed by the
+> Linux crypto API, which is an odd beast given that it does not
+> distinguish between the key and the IV, and therefore does not fit the
+> skcipher API very well.
+> =
+
+> Now that work is underway in the linux-crypto kernel community to
+> implement chained requests for skciphers, we are running into problems
+> with this: the state that needs to be kept between skcipher requests to
+> implement chaining is currently kept in the TFM object (which holds the
+> key) in the case of ecb(arc4), and moving this into the request object
+> (to match the way chaining is implemented for other skcipher modes) may
+> enable key reuse (and thus IV reuse in the ARC4 case), which amount to
+> catastrophic failure for any stream cipher.
+> =
+
+> So in order to address this in a safe and robust manner, we intend to
+> retire the ecb(arc4) skcipher entirely on the Linux side. This obviously
+> requires work in the userland side as well, hence this series.
+> =
+
+> Ard Biesheuvel (2):
+>    tls: remove support for RC4 cipher suites
+>    cipher: remove obsolete arc4 support
+> =
+
+>   ell/cipher.c       |  8 +--
+>   ell/cipher.h       |  4 +-
+>   ell/tls-suites.c   | 41 ++------------
+>   unit/test-cipher.c | 56 --------------------
+>   unit/test-tls.c    |  3 +-
+>   5 files changed, 11 insertions(+), 101 deletions(-)
 > =
 
 
-I tweaked the formatting of the code and comments a bit to make them fit on=
- 80 =
-
-character lines.
-
-I also made two trivial changes:
-
-> +static inline int l_secure_memcmp_64(const uint64_t *a, const uint64_t *=
-b,
-> +					size_t size)
-
-I dropped the l_ prefix here since this is no longer public API.
-
-> +{
-> +	uint64_t aa_64, bb_64;
-> +
-> +	int res =3D 0, mask;
-> +
-> +	int i =3D 0;
-
-I also changed the type of i to 'size_t' due to the following compiler warn=
-ing:
-
-In file included from ell/ecc-external.c:36:
-ell/ecc-private.h: In function =E2=80=98secure_memcmp_64=E2=80=99:
-ell/ecc-private.h:80:13: error: comparison of integer expressions of differ=
-ent =
-
-signedness: =E2=80=98int=E2=80=99 and =E2=80=98size_t=E2=80=99 {aka =E2=80=
-=98long unsigned int=E2=80=99} [-Werror=3Dsign-compare]
-    80 |   } while(i !=3D size);
-
-Applied, thanks!
+Both applied (minus the S-o-B lines).
 
 Regards,
 -Denis
---===============4483565642371983072==--
+--===============4334939989065308875==--
 
