@@ -1,154 +1,70 @@
-Content-Type: multipart/mixed; boundary="===============2264531565714945274=="
+Content-Type: multipart/mixed; boundary="===============4483565642371983072=="
 MIME-Version: 1.0
-From: Ard Biesheuvel <ardb@kernel.org>
-Subject: [PATCH 2/2] cipher: remove obsolete arc4 support
-Date: Mon, 03 Aug 2020 12:54:49 +0200
-Message-ID: <20200803105449.124714-3-ardb@kernel.org>
-In-Reply-To: <20200803105449.124714-1-ardb@kernel.org>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCHv2] Fix side channel leak in l_ecc_scalar_new
+Date: Mon, 03 Aug 2020 14:21:32 -0500
+Message-ID: <b6b86dde-e197-285e-75c5-260467ecf111@gmail.com>
+In-Reply-To: <20200803090619.62347-1-daniel.de-almeida-braga@irisa.fr>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2264531565714945274==
+--===============4483565642371983072==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The rc4 cipher is obsolete, and is only relevant for very specific use
-cases where compatibility with legacy hardware or software is needed.
-Now that iwd has been updated to use its own arc4 implementation, which
-is tailored to its needs, and support for the RC4 based TLS cipher suites
-has been dropped, we can drop the implementation from libell.
+Hi Daniel,
 
-Signed-off-by: Ard Biesheuvel <ardb@kernel.org>
----
- ell/cipher.c       |  8 +--
- ell/cipher.h       |  4 +-
- unit/test-cipher.c | 56 --------------------
- 3 files changed, 7 insertions(+), 61 deletions(-)
+On 8/3/20 4:06 AM, Daniel DE ALMEIDA BRAGA wrote:
+> A secure (constant time and memory access) memory comparaison function
+> is needed to handle secret data. Namely, l_ecc_scalar tends to be
+> instantiated with secret, and _vli_cmp leak "how much" different it is
+> from the prime p.
+> The secure memcmp is defined in ell/util.h to be available to projects
+> using ELL.
+> ---
+>   ell/ecc-private.h | 33 +++++++++++++++++++++
+>   ell/ecc.c         |  2 +-
+>   ell/util.h        | 73 +++++++++++++++++++++++++++++++++++++++++++++++
+>   3 files changed, 107 insertions(+), 1 deletion(-)
+> =
 
-diff --git a/ell/cipher.c b/ell/cipher.c
-index 4a27b5e3556f..300d7c0dd3b1 100644
---- a/ell/cipher.c
-+++ b/ell/cipher.c
-@@ -149,8 +149,6 @@ static const char *cipher_type_to_name(enum l_cipher_ty=
-pe type)
- 		return "cbc(aes)";
- 	case L_CIPHER_AES_CTR:
- 		return "ctr(aes)";
--	case L_CIPHER_ARC4:
--		return "ecb(arc4)";
- 	case L_CIPHER_DES:
- 		return "ecb(des)";
- 	case L_CIPHER_DES_CBC:
-@@ -619,7 +617,11 @@ static void init_supported()
- 	strcpy((char *) salg.salg_type, "skcipher");
- =
 
- 	for (c =3D L_CIPHER_AES; c <=3D L_CIPHER_DES3_EDE_CBC; c++) {
--		strcpy((char *) salg.salg_name, cipher_type_to_name(c));
-+		const char *name =3D cipher_type_to_name(c);
-+
-+		if (!name)
-+			continue;
-+		strcpy((char *) salg.salg_name, name);
- =
+I tweaked the formatting of the code and comments a bit to make them fit on=
+ 80 =
 
- 		if (bind(sk, (struct sockaddr *) &salg, sizeof(salg)) < 0)
- 			continue;
-diff --git a/ell/cipher.h b/ell/cipher.h
-index 84f29888253f..e1a4bda14f81 100644
---- a/ell/cipher.h
-+++ b/ell/cipher.h
-@@ -33,8 +33,8 @@ enum l_cipher_type {
- 	L_CIPHER_AES =3D 0,
- 	L_CIPHER_AES_CBC,
- 	L_CIPHER_AES_CTR,
--	L_CIPHER_ARC4,
--	L_CIPHER_DES,
-+	/* L_CIPHER_ARC4, */
-+	L_CIPHER_DES =3D 4,
- 	L_CIPHER_DES_CBC,
- 	L_CIPHER_DES3_EDE_CBC,
- };
-diff --git a/unit/test-cipher.c b/unit/test-cipher.c
-index 9469e0eefe62..7fe32a21ba57 100644
---- a/unit/test-cipher.c
-+++ b/unit/test-cipher.c
-@@ -98,59 +98,6 @@ static void test_aes_ctr(const void *data)
- 	l_cipher_free(cipher);
- }
- =
+character lines.
 
--static void test_arc4(const void *data)
--{
--	struct l_cipher *cipher;
--	char buf[256];
--	int r;
--
--	static const unsigned char expect_plaintext[] =3D {
--		0xbb, 0xf3, 0x16, 0xe8, 0xd9, 0x40, 0xaf, 0x0a, 0xd3,
--	};
--	static const unsigned char expect_pedia[] =3D {
--		0x10, 0x21, 0xbf, 0x04, 0x20,
--	};
--	static const unsigned char expect_attack[] =3D {
--		0x45, 0xa0, 0x1f, 0x64, 0x5f, 0xc3, 0x5b, 0x38, 0x35, 0x52,
--		0x54, 0x4b, 0x9b, 0xf5,
--	};
--
--	cipher =3D l_cipher_new(L_CIPHER_ARC4, "Key", 3);
--	assert(cipher);
--	l_cipher_encrypt(cipher, "Plaintext", buf, 9);
--	assert(!memcmp(buf, expect_plaintext, 9));
--	l_cipher_free(cipher);
--
--	cipher =3D l_cipher_new(L_CIPHER_ARC4, "Wiki", 4);
--	assert(cipher);
--	l_cipher_encrypt(cipher, "pedia", buf, 5);
--	assert(!memcmp(buf, expect_pedia, 5));
--	l_cipher_free(cipher);
--
--	cipher =3D l_cipher_new(L_CIPHER_ARC4, "Secret", 6);
--	assert(cipher);
--	l_cipher_encrypt(cipher, "Attack@dawn", buf, 14);
--	assert(!memcmp(buf, expect_attack, 14));
--	l_cipher_free(cipher);
--
--	cipher =3D l_cipher_new(L_CIPHER_ARC4, KEY_STR, KEY_LEN);
--	assert(cipher);
--
--	memcpy(buf, FIXED_STR, FIXED_LEN);
--
--	l_cipher_encrypt(cipher, buf, buf, FIXED_LEN);
--
--	r =3D memcmp(buf, FIXED_STR, FIXED_LEN);
--	assert(r);
--
--	l_cipher_decrypt(cipher, buf, buf, FIXED_LEN);
--
--	r =3D memcmp(buf, FIXED_STR, FIXED_LEN);
--	assert(!r);
--
--	l_cipher_free(cipher);
--}
--
- struct aead_test_vector {
- 	enum l_aead_cipher_type type;
- 	char *aad;
-@@ -385,9 +332,6 @@ int main(int argc, char *argv[])
- 	if (l_cipher_is_supported(L_CIPHER_AES_CTR))
- 		l_test_add("aes_ctr", test_aes_ctr, NULL);
- =
+I also made two trivial changes:
 
--	if (l_cipher_is_supported(L_CIPHER_ARC4))
--		l_test_add("arc4", test_arc4, NULL);
--
- 	if (l_aead_cipher_is_supported(L_AEAD_CIPHER_AES_CCM)) {
- 		l_test_add("aes_ccm long nonce", test_aead, &ccm_long_nonce);
- 		l_test_add("aes_ccm short nonce", test_aead, &ccm_short_nonce);
--- =
+> +static inline int l_secure_memcmp_64(const uint64_t *a, const uint64_t *=
+b,
+> +					size_t size)
 
-2.20.1
+I dropped the l_ prefix here since this is no longer public API.
 
---===============2264531565714945274==--
+> +{
+> +	uint64_t aa_64, bb_64;
+> +
+> +	int res =3D 0, mask;
+> +
+> +	int i =3D 0;
+
+I also changed the type of i to 'size_t' due to the following compiler warn=
+ing:
+
+In file included from ell/ecc-external.c:36:
+ell/ecc-private.h: In function =E2=80=98secure_memcmp_64=E2=80=99:
+ell/ecc-private.h:80:13: error: comparison of integer expressions of differ=
+ent =
+
+signedness: =E2=80=98int=E2=80=99 and =E2=80=98size_t=E2=80=99 {aka =E2=80=
+=98long unsigned int=E2=80=99} [-Werror=3Dsign-compare]
+    80 |   } while(i !=3D size);
+
+Applied, thanks!
+
+Regards,
+-Denis
+--===============4483565642371983072==--
 
