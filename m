@@ -1,144 +1,203 @@
-Content-Type: multipart/mixed; boundary="===============4223056191723510229=="
+Content-Type: multipart/mixed; boundary="===============0111061278229805419=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] Fix side channel leak in l_ecc_scalar_new
-Date: Fri, 31 Jul 2020 08:58:47 -0500
-Message-ID: <908d7d4e-757b-fb99-2e1a-46fca11a2c12@gmail.com>
-In-Reply-To: <20200731101607.2837.70296@ml01.vlan13.01.org>
+From: Daniel DE ALMEIDA BRAGA <daniel.de-almeida-braga@irisa.fr>
+Subject: [PATCHv2] Fix side channel leak in l_ecc_scalar_new
+Date: Mon, 03 Aug 2020 11:06:20 +0200
+Message-ID: <20200803090619.62347-1-daniel.de-almeida-braga@irisa.fr>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4223056191723510229==
+--===============0111061278229805419==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Daniel,
+A secure (constant time and memory access) memory comparaison function
+is needed to handle secret data. Namely, l_ecc_scalar tends to be
+instantiated with secret, and _vli_cmp leak "how much" different it is
+from the prime p.
+The secure memcmp is defined in ell/util.h to be available to projects
+using ELL.
+---
+ ell/ecc-private.h | 33 +++++++++++++++++++++
+ ell/ecc.c         |  2 +-
+ ell/util.h        | 73 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 107 insertions(+), 1 deletion(-)
 
->> can we name this l_secure_memcmp?  Also, shouldn't a and b be const void=
- *?
-> =
+diff --git a/ell/ecc-private.h b/ell/ecc-private.h
+index 70d9607..a700983 100644
+--- a/ell/ecc-private.h
++++ b/ell/ecc-private.h
+@@ -24,6 +24,7 @@
+ #include <stdint.h>
+ =
 
-> As long as size is the byte size of the array, a and b can be const void =
-*. Our only constraint is to work with aa and bb as uint8 * so yes, this ca=
-n be changed.
+ #include "ecc.h"
++#include "util.h"
+ =
 
-Right, this is fine.
+ struct l_ecc_curve;
+ =
 
-> =
+@@ -49,6 +50,38 @@ struct l_ecc_scalar {
+ 	const struct l_ecc_curve *curve;
+ };
+ =
 
->> any particular reason to use int8 here?  memcmp returns an int and offer=
-s no
->> particular contract on the values that can be returned...
-> =
++/* =
 
-> I guess returning an int would work too, and we don't actually need -1/0/=
-1 but negative/0/positive. I set it to uint8_t  "by default", because I mad=
-e l_secure_memcmp to work with the util_secure_select (see the patch in iwd=
-), which take a uint8 flag of value 0/0xFF.
-> I thought returning fixed values made it easier to use afterward (as a ma=
-sk for secure selection for instance).
++ * Performs a secure memory comparison of two uint64_t buffers of size byt=
+es
++ * representing an integer. Blobs are ordered in little endian. It returns
++ * a negative, zero or positif value if a < b, a =3D=3D b or a > b respect=
+ively.
++ */
++static inline int l_secure_memcmp_64(const uint64_t *a, const uint64_t *b,
++					size_t size)
++{
++	uint64_t aa_64, bb_64;
++
++	int res =3D 0, mask;
++
++	int i =3D 0;
++
++	if (size) {
++		/*
++		 * Arrays store blobs in LE, we will process each blob as a byte array
++		 * of size 8 using l_secure_memcmp. We need to make sure to feed a BE
++		 * byte array to avoid unexpected behavior on different architectures.
++		 */
++		do {
++			aa_64 =3D L_CPU_TO_BE64(a[i]);
++			bb_64 =3D L_CPU_TO_BE64(b[i]);
++			mask =3D l_secure_memcmp(&aa_64, &bb_64, 8);
++			res =3D (mask & res) | mask;
++			i++;
++		} while(i !=3D size);
++	}
++
++	return res;
++}
++
+ void _ecc_be2native(uint64_t *dest, const uint64_t *bytes,
+ 							unsigned int ndigits);
+ =
 
-So the reason I'd like to avoid returning an int8 is purely to follow the s=
-ame =
+diff --git a/ell/ecc.c b/ell/ecc.c
+index 250f7e8..c69057f 100644
+--- a/ell/ecc.c
++++ b/ell/ecc.c
+@@ -603,7 +603,7 @@ LIB_EXPORT struct l_ecc_scalar *l_ecc_scalar_new(
+ 	_ecc_be2native(c->c, buf, curve->ndigits);
+ =
 
-signature / semantics as memcmp.  Returning an int8 here just feels strange=
-...
+ 	if (!vli_is_zero_or_one(c->c, curve->ndigits) &&
+-				_vli_cmp(c->c, curve->n, curve->ndigits) < 0)
++				l_secure_memcmp_64(curve->n, c->c, curve->ndigits) > 0)
+ 		return c;
+ =
 
-It probably doesn't matter much in practice but it is nice to be consistent=
-.  It =
+ 	l_ecc_scalar_free(c);
+diff --git a/ell/util.h b/ell/util.h
+index 6e88505..d87ec2e 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -315,6 +315,79 @@ const char *l_util_get_debugfs_path(void);
+        while (__result =3D=3D -1L && errno =3D=3D EINTR);  \
+        __result; }))
+ =
 
-also saves us a few extra arithmetic operations at the end.
++/*
++ * Taken from https://github.com/chmike/cst_time_memcmp, adding a volatile=
+ to
++ * ensure the compiler does not try to optimize the constant time behavior.
++ * The code has been modified to add comments and project specific code
++ * styling.
++ * This specific piece of code is subject to the following copyright:
++ *
++ * The MIT License (MIT)
++ *
++ * Copyright (c) 2015 Christophe Meessen
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a=
+ copy
++ * of this software and associated documentation files (the "Software"), to
++ * deal in the Software without restriction, including without limitation =
+the
++ * rights to use, copy, modify, merge, publish, distribute, sublicense, an=
+d/or
++ * sell copies of the Software, and to permit persons to whom the Software=
+ is
++ * furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included=
+ in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS=
+ OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL=
+ THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEA=
+LINGS
++ * IN THE SOFTWARE.
++ *
++ * This function performs a secure memory comparison of two buffers of size
++ * bytes, representing an integer (byte order is big endian). It returns
++ * a negative, zero or positif value if a < b, a =3D=3D b or a > b respect=
+ively.
++ */
++static inline int l_secure_memcmp(const void *a, const void *b,
++					size_t size)
++{
++	const volatile uint8_t *aa =3D a;
++	const volatile uint8_t *bb =3D b;
++	int res =3D 0, diff, mask;
++	/*
++	 * We will compare all bytes, starting with the less significant. When we
++	 * find a non-zero difference, we update the result accordingly.
++	 */
++	if (size > 0) {
++		do {
++			--size;
++			diff =3D aa[size] - bb[size];
++			/*
++			 * The following couple of lines can be summarized as a constant =
 
-> =
++			 * time/memory access version of:
++			 * 		if (diff !=3D 0) res =3D diff;
++			 *
++			 * From the previous operation, we know that diff is in [-255, 255]
++			 * The following figure show the possible value of mask, based on
++			 * different cases of diff:
++			 *
++			 *    diff |   diff-1   |   ~diff    | ((diff-1) & ~diff) |  mask
++			 *  -------|------------|------------|--------------------|------
++			 *    < 0  | 0xFFFFFFXX | 0x000000YY |     0x000000ZZ     |   0
++			 *   =3D=3D 0  | 0xFFFFFFFF | 0xFFFFFFFF |     0xFFFFFFFF     | 0xF..F
++			 *    > 0  | 0x000000XX | 0xFFFFFFYY |     0x000000ZZ     |   0
++			 *
++			 * Hence, the mask allows to keep res when diff =3D=3D 0, and to set =
 
->> Is this needed if we return an int?  You could change
->> util_secure_fill_with_msb() to use a uint32_t instead of uint8.  Then th=
-is
->> re-scaling step is unnecessary, right?
-> =
++			 * res to diff otherwise.
++			 */
++			mask =3D (((diff - 1) & ~diff) >> 8);
++			res =3D (res & mask) | diff;
++		} while (size !=3D 0);
++	}
++
++	return res;
++}
++
+ #ifdef __cplusplus
+ }
+ #endif
+-- =
 
-> It seems right to me, util_secure_fill_with_msb could even be used to per=
-form the operation inplace on a void *.
-> Asking out of curiosity: is there a particular reason to want uint32_t in=
-stead of uint8_t when the latter works fine ?
+2.25.4
 
-Going to a uint32 is just a side-effect of l_secure_memcmp returning an int=
-. =
-
-You need the extra width since the sign bit is now bit 31 instead of 7.  No =
-
-other reason really.
-
-> =
-
->>> + * representing an integer. Blobs are ordered in little endian. It ret=
-urns
->>> + * -1, 0 or 1 if a < b, a =3D=3D b or a > b respectively.
->>> + */
->>> +static inline uint8_t l_secure_memcmp_64(const uint64_t *a, const uint=
-64_t *b,
->>
->> This function is only useful for ecc and related parts.  In fact we trie=
-d very
->> hard to hide the ecc implementation details (like the uint64_t arrays
->> representing the points) in data structures that are opaque to the outsi=
-de
->> world.  So there's really no reason to expose this in util.h.
->>
->> I would move this to ecc.c directly or perhaps ecc-private.h if you fore=
-see
->> needing to replace some / all instances of _vli_cmp in ell/ecc-external.=
-c with
->> the secure version.
-> =
-
-> No problem for moving it in a different file. I would recommend ecc-priva=
-te.h since I it should / will probably be needed elsewhere. At this point I=
- don't have enough knowledge of the library to say where, but basically any=
-where you compare secret data to anything.
-> I don't think all instances of _vli_cmp *should* be replaced, secure comp=
-arison comes with a minor overhead, and is not always needed.
-
-Yeah, I'm not sure about those _vli_cmp calls either.  Guess we can just pu=
-t =
-
-this in ecc-private and see how it goes.
-
-> =
-
->> if l_secure_memcmp takes void, the aa_8 and bb_8 variables become unnece=
-ssary
->> and you can simply pass &aa_64, &bb_64 directly.
-> =
-
-> Indeed, this can be change along with l_secure_memcmp signature.
-> =
-
-> Bottom line is: l_secure_memcmp can use const void *, which also makes l_=
-secure_memcmp_64 cleaner. We can also make it return an int, without guaran=
-tying particular value (only the sign), avoiding the final re-scaling.
-> Returning uint8 is easier for future use with secure_select in iwd, but a=
- simple cast to uint8 would solve the problem.
-> =
-
-
-If the impact on the iwd side is trivial, then I'd prefer the int =
-
-l_secure_memcmp(const void *, const void *, size_t) signature.
-
-> I'm waiting for your advice (namely regarding switching the return type f=
-rom uint8 to int) before making the changes in this patch and iwd's patch a=
-ccordingly.
-> By the way, how do I proceed ? Do I post the new version of the patch in =
-this thread ?
-
-Just git send-email another version with a [PATCHv2] prefix.  Doesn't need =
-to be =
-
-a reply to this thread.
-
-Regards,
--Denis
---===============4223056191723510229==--
+--===============0111061278229805419==--
 
