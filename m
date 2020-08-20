@@ -1,59 +1,55 @@
-Content-Type: multipart/mixed; boundary="===============4334939989065308875=="
+Content-Type: multipart/mixed; boundary="===============7644261962773686738=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 0/2] drop RC4 support
-Date: Mon, 03 Aug 2020 16:48:33 -0500
-Message-ID: <a8c1b496-51b2-7228-a7f9-a8e6f73e27b5@gmail.com>
-In-Reply-To: <20200803105449.124714-1-ardb@kernel.org>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: [PATCH] dhcp6: Fix uninitialized variable build warning
+Date: Thu, 20 Aug 2020 12:38:01 -0700
+Message-ID: <20200820193801.264181-1-mathew.j.martineau@linux.intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4334939989065308875==
+--===============7644261962773686738==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ard,
+Commit 17f79c855e61 added a variable 'r' to dhcp6_client_rx_message()
+that holds either a new dhcp6_state or an error (negative value). 'r'
+was not set in several client states, but it appears that the unit tests
+only cover cases where it is set.
 
-On 8/3/20 5:54 AM, Ard Biesheuvel wrote:
-> RC4 support in libell is based on the ecb(arc4) skcipher exposed by the
-> Linux crypto API, which is an odd beast given that it does not
-> distinguish between the key and the IV, and therefore does not fit the
-> skcipher API very well.
-> =
+It appears that the new code at the end of dhcp6_client_rx_message() is
+only intended for the cases where 'r' was set, so initialize 'r' to the
+current client->state and rely on the existing state check to preserve
+old behavior.
+---
 
-> Now that work is underway in the linux-crypto kernel community to
-> implement chained requests for skciphers, we are running into problems
-> with this: the state that needs to be kept between skcipher requests to
-> implement chaining is currently kept in the TFM object (which holds the
-> key) in the case of ecb(arc4), and moving this into the request object
-> (to match the way chaining is implemented for other skcipher modes) may
-> enable key reuse (and thus IV reuse in the ARC4 case), which amount to
-> catastrophic failure for any stream cipher.
-> =
-
-> So in order to address this in a safe and robust manner, we intend to
-> retire the ecb(arc4) skcipher entirely on the Linux side. This obviously
-> requires work in the userland side as well, hence this series.
-> =
-
-> Ard Biesheuvel (2):
->    tls: remove support for RC4 cipher suites
->    cipher: remove obsolete arc4 support
-> =
-
->   ell/cipher.c       |  8 +--
->   ell/cipher.h       |  4 +-
->   ell/tls-suites.c   | 41 ++------------
->   unit/test-cipher.c | 56 --------------------
->   unit/test-tls.c    |  3 +-
->   5 files changed, 11 insertions(+), 101 deletions(-)
-> =
+Denis, I don't have enough background knowledge about DHCPv6 to be 100%
+sure this patch does the right thing. Is my guess correct about the
+intended use of the new code at the end of dhcp6_client_rx_message()?
 
 
-Both applied (minus the S-o-B lines).
+ ell/dhcp6.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Regards,
--Denis
---===============4334939989065308875==--
+diff --git a/ell/dhcp6.c b/ell/dhcp6.c
+index d41cdde..b0c6438 100644
+--- a/ell/dhcp6.c
++++ b/ell/dhcp6.c
+@@ -1148,7 +1148,7 @@ static void dhcp6_client_rx_message(const void *data,=
+ size_t len,
+ {
+ 	struct l_dhcp6_client *client =3D userdata;
+ 	const struct dhcp6_message *message =3D data;
+-	int r;
++	int r =3D client->state;
+ =
+
+ 	CLIENT_DEBUG("");
+ =
+
+-- =
+
+2.28.0
+
+--===============7644261962773686738==--
 
