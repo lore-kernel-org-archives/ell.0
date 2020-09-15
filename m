@@ -1,59 +1,105 @@
-Content-Type: multipart/mixed; boundary="===============0749754232961308436=="
+Content-Type: multipart/mixed; boundary="===============0860805298181172947=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dhcp6: Fix uninitialized variable build warning
-Date: Thu, 20 Aug 2020 14:36:47 -0500
-Message-ID: <72317b94-1ad6-c6e5-e644-0e3e6b14b05f@gmail.com>
-In-Reply-To: <20200820193801.264181-1-mathew.j.martineau@linux.intel.com>
+From: Ross Burton <ross@burtonini.com>
+Subject: [PATCH 2/2] build: Add -ldl to LIBS as needed.
+Date: Tue, 15 Sep 2020 19:00:41 +0100
+Message-ID: <20200915180041.2361066-2-ross@burtonini.com>
+In-Reply-To: <20200915180041.2361066-1-ross@burtonini.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0749754232961308436==
+--===============0860805298181172947==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+From: Ossama Othman <ossama.othman@intel.com>
 
-On 8/20/20 2:38 PM, Mat Martineau wrote:
-> Commit 17f79c855e61 added a variable 'r' to dhcp6_client_rx_message()
-> that holds either a new dhcp6_state or an error (negative value). 'r'
-> was not set in several client states, but it appears that the unit tests
-> only cover cases where it is set.
-> =
+ELL requires the libdl library but does not add it to the LIBS build
+variable.  Add it to LIBS only if it is required to resolve dlopen()
+and related functions at link-time so that the libdl dependency will
+be embedded into the libell shared library binary:
 
-> It appears that the new code at the end of dhcp6_client_rx_message() is
-> only intended for the cases where 'r' was set, so initialize 'r' to the
-> current client->state and rely on the existing state check to preserve
-> old behavior.
+Pre-change:
+$ ldd ell/.libs/libell.so.0.0.2
+        linux-vdso.so.1 (0x00007ffec6fd2000)
+        libc.so.6 =3D> /lib/x86_64-linux-gnu/libc.so.6 (0x00007fb7db3bf000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007fb7db9f5000)
 
-Ah thanks for this.  I still have some pending changes that masked it on my=
- end. =
+Post-change:
+$ ldd ell/.libs/libell.so.0.0.2
+        linux-vdso.so.1 (0x00007fffb95d1000)
+        libdl.so.2 =3D> /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f02bef2f00=
+0)
+        libc.so.6 =3D> /lib/x86_64-linux-gnu/libc.so.6 (0x00007f02beb3e000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f02bf378000)
 
-  I need to be more careful.
+This also obviates the need to explicitly add libdl to LDFLAGS for the
+ELL plugin unit test.
 
-> ---
-> =
+Lastly, only add "-ldl" to the private library flags in ELL's
+pkg-config file (ell.pc) since it is an ELL dependency that is only
+exposed to the user if the platform in question doesn't support
+inter-library dependencies, or when linking against the static ELL
+library, e.g.:
 
-> Denis, I don't have enough background knowledge about DHCPv6 to be 100%
-> sure this patch does the right thing. Is my guess correct about the
-> intended use of the new code at the end of dhcp6_client_rx_message()?
+$ pkg-config --libs ell
+-L/usr/local/lib -lell
 
-The fix is fine for now.  I think eventually all cases will be handled such=
- that =
+$ pkg-config --static --libs ell
+-L/usr/local/lib -lell -ldl
+---
+ Makefile.am   | 2 +-
+ configure.ac  | 2 +-
+ ell/ell.pc.in | 3 ++-
+ 3 files changed, 4 insertions(+), 3 deletions(-)
 
-r is always set, but I'm not there yet.
+diff --git a/Makefile.am b/Makefile.am
+index 395edc3..6c3b39f 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -247,7 +247,7 @@ unit_test_io_LDADD =3D ell/libell-private.la
+ unit_test_ringbuf_LDADD =3D ell/libell-private.la
+ =
 
-> =
+ unit_test_plugin_LDFLAGS =3D -Wl,-export-dynamic
+-unit_test_plugin_LDADD =3D ell/libell-private.la -ldl
++unit_test_plugin_LDADD =3D ell/libell-private.la
+ =
 
-> =
+ unit_test_checksum_LDADD =3D ell/libell-private.la
+ =
 
->   ell/dhcp6.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
+diff --git a/configure.ac b/configure.ac
+index 490784f..a9d62ed 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -108,7 +108,7 @@ AC_CHECK_FUNC(timerfd_create, dummy=3Dyes,
+ AC_CHECK_FUNC(epoll_create, dummy=3Dyes,
+ 			AC_MSG_ERROR(epoll support is required))
+ =
 
-Applied, thanks.
+-AC_CHECK_LIB(dl, dlopen, dummy=3Dyes,
++AC_SEARCH_LIBS(dlopen, dl, dummy=3Dyes,
+ 			AC_MSG_ERROR(dynamic linking loader is required))
+ =
 
-Regards,
--Denis
---===============0749754232961308436==--
+ AC_CHECK_HEADERS(linux/types.h linux/if_alg.h)
+diff --git a/ell/ell.pc.in b/ell/ell.pc.in
+index 4fc933b..d9aae8d 100644
+--- a/ell/ell.pc.in
++++ b/ell/ell.pc.in
+@@ -6,5 +6,6 @@ includedir=3D@includedir@
+ Name: ELL
+ Description: Embedded Linux library
+ Version: @VERSION@
+-Libs: -L${libdir} -lell -ldl
++Libs: -L${libdir} -lell
++Libs.private: @LIBS@
+ Cflags: -I${includedir}
+-- =
+
+2.28.0
+
+--===============0860805298181172947==--
 
