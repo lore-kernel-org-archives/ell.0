@@ -1,47 +1,61 @@
-Content-Type: multipart/mixed; boundary="===============4185077648453470228=="
+Content-Type: multipart/mixed; boundary="===============0283592731526116973=="
 MIME-Version: 1.0
-From: Ross Burton <ross@burtonini.com>
-Subject: [PATCH 1/2] build: pass -no-undefined properly
-Date: Tue, 15 Sep 2020 19:00:40 +0100
-Message-ID: <20200915180041.2361066-1-ross@burtonini.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] unit: Test l_settings_{get,set}_bytes
+Date: Wed, 16 Sep 2020 03:11:08 +0200
+Message-ID: <20200916011108.508987-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20200916011108.508987-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4185077648453470228==
+--===============0283592731526116973==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-From: Ross Burton <ross.burton@arm.com>
-
--no-undefined was added to the libell.la LDFLAGS in commit 8391d72d,
-back in 2012, as part of adding versioning. I believe there was some
-confusion here as passing -no-undefined to libtool is different to
-passing -no-undefined to the linker.  The former changes libtool's
-behaviour on Windows hosts related to static libraries, the latter will
-warn if symbols are used but not defined.
 ---
- Makefile.am | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ unit/test-settings.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/Makefile.am b/Makefile.am
-index 4eb20c6..395edc3 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -138,7 +138,7 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/gpio.c \
- 			ell/path.c
+diff --git a/unit/test-settings.c b/unit/test-settings.c
+index fa3a533..a25197a 100644
+--- a/unit/test-settings.c
++++ b/unit/test-settings.c
+@@ -434,6 +434,8 @@ static void test_set_methods(const void *test_data)
+ 	bool b;
+ 	const char *v;
+ 	char *s;
++	uint8_t *bytes;
++	size_t len;
  =
 
--ell_libell_la_LDFLAGS =3D -no-undefined \
-+ell_libell_la_LDFLAGS =3D -Wl,--no-undefined \
- 			-Wl,--version-script=3D$(top_srcdir)/ell/ell.sym \
- 			-version-info $(ELL_CURRENT):$(ELL_REVISION):$(ELL_AGE)
+ 	settings =3D l_settings_new();
+ =
+
+@@ -503,6 +505,18 @@ static void test_set_methods(const void *test_data)
+ 	assert(v);
+ 	assert(!strcmp(v, "\\s\\\\Text\t\\n\\r\\\\"));
+ =
+
++	/* Bytes test */
++	assert(l_settings_set_bytes(settings, "Main", "Bytes",
++					(uint8_t []) { 10, 11, 0, 12, 13 }, 5));
++	bytes =3D l_settings_get_bytes(settings, "Main", "Bytes", &len);
++	assert(bytes);
++	assert(len =3D=3D 5);
++	assert(!memcmp(bytes, (uint8_t []) { 10, 11, 0, 12, 13 }, 5));
++	l_free(bytes);
++	v =3D l_settings_get_value(settings, "Main", "Bytes");
++	assert(v);
++	assert(!strcmp(v, "0a0b000c0d"));
++
+ 	l_settings_free(settings);
+ }
  =
 
 -- =
 
-2.28.0
+2.25.1
 
---===============4185077648453470228==--
+--===============0283592731526116973==--
 
