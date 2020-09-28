@@ -1,36 +1,83 @@
-Content-Type: multipart/mixed; boundary="===============2489973114751246026=="
+Content-Type: multipart/mixed; boundary="===============4077956877866279922=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] settings: Add l_settings_{set,get}_bytes
-Date: Wed, 16 Sep 2020 16:32:19 -0500
-Message-ID: <bae11ae2-4c87-11c9-5668-b4c316eb2c11@gmail.com>
-In-Reply-To: <20200916011108.508987-1-andrew.zaborowski@intel.com>
+From: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH] dhcp6: change option code to uint16_t
+Date: Mon, 28 Sep 2020 10:36:56 -0700
+Message-ID: <20200928173656.194761-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2489973114751246026==
+--===============4077956877866279922==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+GCC-10 appears to have gotten "smarter" (or pickier) and passing
+unnamed enums as an argument expecting a named enum results in
+an error. The internal APIs in dhcp6 have been changed to take a
+uint16_t instead of enum l_dhcp6_option. This allows both public
+and internal DHCP options to be passed to these builder APIs.
+---
+ ell/dhcp6.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-On 9/15/20 8:11 PM, Andrew Zaborowski wrote:
-> ---
-> I went for "bytes" instead of "hexstring" because the latter is the
-> encoding while the former is the type of data stored.
-> ---
->   ell/ell.sym    |  2 ++
->   ell/settings.c | 37 +++++++++++++++++++++++++++++++++++++
->   ell/settings.h |  7 +++++++
->   3 files changed, 46 insertions(+)
-> =
+diff --git a/ell/dhcp6.c b/ell/dhcp6.c
+index 31b07c1..894252e 100644
+--- a/ell/dhcp6.c
++++ b/ell/dhcp6.c
+@@ -226,8 +226,7 @@ static uint8_t *option_reserve(struct dhcp6_message_bui=
+lder *builder,
+ 	return p;
+ }
+ =
 
+-static void option_start(struct dhcp6_message_builder *builder,
+-						enum l_dhcp6_option type)
++static void option_start(struct dhcp6_message_builder *builder, uint16_t t=
+ype)
+ {
+ 	builder->option_start =3D builder->options_pos;
+ 	l_put_be16(type, option_reserve(builder, OPTION_HEADER_LEN));
+@@ -244,7 +243,7 @@ static void option_finalize(struct dhcp6_message_builde=
+r *builder)
+ }
+ =
 
-Both applied, thanks.
+ static void option_append_uint16(struct dhcp6_message_builder *builder,
+-					enum l_dhcp6_option type, uint16_t v)
++					uint16_t type, uint16_t v)
+ {
+ 	uint8_t *p =3D option_reserve(builder, OPTION_HEADER_LEN + sizeof(v));
+ =
 
-Regards,
--Denis
+@@ -254,8 +253,7 @@ static void option_append_uint16(struct dhcp6_message_b=
+uilder *builder,
+ }
+ =
 
---===============2489973114751246026==--
+ static void option_append_bytes(struct dhcp6_message_builder *builder,
+-				enum l_dhcp6_option type,
+-				const void *bytes, uint16_t len)
++				uint16_t type, const void *bytes, uint16_t len)
+ {
+ 	uint8_t *p =3D option_reserve(builder, OPTION_HEADER_LEN + len);
+ =
+
+@@ -453,7 +451,7 @@ static void option_append_option_request(struct dhcp6_m=
+essage_builder *builder,
+ =
+
+ static int option_append_ia_common(struct l_dhcp6_client *client,
+ 				struct dhcp6_message_builder *builder,
+-				enum l_dhcp6_option option)
++				uint16_t option)
+ {
+ 	option_start(builder, option);
+ =
+
+-- =
+
+2.26.2
+
+--===============4077956877866279922==--
 
