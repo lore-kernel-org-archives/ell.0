@@ -1,13 +1,13 @@
-Content-Type: multipart/mixed; boundary="===============4077956877866279922=="
+Content-Type: multipart/mixed; boundary="===============6078892730671730360=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
 Subject: [PATCH] dhcp6: change option code to uint16_t
-Date: Mon, 28 Sep 2020 10:36:56 -0700
-Message-ID: <20200928173656.194761-1-prestwoj@gmail.com>
+Date: Tue, 29 Sep 2020 10:58:57 -0700
+Message-ID: <20200929175857.543613-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4077956877866279922==
+--===============6078892730671730360==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -79,5 +79,5 @@ essage_builder *builder,
 
 2.26.2
 
---===============4077956877866279922==--
+--===============6078892730671730360==--
 
