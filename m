@@ -1,36 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============3873200962888715002=="
+Content-Type: multipart/mixed; boundary="===============2188546135988577320=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dhcp6: change option code to uint16_t
-Date: Tue, 29 Sep 2020 12:59:00 -0500
-Message-ID: <d626c7d4-4895-a427-3e83-11dd97a07cf5@gmail.com>
-In-Reply-To: <20200928173656.194761-1-prestwoj@gmail.com>
+From: Inga Stotland <inga.stotland@intel.com>
+Subject: [PATCH 0/2] io error/disconnect fixes
+Date: Mon, 12 Oct 2020 15:13:52 -0700
+Message-ID: <20201012221354.242562-1-inga.stotland@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3873200962888715002==
+--===============2188546135988577320==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+This patchset addresses cases when an error condition is detected in
+io_callback() and, as a result, io is closed (disconnected), socket is
+closed and disconnect hanler (if set) is called.
 
-On 9/28/20 12:36 PM, James Prestwood wrote:
-> GCC-10 appears to have gotten "smarter" (or pickier) and passing
-> unnamed enums as an argument expecting a named enum results in
-> an error. The internal APIs in dhcp6 have been changed to take a
-> uint16_t instead of enum l_dhcp6_option. This allows both public
-> and internal DHCP options to be passed to these builder APIs.
-> ---
->   ell/dhcp6.c | 10 ++++------
->   1 file changed, 4 insertions(+), 6 deletions(-)
-> =
+The current implementation closes the socket first and only then informs the
+client that a disconnect has occured. At this point socket error condition,
+e.g., ECONNREFUSED, is lost and this potentially prevents the client to take
+different course of action that may have depended on the error.
 
+Also, a disconnect callback is removed from the l_io_destroy(). The reasoni=
+ng
+here is that since l_io_destroy is an API function and is invoked by a clie=
+nt,
+there is no reason to inform that same clinet that the IO has been disconne=
+cted.
+This allows avoiding some circuitous logic in ell/io.c
 
-Applied, thanks.
+Inga Stotland (2):
+  io: Do not call disconnect handler in destroyer
+  io: Allow socket error to be retrieved on disconnect
 
-Regards,
--Denis
+ ell/io.c | 33 ++++++++++-----------------------
+ 1 file changed, 10 insertions(+), 23 deletions(-)
 
---===============3873200962888715002==--
+-- =
+
+2.26.2
+
+--===============2188546135988577320==--
 
