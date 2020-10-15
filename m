@@ -1,370 +1,133 @@
-Content-Type: multipart/mixed; boundary="===============4333670074569032392=="
+Content-Type: multipart/mixed; boundary="===============8931651504295165490=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 04/14] dhcp-util: move iter APIs to dhcp-util
-Date: Thu, 15 Oct 2020 10:17:21 -0700
-Message-ID: <20201015171731.396538-4-prestwoj@gmail.com>
+Subject: [PATCH 05/14] dhcp-transport: remove XID from open()/BPF
+Date: Thu, 15 Oct 2020 10:17:22 -0700
+Message-ID: <20201015171731.396538-5-prestwoj@gmail.com>
 In-Reply-To: <20201015171731.396538-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4333670074569032392==
+--===============8931651504295165490==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-These were already exposed for use elsewhere but dhcp-util
-is a better home for these APIs.
----
- ell/dhcp-util.c | 160 ++++++++++++++++++++++++++++++++++++++++++++++++
- ell/dhcp.c      | 160 ------------------------------------------------
- 2 files changed, 160 insertions(+), 160 deletions(-)
+In preparation for dhcp server the XID portion of the BPF
+needs to be remove as DHCP server packets will not have
+the XID. In addition, the xid argument was removed from
+open() since it was only needed for the BPF.
 
-diff --git a/ell/dhcp-util.c b/ell/dhcp-util.c
-index 44ab1e2..42979d1 100644
---- a/ell/dhcp-util.c
-+++ b/ell/dhcp-util.c
-@@ -158,3 +158,163 @@ uint8_t *_dhcp_message_builder_finalize(struct dhcp_m=
-essage_builder *builder,
+In addition, the OPCODE_BOOT_REQUEST portion of the BPF
+was removed to handle both REQUEST and REPLY messages.
+---
+ ell/dhcp-private.h   |  2 +-
+ ell/dhcp-transport.c | 18 +++---------------
+ ell/dhcp.c           |  3 +--
+ 3 files changed, 5 insertions(+), 18 deletions(-)
+
+diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
+index 3aa89fb..bd2f01f 100644
+--- a/ell/dhcp-private.h
++++ b/ell/dhcp-private.h
+@@ -91,7 +91,7 @@ uint16_t _dhcp_checksumv(const struct iovec *iov, size_t =
+iov_cnt);
+ typedef void (*dhcp_transport_rx_cb_t)(const void *, size_t, void *);
  =
 
- 	return builder->start;
+ struct dhcp_transport {
+-	int (*open)(struct dhcp_transport *s, uint32_t xid);
++	int (*open)(struct dhcp_transport *s);
+ 	int (*broadcast)(struct dhcp_transport *transport,
+ 						uint32_t saddr, uint16_t sport,
+ 						uint32_t daddr, uint16_t dport,
+diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
+index e332f99..13e9953 100644
+--- a/ell/dhcp-transport.c
++++ b/ell/dhcp-transport.c
+@@ -328,7 +328,7 @@ static int _dhcp_default_transport_bind(struct dhcp_tra=
+nsport *s,
+ 	return 0;
  }
-+
-+bool _dhcp_message_iter_init(struct dhcp_message_iter *iter,
-+				const struct dhcp_message *message, size_t len)
-+{
-+	if (!message)
-+		return false;
-+
-+	if (len < sizeof(struct dhcp_message))
-+		return false;
-+
-+	if (L_BE32_TO_CPU(message->magic) !=3D DHCP_MAGIC)
-+		return false;
-+
-+	memset(iter, 0, sizeof(*iter));
-+	iter->message =3D message;
-+	iter->message_len =3D len;
-+	iter->max =3D len - sizeof(struct dhcp_message);
-+	iter->options =3D message->options;
-+	iter->can_overload =3D true;
-+
-+	return true;
-+}
-+
-+static bool next_option(struct dhcp_message_iter *iter,
-+				uint8_t *t, uint8_t *l, const void **v)
-+{
-+	uint8_t type;
-+	uint8_t len;
-+
-+	while (iter->pos < iter->max) {
-+		type =3D iter->options[iter->pos];
-+
-+		switch (type) {
-+		case DHCP_OPTION_PAD:
-+			iter->pos +=3D 1;
-+			continue;
-+		case DHCP_OPTION_END:
-+			return false;
-+		default:
-+			break;
-+		}
-+
-+		if (iter->pos + 2 >=3D iter->max)
-+			return false;
-+
-+		len =3D iter->options[iter->pos + 1];
-+
-+		if (iter->pos + 2 + len > iter->max)
-+			return false;
-+
-+		*t =3D type;
-+		*l =3D len;
-+		*v =3D &iter->options[iter->pos + 2];
-+
-+		iter->pos +=3D 2 + len;
-+		return true;
-+	}
-+
-+	return false;
-+}
-+
-+bool _dhcp_message_iter_next(struct dhcp_message_iter *iter, uint8_t *type,
-+				uint8_t *len, const void **data)
-+{
-+	bool r;
-+	uint8_t t, l;
-+	const void *v;
-+
-+	do {
-+		r =3D next_option(iter, &t, &l, &v);
-+		if (!r) {
-+			iter->can_overload =3D false;
-+
-+			if (iter->overload_file) {
-+				iter->options =3D iter->message->file;
-+				iter->pos =3D 0;
-+				iter->max =3D sizeof(iter->message->file);
-+				iter->overload_file =3D false;
-+				continue;
-+			}
-+
-+			if (iter->overload_sname) {
-+				iter->options =3D iter->message->sname;
-+				iter->pos =3D 0;
-+				iter->max =3D sizeof(iter->message->sname);
-+				iter->overload_sname =3D false;
-+				continue;
-+			}
-+
-+			return r;
-+		}
-+
-+		switch (t) {
-+		case DHCP_OPTION_OVERLOAD:
-+			if (l !=3D 1)
-+				continue;
-+
-+			if (!iter->can_overload)
-+				continue;
-+
-+			if (l_get_u8(v) & DHCP_OVERLOAD_FILE)
-+				iter->overload_file =3D true;
-+
-+			if (l_get_u8(v) & DHCP_OVERLOAD_SNAME)
-+				iter->overload_sname =3D true;
-+
-+			continue;
-+		default:
-+			if (type)
-+				*type =3D t;
-+
-+			if (len)
-+				*len =3D l;
-+
-+			if (data)
-+				*data =3D v;
-+			return r;
-+		}
-+	} while (true);
-+
-+	return false;
-+}
-+
-+int _dhcp_option_append(uint8_t **buf, size_t *buflen, uint8_t code,
-+					size_t optlen, const void *optval)
-+{
-+	if (!buf || !buflen)
-+		return -EINVAL;
-+
-+	switch (code) {
-+
-+	case DHCP_OPTION_PAD:
-+	case DHCP_OPTION_END:
-+		if (*buflen < 1)
-+			return -ENOBUFS;
-+
-+		(*buf)[0] =3D code;
-+		*buf +=3D 1;
-+		*buflen -=3D 1;
-+		break;
-+
-+	default:
-+		if (*buflen < optlen + 2)
-+			return -ENOBUFS;
-+
-+		if (!optval)
-+			return -EINVAL;
-+
-+		(*buf)[0] =3D code;
-+		(*buf)[1] =3D optlen;
-+		memcpy(&(*buf)[2], optval, optlen);
-+
-+		*buf +=3D optlen + 2;
-+		*buflen -=3D (optlen + 2);
-+
-+		break;
-+	}
-+
-+	return 0;
-+}
+ =
+
+-static int kernel_raw_socket_open(uint32_t ifindex, uint16_t port, uint32_=
+t xid)
++static int kernel_raw_socket_open(uint32_t ifindex, uint16_t port)
+ {
+ 	int s;
+ 	struct sockaddr_ll addr;
+@@ -382,11 +382,6 @@ static int kernel_raw_socket_open(uint32_t ifindex, ui=
+nt16_t port, uint32_t xid)
+ 		/* A <- DHCP op */
+ 		BPF_STMT(BPF_LD + BPF_B + BPF_ABS,
+ 				offsetof(struct dhcp_packet, dhcp.op)),
+-		/* op =3D=3D BOOTREPLY ? */
+-		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+-				DHCP_OP_CODE_BOOTREPLY, 1, 0),
+-		/* ignore */
+-		BPF_STMT(BPF_RET + BPF_K, 0),
+ 		/* A <- DHCP header type */
+ 		BPF_STMT(BPF_LD + BPF_B + BPF_ABS,
+ 				offsetof(struct dhcp_packet, dhcp.htype)),
+@@ -394,13 +389,6 @@ static int kernel_raw_socket_open(uint32_t ifindex, ui=
+nt16_t port, uint32_t xid)
+ 		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, ARPHRD_ETHER, 1, 0),
+ 		/* ignore */
+ 		BPF_STMT(BPF_RET + BPF_K, 0),
+-		/* A <- client identifier */
+-		BPF_STMT(BPF_LD + BPF_W + BPF_ABS,
+-				offsetof(struct dhcp_packet, dhcp.xid)),
+-		/* client identifier =3D=3D xid ? */
+-		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, xid, 1, 0),
+-		/* ignore */
+-		BPF_STMT(BPF_RET + BPF_K, 0),
+ 		/* A <- MAC address length */
+ 		BPF_STMT(BPF_LD + BPF_B + BPF_ABS,
+ 				offsetof(struct dhcp_packet, dhcp.hlen)),
+@@ -448,7 +436,7 @@ error:
+ 	return -errno;
+ }
+ =
+
+-static int _dhcp_default_transport_open(struct dhcp_transport *s, uint32_t=
+ xid)
++static int _dhcp_default_transport_open(struct dhcp_transport *s)
+ {
+ 	struct dhcp_default_transport *transport =3D
+ 		l_container_of(s, struct dhcp_default_transport, super);
+@@ -457,7 +445,7 @@ static int _dhcp_default_transport_open(struct dhcp_tra=
+nsport *s, uint32_t xid)
+ 	if (transport->io)
+ 		return -EALREADY;
+ =
+
+-	fd =3D kernel_raw_socket_open(s->ifindex, transport->port, xid);
++	fd =3D kernel_raw_socket_open(s->ifindex, transport->port);
+ 	if (fd < 0)
+ 		return fd;
+ =
+
 diff --git a/ell/dhcp.c b/ell/dhcp.c
-index d2be894..b7b6263 100644
+index b7b6263..aa9fe0f 100644
 --- a/ell/dhcp.c
 +++ b/ell/dhcp.c
-@@ -141,166 +141,6 @@ const char *_dhcp_option_to_string(uint8_t option)
- 	}
- }
+@@ -972,8 +972,7 @@ LIB_EXPORT bool l_dhcp_client_start(struct l_dhcp_clien=
+t *client)
+ 		l_getrandom(&client->xid, sizeof(client->xid));
  =
 
--bool _dhcp_message_iter_init(struct dhcp_message_iter *iter,
--				const struct dhcp_message *message, size_t len)
--{
--	if (!message)
--		return false;
--
--	if (len < sizeof(struct dhcp_message))
--		return false;
--
--	if (L_BE32_TO_CPU(message->magic) !=3D DHCP_MAGIC)
--		return false;
--
--	memset(iter, 0, sizeof(*iter));
--	iter->message =3D message;
--	iter->message_len =3D len;
--	iter->max =3D len - sizeof(struct dhcp_message);
--	iter->options =3D message->options;
--	iter->can_overload =3D true;
--
--	return true;
--}
--
--static bool next_option(struct dhcp_message_iter *iter,
--				uint8_t *t, uint8_t *l, const void **v)
--{
--	uint8_t type;
--	uint8_t len;
--
--	while (iter->pos < iter->max) {
--		type =3D iter->options[iter->pos];
--
--		switch (type) {
--		case DHCP_OPTION_PAD:
--			iter->pos +=3D 1;
--			continue;
--		case DHCP_OPTION_END:
--			return false;
--		default:
--			break;
--		}
--
--		if (iter->pos + 2 >=3D iter->max)
--			return false;
--
--		len =3D iter->options[iter->pos + 1];
--
--		if (iter->pos + 2 + len > iter->max)
--			return false;
--
--		*t =3D type;
--		*l =3D len;
--		*v =3D &iter->options[iter->pos + 2];
--
--		iter->pos +=3D 2 + len;
--		return true;
--	}
--
--	return false;
--}
--
--bool _dhcp_message_iter_next(struct dhcp_message_iter *iter, uint8_t *type,
--				uint8_t *len, const void **data)
--{
--	bool r;
--	uint8_t t, l;
--	const void *v;
--
--	do {
--		r =3D next_option(iter, &t, &l, &v);
--		if (!r) {
--			iter->can_overload =3D false;
--
--			if (iter->overload_file) {
--				iter->options =3D iter->message->file;
--				iter->pos =3D 0;
--				iter->max =3D sizeof(iter->message->file);
--				iter->overload_file =3D false;
--				continue;
--			}
--
--			if (iter->overload_sname) {
--				iter->options =3D iter->message->sname;
--				iter->pos =3D 0;
--				iter->max =3D sizeof(iter->message->sname);
--				iter->overload_sname =3D false;
--				continue;
--			}
--
--			return r;
--		}
--
--		switch (t) {
--		case DHCP_OPTION_OVERLOAD:
--			if (l !=3D 1)
--				continue;
--
--			if (!iter->can_overload)
--				continue;
--
--			if (l_get_u8(v) & DHCP_OVERLOAD_FILE)
--				iter->overload_file =3D true;
--
--			if (l_get_u8(v) & DHCP_OVERLOAD_SNAME)
--				iter->overload_sname =3D true;
--
--			continue;
--		default:
--			if (type)
--				*type =3D t;
--
--			if (len)
--				*len =3D l;
--
--			if (data)
--				*data =3D v;
--			return r;
--		}
--	} while (true);
--
--	return false;
--}
--
--int _dhcp_option_append(uint8_t **buf, size_t *buflen, uint8_t code,
--					size_t optlen, const void *optval)
--{
--	if (!buf || !buflen)
--		return -EINVAL;
--
--	switch (code) {
--
--	case DHCP_OPTION_PAD:
--	case DHCP_OPTION_END:
--		if (*buflen < 1)
--			return -ENOBUFS;
--
--		(*buf)[0] =3D code;
--		*buf +=3D 1;
--		*buflen -=3D 1;
--		break;
--
--	default:
--		if (*buflen < optlen + 2)
--			return -ENOBUFS;
--
--		if (!optval)
--			return -EINVAL;
--
--		(*buf)[0] =3D code;
--		(*buf)[1] =3D optlen;
--		memcpy(&(*buf)[2], optval, optlen);
--
--		*buf +=3D optlen + 2;
--		*buflen -=3D (optlen + 2);
--
--		break;
--	}
--
--	return 0;
--}
--
- static void dhcp_message_set_address_type(struct dhcp_message *message,
- 						uint8_t addr_type,
- 						uint8_t addr_len)
+ 	if (client->transport->open)
+-		if (client->transport->open(client->transport,
+-							client->xid) < 0)
++		if (client->transport->open(client->transport) < 0)
+ 			return false;
+ =
+
+ 	_dhcp_transport_set_rx_callback(client->transport,
 -- =
 
 2.26.2
 
---===============4333670074569032392==--
+--===============8931651504295165490==--
 
