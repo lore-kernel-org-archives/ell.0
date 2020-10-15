@@ -1,179 +1,105 @@
-Content-Type: multipart/mixed; boundary="===============4469729800923961168=="
+Content-Type: multipart/mixed; boundary="===============8574168896591915300=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 14/14] dhcp: Add support for setting address
-Date: Thu, 15 Oct 2020 10:17:31 -0700
-Message-ID: <20201015171731.396538-14-prestwoj@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 01/14] net: add l_net_get_ip_address()
+Date: Thu, 15 Oct 2020 13:19:16 -0500
+Message-ID: <f48d6079-8027-7472-ca1e-32317b5644e7@gmail.com>
 In-Reply-To: <20201015171731.396538-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4469729800923961168==
+--===============8574168896591915300==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add optional support for the dhcp client to set the DHCP
-address automatically. This is done by providing an RTNL
-object with l_dhcp_client_set_rtnl.
----
- ell/dhcp.c | 70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/dhcp.h |  4 ++++
- 2 files changed, 74 insertions(+)
+Hi James,
 
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index 708c656..520646d 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -38,6 +38,8 @@
- #include "timeout.h"
- #include "dhcp.h"
- #include "dhcp-private.h"
-+#include "netlink.h"
-+#include "rtnl.h"
- =
+On 10/15/20 12:17 PM, James Prestwood wrote:
+> ---
+>   ell/net.c | 32 ++++++++++++++++++++++++++++++++
+>   ell/net.h |  1 +
+>   2 files changed, 33 insertions(+)
+> =
 
- #define CLIENT_DEBUG(fmt, args...)					\
- 	l_util_debug(client->debug_handler, client->debug_data,		\
-@@ -178,6 +180,9 @@ struct l_dhcp_client {
- 	struct l_timeout *timeout_resend;
- 	struct l_timeout *timeout_lease;
- 	struct l_dhcp_lease *lease;
-+	struct l_netlink *rtnl;
-+	uint32_t rtnl_add_cmdid;
-+	struct l_rtnl_address *rtnl_configured_address;
- 	uint8_t attempt;
- 	l_dhcp_client_event_cb_t event_handler;
- 	void *event_data;
-@@ -580,6 +585,24 @@ error:
- 	l_dhcp_client_stop(client);
- }
- =
 
-+static void dhcp_client_address_add_cb(int error, uint16_t type,
-+						const void *data, uint32_t len,
-+						void *user_data)
-+{
-+	struct l_dhcp_client *client =3D user_data;
-+
-+	client->rtnl_add_cmdid =3D 0;
-+
-+	if (error < 0 && error !=3D -EEXIST) {
-+		l_rtnl_address_free(client->rtnl_configured_address);
-+		client->rtnl_configured_address =3D NULL;
-+		CLIENT_DEBUG("Unable to set address on ifindex: %u: %d(%s)",
-+				client->ifindex, error,
-+				strerror(-error));
-+		return;
-+	}
-+}
-+
- static int dhcp_client_receive_ack(struct l_dhcp_client *client,
- 					const struct dhcp_message *ack,
- 					size_t len)
-@@ -623,6 +646,27 @@ static int dhcp_client_receive_ack(struct l_dhcp_clien=
-t *client,
- 			client->state =3D=3D DHCP_STATE_REBOOTING)
- 		r =3D L_DHCP_CLIENT_EVENT_LEASE_OBTAINED;
- =
+Don't forget ell/ell.sym changes
 
-+	if (client->rtnl) {
-+		struct l_rtnl_address *a;
-+		L_AUTO_FREE_VAR(char *, ip) =3D
-+			l_dhcp_lease_get_address(client->lease);
-+		uint8_t prefix_len =3D 24;
-+		uint32_t l =3D l_dhcp_lease_get_lifetime(client->lease);
-+
-+		a =3D l_rtnl_address_new(ip, prefix_len);
-+		l_rtnl_address_set_noprefixroute(a, true);
-+		l_rtnl_address_set_lifetimes(a, l, l);
-+
-+		client->rtnl_add_cmdid =3D
-+			l_rtnl_ifaddr_add(client->rtnl, client->ifindex, a,
-+						dhcp_client_address_add_cb,
-+						client, NULL);
-+		if (client->rtnl_add_cmdid)
-+			client->rtnl_configured_address =3D a;
-+		else
-+			CLIENT_DEBUG("Configuring address via RTNL failed");
-+	}
-+
- 	return r;
- }
- =
+> diff --git a/ell/net.c b/ell/net.c
+> index 0bff535..5551779 100644
+> --- a/ell/net.c
+> +++ b/ell/net.c
+> @@ -29,6 +29,7 @@
+>   #include <unistd.h>
+>   #include <errno.h>
+>   #include <sys/ioctl.h>
+> +#include <netinet/ip.h>
+>   =
 
-@@ -985,6 +1029,19 @@ LIB_EXPORT bool l_dhcp_client_stop(struct l_dhcp_clie=
-nt *client)
- 	if (unlikely(!client))
- 		return false;
- =
+>   #include "net.h"
+>   #include "net-private.h"
+> @@ -336,3 +337,34 @@ char **net_domain_list_parse(const uint8_t *raw, siz=
+e_t raw_len)
+>   =
 
-+	if (client->rtnl_add_cmdid) {
-+		l_netlink_cancel(client->rtnl, client->rtnl_add_cmdid);
-+		client->rtnl_add_cmdid =3D 0;
-+	}
-+
-+	if (client->rtnl_configured_address) {
-+		l_rtnl_ifaddr_delete(client->rtnl, client->ifindex,
-+					client->rtnl_configured_address,
-+					NULL, NULL, NULL);
-+		l_rtnl_address_free(client->rtnl_configured_address);
-+		client->rtnl_configured_address =3D NULL;
-+	}
-+
- 	l_timeout_remove(client->timeout_resend);
- 	client->timeout_resend =3D NULL;
- =
+>   	return ret;
+>   }
+> +
+> +LIB_EXPORT uint32_t l_net_get_ip_address(int ifindex)
 
-@@ -1038,3 +1095,16 @@ LIB_EXPORT bool l_dhcp_client_set_debug(struct l_dhc=
-p_client *client,
- =
+Can we change the signature to:
 
- 	return true;
- }
-+
-+LIB_EXPORT bool l_dhcp_client_set_rtnl(struct l_dhcp_client *client,
-+					struct l_netlink *rtnl)
-+{
-+	if (unlikely(!client))
-+		return false;
-+
-+	if (unlikely(client->state !=3D DHCP_STATE_INIT))
-+		return false;
-+
-+	client->rtnl =3D rtnl;
-+	return true;
-+}
-diff --git a/ell/dhcp.h b/ell/dhcp.h
-index 2d630fe..a4c185c 100644
---- a/ell/dhcp.h
-+++ b/ell/dhcp.h
-@@ -31,6 +31,7 @@ extern "C" {
- =
+bool l_net_get_address(int ifindex, struct in_addr *out)
 
- struct l_dhcp_client;
- struct l_dhcp_lease;
-+struct l_netlink;
- struct l_dhcp_server;
- =
+That makes it more explicit that only IPv4 address is returned.
 
- /* RFC 2132 */
-@@ -85,6 +86,9 @@ bool l_dhcp_client_set_interface_name(struct l_dhcp_clien=
-t *client,
- bool l_dhcp_client_set_hostname(struct l_dhcp_client *client,
- 							const char *hostname);
- =
+> +{
+> +	struct ifreq ifr;
+> +	int sk, err;
+> +	struct sockaddr_in *server_ip;
+> +	uint32_t ret =3D 0;
+> +
+> +	sk =3D socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+> +	if (sk < 0)
+> +		return 0;
+> +
+> +	memset(&ifr, 0, sizeof(ifr));
+> +	ifr.ifr_ifindex =3D ifindex;
+> +
+> +	err =3D ioctl(sk, SIOCGIFNAME, &ifr);
+> +	if (err < 0)
+> +		goto done;
+> +
+> +	err =3D ioctl(sk, SIOCGIFADDR, &ifr);
+> +	if (err < 0)
+> +		goto done;
+> +
+> +	server_ip =3D (struct sockaddr_in *) &ifr.ifr_addr;
+> +	ret =3D server_ip->sin_addr.s_addr;
+> +
+> +done:
+> +	close(sk);
+> +
+> +	return ret;
+> +}
+> diff --git a/ell/net.h b/ell/net.h
+> index 6808e07..abaf785 100644
+> --- a/ell/net.h
+> +++ b/ell/net.h
+> @@ -34,6 +34,7 @@ bool l_net_get_mac_address(uint32_t ifindex, uint8_t *o=
+ut_addr);
+>   char *l_net_get_name(uint32_t ifindex);
+>   bool l_net_hostname_is_root(const char *hostname);
+>   bool l_net_hostname_is_localhost(const char *hostname);
+> +uint32_t l_net_get_ip_address(int ifindex);
+>   =
 
-+bool l_dhcp_client_set_rtnl(struct l_dhcp_client *client,
-+					struct l_netlink *rtnl);
-+
- const struct l_dhcp_lease *l_dhcp_client_get_lease(
- 					const struct l_dhcp_client *client);
- =
+>   #ifdef __cplusplus
+>   }
+> =
 
--- =
 
-2.26.2
-
---===============4469729800923961168==--
+Regards,
+-Denis
+--===============8574168896591915300==--
 
