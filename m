@@ -1,116 +1,89 @@
-Content-Type: multipart/mixed; boundary="===============6868643393416872740=="
+Content-Type: multipart/mixed; boundary="===============8460768018366971140=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 2/2] io: Allow socket error to be retrieved on disconnect
-Date: Thu, 15 Oct 2020 11:34:14 -0500
-Message-ID: <809faa5c-0497-7e70-a922-c7579c7436ce@gmail.com>
-In-Reply-To: <9f657a594ca8a814b17d9211946a2777d497b1f0.camel@intel.com>
+From: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH 01/14] net: add l_net_get_ip_address()
+Date: Thu, 15 Oct 2020 10:17:18 -0700
+Message-ID: <20201015171731.396538-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6868643393416872740==
+--===============8460768018366971140==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Inga,
+---
+ ell/net.c | 32 ++++++++++++++++++++++++++++++++
+ ell/net.h |  1 +
+ 2 files changed, 33 insertions(+)
 
-On 10/14/20 2:04 PM, Stotland, Inga wrote:
-> Hi Denis,
-> On Tue, 2020-10-13 at 17:25 -0500, Denis Kenzior wrote:
-> <snip>
->>
->>>
->>> So the choices as I can see so far:
->>>
->>> 1) If EPOLLIN or EPOLLOUT are raised, allow calling read/write handlers=
- even is
->>> an error condition is encountered. This puts a burden on client
->>> implementation to check for potential errors and may not be very compat=
-ible with
->>> the ell-based code that is already out there.
->>>
->>> 2) Keep the logic for read/write handlers, but allow error retrieval in
->>> disconnect handler if it is set (basically, don't close the socket until
->>> disconnect handler is called).
->>> 3) Any suggestions?
->>
->> We could do a combination of 1 & 2: detect EPOLLIN|EPOLLHUP and call the=
- read
->> callback first.  Not sure whether any other combination of EPOLLHUP might
->> happen, but they must be rare.  Then call the disconnect handler and let=
- the
->> client deal with obtaining error conditions if they care to.
-> =
+diff --git a/ell/net.c b/ell/net.c
+index 0bff535..5551779 100644
+--- a/ell/net.c
++++ b/ell/net.c
+@@ -29,6 +29,7 @@
+ #include <unistd.h>
+ #include <errno.h>
+ #include <sys/ioctl.h>
++#include <netinet/ip.h>
+ =
 
-> Sounds good.
-> =
+ #include "net.h"
+ #include "net-private.h"
+@@ -336,3 +337,34 @@ char **net_domain_list_parse(const uint8_t *raw, size_=
+t raw_len)
+ =
 
-> Checking EPOLLIN first and , if set, calling read handler unconditionally=
- is =
+ 	return ret;
+ }
++
++LIB_EXPORT uint32_t l_net_get_ip_address(int ifindex)
++{
++	struct ifreq ifr;
++	int sk, err;
++	struct sockaddr_in *server_ip;
++	uint32_t ret =3D 0;
++
++	sk =3D socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
++	if (sk < 0)
++		return 0;
++
++	memset(&ifr, 0, sizeof(ifr));
++	ifr.ifr_ifindex =3D ifindex;
++
++	err =3D ioctl(sk, SIOCGIFNAME, &ifr);
++	if (err < 0)
++		goto done;
++
++	err =3D ioctl(sk, SIOCGIFADDR, &ifr);
++	if (err < 0)
++		goto done;
++
++	server_ip =3D (struct sockaddr_in *) &ifr.ifr_addr;
++	ret =3D server_ip->sin_addr.s_addr;
++
++done:
++	close(sk);
++
++	return ret;
++}
+diff --git a/ell/net.h b/ell/net.h
+index 6808e07..abaf785 100644
+--- a/ell/net.h
++++ b/ell/net.h
+@@ -34,6 +34,7 @@ bool l_net_get_mac_address(uint32_t ifindex, uint8_t *out=
+_addr);
+ char *l_net_get_name(uint32_t ifindex);
+ bool l_net_hostname_is_root(const char *hostname);
+ bool l_net_hostname_is_localhost(const char *hostname);
++uint32_t l_net_get_ip_address(int ifindex);
+ =
 
-> easy enough.
-> =
+ #ifdef __cplusplus
+ }
+-- =
 
-> There is one hairy issue with calling disconnect prior to removing or cle=
-aring a =
+2.26.2
 
-> watch:
-> Since ELL cannot prevent a client from calling l_io_destroy from a discon=
-nect =
-
-> handler, this may cause an unpredictable behavior =C2=A0in subsequent cal=
-l to watch =
-
-> remove/clear.
-
-We've resorted to using a flag marking the object as destroyed for cases li=
-ke =
-
-this.  See iwd.git/src/watchlist.h for an example.  It is then used to unwi=
-nd =
-
-the callback stack and clean up gracefully.  I think we tried to avoid doin=
-g =
-
-this in io.c, but maybe we can't...
-
-> If we preserve fd # locally prior to calling disconnect, this still does =
-not =
-
-> address the issue 100%: the same clinet that called l_io_destroy from the =
-
-> disconnect handler may call l_io_new and a new fd may end up with the # t=
-hat was =
-
-> just "released".
-> And then we will call watch_remove()...
-
-Yes, but there's nothing we can do about that.
-
-> =
-
-> The only way I see around this is to add a strong warning comment to =
-
-> l_io_destroy() that states that calling l_io_destroy directly from a disc=
-onnect =
-
-> handler should be done only by using idle_oneshot construct, otherwise, t=
-he =
-
-> behavior is not guaranteed. What are your thoughts on this?
-> =
-
-
-I think we can work around the l_io_destroy issue, so I rather not resort t=
-o =
-
-requiring l_idle_add.  But, l_idle_add is a valid strategy.  I think it is =
-a =
-
-good idea to make the user aware of this strategy in the documentation.
-
-Regards,
--Denis
---===============6868643393416872740==--
+--===============8460768018366971140==--
 
