@@ -1,62 +1,99 @@
-Content-Type: multipart/mixed; boundary="===============4470661311539035782=="
+Content-Type: multipart/mixed; boundary="===============3871684205706956149=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 08/14] dhcp-lease: change _dhcp_lease_free to take void*
-Date: Thu, 15 Oct 2020 10:17:25 -0700
-Message-ID: <20201015171731.396538-8-prestwoj@gmail.com>
+Subject: [PATCH 09/14] dhcp: prepare for DHCP server
+Date: Thu, 15 Oct 2020 10:17:26 -0700
+Message-ID: <20201015171731.396538-9-prestwoj@gmail.com>
 In-Reply-To: <20201015171731.396538-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4470661311539035782==
+--===============3871684205706956149==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This allows _dhcp_lease_free to be used with l_queue_destroy
-directly without a wrapper function.
+Some defines were moved out of dhcp.c and into dhcp-private.h
+so server can utilize them.
 ---
- ell/dhcp-lease.c   | 4 +++-
- ell/dhcp-private.h | 2 +-
- 2 files changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/ell/dhcp-lease.c b/ell/dhcp-lease.c
-index 59de3e3..f9545b5 100644
---- a/ell/dhcp-lease.c
-+++ b/ell/dhcp-lease.c
-@@ -41,8 +41,10 @@ struct l_dhcp_lease *_dhcp_lease_new(void)
- 	return ret;
- }
- =
-
--void _dhcp_lease_free(struct l_dhcp_lease *lease)
-+void _dhcp_lease_free(void *data)
- {
-+	struct l_dhcp_lease *lease =3D data;
-+
- 	if (!lease)
- 		return;
- =
+ ell/dhcp-private.h | 14 ++++++++++++++
+ ell/dhcp.c         | 14 --------------
+ 2 files changed, 14 insertions(+), 14 deletions(-)
 
 diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
-index 6038354..f6058fd 100644
+index f6058fd..bca68d4 100644
 --- a/ell/dhcp-private.h
 +++ b/ell/dhcp-private.h
-@@ -149,7 +149,7 @@ struct l_dhcp_lease {
+@@ -44,6 +44,8 @@ enum dhcp_op_code {
+ 	DHCP_OP_CODE_BOOTREPLY =3D 2,
  };
  =
 
- struct l_dhcp_lease *_dhcp_lease_new(void);
--void _dhcp_lease_free(struct l_dhcp_lease *lease);
-+void _dhcp_lease_free(void *data);
- struct l_dhcp_lease *_dhcp_lease_parse_options(struct dhcp_message_iter *i=
-ter);
++#define DHCP_MIN_OPTIONS_SIZE 312
++
+ #define DHCP_MAGIC 0x63825363
  =
 
- struct dhcp_message_builder {
+ /* RFC 2132, Section 9.6. DHCP Message Type */
+@@ -51,6 +53,18 @@ enum dhcp_op_code {
+ #define DHCP_OPTION_PAD 0 /* RFC 2132, Section 3.1 */
+ #define DHCP_OPTION_END 255 /* RFC 2132, Section 3.2 */
+ =
+
++/* RFC 2132, Section 9.3. Option Overload */
++#define DHCP_OPTION_OVERLOAD 52
++enum dhcp_option_overload {
++	DHCP_OVERLOAD_FILE =3D 1,
++	DHCP_OVERLOAD_SNAME =3D 2,
++	DHCP_OVERLOAD_BOTH =3D 3,
++};
++
++#define DHCP_OPTION_PARAMETER_REQUEST_LIST 55 /* Section 9.8 */
++#define DHCP_OPTION_MAXIMUM_MESSAGE_SIZE 57 /* Section 9.10 */
++#define DHCP_OPTION_CLIENT_IDENTIFIER 61 /* Section 9.14 */
++
+ /* RFC 2131, Figure 1 */
+ struct dhcp_message {
+ 	uint8_t op;
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index aa9fe0f..708c656 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -50,18 +50,6 @@
+ =
+
+ #define BITS_PER_LONG (sizeof(unsigned long) * 8)
+ =
+
+-/* RFC 2132, Section 9.3. Option Overload */
+-#define DHCP_OPTION_OVERLOAD 52
+-enum dhcp_option_overload {
+-	DHCP_OVERLOAD_FILE =3D 1,
+-	DHCP_OVERLOAD_SNAME =3D 2,
+-	DHCP_OVERLOAD_BOTH =3D 3,
+-};
+-
+-#define DHCP_OPTION_PARAMETER_REQUEST_LIST 55 /* Section 9.8 */
+-#define DHCP_OPTION_MAXIMUM_MESSAGE_SIZE 57 /* Section 9.10 */
+-#define DHCP_OPTION_CLIENT_IDENTIFIER 61 /* Section 9.14 */
+-
+ enum dhcp_state {
+ 	DHCP_STATE_INIT,
+ 	DHCP_STATE_SELECTING,
+@@ -175,8 +163,6 @@ static inline int dhcp_message_optimize(struct dhcp_mes=
+sage *message,
+ 	return len;
+ }
+ =
+
+-#define DHCP_MIN_OPTIONS_SIZE 312
+-
+ struct l_dhcp_client {
+ 	enum dhcp_state state;
+ 	unsigned long request_options[256 / BITS_PER_LONG];
 -- =
 
 2.26.2
 
---===============4470661311539035782==--
+--===============3871684205706956149==--
 
