@@ -1,143 +1,202 @@
-Content-Type: multipart/mixed; boundary="===============2821360290583293090=="
+Content-Type: multipart/mixed; boundary="===============8513709496984793294=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 11/14] unit: update dhcp test to use new builder APIs
-Date: Thu, 15 Oct 2020 10:17:28 -0700
-Message-ID: <20201015171731.396538-11-prestwoj@gmail.com>
+Subject: [PATCH 12/14] examples: basic DHCP server example
+Date: Thu, 15 Oct 2020 10:17:29 -0700
+Message-ID: <20201015171731.396538-12-prestwoj@gmail.com>
 In-Reply-To: <20201015171731.396538-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2821360290583293090==
+--===============8513709496984793294==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-dhcp.c | 83 +++++++++++++++++++++---------------------------
- 1 file changed, 37 insertions(+), 46 deletions(-)
+ .gitignore             |   1 +
+ Makefile.am            |   4 +-
+ examples/dhcp-server.c | 129 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 133 insertions(+), 1 deletion(-)
+ create mode 100644 examples/dhcp-server.c
 
-diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
-index d825401..a890d74 100644
---- a/unit/test-dhcp.c
-+++ b/unit/test-dhcp.c
-@@ -33,7 +33,7 @@
- #include <ell/ell.h>
- #include "ell/dhcp-private.h"
+diff --git a/.gitignore b/.gitignore
+index c3d2790..e963359 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -76,6 +76,7 @@ examples/dbus-client
+ examples/glib-eventloop
+ examples/dhcp-client
+ examples/dhcp6-client
++examples/dhcp-server
+ test-suite.log
+ tools/certchain-verify
+ tools/genl-discover
+diff --git a/Makefile.am b/Makefile.am
+index 9bdf4dc..adedd1f 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -326,7 +326,8 @@ unit_test_data_files =3D unit/settings.test unit/dbus.c=
+onf
  =
 
--static bool verbose =3D false;
-+static bool verbose =3D true;
- static uint8_t client_packet[1024];
- static size_t client_packet_len;
+ examples =3D examples/dbus-service examples/https-client-test \
+ 		examples/https-server-test examples/dbus-client \
+-		examples/dhcp-client examples/dhcp6-client
++		examples/dhcp-client examples/dhcp6-client \
++		examples/dhcp-server
  =
 
-@@ -365,9 +365,13 @@ static void test_option_8(const void *data)
+ if GLIB
+ examples +=3D examples/glib-eventloop
+@@ -344,6 +345,7 @@ examples_glib_eventloop_CFLAGS =3D @GLIB_CFLAGS@
+ examples_glib_eventloop_LDADD =3D ell/libell-private.la @GLIB_LIBS@
+ examples_dhcp_client_LDADD =3D ell/libell-private.la
+ examples_dhcp6_client_LDADD =3D ell/libell-private.la
++examples_dhcp_server_LDADD =3D ell/libell-private.la
  =
 
- static void test_option_set(const void *data)
- {
--	static uint8_t result[64] =3D {'A', 'B', 'C', 'D' };
-+	struct dhcp_message_builder builder;
-+	struct dhcp_message *message;
-+	size_t outlen;
-+	uint8_t *msg_out;
-+	unsigned int i;
-+	static uint8_t result[sizeof(struct dhcp_message) + 64];
- 	static uint8_t options[64] =3D {
--			'A', 'B', 'C', 'D',
- 			160, 2, 0x11, 0x12,
- 			0,
- 			31, 8, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
-@@ -377,51 +381,38 @@ static void test_option_set(const void *data)
- 			255
- 	};
- =
-
--	size_t len, oldlen;
--	int pos, i;
--	uint8_t *opt;
-+	message =3D (struct dhcp_message *)result;
- =
-
--	assert(_dhcp_option_append(NULL, NULL, 0, 0, NULL) =3D=3D -EINVAL);
--
--	len =3D 0;
--	opt =3D &result[0];
--	assert(_dhcp_option_append(&opt, NULL, 0, 0, NULL) =3D=3D -EINVAL);
--	assert(opt =3D=3D &result[0] && len =3D=3D 0);
--
--	assert(_dhcp_option_append(&opt, &len, 0, 0, NULL) =3D=3D -ENOBUFS);
--	assert(opt =3D=3D &result[0] && len =3D=3D 0);
--
--	opt =3D &result[4];
--	len =3D 1;
--	assert(_dhcp_option_append(&opt, &len, 0, 0, NULL) >=3D 0);
--	assert(opt =3D=3D &result[5] && len =3D=3D 0);
--
--	pos =3D 4;
--	len =3D 60;
--	while (pos < 64 && options[pos] !=3D 255) {
--		opt =3D &result[pos];
--		oldlen =3D len;
--
--		assert(_dhcp_option_append(&opt, &len, options[pos],
--						options[pos + 1],
--						&options[pos + 2]) >=3D 0);
--
--		if (options[pos] =3D=3D 0) {
--			assert(opt =3D=3D &result[pos + 1]);
--			assert(len =3D=3D oldlen - 1);
--			pos++;
--		} else {
--			assert(opt =3D=3D &result[pos + 2 + options[pos + 1]]);
--			assert(len =3D=3D oldlen - 2 - options[pos + 1]);
--			pos +=3D 2 + options[pos + 1];
--		}
--	}
-+	/* test a few failure conditions */
-+	assert(!_dhcp_message_builder_init(NULL, NULL, 0, 0));
-+	assert(!_dhcp_message_builder_init(&builder, message, 0, 0));
+ noinst_PROGRAMS +=3D tools/certchain-verify tools/genl-discover \
+ 		   tools/genl-watch tools/genl-request tools/gpio
+diff --git a/examples/dhcp-server.c b/examples/dhcp-server.c
+new file mode 100644
+index 0000000..33c0983
+--- /dev/null
++++ b/examples/dhcp-server.c
+@@ -0,0 +1,129 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2020  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
 +
-+	_dhcp_message_builder_init(&builder, message, sizeof(result),
-+					DHCP_MESSAGE_TYPE_DISCOVER);
-+	_dhcp_message_builder_append(&builder, 160, 2, options + 2);
-+	_dhcp_message_builder_append(&builder, 0, 0, NULL);
-+	_dhcp_message_builder_append(&builder, 31, 8, options + 7);
-+	_dhcp_message_builder_append(&builder, 0, 0, NULL);
-+	_dhcp_message_builder_append(&builder, 55, 3, options + 18);
-+	_dhcp_message_builder_append(&builder, 17, 7, options + 23);
-+	msg_out =3D _dhcp_message_builder_finalize(&builder, &outlen);
- =
-
--	for (i =3D 0; i < pos; i++) {
--		if (verbose)
--			l_info("%2d: 0x%02x(0x%02x)\n",
--					i, result[i], options[i]);
--		assert(result[i] =3D=3D options[i]);
-+	/*
-+	 * The builde APIs automatically append the type passed in during init
-+	 * so we can skip over that in order to test the expected static data
-+	 */
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
 +
-+	msg_out +=3D sizeof(struct dhcp_message) + 3;
++#define _GNU_SOURCE
++#include <stdio.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <assert.h>
++#include <signal.h>
++#include <sys/socket.h>
++#include <linux/if_arp.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
 +
-+	for (i =3D 0; i < outlen - sizeof(struct dhcp_message); i++) {
-+		if (msg_out[i] !=3D options[i]) {
-+			if (verbose) {
-+				l_info("byte[%d] did not match 0x%02x 0x%02x",
-+					i, msg_out[i], options[i]);
-+			}
++#include <ell/ell.h>
 +
-+			assert(false);
-+		}
- 	}
- }
- =
-
++static void do_debug(const char *str, void *user_data)
++{
++	const char *prefix =3D user_data;
++
++	l_info("%s%s", prefix, str);
++}
++
++static void signal_handler(uint32_t signo, void *user_data)
++{
++	switch (signo) {
++	case SIGINT:
++	case SIGTERM:
++		l_info("Terminate");
++		l_main_quit();
++		break;
++	}
++}
++
++static void destroy_handler(void *data)
++{
++	l_info("DHCP server destroyed");
++}
++
++static void event_handler(struct l_dhcp_server *server,
++					enum l_dhcp_server_event event,
++					void *userdata,
++					const struct l_dhcp_lease *lease)
++{
++	const uint8_t *mac;
++	char *ip;
++
++	switch (event) {
++	case L_DHCP_SERVER_EVENT_NEW_LEASE:
++		mac =3D l_dhcp_lease_get_mac(lease);
++		ip =3D l_dhcp_lease_get_address(lease);
++
++		l_info("New lease client %02x:%02x:%02x:%02x:%02x:%02x %s",
++				mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
++				ip);
++		l_free(ip);
++		break;
++	case L_DHCP_SERVER_EVENT_LEASE_EXPIRED:
++		break;
++	}
++}
++
++int main(int argc, char *argv[])
++{
++	struct l_dhcp_server *server;
++	int ifindex;
++	uint8_t mac[6];
++	char *dns[] =3D { "192.168.1.1", NULL };
++
++	if (argc < 2) {
++		printf("Usage: %s <interface index>\n", argv[0]);
++		exit(0);
++	}
++
++	ifindex =3D atoi(argv[1]);
++
++	if (!l_net_get_mac_address(ifindex, mac)) {
++		printf("Unable to get address from interface %d\n", ifindex);
++		exit(0);
++	}
++
++	if (!l_main_init())
++		return -1;
++
++	l_log_set_stderr();
++	l_debug_enable("*");
++
++	server =3D l_dhcp_server_new(ifindex);
++	l_dhcp_server_set_ip_range(server, "192.168.1.2", "192.168.1.100");
++	l_dhcp_server_set_netmask(server, "255.255.255.0");
++	l_dhcp_server_set_gateway(server, "192.168.1.1");
++	l_dhcp_server_set_dns(server, dns);
++	l_dhcp_server_set_lease_time(server, 10);
++	l_dhcp_server_set_debug(server, do_debug, "[DHCP SERV] ", NULL);
++	l_dhcp_server_set_event_handler(server, event_handler, NULL,
++						destroy_handler);
++	l_dhcp_server_start(server);
++
++	l_main_run_with_signal(signal_handler, NULL);
++
++	l_dhcp_server_stop(server);
++	l_dhcp_server_destroy(server);
++	l_main_exit();
++
++	return 0;
++}
 -- =
 
 2.26.2
 
---===============2821360290583293090==--
+--===============8513709496984793294==--
 
