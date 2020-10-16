@@ -1,309 +1,293 @@
-Content-Type: multipart/mixed; boundary="===============8707823758148740680=="
+Content-Type: multipart/mixed; boundary="===============7688762280144453247=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 02/20] dhcp-util: add dhcp message builder APIs
-Date: Fri, 16 Oct 2020 08:36:17 -0700
-Message-ID: <20201016153635.660391-2-prestwoj@gmail.com>
+Subject: [PATCH 03/20] dhcp: update client code to use builder APIs
+Date: Fri, 16 Oct 2020 08:36:18 -0700
+Message-ID: <20201016153635.660391-3-prestwoj@gmail.com>
 In-Reply-To: <20201016153635.660391-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8707823758148740680==
+--===============7688762280144453247==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-A new file was added, dhcp-util.c. Some enums/constant values
-were moved from dhcp.c into dhcp-private.h for use with the
-new builder APIs.
 ---
- Makefile.am        |   1 +
- ell/dhcp-private.h |  33 ++++++++++
- ell/dhcp-util.c    | 160 +++++++++++++++++++++++++++++++++++++++++++++
- ell/dhcp.c         |  16 -----
- 4 files changed, 194 insertions(+), 16 deletions(-)
- create mode 100644 ell/dhcp-util.c
+ ell/dhcp.c | 148 ++++++++++++++++-------------------------------------
+ 1 file changed, 43 insertions(+), 105 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index 9b3e3c9..beba535 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -127,6 +127,7 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/dhcp6.c \
- 			ell/dhcp6-transport.c \
- 			ell/dhcp6-lease.c \
-+			ell/dhcp-util.c \
- 			ell/cert.c \
- 			ell/cert-private.h \
- 			ell/ecc-private.h \
-diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
-index a75bb8b..3aa89fb 100644
---- a/ell/dhcp-private.h
-+++ b/ell/dhcp-private.h
-@@ -27,6 +27,17 @@ enum {
- 	DHCP_PORT_CLIENT =3D 68,
- };
- =
-
-+enum dhcp_message_type {
-+	DHCP_MESSAGE_TYPE_DISCOVER =3D 1,
-+	DHCP_MESSAGE_TYPE_OFFER =3D 2,
-+	DHCP_MESSAGE_TYPE_REQUEST =3D 3,
-+	DHCP_MESSAGE_TYPE_DECLINE =3D 4,
-+	DHCP_MESSAGE_TYPE_ACK =3D 5,
-+	DHCP_MESSAGE_TYPE_NAK =3D 6,
-+	DHCP_MESSAGE_TYPE_RELEASE =3D 7,
-+	DHCP_MESSAGE_TYPE_INFORM =3D 8,
-+};
-+
- /* RFC 2131, Table 1 */
- enum dhcp_op_code {
- 	DHCP_OP_CODE_BOOTREQUEST =3D 1,
-@@ -35,6 +46,11 @@ enum dhcp_op_code {
- =
-
- #define DHCP_MAGIC 0x63825363
- =
-
-+/* RFC 2132, Section 9.6. DHCP Message Type */
-+#define DHCP_OPTION_MESSAGE_TYPE 53
-+#define DHCP_OPTION_PAD 0 /* RFC 2132, Section 3.1 */
-+#define DHCP_OPTION_END 255 /* RFC 2132, Section 3.2 */
-+
- /* RFC 2131, Figure 1 */
- struct dhcp_message {
- 	uint8_t op;
-@@ -126,3 +142,20 @@ struct l_dhcp_lease {
- struct l_dhcp_lease *_dhcp_lease_new(void);
- void _dhcp_lease_free(struct l_dhcp_lease *lease);
- struct l_dhcp_lease *_dhcp_lease_parse_options(struct dhcp_message_iter *i=
-ter);
-+
-+struct dhcp_message_builder {
-+	unsigned int max;
-+	uint8_t *pos;
-+	uint8_t *start;
-+};
-+
-+bool _dhcp_message_builder_init(struct dhcp_message_builder *builder,
-+				struct dhcp_message *message,
-+				size_t len, uint8_t type);
-+bool _dhcp_message_builder_append(struct dhcp_message_builder *builder,
-+					uint8_t code, size_t optlen,
-+					const void *optval);
-+bool _dhcp_message_builder_append_prl(struct dhcp_message_builder *builder,
-+					const unsigned long *reqopts);
-+uint8_t *_dhcp_message_builder_finalize(struct dhcp_message_builder *build=
-er,
-+					size_t *outlen);
-diff --git a/ell/dhcp-util.c b/ell/dhcp-util.c
-new file mode 100644
-index 0000000..e02fab0
---- /dev/null
-+++ b/ell/dhcp-util.c
-@@ -0,0 +1,160 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2020  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+#include <stdint.h>
-+#include <linux/types.h>
-+#include <errno.h>
-+#include <stdbool.h>
-+#include <stddef.h>
-+#include <string.h>
-+#include <arpa/inet.h>
-+
-+#include "dhcp-private.h"
-+#include "private.h"
-+
-+#define BITS_PER_LONG (sizeof(unsigned long) * 8)
-+
-+static void dhcp_init_header(struct dhcp_message *message, uint8_t type)
-+{
-+	switch (type) {
-+	case DHCP_MESSAGE_TYPE_OFFER:
-+	case DHCP_MESSAGE_TYPE_NAK:
-+	case DHCP_MESSAGE_TYPE_ACK:
-+		message->op =3D DHCP_OP_CODE_BOOTREPLY;
-+		break;
-+	default:
-+		message->op =3D DHCP_OP_CODE_BOOTREQUEST;
-+		break;
-+	}
-+
-+	message->htype =3D 1;
-+	message->hlen =3D 6;
-+	message->magic =3D htonl(DHCP_MAGIC);
-+	message->options[0] =3D DHCP_OPTION_END;
-+}
-+
-+#define LEN_CHECK(builder, next) \
-+	if ((builder)->pos - (builder)->start + (next) > (builder)->max) \
-+		return false;
-+
-+bool _dhcp_message_builder_append(struct dhcp_message_builder *builder,
-+					uint8_t code, size_t optlen,
-+					const void *optval)
-+{
-+	switch (code) {
-+	case DHCP_OPTION_PAD:
-+	case DHCP_OPTION_END:
-+		LEN_CHECK(builder, 1);
-+
-+		builder->pos[0] =3D code;
-+		builder->pos +=3D 1;
-+		break;
-+	default:
-+		LEN_CHECK(builder, optlen + 2);
-+
-+		builder->pos[0] =3D code;
-+		builder->pos[1] =3D optlen;
-+		memcpy(builder->pos + 2, optval, optlen);
-+
-+		builder->pos +=3D optlen + 2;
-+		break;
-+	}
-+
-+	return true;
-+}
-+
-+bool _dhcp_message_builder_append_prl(struct dhcp_message_builder *builder,
-+					const unsigned long *reqopts)
-+{
-+	uint8_t optlen =3D 0;
-+	unsigned int i;
-+	unsigned int j;
-+
-+	for (i =3D 0; i < 256 / BITS_PER_LONG; i++)
-+		optlen +=3D __builtin_popcountl(reqopts[i]);
-+
-+	/*
-+	 * This function assumes that there's enough space to put the PRL
-+	 * into the buffer without resorting to file or sname overloading
-+	 */
-+	LEN_CHECK(builder, optlen + 2U);
-+
-+	i =3D 0;
-+	builder->pos[i++] =3D DHCP_OPTION_PARAMETER_REQUEST_LIST;
-+	builder->pos[i++] =3D optlen;
-+
-+	for (j =3D 0; j < 256; j++) {
-+		if (reqopts[j / BITS_PER_LONG] & 1UL << (j % BITS_PER_LONG)) {
-+			builder->pos[i++] =3D j;
-+		}
-+	}
-+
-+	builder->pos +=3D optlen + 2;
-+
-+	return true;
-+}
-+
-+bool _dhcp_message_builder_init(struct dhcp_message_builder *builder,
-+				struct dhcp_message *message,
-+				size_t len, uint8_t type)
-+{
-+	if (!builder || !message || !len)
-+		return false;
-+
-+	builder->max =3D len;
-+	builder->pos =3D (uint8_t *) message->options;
-+	builder->start =3D (uint8_t *) message;
-+
-+	dhcp_init_header(message, type);
-+
-+	return _dhcp_message_builder_append(builder, DHCP_OPTION_MESSAGE_TYPE,
-+						1, &type);
-+}
-+
-+static inline int dhcp_message_optimize(struct dhcp_message *message,
-+					const uint8_t *end)
-+{
-+	/*
-+	 * Don't bother sending a full sized dhcp_message as it is most likely
-+	 * mostly zeros.  Instead truncate it at DHCP_OPTION_END and align to
-+	 * the nearest 4 byte boundary.  Many implementations expect a packet
-+	 * of a certain size or it is filtered, so we cap the length in
-+	 * accordance to RFC 1542:
-+	 * "The IP Total Length and UDP Length must be large enough to contain
-+	 * the minimal BOOTP header of 300 octets"
-+	 */
-+	size_t len =3D align_len(end - (uint8_t *) message, 4);
-+	if (len < 300)
-+		len =3D 300;
-+
-+	return len;
-+}
-+
-+uint8_t *_dhcp_message_builder_finalize(struct dhcp_message_builder *build=
-er,
-+					size_t *outlen)
-+{
-+	_dhcp_message_builder_append(builder, DHCP_OPTION_END, 0, NULL);
-+
-+	*outlen =3D dhcp_message_optimize((struct dhcp_message *)builder->start,
-+				builder->pos);
-+
-+	return builder->start;
-+}
 diff --git a/ell/dhcp.c b/ell/dhcp.c
-index fd548b5..097bf3d 100644
+index 097bf3d..2541637 100644
 --- a/ell/dhcp.c
 +++ b/ell/dhcp.c
-@@ -50,9 +50,6 @@
+@@ -301,61 +301,6 @@ int _dhcp_option_append(uint8_t **buf, size_t *buflen,=
+ uint8_t code,
+ 	return 0;
+ }
  =
 
- #define BITS_PER_LONG (sizeof(unsigned long) * 8)
- =
-
--#define DHCP_OPTION_PAD 0 /* RFC 2132, Section 3.1 */
--#define DHCP_OPTION_END 255 /* RFC 2132, Section 3.2 */
+-static int dhcp_append_prl(const unsigned long *reqopts,
+-					uint8_t **buf, size_t *buflen)
+-{
+-	uint8_t optlen =3D 0;
+-	unsigned int i;
+-	unsigned int j;
 -
- /* RFC 2132, Section 9.3. Option Overload */
- #define DHCP_OPTION_OVERLOAD 52
- enum dhcp_option_overload {
-@@ -61,19 +58,6 @@ enum dhcp_option_overload {
- 	DHCP_OVERLOAD_BOTH =3D 3,
- };
+-	if (!buf || !buflen)
+-		return -EINVAL;
+-
+-	for (i =3D 0; i < 256 / BITS_PER_LONG; i++)
+-		optlen +=3D __builtin_popcountl(reqopts[i]);
+-
+-	/*
+-	 * This function assumes that there's enough space to put the PRL
+-	 * into the buffer without resorting to file or sname overloading
+-	 */
+-	if (*buflen < optlen + 2U)
+-		return -ENOBUFS;
+-
+-	i =3D 0;
+-	(*buf)[i++] =3D DHCP_OPTION_PARAMETER_REQUEST_LIST;
+-	(*buf)[i++] =3D optlen;
+-
+-	for (j =3D 0; j < 256; j++) {
+-		if (reqopts[j / BITS_PER_LONG] & 1UL << (j % BITS_PER_LONG))
+-			(*buf)[i++] =3D j;
+-	}
+-
+-	*buf +=3D optlen + 2;
+-	*buflen -=3D (optlen + 2);
+-
+-	return 0;
+-}
+-
+-static int dhcp_message_init(struct dhcp_message *message,
+-				enum dhcp_op_code op,
+-				uint8_t type, uint32_t xid,
+-				uint8_t **opt, size_t *optlen)
+-{
+-	int err;
+-
+-	message->op =3D op;
+-	message->xid =3D L_CPU_TO_BE32(xid);
+-	message->magic =3D L_CPU_TO_BE32(DHCP_MAGIC);
+-	*opt =3D (uint8_t *)(message + 1);
+-
+-	err =3D _dhcp_option_append(opt, optlen,
+-					DHCP_OPTION_MESSAGE_TYPE, 1, &type);
+-	if (err < 0)
+-		return err;
+-
+-	return 0;
+-}
+-
+ static void dhcp_message_set_address_type(struct dhcp_message *message,
+ 						uint8_t addr_type,
+ 						uint8_t addr_len)
+@@ -504,16 +449,13 @@ static uint32_t dhcp_rebind_renew_retry_time(uint64_t=
+ start_t, uint32_t expiry)
  =
 
--/* RFC 2132, Section 9.6. DHCP Message Type */
--#define DHCP_OPTION_MESSAGE_TYPE 53
--enum dhcp_message_type {
--	DHCP_MESSAGE_TYPE_DISCOVER =3D 1,
--	DHCP_MESSAGE_TYPE_OFFER =3D 2,
--	DHCP_MESSAGE_TYPE_REQUEST =3D 3,
--	DHCP_MESSAGE_TYPE_DECLINE =3D 4,
--	DHCP_MESSAGE_TYPE_ACK =3D 5,
--	DHCP_MESSAGE_TYPE_NAK =3D 6,
--	DHCP_MESSAGE_TYPE_RELEASE =3D 7,
--	DHCP_MESSAGE_TYPE_INFORM =3D 8,
--};
+ static int client_message_init(struct l_dhcp_client *client,
+ 					struct dhcp_message *message,
+-					uint8_t type,
+-					uint8_t **opt, size_t *optlen)
++					struct dhcp_message_builder *builder)
+ {
+-	int err;
+ 	uint16_t max_size;
+ =
+
+-	err =3D dhcp_message_init(message, DHCP_OP_CODE_BOOTREQUEST,
+-				type, client->xid, opt, optlen);
+-	if (err < 0)
+-		return err;
++	message->op =3D DHCP_OP_CODE_BOOTREQUEST;
++	message->xid =3D L_CPU_TO_BE32(client->xid);
++	message->magic =3D L_CPU_TO_BE32(DHCP_MAGIC);
+ =
+
+ 	dhcp_message_set_address_type(message, client->addr_type,
+ 							client->addr_len);
+@@ -534,20 +476,19 @@ static int client_message_init(struct l_dhcp_client *=
+client,
+ 	 */
+ 	message->secs =3D L_CPU_TO_BE16(dhcp_attempt_secs(client->start_t));
+ =
+
+-	err =3D dhcp_append_prl(client->request_options, opt, optlen);
+-	if (err < 0)
+-		return err;
++	if (!_dhcp_message_builder_append_prl(builder,
++						client->request_options))
++		return -EINVAL;
+ =
+
+ 	/*
+ 	 * Set the maximum DHCP message size to the minimum legal value.  This
+ 	 * helps some buggy DHCP servers to not send bigger packets
+ 	 */
+ 	max_size =3D L_CPU_TO_BE16(576);
+-	err =3D _dhcp_option_append(opt, optlen,
++	if (!_dhcp_message_builder_append(builder,
+ 					DHCP_OPTION_MAXIMUM_MESSAGE_SIZE,
+-					2, &max_size);
+-	if (err < 0)
+-		return err;
++					2, &max_size))
++		return -EINVAL;
+ =
+
+ 	return 0;
+ }
+@@ -561,7 +502,7 @@ static void dhcp_client_event_notify(struct l_dhcp_clie=
+nt *client,
+ =
+
+ static int dhcp_client_send_discover(struct l_dhcp_client *client)
+ {
+-	uint8_t *opt;
++	struct dhcp_message_builder builder;
+ 	size_t optlen =3D DHCP_MIN_OPTIONS_SIZE;
+ 	size_t len =3D sizeof(struct dhcp_message) + optlen;
+ 	L_AUTO_FREE_VAR(struct dhcp_message *, discover);
+@@ -571,26 +512,21 @@ static int dhcp_client_send_discover(struct l_dhcp_cl=
+ient *client)
+ =
+
+ 	discover =3D (struct dhcp_message *) l_new(uint8_t, len);
+ =
+
+-	err =3D client_message_init(client, discover,
+-					DHCP_MESSAGE_TYPE_DISCOVER,
+-					&opt, &optlen);
++	_dhcp_message_builder_init(&builder, discover, len,
++					DHCP_MESSAGE_TYPE_DISCOVER);
++
++	err =3D client_message_init(client, discover, &builder);
+ 	if (err < 0)
+ 		return err;
+ =
+
+-	if (client->hostname) {
+-		err =3D _dhcp_option_append(&opt, &optlen,
++	if (client->hostname)
++		if (!_dhcp_message_builder_append(&builder,
+ 						L_DHCP_OPTION_HOST_NAME,
+ 						strlen(client->hostname),
+-						client->hostname);
+-		if (err < 0)
+-			return err;
+-	}
 -
- #define DHCP_OPTION_PARAMETER_REQUEST_LIST 55 /* Section 9.8 */
- #define DHCP_OPTION_MAXIMUM_MESSAGE_SIZE 57 /* Section 9.10 */
- #define DHCP_OPTION_CLIENT_IDENTIFIER 61 /* Section 9.14 */
+-	err =3D _dhcp_option_append(&opt, &optlen, DHCP_OPTION_END, 0, NULL);
+-	if (err < 0)
+-		return err;
++						client->hostname))
++			return -EINVAL;
+ =
+
+-	len =3D dhcp_message_optimize(discover, opt);
++	_dhcp_message_builder_finalize(&builder, &len);
+ =
+
+ 	return client->transport->broadcast(client->transport,
+ 					INADDR_ANY, DHCP_PORT_CLIENT,
+@@ -600,7 +536,7 @@ static int dhcp_client_send_discover(struct l_dhcp_clie=
+nt *client)
+ =
+
+ static int dhcp_client_send_request(struct l_dhcp_client *client)
+ {
+-	uint8_t *opt;
++	struct dhcp_message_builder builder;
+ 	size_t optlen =3D DHCP_MIN_OPTIONS_SIZE;
+ 	size_t len =3D sizeof(struct dhcp_message) + optlen;
+ 	L_AUTO_FREE_VAR(struct dhcp_message *, request);
+@@ -610,9 +546,11 @@ static int dhcp_client_send_request(struct l_dhcp_clie=
+nt *client)
+ =
+
+ 	request =3D (struct dhcp_message *) l_new(uint8_t, len);
+ =
+
+-	err =3D client_message_init(client, request,
+-					DHCP_MESSAGE_TYPE_REQUEST,
+-					&opt, &optlen);
++	_dhcp_message_builder_init(&builder, request, len,
++					DHCP_MESSAGE_TYPE_REQUEST);
++
++
++	err =3D client_message_init(client, request, &builder);
+ 	if (err < 0)
+ 		return err;
+ =
+
+@@ -633,17 +571,20 @@ static int dhcp_client_send_request(struct l_dhcp_cli=
+ent *client)
+ 		 *
+ 		 * NOTE: 'SELECTING' is meant to be 'REQUESTING' in the RFC
+ 		 */
+-		err =3D _dhcp_option_append(&opt, &optlen,
++		if (!_dhcp_message_builder_append(&builder,
+ 					L_DHCP_OPTION_SERVER_IDENTIFIER,
+-					4, &client->lease->server_address);
+-		if (err < 0)
+-			return err;
++					4, &client->lease->server_address)) {
++			CLIENT_DEBUG("Failed to append server ID");
++			return -EINVAL;
++		}
+ =
+
+-		err =3D _dhcp_option_append(&opt, &optlen,
++		if (!_dhcp_message_builder_append(&builder,
+ 					L_DHCP_OPTION_REQUESTED_IP_ADDRESS,
+-					4, &client->lease->address);
+-		if (err < 0)
+-			return err;
++					4, &client->lease->address)) {
++			CLIENT_DEBUG("Failed to append requested IP");
++			return -EINVAL;
++		}
++
+ 		break;
+ 	case DHCP_STATE_RENEWING:
+ 	case DHCP_STATE_REBINDING:
+@@ -659,19 +600,16 @@ static int dhcp_client_send_request(struct l_dhcp_cli=
+ent *client)
+ 	}
+ =
+
+ 	if (client->hostname) {
+-		err =3D _dhcp_option_append(&opt, &optlen,
++		if (!_dhcp_message_builder_append(&builder,
+ 						L_DHCP_OPTION_HOST_NAME,
+ 						strlen(client->hostname),
+-						client->hostname);
+-		if (err < 0)
+-			return err;
++						client->hostname)) {
++			CLIENT_DEBUG("Failed to append host name");
++			return -EINVAL;
++		}
+ 	}
+ =
+
+-	err =3D _dhcp_option_append(&opt, &optlen, DHCP_OPTION_END, 0, NULL);
+-	if (err < 0)
+-		return err;
+-
+-	len =3D dhcp_message_optimize(request, opt);
++	_dhcp_message_builder_finalize(&builder, &len);
+ =
+
+ 	/*
+ 	 * RFC2131, Section 4.1:
 -- =
 
 2.26.2
 
---===============8707823758148740680==--
+--===============7688762280144453247==--
 
