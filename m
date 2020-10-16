@@ -1,224 +1,179 @@
-Content-Type: multipart/mixed; boundary="===============5374428042094169391=="
+Content-Type: multipart/mixed; boundary="===============6396690634113606708=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 19/20] unit: add complete client/server dhcp test
-Date: Fri, 16 Oct 2020 08:36:34 -0700
-Message-ID: <20201016153635.660391-19-prestwoj@gmail.com>
+Subject: [PATCH 20/20] dhcp: Add support for setting address
+Date: Fri, 16 Oct 2020 08:36:35 -0700
+Message-ID: <20201016153635.660391-20-prestwoj@gmail.com>
 In-Reply-To: <20201016153635.660391-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5374428042094169391==
+--===============6396690634113606708==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Add optional support for the dhcp client to set the DHCP
+address automatically. This is done by providing an RTNL
+object with l_dhcp_client_set_rtnl.
 ---
- unit/test-dhcp.c | 171 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 171 insertions(+)
+ ell/dhcp.c | 70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/dhcp.h |  4 ++++
+ 2 files changed, 74 insertions(+)
 
-diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
-index 955ed29..beb9109 100644
---- a/unit/test-dhcp.c
-+++ b/unit/test-dhcp.c
-@@ -36,6 +36,8 @@
- static bool verbose =3D true;
- static uint8_t client_packet[1024];
- static size_t client_packet_len;
-+static uint8_t server_packet[1024];
-+static size_t server_packet_len;
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index 8163068..63076f4 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -38,6 +38,8 @@
+ #include "timeout.h"
+ #include "dhcp.h"
+ #include "dhcp-private.h"
++#include "netlink.h"
++#include "rtnl.h"
  =
 
- static void test_request_option(const void *data)
- {
-@@ -736,6 +738,173 @@ static void test_discover(const void *data)
- 	l_dhcp_client_destroy(client);
+ #define CLIENT_DEBUG(fmt, args...)					\
+ 	l_util_debug(client->debug_handler, client->debug_data,		\
+@@ -178,6 +180,9 @@ struct l_dhcp_client {
+ 	struct l_timeout *timeout_resend;
+ 	struct l_timeout *timeout_lease;
+ 	struct l_dhcp_lease *lease;
++	struct l_netlink *rtnl;
++	uint32_t rtnl_add_cmdid;
++	struct l_rtnl_address *rtnl_configured_address;
+ 	uint8_t attempt;
+ 	l_dhcp_client_event_cb_t event_handler;
+ 	void *event_data;
+@@ -583,6 +588,24 @@ error:
+ 	l_dhcp_client_stop(client);
  }
  =
 
-+static bool l2_send_called =3D false;
-+
-+static int fake_transport_server_l2_send(struct dhcp_transport *s,
-+					uint32_t source_ip,
-+					uint16_t source_port,
-+					uint32_t dest_ip,
-+					uint16_t dest_port,
-+					const uint8_t *dest_arp,
-+					const void *data, size_t len)
++static void dhcp_client_address_add_cb(int error, uint16_t type,
++						const void *data, uint32_t len,
++						void *user_data)
 +{
-+	assert(len <=3D sizeof(server_packet));
-+	memcpy(server_packet, data, len);
-+	server_packet_len =3D len;
++	struct l_dhcp_client *client =3D user_data;
 +
-+	l2_send_called =3D true;
++	client->rtnl_add_cmdid =3D 0;
 +
-+	return 0;
-+}
-+
-+static void server_event_handler(struct l_dhcp_server *server,
-+					enum l_dhcp_server_event event,
-+					void *userdata,
-+					const struct l_dhcp_lease *lease)
-+{
-+	const uint8_t expected_mac[6] =3D { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
-+	const uint8_t *mac;
-+	char *ip;
-+
-+	switch (event) {
-+	case L_DHCP_SERVER_EVENT_NEW_LEASE:
-+		mac =3D l_dhcp_lease_get_mac(lease);
-+		ip =3D l_dhcp_lease_get_address(lease);
-+
-+		assert(!memcmp(mac, expected_mac, sizeof(expected_mac)));
-+		assert(!strcmp(ip, "192.168.1.2"));
-+
-+		l_free(ip);
-+		break;
-+	case L_DHCP_SERVER_EVENT_LEASE_EXPIRED:
-+		break;
++	if (error < 0 && error !=3D -EEXIST) {
++		l_rtnl_address_free(client->rtnl_configured_address);
++		client->rtnl_configured_address =3D NULL;
++		CLIENT_DEBUG("Unable to set address on ifindex: %u: %d(%s)",
++				client->ifindex, error,
++				strerror(-error));
++		return;
 +	}
 +}
 +
-+static void do_debug(const char *str, void *user_data)
-+{
-+	const char *prefix =3D user_data;
-+
-+	l_info("%s%s", prefix, str);
-+}
-+
-+static void test_complete_run(const void *data)
-+{
-+	static const uint8_t addr[6] =3D { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
-+	char *dns[] =3D { "192.168.1.1", "192.168.1.254", NULL };
-+	struct l_dhcp_client *client;
-+	struct l_dhcp_server *server;
-+	struct dhcp_transport *cli_transport =3D l_new(struct dhcp_transport, 1);
-+	struct dhcp_transport *srv_transport =3D l_new(struct dhcp_transport, 1);
-+	const struct l_dhcp_lease *cli_lease;
-+	const struct l_dhcp_lease *srv_lease;
-+	/* client IP address */
-+	char *cli_addr;
-+	/* servers leased IP address, should match cli_addr */
-+	char *srv_cli_addr;
-+	/* servers IP address */
-+	char *srv_addr;
-+	char *tmp_addr;
-+	char **dns_list;
-+
-+	server =3D l_dhcp_server_new(41);
-+
-+	assert(l_dhcp_server_set_interface_name(server, "fake"));
-+	assert(l_dhcp_server_set_ip_address(server, "192.168.1.1"));
-+	assert(l_dhcp_server_set_ip_range(server, "192.168.1.2",
-+						"192.168.1.100"));
-+	assert(l_dhcp_server_set_netmask(server, "255.255.255.0"));
-+	assert(l_dhcp_server_set_gateway(server, "192.168.1.1"));
-+	assert(l_dhcp_server_set_dns(server, dns));
-+	assert(l_dhcp_server_set_event_handler(server, server_event_handler,
-+						NULL, NULL));
-+
-+	if (verbose)
-+		l_dhcp_server_set_debug(server, do_debug, "[DHCP SERV] ", NULL);
-+
-+	srv_transport->ifindex =3D 41;
-+	srv_transport->l2_send =3D fake_transport_server_l2_send;
-+
-+	assert(_dhcp_server_set_transport(server, srv_transport));
-+
-+	assert(l_dhcp_server_start(server));
-+
-+	client =3D l_dhcp_client_new(42);
-+
-+	assert(l_dhcp_client_set_address(client, ARPHRD_ETHER, addr, 6));
-+	assert(l_dhcp_client_set_interface_name(client, "fake"));
-+	assert(l_dhcp_client_set_hostname(client, "<hostname>"));
-+	_dhcp_client_override_xid(client, 0x4d7c67c6);
-+	assert(l_dhcp_client_set_event_handler(client,
-+				event_handler_lease_obtained, NULL, NULL));
-+
-+	if (verbose)
-+		l_dhcp_client_set_debug(client, do_debug, "[DHCP] ", NULL);
-+
-+	cli_transport->send =3D fake_transport_send;
-+	cli_transport->l2_send =3D fake_transport_l2_send;
-+	cli_transport->ifindex =3D 42;
-+
-+	assert(_dhcp_client_set_transport(client, cli_transport));
-+
-+	assert(l_dhcp_client_start(client));
-+
-+	/* RX DISCOVER */
-+	srv_transport->rx_cb(client_packet, client_packet_len, server);
-+	assert(l2_send_called);
-+	l2_send_called =3D false;
-+
-+	/* RX OFFER */
-+	cli_transport->rx_cb(server_packet, server_packet_len, client);
-+
-+	/* RX REQUEST */
-+	srv_transport->rx_cb(client_packet, client_packet_len, server);
-+	assert(l2_send_called);
-+	l2_send_called =3D false;
-+
-+	/* RX ACK */
-+	cli_transport->rx_cb(server_packet, server_packet_len, client);
-+
-+	assert(event_handler_called);
-+
-+	cli_lease =3D l_dhcp_client_get_lease(client);
-+	assert(cli_lease);
-+	cli_addr =3D l_dhcp_lease_get_address(cli_lease);
-+	assert(cli_addr);
-+	assert(!strcmp(cli_addr, "192.168.1.2"));
-+	srv_addr =3D l_dhcp_lease_get_server_id(cli_lease);
-+	assert(!strcmp(srv_addr, "192.168.1.1"));
-+	l_free(srv_addr);
-+
-+	srv_lease =3D l_dhcp_server_get_lease(server, addr);
-+	assert(srv_lease);
-+	srv_cli_addr =3D l_dhcp_lease_get_address(srv_lease);
-+	assert(!strcmp(cli_addr, srv_cli_addr));
-+
-+	l_free(cli_addr);
-+	l_free(srv_cli_addr);
-+
-+	tmp_addr =3D l_dhcp_lease_get_gateway(cli_lease);
-+	assert(!strcmp(tmp_addr, "192.168.1.1"));
-+	l_free(tmp_addr);
-+
-+	tmp_addr =3D l_dhcp_lease_get_netmask(cli_lease);
-+	assert(!strcmp(tmp_addr, "255.255.255.0"));
-+	l_free(tmp_addr);
-+
-+	dns_list =3D l_dhcp_lease_get_dns(cli_lease);
-+	assert(dns_list && dns_list[0] && dns_list[1]);
-+	assert(!strcmp(dns_list[0], "192.168.1.1"));
-+	assert(!strcmp(dns_list[1], "192.168.1.254"));
-+	l_strv_free(dns_list);
-+
-+	l_dhcp_client_stop(client);
-+	l_dhcp_client_destroy(client);
-+
-+	l_dhcp_server_stop(server);
-+	l_dhcp_server_destroy(server);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -759,5 +928,7 @@ int main(int argc, char *argv[])
+ static int dhcp_client_receive_ack(struct l_dhcp_client *client,
+ 					const struct dhcp_message *ack,
+ 					size_t len)
+@@ -626,6 +649,27 @@ static int dhcp_client_receive_ack(struct l_dhcp_clien=
+t *client,
+ 			client->state =3D=3D DHCP_STATE_REBOOTING)
+ 		r =3D L_DHCP_CLIENT_EVENT_LEASE_OBTAINED;
  =
 
- 	l_test_add("discover", test_discover, NULL);
- =
-
-+	l_test_add("complete run", test_complete_run, NULL);
++	if (client->rtnl) {
++		struct l_rtnl_address *a;
++		L_AUTO_FREE_VAR(char *, ip) =3D
++			l_dhcp_lease_get_address(client->lease);
++		uint8_t prefix_len =3D 24;
++		uint32_t l =3D l_dhcp_lease_get_lifetime(client->lease);
 +
- 	return l_test_run();
++		a =3D l_rtnl_address_new(ip, prefix_len);
++		l_rtnl_address_set_noprefixroute(a, true);
++		l_rtnl_address_set_lifetimes(a, l, l);
++
++		client->rtnl_add_cmdid =3D
++			l_rtnl_ifaddr_add(client->rtnl, client->ifindex, a,
++						dhcp_client_address_add_cb,
++						client, NULL);
++		if (client->rtnl_add_cmdid)
++			client->rtnl_configured_address =3D a;
++		else
++			CLIENT_DEBUG("Configuring address via RTNL failed");
++	}
++
+ 	return r;
  }
+ =
+
+@@ -988,6 +1032,19 @@ LIB_EXPORT bool l_dhcp_client_stop(struct l_dhcp_clie=
+nt *client)
+ 	if (unlikely(!client))
+ 		return false;
+ =
+
++	if (client->rtnl_add_cmdid) {
++		l_netlink_cancel(client->rtnl, client->rtnl_add_cmdid);
++		client->rtnl_add_cmdid =3D 0;
++	}
++
++	if (client->rtnl_configured_address) {
++		l_rtnl_ifaddr_delete(client->rtnl, client->ifindex,
++					client->rtnl_configured_address,
++					NULL, NULL, NULL);
++		l_rtnl_address_free(client->rtnl_configured_address);
++		client->rtnl_configured_address =3D NULL;
++	}
++
+ 	l_timeout_remove(client->timeout_resend);
+ 	client->timeout_resend =3D NULL;
+ =
+
+@@ -1041,3 +1098,16 @@ LIB_EXPORT bool l_dhcp_client_set_debug(struct l_dhc=
+p_client *client,
+ =
+
+ 	return true;
+ }
++
++LIB_EXPORT bool l_dhcp_client_set_rtnl(struct l_dhcp_client *client,
++					struct l_netlink *rtnl)
++{
++	if (unlikely(!client))
++		return false;
++
++	if (unlikely(client->state !=3D DHCP_STATE_INIT))
++		return false;
++
++	client->rtnl =3D rtnl;
++	return true;
++}
+diff --git a/ell/dhcp.h b/ell/dhcp.h
+index 2d630fe..a4c185c 100644
+--- a/ell/dhcp.h
++++ b/ell/dhcp.h
+@@ -31,6 +31,7 @@ extern "C" {
+ =
+
+ struct l_dhcp_client;
+ struct l_dhcp_lease;
++struct l_netlink;
+ struct l_dhcp_server;
+ =
+
+ /* RFC 2132 */
+@@ -85,6 +86,9 @@ bool l_dhcp_client_set_interface_name(struct l_dhcp_clien=
+t *client,
+ bool l_dhcp_client_set_hostname(struct l_dhcp_client *client,
+ 							const char *hostname);
+ =
+
++bool l_dhcp_client_set_rtnl(struct l_dhcp_client *client,
++					struct l_netlink *rtnl);
++
+ const struct l_dhcp_lease *l_dhcp_client_get_lease(
+ 					const struct l_dhcp_client *client);
+ =
+
 -- =
 
 2.26.2
 
---===============5374428042094169391==--
+--===============6396690634113606708==--
 
