@@ -1,71 +1,75 @@
-Content-Type: multipart/mixed; boundary="===============0847052104116523592=="
+Content-Type: multipart/mixed; boundary="===============3633021811011890173=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v3 08/14] dhcp-server: handle DECLINE messages
-Date: Fri, 16 Oct 2020 10:39:08 -0700
-Message-ID: <20201016173914.804408-8-prestwoj@gmail.com>
+Subject: [PATCH v3 09/14] dhcp-server: add RELEASE message support
+Date: Fri, 16 Oct 2020 10:39:09 -0700
+Message-ID: <20201016173914.804408-9-prestwoj@gmail.com>
 In-Reply-To: <20201016173914.804408-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0847052104116523592==
+--===============3633021811011890173==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Process DECLINE messages from clients and remove any pending
-leases that were created during DISCOVER.
+Handle RELEASE messages from clients. If there is a valid lease
+set the expire time to now which releases the IP but also allows
+the client to reconnect and maintain the same IP so long as
+it hadn't been leased out again.
 ---
- ell/dhcp-server.c | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+ ell/dhcp-server.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
 diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index 9c7fd21..68dc8dd 100644
+index 68dc8dd..b7910d7 100644
 --- a/ell/dhcp-server.c
 +++ b/ell/dhcp-server.c
-@@ -116,6 +116,18 @@ static struct l_dhcp_lease *find_lease_by_mac(struct l=
-_dhcp_server *server,
- 	return l_queue_find(server->lease_list, match_lease_mac, mac);
+@@ -205,6 +205,20 @@ static struct l_dhcp_lease *add_lease(struct l_dhcp_se=
+rver *server,
+ 	return lease;
  }
  =
 
-+static void remove_lease(struct l_dhcp_server *server,
-+				struct l_dhcp_lease *lease)
++static void lease_set_expire(struct l_dhcp_server *server,
++			struct l_dhcp_lease *lease, uint32_t expire)
 +{
 +	l_queue_remove(server->lease_list, lease);
++
++	lease->lifetime =3D expire;
++
++	l_queue_insert(server->lease_list, lease, compare_lifetime, NULL);
 +
 +	if (server->event_handler)
 +		server->event_handler(server, L_DHCP_SERVER_EVENT_LEASE_EXPIRED,
 +					server->user_data, lease);
-+
-+	_dhcp_lease_free(lease);
 +}
 +
- /* Clear the old lease and create the new one */
- static int get_lease(struct l_dhcp_server *server, uint32_t yiaddr,
- 				const uint8_t *mac,
-@@ -509,6 +521,16 @@ static void listener_event(const void *data, size_t le=
+ static bool match_lease_ip(const void *data, const void *user_data)
+ {
+ 	const struct l_dhcp_lease *lease =3D data;
+@@ -530,6 +544,16 @@ static void listener_event(const void *data, size_t le=
 n, void *user_data)
- 			break;
- 		}
- 		break;
-+	case DHCP_MESSAGE_TYPE_DECLINE:
-+		SERVER_DEBUG("Received DECLINE");
-+
-+		if (!server_id_opt || !requested_ip_opt || !lease)
-+			break;
-+
-+		if (requested_ip_opt =3D=3D lease->address)
-+			remove_lease(server, lease);
-+
-+		break;
- 	}
- }
+ 		if (requested_ip_opt =3D=3D lease->address)
+ 			remove_lease(server, lease);
  =
 
++		break;
++	case DHCP_MESSAGE_TYPE_RELEASE:
++		SERVER_DEBUG("Received RELEASE");
++
++		if (!server_id_opt || !lease)
++			break;
++
++		if (message->ciaddr =3D=3D lease->address)
++			lease_set_expire(server, lease, time(NULL));
++
+ 		break;
+ 	}
+ }
 -- =
 
 2.26.2
 
---===============0847052104116523592==--
+--===============3633021811011890173==--
 
