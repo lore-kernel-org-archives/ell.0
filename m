@@ -1,370 +1,83 @@
-Content-Type: multipart/mixed; boundary="===============0587451956697896670=="
+Content-Type: multipart/mixed; boundary="===============0214194051241978099=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 04/20] dhcp-util: move iter APIs to dhcp-util
-Date: Fri, 16 Oct 2020 08:36:19 -0700
-Message-ID: <20201016153635.660391-4-prestwoj@gmail.com>
+Subject: [PATCH 05/20] dhcp-transport: modify BPF filter for server
+Date: Fri, 16 Oct 2020 08:36:20 -0700
+Message-ID: <20201016153635.660391-5-prestwoj@gmail.com>
 In-Reply-To: <20201016153635.660391-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0587451956697896670==
+--===============0214194051241978099==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-These were already exposed for use elsewhere but dhcp-util
-is a better home for these APIs.
+In preparation for dhcp server the XID portion of the BPF
+needs to be skipped when the port is DHCP_PORT_SERVER since
+this value will not be present in messages going to the
+server. The check for the message op was also changed to
+include both BOOTREQUEST and BOOTREPLY depending if the
+port matches the server or client port.
 ---
- ell/dhcp-util.c | 160 ++++++++++++++++++++++++++++++++++++++++++++++++
- ell/dhcp.c      | 160 ------------------------------------------------
- 2 files changed, 160 insertions(+), 160 deletions(-)
+ ell/dhcp-transport.c | 8 +++++++-
+ ell/dhcp.c           | 3 +--
+ 2 files changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/ell/dhcp-util.c b/ell/dhcp-util.c
-index e02fab0..7809e52 100644
---- a/ell/dhcp-util.c
-+++ b/ell/dhcp-util.c
-@@ -158,3 +158,163 @@ uint8_t *_dhcp_message_builder_finalize(struct dhcp_m=
-essage_builder *builder,
- =
+v2:
+ * Maintained the check for BOOTREPLY while also filtering for
+   BOOTREQUEST in the server case
+ * Maintained the check for XID in the client case but skip
+   over this check for server.
 
- 	return builder->start;
- }
-+
-+bool _dhcp_message_iter_init(struct dhcp_message_iter *iter,
-+				const struct dhcp_message *message, size_t len)
-+{
-+	if (!message)
-+		return false;
-+
-+	if (len < sizeof(struct dhcp_message))
-+		return false;
-+
-+	if (L_BE32_TO_CPU(message->magic) !=3D DHCP_MAGIC)
-+		return false;
-+
-+	memset(iter, 0, sizeof(*iter));
-+	iter->message =3D message;
-+	iter->message_len =3D len;
-+	iter->max =3D len - sizeof(struct dhcp_message);
-+	iter->options =3D message->options;
-+	iter->can_overload =3D true;
-+
-+	return true;
-+}
-+
-+static bool next_option(struct dhcp_message_iter *iter,
-+				uint8_t *t, uint8_t *l, const void **v)
-+{
-+	uint8_t type;
-+	uint8_t len;
-+
-+	while (iter->pos < iter->max) {
-+		type =3D iter->options[iter->pos];
-+
-+		switch (type) {
-+		case DHCP_OPTION_PAD:
-+			iter->pos +=3D 1;
-+			continue;
-+		case DHCP_OPTION_END:
-+			return false;
-+		default:
-+			break;
-+		}
-+
-+		if (iter->pos + 2 >=3D iter->max)
-+			return false;
-+
-+		len =3D iter->options[iter->pos + 1];
-+
-+		if (iter->pos + 2 + len > iter->max)
-+			return false;
-+
-+		*t =3D type;
-+		*l =3D len;
-+		*v =3D &iter->options[iter->pos + 2];
-+
-+		iter->pos +=3D 2 + len;
-+		return true;
-+	}
-+
-+	return false;
-+}
-+
-+bool _dhcp_message_iter_next(struct dhcp_message_iter *iter, uint8_t *type,
-+				uint8_t *len, const void **data)
-+{
-+	bool r;
-+	uint8_t t, l;
-+	const void *v;
-+
-+	do {
-+		r =3D next_option(iter, &t, &l, &v);
-+		if (!r) {
-+			iter->can_overload =3D false;
-+
-+			if (iter->overload_file) {
-+				iter->options =3D iter->message->file;
-+				iter->pos =3D 0;
-+				iter->max =3D sizeof(iter->message->file);
-+				iter->overload_file =3D false;
-+				continue;
-+			}
-+
-+			if (iter->overload_sname) {
-+				iter->options =3D iter->message->sname;
-+				iter->pos =3D 0;
-+				iter->max =3D sizeof(iter->message->sname);
-+				iter->overload_sname =3D false;
-+				continue;
-+			}
-+
-+			return r;
-+		}
-+
-+		switch (t) {
-+		case DHCP_OPTION_OVERLOAD:
-+			if (l !=3D 1)
-+				continue;
-+
-+			if (!iter->can_overload)
-+				continue;
-+
-+			if (l_get_u8(v) & DHCP_OVERLOAD_FILE)
-+				iter->overload_file =3D true;
-+
-+			if (l_get_u8(v) & DHCP_OVERLOAD_SNAME)
-+				iter->overload_sname =3D true;
-+
-+			continue;
-+		default:
-+			if (type)
-+				*type =3D t;
-+
-+			if (len)
-+				*len =3D l;
-+
-+			if (data)
-+				*data =3D v;
-+			return r;
-+		}
-+	} while (true);
-+
-+	return false;
-+}
-+
-+int _dhcp_option_append(uint8_t **buf, size_t *buflen, uint8_t code,
-+					size_t optlen, const void *optval)
-+{
-+	if (!buf || !buflen)
-+		return -EINVAL;
-+
-+	switch (code) {
-+
-+	case DHCP_OPTION_PAD:
-+	case DHCP_OPTION_END:
-+		if (*buflen < 1)
-+			return -ENOBUFS;
-+
-+		(*buf)[0] =3D code;
-+		*buf +=3D 1;
-+		*buflen -=3D 1;
-+		break;
-+
-+	default:
-+		if (*buflen < optlen + 2)
-+			return -ENOBUFS;
-+
-+		if (!optval)
-+			return -EINVAL;
-+
-+		(*buf)[0] =3D code;
-+		(*buf)[1] =3D optlen;
-+		memcpy(&(*buf)[2], optval, optlen);
-+
-+		*buf +=3D optlen + 2;
-+		*buflen -=3D (optlen + 2);
-+
-+		break;
-+	}
-+
-+	return 0;
-+}
+diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
+index e332f99..b693530 100644
+--- a/ell/dhcp-transport.c
++++ b/ell/dhcp-transport.c
+@@ -384,7 +384,9 @@ static int kernel_raw_socket_open(uint32_t ifindex, uin=
+t16_t port, uint32_t xid)
+ 				offsetof(struct dhcp_packet, dhcp.op)),
+ 		/* op =3D=3D BOOTREPLY ? */
+ 		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
+-				DHCP_OP_CODE_BOOTREPLY, 1, 0),
++				(port =3D=3D DHCP_PORT_CLIENT) ?
++				DHCP_OP_CODE_BOOTREPLY :
++				DHCP_OP_CODE_BOOTREQUEST, 1, 0),
+ 		/* ignore */
+ 		BPF_STMT(BPF_RET + BPF_K, 0),
+ 		/* A <- DHCP header type */
+@@ -394,6 +396,10 @@ static int kernel_raw_socket_open(uint32_t ifindex, ui=
+nt16_t port, uint32_t xid)
+ 		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, ARPHRD_ETHER, 1, 0),
+ 		/* ignore */
+ 		BPF_STMT(BPF_RET + BPF_K, 0),
++		/* A <- UDP destination port */
++		BPF_STMT(BPF_LD + BPF_H + BPF_ABS,
++				offsetof(struct dhcp_packet, udp.dest)),
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, DHCP_PORT_SERVER, 3, 0),
+ 		/* A <- client identifier */
+ 		BPF_STMT(BPF_LD + BPF_W + BPF_ABS,
+ 				offsetof(struct dhcp_packet, dhcp.xid)),
 diff --git a/ell/dhcp.c b/ell/dhcp.c
-index 2541637..e604dc0 100644
+index e604dc0..12ed505 100644
 --- a/ell/dhcp.c
 +++ b/ell/dhcp.c
-@@ -141,166 +141,6 @@ const char *_dhcp_option_to_string(uint8_t option)
- 	}
- }
+@@ -974,8 +974,7 @@ LIB_EXPORT bool l_dhcp_client_start(struct l_dhcp_clien=
+t *client)
+ 		l_getrandom(&client->xid, sizeof(client->xid));
  =
 
--bool _dhcp_message_iter_init(struct dhcp_message_iter *iter,
--				const struct dhcp_message *message, size_t len)
--{
--	if (!message)
--		return false;
--
--	if (len < sizeof(struct dhcp_message))
--		return false;
--
--	if (L_BE32_TO_CPU(message->magic) !=3D DHCP_MAGIC)
--		return false;
--
--	memset(iter, 0, sizeof(*iter));
--	iter->message =3D message;
--	iter->message_len =3D len;
--	iter->max =3D len - sizeof(struct dhcp_message);
--	iter->options =3D message->options;
--	iter->can_overload =3D true;
--
--	return true;
--}
--
--static bool next_option(struct dhcp_message_iter *iter,
--				uint8_t *t, uint8_t *l, const void **v)
--{
--	uint8_t type;
--	uint8_t len;
--
--	while (iter->pos < iter->max) {
--		type =3D iter->options[iter->pos];
--
--		switch (type) {
--		case DHCP_OPTION_PAD:
--			iter->pos +=3D 1;
--			continue;
--		case DHCP_OPTION_END:
--			return false;
--		default:
--			break;
--		}
--
--		if (iter->pos + 2 >=3D iter->max)
--			return false;
--
--		len =3D iter->options[iter->pos + 1];
--
--		if (iter->pos + 2 + len > iter->max)
--			return false;
--
--		*t =3D type;
--		*l =3D len;
--		*v =3D &iter->options[iter->pos + 2];
--
--		iter->pos +=3D 2 + len;
--		return true;
--	}
--
--	return false;
--}
--
--bool _dhcp_message_iter_next(struct dhcp_message_iter *iter, uint8_t *type,
--				uint8_t *len, const void **data)
--{
--	bool r;
--	uint8_t t, l;
--	const void *v;
--
--	do {
--		r =3D next_option(iter, &t, &l, &v);
--		if (!r) {
--			iter->can_overload =3D false;
--
--			if (iter->overload_file) {
--				iter->options =3D iter->message->file;
--				iter->pos =3D 0;
--				iter->max =3D sizeof(iter->message->file);
--				iter->overload_file =3D false;
--				continue;
--			}
--
--			if (iter->overload_sname) {
--				iter->options =3D iter->message->sname;
--				iter->pos =3D 0;
--				iter->max =3D sizeof(iter->message->sname);
--				iter->overload_sname =3D false;
--				continue;
--			}
--
--			return r;
--		}
--
--		switch (t) {
--		case DHCP_OPTION_OVERLOAD:
--			if (l !=3D 1)
--				continue;
--
--			if (!iter->can_overload)
--				continue;
--
--			if (l_get_u8(v) & DHCP_OVERLOAD_FILE)
--				iter->overload_file =3D true;
--
--			if (l_get_u8(v) & DHCP_OVERLOAD_SNAME)
--				iter->overload_sname =3D true;
--
--			continue;
--		default:
--			if (type)
--				*type =3D t;
--
--			if (len)
--				*len =3D l;
--
--			if (data)
--				*data =3D v;
--			return r;
--		}
--	} while (true);
--
--	return false;
--}
--
--int _dhcp_option_append(uint8_t **buf, size_t *buflen, uint8_t code,
--					size_t optlen, const void *optval)
--{
--	if (!buf || !buflen)
--		return -EINVAL;
--
--	switch (code) {
--
--	case DHCP_OPTION_PAD:
--	case DHCP_OPTION_END:
--		if (*buflen < 1)
--			return -ENOBUFS;
--
--		(*buf)[0] =3D code;
--		*buf +=3D 1;
--		*buflen -=3D 1;
--		break;
--
--	default:
--		if (*buflen < optlen + 2)
--			return -ENOBUFS;
--
--		if (!optval)
--			return -EINVAL;
--
--		(*buf)[0] =3D code;
--		(*buf)[1] =3D optlen;
--		memcpy(&(*buf)[2], optval, optlen);
--
--		*buf +=3D optlen + 2;
--		*buflen -=3D (optlen + 2);
--
--		break;
--	}
--
--	return 0;
--}
--
- static void dhcp_message_set_address_type(struct dhcp_message *message,
- 						uint8_t addr_type,
- 						uint8_t addr_len)
+ 	if (client->transport->open)
+-		if (client->transport->open(client->transport,
+-							client->xid) < 0)
++		if (client->transport->open(client->transport, client->xid) < 0)
+ 			return false;
+ =
+
+ 	_dhcp_transport_set_rx_callback(client->transport,
 -- =
 
 2.26.2
 
---===============0587451956697896670==--
+--===============0214194051241978099==--
 
