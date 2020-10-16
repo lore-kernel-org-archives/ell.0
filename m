@@ -1,75 +1,78 @@
-Content-Type: multipart/mixed; boundary="===============8812349863318300561=="
+Content-Type: multipart/mixed; boundary="===============6319996250283992019=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v4 06/11] dhcp-server: add RELEASE message support
-Date: Fri, 16 Oct 2020 13:23:50 -0700
-Message-ID: <20201016202355.1248245-6-prestwoj@gmail.com>
+Subject: [PATCH v4 07/11] dhcp-server: add INFORM message handling
+Date: Fri, 16 Oct 2020 13:23:51 -0700
+Message-ID: <20201016202355.1248245-7-prestwoj@gmail.com>
 In-Reply-To: <20201016202355.1248245-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8812349863318300561==
+--===============6319996250283992019==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Handle RELEASE messages from clients. If there is a valid lease
-set the expire time to now which releases the IP but also allows
-the client to reconnect and maintain the same IP so long as
-it hadn't been leased out again.
+This allows clients to request local configuration details
+if their IP is already configured.
 ---
- ell/dhcp-server.c | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+ ell/dhcp-server.c | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
 
 diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index 3cfbf4b..9327456 100644
+index 9327456..1ce20aa 100644
 --- a/ell/dhcp-server.c
 +++ b/ell/dhcp-server.c
-@@ -203,6 +203,20 @@ static struct l_dhcp_lease *add_lease(struct l_dhcp_se=
-rver *server,
- 	return lease;
+@@ -388,6 +388,30 @@ static void send_offer(struct l_dhcp_server *server,
+ 		SERVER_DEBUG("Failed to send OFFER");
  }
  =
 
-+static void lease_set_expire(struct l_dhcp_server *server,
-+			struct l_dhcp_lease *lease, uint32_t expire)
++static void send_inform(struct l_dhcp_server *server,
++				const struct dhcp_message *client_msg)
 +{
-+	l_queue_remove(server->lease_list, lease);
++	struct dhcp_message_builder builder;
++	size_t len =3D sizeof(struct dhcp_message) + DHCP_MIN_OPTIONS_SIZE;
++	L_AUTO_FREE_VAR(struct dhcp_message *, reply);
 +
-+	lease->lifetime =3D expire;
++	reply =3D (struct dhcp_message *) l_new(uint8_t, len);
 +
-+	l_queue_insert(server->lease_list, lease, compare_lifetime, NULL);
++	server_message_init(server, client_msg, reply);
 +
-+	if (server->event_handler)
-+		server->event_handler(server, L_DHCP_SERVER_EVENT_LEASE_EXPIRED,
-+					server->user_data, lease);
++	_dhcp_message_builder_init(&builder, reply, len, DHCP_MESSAGE_TYPE_ACK);
++
++	add_server_options(server, &builder);
++
++	_dhcp_message_builder_finalize(&builder, &len);
++
++	if (server->transport->l2_send(server->transport, server->address,
++					DHCP_PORT_SERVER, reply->ciaddr,
++					DHCP_PORT_CLIENT, reply->chaddr,
++					reply, len) < 0)
++		SERVER_DEBUG("Failed to send INFORM");
 +}
 +
- static bool match_lease_ip(const void *data, const void *user_data)
+ static void send_nak(struct l_dhcp_server *server,
+ 			const struct dhcp_message *client_msg)
  {
- 	const struct l_dhcp_lease *lease =3D data;
-@@ -526,6 +540,16 @@ static void listener_event(const void *data, size_t le=
+@@ -551,6 +575,11 @@ static void listener_event(const void *data, size_t le=
 n, void *user_data)
- 		if (requested_ip_opt =3D=3D lease->address)
- 			remove_lease(server, lease);
+ 			lease_set_expire(server, lease, time(NULL));
  =
 
-+		break;
-+	case DHCP_MESSAGE_TYPE_RELEASE:
-+		SERVER_DEBUG("Received RELEASE");
-+
-+		if (!server_id_opt || !lease)
-+			break;
-+
-+		if (message->ciaddr =3D=3D lease->address)
-+			lease_set_expire(server, lease, time(NULL));
-+
  		break;
++	case DHCP_MESSAGE_TYPE_INFORM:
++		SERVER_DEBUG("Received INFORM");
++
++		send_inform(server, message);
++		break;
  	}
  }
+ =
+
 -- =
 
 2.26.2
 
---===============8812349863318300561==--
+--===============6319996250283992019==--
 
