@@ -1,83 +1,135 @@
-Content-Type: multipart/mixed; boundary="===============0214194051241978099=="
+Content-Type: multipart/mixed; boundary="===============2664028374058831660=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 05/20] dhcp-transport: modify BPF filter for server
-Date: Fri, 16 Oct 2020 08:36:20 -0700
-Message-ID: <20201016153635.660391-5-prestwoj@gmail.com>
+Subject: [PATCH 06/20] dhcp-transport: rename 'broadcast' op to 'l2_send'
+Date: Fri, 16 Oct 2020 08:36:21 -0700
+Message-ID: <20201016153635.660391-6-prestwoj@gmail.com>
 In-Reply-To: <20201016153635.660391-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0214194051241978099==
+--===============2664028374058831660==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-In preparation for dhcp server the XID portion of the BPF
-needs to be skipped when the port is DHCP_PORT_SERVER since
-this value will not be present in messages going to the
-server. The check for the message op was also changed to
-include both BOOTREQUEST and BOOTREPLY depending if the
-port matches the server or client port.
+The naming here was somewhat misleading. Functionally this was
+being used as a broadcast only because the destination address
+was a broadcast address. Really this operation was simply sending
+out a packet on l2, which DHCP server requires except that it
+needs to send to a specific MAC address, not broadcast to all.
+
+The name was changed to better describe the API and a destination
+mac argument was added to allow the server to use it. All client
+code will remain nearly the same (just name changes) except
+having to set the destination MAC to NULL indicating it is a
+broadcast.
 ---
- ell/dhcp-transport.c | 8 +++++++-
- ell/dhcp.c           | 3 +--
- 2 files changed, 8 insertions(+), 3 deletions(-)
+ ell/dhcp-private.h   |  3 ++-
+ ell/dhcp-transport.c | 10 +++++++---
+ ell/dhcp.c           |  7 ++++---
+ 3 files changed, 13 insertions(+), 7 deletions(-)
 
-v2:
- * Maintained the check for BOOTREPLY while also filtering for
-   BOOTREQUEST in the server case
- * Maintained the check for XID in the client case but skip
-   over this check for server.
+diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
+index 3aa89fb..a1e1155 100644
+--- a/ell/dhcp-private.h
++++ b/ell/dhcp-private.h
+@@ -92,9 +92,10 @@ typedef void (*dhcp_transport_rx_cb_t)(const void *, siz=
+e_t, void *);
+ =
 
+ struct dhcp_transport {
+ 	int (*open)(struct dhcp_transport *s, uint32_t xid);
+-	int (*broadcast)(struct dhcp_transport *transport,
++	int (*l2_send)(struct dhcp_transport *transport,
+ 						uint32_t saddr, uint16_t sport,
+ 						uint32_t daddr, uint16_t dport,
++						const uint8_t *dest_mac,
+ 						const void *data, size_t len);
+ 	int (*bind)(struct dhcp_transport *transport, uint32_t saddr);
+ 	int (*send)(struct dhcp_transport *transport,
 diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
-index e332f99..b693530 100644
+index b693530..8d890c6 100644
 --- a/ell/dhcp-transport.c
 +++ b/ell/dhcp-transport.c
-@@ -384,7 +384,9 @@ static int kernel_raw_socket_open(uint32_t ifindex, uin=
-t16_t port, uint32_t xid)
- 				offsetof(struct dhcp_packet, dhcp.op)),
- 		/* op =3D=3D BOOTREPLY ? */
- 		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,
--				DHCP_OP_CODE_BOOTREPLY, 1, 0),
-+				(port =3D=3D DHCP_PORT_CLIENT) ?
-+				DHCP_OP_CODE_BOOTREPLY :
-+				DHCP_OP_CODE_BOOTREQUEST, 1, 0),
- 		/* ignore */
- 		BPF_STMT(BPF_RET + BPF_K, 0),
- 		/* A <- DHCP header type */
-@@ -394,6 +396,10 @@ static int kernel_raw_socket_open(uint32_t ifindex, ui=
-nt16_t port, uint32_t xid)
- 		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, ARPHRD_ETHER, 1, 0),
- 		/* ignore */
- 		BPF_STMT(BPF_RET + BPF_K, 0),
-+		/* A <- UDP destination port */
-+		BPF_STMT(BPF_LD + BPF_H + BPF_ABS,
-+				offsetof(struct dhcp_packet, udp.dest)),
-+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, DHCP_PORT_SERVER, 3, 0),
- 		/* A <- client identifier */
- 		BPF_STMT(BPF_LD + BPF_W + BPF_ABS,
- 				offsetof(struct dhcp_packet, dhcp.xid)),
+@@ -194,9 +194,10 @@ static void dhcp_set_ip_udp_headers(struct iphdr *ip, =
+struct udphdr *udp,
+ 	ip->check =3D _dhcp_checksumv(iov, 1);
+ }
+ =
+
+-static int _dhcp_default_transport_broadcast(struct dhcp_transport *s,
++static int _dhcp_default_transport_l2_send(struct dhcp_transport *s,
+ 						uint32_t saddr, uint16_t sport,
+ 						uint32_t daddr, uint16_t dport,
++						const uint8_t *dest_mac,
+ 						const void *data, size_t len)
+ {
+ 	struct dhcp_default_transport *transport =3D
+@@ -221,7 +222,10 @@ static int _dhcp_default_transport_broadcast(struct dh=
+cp_transport *s,
+ 	addr.sll_protocol =3D htons(ETH_P_IP);
+ 	addr.sll_ifindex =3D s->ifindex;
+ 	addr.sll_halen =3D ETH_ALEN;
+-	memset(addr.sll_addr, 0xff, ETH_ALEN);
++	if (!dest_mac)
++		memset(addr.sll_addr, 0xff, ETH_ALEN);
++	else
++		memcpy(addr.sll_addr, dest_mac, ETH_ALEN);
+ =
+
+ 	memset(&msg, 0, sizeof(msg));
+ 	msg.msg_name =3D &addr;
+@@ -501,7 +505,7 @@ struct dhcp_transport *_dhcp_default_transport_new(uint=
+32_t ifindex,
+ 	transport->super.bind =3D _dhcp_default_transport_bind;
+ 	transport->super.close =3D _dhcp_default_transport_close;
+ 	transport->super.send =3D _dhcp_default_transport_send;
+-	transport->super.broadcast =3D _dhcp_default_transport_broadcast;
++	transport->super.l2_send =3D _dhcp_default_transport_l2_send;
+ =
+
+ 	transport->super.ifindex =3D ifindex;
+ 	l_strlcpy(transport->ifname, ifname, IFNAMSIZ);
 diff --git a/ell/dhcp.c b/ell/dhcp.c
-index e604dc0..12ed505 100644
+index 12ed505..71a9ad9 100644
 --- a/ell/dhcp.c
 +++ b/ell/dhcp.c
-@@ -974,8 +974,7 @@ LIB_EXPORT bool l_dhcp_client_start(struct l_dhcp_clien=
-t *client)
- 		l_getrandom(&client->xid, sizeof(client->xid));
+@@ -368,9 +368,10 @@ static int dhcp_client_send_discover(struct l_dhcp_cli=
+ent *client)
  =
 
- 	if (client->transport->open)
--		if (client->transport->open(client->transport,
--							client->xid) < 0)
-+		if (client->transport->open(client->transport, client->xid) < 0)
- 			return false;
+ 	_dhcp_message_builder_finalize(&builder, &len);
  =
 
- 	_dhcp_transport_set_rx_callback(client->transport,
+-	return client->transport->broadcast(client->transport,
++	return client->transport->l2_send(client->transport,
+ 					INADDR_ANY, DHCP_PORT_CLIENT,
+ 					INADDR_BROADCAST, DHCP_PORT_SERVER,
++					NULL,
+ 					discover, len);
+ }
+ =
+
+@@ -467,10 +468,10 @@ static int dhcp_client_send_request(struct l_dhcp_cli=
+ent *client)
+ 							&si, request, len);
+ 	}
+ =
+
+-	return client->transport->broadcast(client->transport,
++	return client->transport->l2_send(client->transport,
+ 					INADDR_ANY, DHCP_PORT_CLIENT,
+ 					INADDR_BROADCAST, DHCP_PORT_SERVER,
+-					request, len);
++					NULL, request, len);
+ }
+ =
+
+ static void dhcp_client_timeout_resend(struct l_timeout *timeout,
 -- =
 
 2.26.2
 
---===============0214194051241978099==--
+--===============2664028374058831660==--
 
