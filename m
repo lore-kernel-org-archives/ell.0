@@ -1,135 +1,71 @@
-Content-Type: multipart/mixed; boundary="===============5157696496053763073=="
+Content-Type: multipart/mixed; boundary="===============8190862899536668143=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v4 04/11] dhcp-server: add REQUEST processing
-Date: Fri, 16 Oct 2020 13:23:48 -0700
-Message-ID: <20201016202355.1248245-4-prestwoj@gmail.com>
+Subject: [PATCH v4 05/11] dhcp-server: handle DECLINE messages
+Date: Fri, 16 Oct 2020 13:23:49 -0700
+Message-ID: <20201016202355.1248245-5-prestwoj@gmail.com>
 In-Reply-To: <20201016202355.1248245-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5157696496053763073==
+--===============8190862899536668143==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Handle REQUEST packets and implement ACK/NAK responses.
+Process DECLINE messages from clients and remove any pending
+leases that were created during DISCOVER.
 ---
- ell/dhcp-server.c | 87 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 87 insertions(+)
+ ell/dhcp-server.c | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
 diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index c55471a..093b153 100644
+index 093b153..3cfbf4b 100644
 --- a/ell/dhcp-server.c
 +++ b/ell/dhcp-server.c
-@@ -362,6 +362,73 @@ static void send_offer(struct l_dhcp_server *server,
- 		SERVER_DEBUG("Failed to send OFFER");
+@@ -114,6 +114,18 @@ static struct l_dhcp_lease *find_lease_by_mac(struct l=
+_dhcp_server *server,
+ 	return l_queue_find(server->lease_list, match_lease_mac, mac);
  }
  =
 
-+static void send_nak(struct l_dhcp_server *server,
-+			const struct dhcp_message *client_msg)
++static void remove_lease(struct l_dhcp_server *server,
++				struct l_dhcp_lease *lease)
 +{
-+	struct dhcp_message_builder builder;
-+	size_t len =3D sizeof(struct dhcp_message) + DHCP_MIN_OPTIONS_SIZE;
-+	L_AUTO_FREE_VAR(struct dhcp_message *, reply);
-+
-+	reply =3D (struct dhcp_message *) l_new(uint8_t, len);
-+
-+	server_message_init(server, client_msg, reply);
-+
-+	_dhcp_message_builder_init(&builder, reply, len, DHCP_MESSAGE_TYPE_NAK);
-+
-+	_dhcp_message_builder_finalize(&builder, &len);
-+
-+	if (server->transport->l2_send(server->transport, server->address,
-+					DHCP_PORT_SERVER, reply->ciaddr,
-+					DHCP_PORT_CLIENT, MAC_BCAST_ADDR,
-+					reply, len) < 0)
-+		SERVER_DEBUG("Failed to send NACK");
-+}
-+
-+static void send_ack(struct l_dhcp_server *server,
-+			const struct dhcp_message *client_msg, uint32_t dest)
-+{
-+	struct dhcp_message_builder builder;
-+	size_t len =3D sizeof(struct dhcp_message) + DHCP_MIN_OPTIONS_SIZE;
-+	L_AUTO_FREE_VAR(struct dhcp_message *, reply);
-+	uint32_t lease_time =3D L_CPU_TO_BE32(server->lease_seconds);
-+	struct l_dhcp_lease *lease;
-+
-+	reply =3D (struct dhcp_message *) l_new(uint8_t, len);
-+
-+	server_message_init(server, client_msg, reply);
-+
-+	_dhcp_message_builder_init(&builder, reply, len, DHCP_MESSAGE_TYPE_ACK);
-+
-+	reply->yiaddr =3D dest;
-+
-+	_dhcp_message_builder_append(&builder,
-+					L_DHCP_OPTION_IP_ADDRESS_LEASE_TIME,
-+					4, &lease_time);
-+
-+	add_server_options(server, &builder);
-+
-+	_dhcp_message_builder_append(&builder, L_DHCP_OPTION_SERVER_IDENTIFIER,
-+					4, &server->address);
-+
-+	_dhcp_message_builder_finalize(&builder, &len);
-+
-+	SERVER_DEBUG("Sending ACK to %s", IP_STR(reply->yiaddr));
-+
-+	if (server->transport->l2_send(server->transport, server->address,
-+					DHCP_PORT_SERVER, reply->ciaddr,
-+					DHCP_PORT_CLIENT,
-+					reply->chaddr, reply, len) < 0) {
-+		SERVER_DEBUG("Failed to send ACK");
-+		return;
-+	}
-+
-+	lease =3D add_lease(server, 0, reply->chaddr, reply->yiaddr);
++	l_queue_remove(server->lease_list, lease);
 +
 +	if (server->event_handler)
-+		server->event_handler(server, L_DHCP_SERVER_EVENT_NEW_LEASE,
++		server->event_handler(server, L_DHCP_SERVER_EVENT_LEASE_EXPIRED,
 +					server->user_data, lease);
++
++	_dhcp_lease_free(lease);
 +}
 +
- static void listener_event(const void *data, size_t len, void *user_data)
- {
- 	struct l_dhcp_server *server =3D user_data;
-@@ -417,6 +484,26 @@ static void listener_event(const void *data, size_t le=
+ /* Clear the old lease and create the new one */
+ static int get_lease(struct l_dhcp_server *server, uint32_t yiaddr,
+ 				const uint8_t *mac,
+@@ -505,6 +517,16 @@ static void listener_event(const void *data, size_t le=
 n, void *user_data)
- =
-
- 		send_offer(server, message, lease, requested_ip_opt);
- =
-
-+		break;
-+	case DHCP_MESSAGE_TYPE_REQUEST:
-+		SERVER_DEBUG("Received REQUEST, requested IP %s",
-+				IP_STR(requested_ip_opt));
-+
-+		if (requested_ip_opt =3D=3D 0) {
-+			requested_ip_opt =3D message->ciaddr;
-+			if (requested_ip_opt =3D=3D 0)
-+				break;
-+		}
-+
-+		if (lease && requested_ip_opt =3D=3D lease->address) {
-+			send_ack(server, message, lease->address);
-+			break;
-+		}
-+
-+		if (server_id_opt || !lease) {
-+			send_nak(server, message);
-+			break;
-+		}
+ 			break;
+ 		}
  		break;
++	case DHCP_MESSAGE_TYPE_DECLINE:
++		SERVER_DEBUG("Received DECLINE");
++
++		if (!server_id_opt || !requested_ip_opt || !lease)
++			break;
++
++		if (requested_ip_opt =3D=3D lease->address)
++			remove_lease(server, lease);
++
++		break;
  	}
  }
+ =
+
 -- =
 
 2.26.2
 
---===============5157696496053763073==--
+--===============8190862899536668143==--
 
