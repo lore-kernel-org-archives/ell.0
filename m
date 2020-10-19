@@ -1,66 +1,68 @@
-Content-Type: multipart/mixed; boundary="===============0327150856227896630=="
+Content-Type: multipart/mixed; boundary="===============1679188136059103415=="
 MIME-Version: 1.0
-From: Inga Stotland <inga.stotland@intel.com>
-Subject: [PATCH 1/2] io: Always call read handler on EPOLLIN
-Date: Sat, 17 Oct 2020 23:06:44 -0700
-Message-ID: <20201018060645.37208-1-inga.stotland@intel.com>
+From: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH v5 01/12] util: add l_memeq/l_memeqzero
+Date: Mon, 19 Oct 2020 16:28:03 -0700
+Message-ID: <20201019232814.1541221-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0327150856227896630==
+--===============1679188136059103415==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-When detecting EPOLLIN, always invoke read handler first.
-This ensures that even when error conditions (i.e., EPOLLHUP
-and/or EPOLLERR) are encountered, any residual data is still
-delivered to the client.
+Utility functions for testing if memory equals a byte, or zero.
 ---
- ell/io.c | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ ell/ell.sym |  2 ++
+ ell/util.h  | 16 ++++++++++++++++
+ 2 files changed, 18 insertions(+)
 
-diff --git a/ell/io.c b/ell/io.c
-index 41ff6dd..a9e0a38 100644
---- a/ell/io.c
-+++ b/ell/io.c
-@@ -111,14 +111,6 @@ static void io_callback(int fd, uint32_t events, void =
-*user_data)
- {
- 	struct l_io *io =3D user_data;
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 5268b48..0b0a6cc 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -20,6 +20,8 @@ global:
+ 	l_util_hexdumpv;
+ 	l_util_debug;
+ 	l_util_get_debugfs_path;
++	l_memeq;
++	l_memeqzero;
+ 	/* test */
+ 	l_test_init;
+ 	l_test_run;
+diff --git a/ell/util.h b/ell/util.h
+index ca894c7..a8b52ad 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -391,6 +391,22 @@ static inline int l_secure_memcmp(const void *a, const=
+ void *b,
+ 	return res;
+ }
  =
 
--	if (unlikely(events & (EPOLLERR | EPOLLHUP))) {
--		l_util_debug(io->debug_handler, io->debug_data,
--						"disconnect event <%p>", io);
--		watch_remove(io->fd, !io->close_on_destroy);
--		io_closed(io);
--		return;
--	}
--
- 	if ((events & EPOLLIN) && io->read_handler) {
- 		l_util_debug(io->debug_handler, io->debug_data,
- 						"read event <%p>", io);
-@@ -142,6 +134,14 @@ static void io_callback(int fd, uint32_t events, void =
-*user_data)
- 		}
- 	}
- =
-
-+	if (unlikely(events & (EPOLLERR | EPOLLHUP))) {
-+		l_util_debug(io->debug_handler, io->debug_data,
-+						"disconnect event <%p>", io);
-+		watch_remove(io->fd, !io->close_on_destroy);
-+		io_closed(io);
-+		return;
-+	}
++static inline bool l_memeq(const uint8_t *field, size_t size, uint8_t byte)
++{
++	size_t i;
 +
- 	if ((events & EPOLLOUT) && io->write_handler) {
- 		l_util_debug(io->debug_handler, io->debug_data,
- 						"write event <%p>", io);
++	for (i =3D 0; i < size; i++)
++		if (field[i] !=3D byte)
++			return false;
++
++	return true;
++}
++
++static inline bool l_memeqzero(const uint8_t *field, size_t size)
++{
++	return l_memeq(field, size, 0);
++}
++
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
 2.26.2
 
---===============0327150856227896630==--
+--===============1679188136059103415==--
 
