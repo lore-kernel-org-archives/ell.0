@@ -1,71 +1,136 @@
-Content-Type: multipart/mixed; boundary="===============6653582670919833559=="
+Content-Type: multipart/mixed; boundary="===============4165209893280788129=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v5 08/12] dhcp-server: add INFORM message handling
-Date: Mon, 19 Oct 2020 16:28:10 -0700
-Message-ID: <20201019232814.1541221-8-prestwoj@gmail.com>
+Subject: [PATCH v5 09/12] unit: update dhcp test to use new builder APIs
+Date: Mon, 19 Oct 2020 16:28:11 -0700
+Message-ID: <20201019232814.1541221-9-prestwoj@gmail.com>
 In-Reply-To: <20201019232814.1541221-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6653582670919833559==
+--===============4165209893280788129==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This allows clients to request local configuration details
-if their IP is already configured.
 ---
- ell/dhcp-server.c | 29 +++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
+ unit/test-dhcp.c | 83 +++++++++++++++++++++---------------------------
+ 1 file changed, 37 insertions(+), 46 deletions(-)
 
-diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index 482a8b8..3e269e0 100644
---- a/ell/dhcp-server.c
-+++ b/ell/dhcp-server.c
-@@ -386,6 +386,30 @@ static void send_offer(struct l_dhcp_server *server,
- 		SERVER_DEBUG("Failed to send OFFER");
- }
+diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
+index 6ae8d71..955ed29 100644
+--- a/unit/test-dhcp.c
++++ b/unit/test-dhcp.c
+@@ -33,7 +33,7 @@
+ #include <ell/ell.h>
+ #include "ell/dhcp-private.h"
  =
 
-+static void send_inform(struct l_dhcp_server *server,
-+				const struct dhcp_message *client_msg)
-+{
-+	struct dhcp_message_builder builder;
-+	size_t len =3D sizeof(struct dhcp_message) + DHCP_MIN_OPTIONS_SIZE;
-+	L_AUTO_FREE_VAR(struct dhcp_message *, reply);
-+
-+	reply =3D (struct dhcp_message *) l_new(uint8_t, len);
-+
-+	server_message_init(server, client_msg, reply);
-+
-+	_dhcp_message_builder_init(&builder, reply, len, DHCP_MESSAGE_TYPE_ACK);
-+
-+	add_server_options(server, &builder);
-+
-+	_dhcp_message_builder_finalize(&builder, &len);
-+
-+	if (server->transport->l2_send(server->transport, server->address,
-+					DHCP_PORT_SERVER, reply->ciaddr,
-+					DHCP_PORT_CLIENT, reply->chaddr,
-+					reply, len) < 0)
-+		SERVER_DEBUG("Failed to send INFORM");
-+}
-+
- static void send_nak(struct l_dhcp_server *server,
- 			const struct dhcp_message *client_msg)
+-static bool verbose =3D false;
++static bool verbose =3D true;
+ static uint8_t client_packet[1024];
+ static size_t client_packet_len;
+ =
+
+@@ -365,9 +365,13 @@ static void test_option_8(const void *data)
+ =
+
+ static void test_option_set(const void *data)
  {
-@@ -549,6 +573,11 @@ static void listener_event(const void *data, size_t le=
-n, void *user_data)
- 			lease_set_expire(server, lease, time(NULL));
+-	static uint8_t result[64] =3D {'A', 'B', 'C', 'D' };
++	struct dhcp_message_builder builder;
++	struct dhcp_message *message;
++	size_t outlen;
++	uint8_t *msg_out;
++	unsigned int i;
++	static uint8_t result[sizeof(struct dhcp_message) + 64];
+ 	static uint8_t options[64] =3D {
+-			'A', 'B', 'C', 'D',
+ 			160, 2, 0x11, 0x12,
+ 			0,
+ 			31, 8, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+@@ -377,51 +381,38 @@ static void test_option_set(const void *data)
+ 			255
+ 	};
  =
 
- 		break;
-+	case DHCP_MESSAGE_TYPE_INFORM:
-+		SERVER_DEBUG("Received INFORM");
+-	size_t len, oldlen;
+-	int pos, i;
+-	uint8_t *opt;
++	message =3D (struct dhcp_message *)result;
+ =
+
+-	assert(_dhcp_option_append(NULL, NULL, 0, 0, NULL) =3D=3D -EINVAL);
+-
+-	len =3D 0;
+-	opt =3D &result[0];
+-	assert(_dhcp_option_append(&opt, NULL, 0, 0, NULL) =3D=3D -EINVAL);
+-	assert(opt =3D=3D &result[0] && len =3D=3D 0);
+-
+-	assert(_dhcp_option_append(&opt, &len, 0, 0, NULL) =3D=3D -ENOBUFS);
+-	assert(opt =3D=3D &result[0] && len =3D=3D 0);
+-
+-	opt =3D &result[4];
+-	len =3D 1;
+-	assert(_dhcp_option_append(&opt, &len, 0, 0, NULL) >=3D 0);
+-	assert(opt =3D=3D &result[5] && len =3D=3D 0);
+-
+-	pos =3D 4;
+-	len =3D 60;
+-	while (pos < 64 && options[pos] !=3D 255) {
+-		opt =3D &result[pos];
+-		oldlen =3D len;
+-
+-		assert(_dhcp_option_append(&opt, &len, options[pos],
+-						options[pos + 1],
+-						&options[pos + 2]) >=3D 0);
+-
+-		if (options[pos] =3D=3D 0) {
+-			assert(opt =3D=3D &result[pos + 1]);
+-			assert(len =3D=3D oldlen - 1);
+-			pos++;
+-		} else {
+-			assert(opt =3D=3D &result[pos + 2 + options[pos + 1]]);
+-			assert(len =3D=3D oldlen - 2 - options[pos + 1]);
+-			pos +=3D 2 + options[pos + 1];
+-		}
+-	}
++	/* test a few failure conditions */
++	assert(!_dhcp_message_builder_init(NULL, NULL, 0, 0));
++	assert(!_dhcp_message_builder_init(&builder, message, 0, 0));
 +
-+		send_inform(server, message);
-+		break;
++	_dhcp_message_builder_init(&builder, message, sizeof(result),
++					DHCP_MESSAGE_TYPE_DISCOVER);
++	_dhcp_message_builder_append(&builder, 160, 2, options + 2);
++	_dhcp_message_builder_append(&builder, 0, 0, NULL);
++	_dhcp_message_builder_append(&builder, 31, 8, options + 7);
++	_dhcp_message_builder_append(&builder, 0, 0, NULL);
++	_dhcp_message_builder_append(&builder, 55, 3, options + 18);
++	_dhcp_message_builder_append(&builder, 17, 7, options + 23);
++	msg_out =3D _dhcp_message_builder_finalize(&builder, &outlen);
+ =
+
+-	for (i =3D 0; i < pos; i++) {
+-		if (verbose)
+-			l_info("%2d: 0x%02x(0x%02x)\n",
+-					i, result[i], options[i]);
+-		assert(result[i] =3D=3D options[i]);
++	/*
++	 * The builde APIs automatically append the type passed in during init
++	 * so we can skip over that in order to test the expected static data
++	 */
++
++	msg_out +=3D sizeof(struct dhcp_message) + 3;
++
++	for (i =3D 0; i < outlen - sizeof(struct dhcp_message); i++) {
++		if (msg_out[i] !=3D options[i]) {
++			if (verbose) {
++				l_info("byte[%d] did not match 0x%02x 0x%02x",
++					i, msg_out[i], options[i]);
++			}
++
++			assert(false);
++		}
  	}
  }
  =
@@ -74,5 +139,5 @@ n, void *user_data)
 
 2.26.2
 
---===============6653582670919833559==--
+--===============4165209893280788129==--
 
