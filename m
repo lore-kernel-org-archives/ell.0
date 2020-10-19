@@ -1,75 +1,142 @@
-Content-Type: multipart/mixed; boundary="===============4877053207821031397=="
+Content-Type: multipart/mixed; boundary="===============1958621972934097727=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v5 07/12] dhcp-server: add RELEASE message support
-Date: Mon, 19 Oct 2020 16:28:09 -0700
-Message-ID: <20201019232814.1541221-7-prestwoj@gmail.com>
+Subject: [PATCH v5 03/12] dhcp-server: add transport framework
+Date: Mon, 19 Oct 2020 16:28:05 -0700
+Message-ID: <20201019232814.1541221-3-prestwoj@gmail.com>
 In-Reply-To: <20201019232814.1541221-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4877053207821031397==
+--===============1958621972934097727==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Handle RELEASE messages from clients. If there is a valid lease
-set the expire time to now which releases the IP but also allows
-the client to reconnect and maintain the same IP so long as
-it hadn't been leased out again.
 ---
- ell/dhcp-server.c | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+ ell/dhcp-private.h |  4 ++++
+ ell/dhcp-server.c  | 37 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 41 insertions(+)
 
+diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
+index 4276479..62abfca 100644
+--- a/ell/dhcp-private.h
++++ b/ell/dhcp-private.h
+@@ -21,6 +21,7 @@
+  */
+ =
+
+ struct l_dhcp_client;
++struct l_dhcp_server;
+ =
+
+ enum {
+ 	DHCP_PORT_SERVER =3D 67,
+@@ -141,6 +142,9 @@ bool _dhcp_client_set_transport(struct l_dhcp_client *c=
+lient,
+ 					struct dhcp_transport *transport);
+ void _dhcp_client_override_xid(struct l_dhcp_client *client, uint32_t xid);
+ =
+
++bool _dhcp_server_set_transport(struct l_dhcp_server *server,
++					struct dhcp_transport *transport);
++
+ struct l_dhcp_lease {
+ 	uint32_t address;
+ 	uint32_t server_address;
 diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index 130d783..482a8b8 100644
+index 65b015b..c6e1b43 100644
 --- a/ell/dhcp-server.c
 +++ b/ell/dhcp-server.c
-@@ -201,6 +201,20 @@ static struct l_dhcp_lease *add_lease(struct l_dhcp_se=
-rver *server,
- 	return lease;
- }
+@@ -62,6 +62,8 @@ struct l_dhcp_server {
+ 	l_dhcp_server_event_cb_t event_handler;
+ 	void *user_data;
+ 	l_dhcp_destroy_cb_t event_destroy;
++
++	struct dhcp_transport *transport;
+ };
  =
 
-+static void lease_set_expire(struct l_dhcp_server *server,
-+			struct l_dhcp_lease *lease, uint32_t expire)
+ #define MAC "%02x:%02x:%02x:%02x:%02x:%02x"
+@@ -80,6 +82,23 @@ struct l_dhcp_server {
+ 	l_util_debug(server->debug_handler, server->debug_data,		\
+ 			"%s:%i " fmt, __func__, __LINE__, ## args)
+ =
+
++static void listener_event(const void *data, size_t len, void *user_data)
 +{
-+	l_queue_remove(server->lease_list, lease);
-+
-+	lease->lifetime =3D expire;
-+
-+	l_queue_insert(server->lease_list, lease, compare_lifetime, NULL);
-+
-+	if (server->event_handler)
-+		server->event_handler(server, L_DHCP_SERVER_EVENT_LEASE_EXPIRED,
-+					server->user_data, lease);
 +}
 +
- static bool match_lease_ip(const void *data, const void *user_data)
++bool _dhcp_server_set_transport(struct l_dhcp_server *server,
++					struct dhcp_transport *transport)
++{
++	if (unlikely(!server))
++		return false;
++
++	if (server->transport)
++		_dhcp_transport_free(server->transport);
++
++	server->transport =3D transport;
++	return true;
++}
++
+ LIB_EXPORT struct l_dhcp_server *l_dhcp_server_new(int ifindex)
  {
- 	const struct l_dhcp_lease *lease =3D data;
-@@ -524,6 +538,16 @@ static void listener_event(const void *data, size_t le=
-n, void *user_data)
- 		if (requested_ip_opt =3D=3D lease->address)
- 			remove_lease(server, lease);
+ 	struct l_dhcp_server *server =3D l_new(struct l_dhcp_server, 1);
+@@ -109,6 +128,7 @@ LIB_EXPORT void l_dhcp_server_destroy(struct l_dhcp_ser=
+ver *server)
+ 	if (server->event_destroy)
+ 		server->event_destroy(server->user_data);
  =
 
-+		break;
-+	case DHCP_MESSAGE_TYPE_RELEASE:
-+		SERVER_DEBUG("Received RELEASE");
-+
-+		if (!server_id_opt || !lease)
-+			break;
-+
-+		if (message->ciaddr =3D=3D lease->address)
-+			lease_set_expire(server, lease, time(NULL));
-+
- 		break;
++	_dhcp_transport_free(server->transport);
+ 	l_free(server->ifname);
+ =
+
+ 	l_queue_destroy(server->lease_list,
+@@ -165,8 +185,22 @@ LIB_EXPORT bool l_dhcp_server_start(struct l_dhcp_serv=
+er *server)
+ 			return false;
  	}
- }
+ =
+
++	if (!server->transport) {
++		server->transport =3D _dhcp_default_transport_new(server->ifindex,
++					server->ifname, DHCP_PORT_SERVER);
++		if (!server->transport)
++			return false;
++	}
++
+ 	SERVER_DEBUG("Starting DHCP server on %s", server->ifname);
+ =
+
++	if (server->transport->open)
++		if (server->transport->open(server->transport, 0) < 0)
++			return false;
++
++	_dhcp_transport_set_rx_callback(server->transport, listener_event,
++						server);
++
+ 	server->started =3D true;
+ =
+
+ 	return true;
+@@ -180,6 +214,9 @@ LIB_EXPORT bool l_dhcp_server_stop(struct l_dhcp_server=
+ *server)
+ 	if (!server->started)
+ 		return true;
+ =
+
++	if (server->transport->close)
++		server->transport->close(server->transport);
++
+ 	server->started =3D false;
+ =
+
+ 	/* TODO: Add ability to save leases */
 -- =
 
 2.26.2
 
---===============4877053207821031397==--
+--===============1958621972934097727==--
 
