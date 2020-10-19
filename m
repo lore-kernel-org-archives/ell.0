@@ -1,108 +1,62 @@
-Content-Type: multipart/mixed; boundary="===============4136524739559040985=="
+Content-Type: multipart/mixed; boundary="===============3849377487906260106=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v5 10/12] examples: basic DHCP server example
-Date: Mon, 19 Oct 2020 16:28:12 -0700
-Message-ID: <20201019232814.1541221-10-prestwoj@gmail.com>
+Subject: [PATCH v5 11/12] unit: add complete client/server dhcp test
+Date: Mon, 19 Oct 2020 16:28:13 -0700
+Message-ID: <20201019232814.1541221-11-prestwoj@gmail.com>
 In-Reply-To: <20201019232814.1541221-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4136524739559040985==
+--===============3849377487906260106==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- .gitignore             |   1 +
- Makefile.am            |   4 +-
- examples/dhcp-server.c | 129 +++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 133 insertions(+), 1 deletion(-)
- create mode 100644 examples/dhcp-server.c
+ unit/test-dhcp.c | 191 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 191 insertions(+)
 
-diff --git a/.gitignore b/.gitignore
-index c3d2790..e963359 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -76,6 +76,7 @@ examples/dbus-client
- examples/glib-eventloop
- examples/dhcp-client
- examples/dhcp6-client
-+examples/dhcp-server
- test-suite.log
- tools/certchain-verify
- tools/genl-discover
-diff --git a/Makefile.am b/Makefile.am
-index 9bdf4dc..adedd1f 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -326,7 +326,8 @@ unit_test_data_files =3D unit/settings.test unit/dbus.c=
-onf
+v5:
+ * Added second client in full test
+
+diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
+index 955ed29..6b7c606 100644
+--- a/unit/test-dhcp.c
++++ b/unit/test-dhcp.c
+@@ -36,6 +36,8 @@
+ static bool verbose =3D true;
+ static uint8_t client_packet[1024];
+ static size_t client_packet_len;
++static uint8_t server_packet[1024];
++static size_t server_packet_len;
  =
 
- examples =3D examples/dbus-service examples/https-client-test \
- 		examples/https-server-test examples/dbus-client \
--		examples/dhcp-client examples/dhcp6-client
-+		examples/dhcp-client examples/dhcp6-client \
-+		examples/dhcp-server
+ static void test_request_option(const void *data)
+ {
+@@ -736,6 +738,193 @@ static void test_discover(const void *data)
+ 	l_dhcp_client_destroy(client);
+ }
  =
 
- if GLIB
- examples +=3D examples/glib-eventloop
-@@ -344,6 +345,7 @@ examples_glib_eventloop_CFLAGS =3D @GLIB_CFLAGS@
- examples_glib_eventloop_LDADD =3D ell/libell-private.la @GLIB_LIBS@
- examples_dhcp_client_LDADD =3D ell/libell-private.la
- examples_dhcp6_client_LDADD =3D ell/libell-private.la
-+examples_dhcp_server_LDADD =3D ell/libell-private.la
- =
-
- noinst_PROGRAMS +=3D tools/certchain-verify tools/genl-discover \
- 		   tools/genl-watch tools/genl-request tools/gpio
-diff --git a/examples/dhcp-server.c b/examples/dhcp-server.c
-new file mode 100644
-index 0000000..33c0983
---- /dev/null
-+++ b/examples/dhcp-server.c
-@@ -0,0 +1,129 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2020  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
++static bool l2_send_called =3D false;
 +
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
++static int fake_transport_server_l2_send(struct dhcp_transport *s,
++					uint32_t source_ip,
++					uint16_t source_port,
++					uint32_t dest_ip,
++					uint16_t dest_port,
++					const uint8_t *dest_arp,
++					const void *data, size_t len)
++{
++	assert(len <=3D sizeof(server_packet));
++	memcpy(server_packet, data, len);
++	server_packet_len =3D len;
 +
-+#define _GNU_SOURCE
-+#include <stdio.h>
-+#include <unistd.h>
-+#include <stdlib.h>
-+#include <assert.h>
-+#include <signal.h>
-+#include <sys/socket.h>
-+#include <linux/if_arp.h>
-+#include <netinet/in.h>
-+#include <arpa/inet.h>
++	l2_send_called =3D true;
 +
-+#include <ell/ell.h>
++	return 0;
++}
 +
 +static void do_debug(const char *str, void *user_data)
 +{
@@ -111,92 +65,183 @@ index 0000000..33c0983
 +	l_info("%s%s", prefix, str);
 +}
 +
-+static void signal_handler(uint32_t signo, void *user_data)
++static void test_complete_run(const void *data)
 +{
-+	switch (signo) {
-+	case SIGINT:
-+	case SIGTERM:
-+		l_info("Terminate");
-+		l_main_quit();
-+		break;
-+	}
-+}
++	static const uint8_t addr1[6] =3D { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
++	static const uint8_t addr2[6] =3D { 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c };
 +
-+static void destroy_handler(void *data)
-+{
-+	l_info("DHCP server destroyed");
-+}
-+
-+static void event_handler(struct l_dhcp_server *server,
-+					enum l_dhcp_server_event event,
-+					void *userdata,
-+					const struct l_dhcp_lease *lease)
-+{
-+	const uint8_t *mac;
-+	char *ip;
-+
-+	switch (event) {
-+	case L_DHCP_SERVER_EVENT_NEW_LEASE:
-+		mac =3D l_dhcp_lease_get_mac(lease);
-+		ip =3D l_dhcp_lease_get_address(lease);
-+
-+		l_info("New lease client %02x:%02x:%02x:%02x:%02x:%02x %s",
-+				mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-+				ip);
-+		l_free(ip);
-+		break;
-+	case L_DHCP_SERVER_EVENT_LEASE_EXPIRED:
-+		break;
-+	}
-+}
-+
-+int main(int argc, char *argv[])
-+{
++	char *dns[] =3D { "192.168.1.1", "192.168.1.254", NULL };
++	struct l_dhcp_client *client1;
++	struct l_dhcp_client *client2;
 +	struct l_dhcp_server *server;
-+	int ifindex;
-+	uint8_t mac[6];
-+	char *dns[] =3D { "192.168.1.1", NULL };
++	struct dhcp_transport *cli_transport1 =3D l_new(struct dhcp_transport, 1);
++	struct dhcp_transport *cli_transport2 =3D l_new(struct dhcp_transport, 1);
 +
-+	if (argc < 2) {
-+		printf("Usage: %s <interface index>\n", argv[0]);
-+		exit(0);
-+	}
++	struct dhcp_transport *srv_transport =3D l_new(struct dhcp_transport, 1);
++	const struct l_dhcp_lease *cli_lease;
++	/* client IP address */
++	char *cli_addr;
++	/* servers IP address */
++	char *srv_addr;
++	char *tmp_addr;
++	char **dns_list;
 +
-+	ifindex =3D atoi(argv[1]);
++	server =3D l_dhcp_server_new(41);
 +
-+	if (!l_net_get_mac_address(ifindex, mac)) {
-+		printf("Unable to get address from interface %d\n", ifindex);
-+		exit(0);
-+	}
++	assert(l_dhcp_server_set_interface_name(server, "fake"));
++	assert(l_dhcp_server_set_ip_address(server, "192.168.1.1"));
++	assert(l_dhcp_server_set_ip_range(server, "192.168.1.2",
++						"192.168.1.100"));
++	assert(l_dhcp_server_set_netmask(server, "255.255.255.0"));
++	assert(l_dhcp_server_set_gateway(server, "192.168.1.1"));
++	assert(l_dhcp_server_set_dns(server, dns));
 +
-+	if (!l_main_init())
-+		return -1;
++	if (verbose)
++		l_dhcp_server_set_debug(server, do_debug, "[DHCP SERV] ", NULL);
 +
-+	l_log_set_stderr();
-+	l_debug_enable("*");
++	srv_transport->ifindex =3D 41;
++	srv_transport->l2_send =3D fake_transport_server_l2_send;
 +
-+	server =3D l_dhcp_server_new(ifindex);
-+	l_dhcp_server_set_ip_range(server, "192.168.1.2", "192.168.1.100");
-+	l_dhcp_server_set_netmask(server, "255.255.255.0");
-+	l_dhcp_server_set_gateway(server, "192.168.1.1");
-+	l_dhcp_server_set_dns(server, dns);
-+	l_dhcp_server_set_lease_time(server, 10);
-+	l_dhcp_server_set_debug(server, do_debug, "[DHCP SERV] ", NULL);
-+	l_dhcp_server_set_event_handler(server, event_handler, NULL,
-+						destroy_handler);
-+	l_dhcp_server_start(server);
++	assert(_dhcp_server_set_transport(server, srv_transport));
 +
-+	l_main_run_with_signal(signal_handler, NULL);
++	assert(l_dhcp_server_start(server));
++
++	client1 =3D l_dhcp_client_new(42);
++
++	assert(l_dhcp_client_set_address(client1, ARPHRD_ETHER, addr1, 6));
++	assert(l_dhcp_client_set_interface_name(client1, "fake"));
++	assert(l_dhcp_client_set_hostname(client1, "<hostname>"));
++	_dhcp_client_override_xid(client1, 0x4d7c67c6);
++	assert(l_dhcp_client_set_event_handler(client1,
++				event_handler_lease_obtained, NULL, NULL));
++
++	if (verbose)
++		l_dhcp_client_set_debug(client1, do_debug, "[DHCP1] ", NULL);
++
++	cli_transport1->send =3D fake_transport_send;
++	cli_transport1->l2_send =3D fake_transport_l2_send;
++	cli_transport1->ifindex =3D 42;
++
++	assert(_dhcp_client_set_transport(client1, cli_transport1));
++
++	assert(l_dhcp_client_start(client1));
++
++	client2 =3D l_dhcp_client_new(43);
++	assert(l_dhcp_client_set_address(client2, ARPHRD_ETHER, addr2, 6));
++	assert(l_dhcp_client_set_interface_name(client2, "fake"));
++	assert(l_dhcp_client_set_hostname(client2, "<hostname>"));
++	_dhcp_client_override_xid(client2, 0x5d7c67c6);
++	assert(l_dhcp_client_set_event_handler(client2,
++				event_handler_lease_obtained, NULL, NULL));
++
++	if (verbose)
++		l_dhcp_client_set_debug(client2, do_debug, "[DHCP2] ", NULL);
++
++	cli_transport2->send =3D fake_transport_send;
++	cli_transport2->l2_send =3D fake_transport_l2_send;
++	cli_transport2->ifindex =3D 42;
++
++	assert(_dhcp_client_set_transport(client2, cli_transport2));
++
++	/* RX DISCOVER */
++	srv_transport->rx_cb(client_packet, client_packet_len, server);
++	assert(l2_send_called);
++	l2_send_called =3D false;
++
++	/* RX OFFER */
++	cli_transport1->rx_cb(server_packet, server_packet_len, client1);
++
++	/* RX REQUEST */
++	srv_transport->rx_cb(client_packet, client_packet_len, server);
++	assert(l2_send_called);
++	l2_send_called =3D false;
++
++	/* RX ACK */
++	cli_transport1->rx_cb(server_packet, server_packet_len, client1);
++
++	assert(event_handler_called);
++
++	cli_lease =3D l_dhcp_client_get_lease(client1);
++	assert(cli_lease);
++	cli_addr =3D l_dhcp_lease_get_address(cli_lease);
++	assert(cli_addr);
++	assert(!strcmp(cli_addr, "192.168.1.2"));
++	srv_addr =3D l_dhcp_lease_get_server_id(cli_lease);
++	assert(!strcmp(srv_addr, "192.168.1.1"));
++	l_free(srv_addr);
++	l_free(cli_addr);
++
++	tmp_addr =3D l_dhcp_lease_get_gateway(cli_lease);
++	assert(!strcmp(tmp_addr, "192.168.1.1"));
++	l_free(tmp_addr);
++
++	tmp_addr =3D l_dhcp_lease_get_netmask(cli_lease);
++	assert(!strcmp(tmp_addr, "255.255.255.0"));
++	l_free(tmp_addr);
++
++	dns_list =3D l_dhcp_lease_get_dns(cli_lease);
++	assert(dns_list && dns_list[0] && dns_list[1]);
++	assert(!strcmp(dns_list[0], "192.168.1.1"));
++	assert(!strcmp(dns_list[1], "192.168.1.254"));
++	l_strv_free(dns_list);
++
++	/* Second client connect */
++	assert(l_dhcp_client_start(client2));
++
++	/* RX DISCOVER */
++	srv_transport->rx_cb(client_packet, client_packet_len, server);
++	assert(l2_send_called);
++	l2_send_called =3D false;
++
++	/* RX OFFER */
++	cli_transport2->rx_cb(server_packet, server_packet_len, client2);
++
++	/* RX REQUEST */
++	srv_transport->rx_cb(client_packet, client_packet_len, server);
++	assert(l2_send_called);
++	l2_send_called =3D false;
++
++	/* RX ACK */
++	cli_transport2->rx_cb(server_packet, server_packet_len, client2);
++
++	assert(event_handler_called);
++
++	cli_lease =3D l_dhcp_client_get_lease(client2);
++	assert(cli_lease);
++	cli_addr =3D l_dhcp_lease_get_address(cli_lease);
++	assert(cli_addr);
++	assert(!strcmp(cli_addr, "192.168.1.3"));
++	srv_addr =3D l_dhcp_lease_get_server_id(cli_lease);
++	assert(!strcmp(srv_addr, "192.168.1.1"));
++	l_free(srv_addr);
++	l_free(cli_addr);
++
++
++	l_dhcp_client_stop(client1);
++	l_dhcp_client_stop(client2);
++	l_dhcp_client_destroy(client1);
++	l_dhcp_client_destroy(client2);
 +
 +	l_dhcp_server_stop(server);
 +	l_dhcp_server_destroy(server);
-+	l_main_exit();
-+
-+	return 0;
 +}
++
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -759,5 +948,7 @@ int main(int argc, char *argv[])
+ =
+
+ 	l_test_add("discover", test_discover, NULL);
+ =
+
++	l_test_add("complete run", test_complete_run, NULL);
++
+ 	return l_test_run();
+ }
 -- =
 
 2.26.2
 
---===============4136524739559040985==--
+--===============3849377487906260106==--
 
