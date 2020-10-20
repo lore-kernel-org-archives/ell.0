@@ -1,202 +1,88 @@
-Content-Type: multipart/mixed; boundary="===============7582408533445131074=="
+Content-Type: multipart/mixed; boundary="===============0130171068920056758=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v5 12/12] dhcp: Add support for setting address
-Date: Mon, 19 Oct 2020 16:28:14 -0700
-Message-ID: <20201019232814.1541221-12-prestwoj@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH v5 01/12] util: add l_memeq/l_memeqzero
+Date: Mon, 19 Oct 2020 19:42:02 -0500
+Message-ID: <a36214fc-1428-b8d4-302a-36d5ca9101ea@gmail.com>
 In-Reply-To: <20201019232814.1541221-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7582408533445131074==
+--===============0130171068920056758==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add optional support for the dhcp client to set the DHCP
-address automatically. This is done by providing an RTNL
-object with l_dhcp_client_set_rtnl.
----
- ell/dhcp.c | 82 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/dhcp.h |  4 +++
- 2 files changed, 86 insertions(+)
+Hi James,
 
-v5:
- * Made netmask/broadcast auto-free
+On 10/19/20 6:28 PM, James Prestwood wrote:
+> Utility functions for testing if memory equals a byte, or zero.
+> ---
+>   ell/ell.sym |  2 ++
+>   ell/util.h  | 16 ++++++++++++++++
+>   2 files changed, 18 insertions(+)
+> =
 
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index d75d86f..5488d34 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -29,6 +29,7 @@
- #include <linux/types.h>
- #include <net/if_arp.h>
- #include <errno.h>
-+#include <arpa/inet.h>
- =
+> diff --git a/ell/ell.sym b/ell/ell.sym
+> index 5268b48..0b0a6cc 100644
+> --- a/ell/ell.sym
+> +++ b/ell/ell.sym
+> @@ -20,6 +20,8 @@ global:
+>   	l_util_hexdumpv;
+>   	l_util_debug;
+>   	l_util_get_debugfs_path;
+> +	l_memeq;
+> +	l_memeqzero;
 
- #include "private.h"
- #include "random.h"
-@@ -38,6 +39,8 @@
- #include "timeout.h"
- #include "dhcp.h"
- #include "dhcp-private.h"
-+#include "netlink.h"
-+#include "rtnl.h"
- =
+No need to put static inline functions here.  Only ones marked by LIB_EXPOR=
+T go =
 
- #define CLIENT_DEBUG(fmt, args...)					\
- 	l_util_debug(client->debug_handler, client->debug_data,		\
-@@ -178,6 +181,9 @@ struct l_dhcp_client {
- 	struct l_timeout *timeout_resend;
- 	struct l_timeout *timeout_lease;
- 	struct l_dhcp_lease *lease;
-+	struct l_netlink *rtnl;
-+	uint32_t rtnl_add_cmdid;
-+	struct l_rtnl_address *rtnl_configured_address;
- 	uint8_t attempt;
- 	l_dhcp_client_event_cb_t event_handler;
- 	void *event_data;
-@@ -583,6 +589,24 @@ error:
- 	l_dhcp_client_stop(client);
- }
- =
+here.
 
-+static void dhcp_client_address_add_cb(int error, uint16_t type,
-+						const void *data, uint32_t len,
-+						void *user_data)
-+{
-+	struct l_dhcp_client *client =3D user_data;
-+
-+	client->rtnl_add_cmdid =3D 0;
-+
-+	if (error < 0 && error !=3D -EEXIST) {
-+		l_rtnl_address_free(client->rtnl_configured_address);
-+		client->rtnl_configured_address =3D NULL;
-+		CLIENT_DEBUG("Unable to set address on ifindex: %u: %d(%s)",
-+				client->ifindex, error,
-+				strerror(-error));
-+		return;
-+	}
-+}
-+
- static int dhcp_client_receive_ack(struct l_dhcp_client *client,
- 					const struct dhcp_message *ack,
- 					size_t len)
-@@ -626,6 +650,38 @@ static int dhcp_client_receive_ack(struct l_dhcp_clien=
-t *client,
- 			client->state =3D=3D DHCP_STATE_REBOOTING)
- 		r =3D L_DHCP_CLIENT_EVENT_LEASE_OBTAINED;
- =
+>   	/* test */
+>   	l_test_init;
+>   	l_test_run;
+> diff --git a/ell/util.h b/ell/util.h
+> index ca894c7..a8b52ad 100644
+> --- a/ell/util.h
+> +++ b/ell/util.h
+> @@ -391,6 +391,22 @@ static inline int l_secure_memcmp(const void *a, con=
+st void *b,
+>   	return res;
+>   }
+>   =
 
-+	if (client->rtnl) {
-+		struct l_rtnl_address *a;
-+		L_AUTO_FREE_VAR(char *, ip) =3D
-+			l_dhcp_lease_get_address(client->lease);
-+		uint8_t prefix_len;
-+		uint32_t l =3D l_dhcp_lease_get_lifetime(client->lease);
-+		L_AUTO_FREE_VAR(char *, netmask) =3D
-+				l_dhcp_lease_get_netmask(client->lease);
-+		L_AUTO_FREE_VAR(char *, broadcast) =3D
-+				l_dhcp_lease_get_broadcast(client->lease);
-+		struct in_addr in_addr;
-+
-+		if (inet_pton(AF_INET, netmask, &in_addr) > 0)
-+			prefix_len =3D __builtin_popcountl(in_addr.s_addr);
-+		else
-+			prefix_len =3D 24;
-+
-+		a =3D l_rtnl_address_new(ip, prefix_len);
-+		l_rtnl_address_set_noprefixroute(a, true);
-+		l_rtnl_address_set_lifetimes(a, l, l);
-+		l_rtnl_address_set_broadcast(a, broadcast);
-+
-+		client->rtnl_add_cmdid =3D
-+			l_rtnl_ifaddr_add(client->rtnl, client->ifindex, a,
-+						dhcp_client_address_add_cb,
-+						client, NULL);
-+		if (client->rtnl_add_cmdid)
-+			client->rtnl_configured_address =3D a;
-+		else
-+			CLIENT_DEBUG("Configuring address via RTNL failed");
-+	}
-+
- 	return r;
- }
- =
+> +static inline bool l_memeq(const uint8_t *field, size_t size, uint8_t by=
+te)
+> +{
+> +	size_t i;
+> +
+> +	for (i =3D 0; i < size; i++)
+> +		if (field[i] !=3D byte)
+> +			return false;
+> +
+> +	return true;
+> +}
+> +
 
-@@ -989,6 +1045,19 @@ LIB_EXPORT bool l_dhcp_client_stop(struct l_dhcp_clie=
-nt *client)
- 	if (unlikely(!client))
- 		return false;
- =
+I modified this patch slightly to make this function not inline for future =
 
-+	if (client->rtnl_add_cmdid) {
-+		l_netlink_cancel(client->rtnl, client->rtnl_add_cmdid);
-+		client->rtnl_add_cmdid =3D 0;
-+	}
-+
-+	if (client->rtnl_configured_address) {
-+		l_rtnl_ifaddr_delete(client->rtnl, client->ifindex,
-+					client->rtnl_configured_address,
-+					NULL, NULL, NULL);
-+		l_rtnl_address_free(client->rtnl_configured_address);
-+		client->rtnl_configured_address =3D NULL;
-+	}
-+
- 	l_timeout_remove(client->timeout_resend);
- 	client->timeout_resend =3D NULL;
- =
+optimizations.
 
-@@ -1042,3 +1111,16 @@ LIB_EXPORT bool l_dhcp_client_set_debug(struct l_dhc=
-p_client *client,
- =
+> +static inline bool l_memeqzero(const uint8_t *field, size_t size)
+> +{
+> +	return l_memeq(field, size, 0);
+> +}
+> +
+>   #ifdef __cplusplus
+>   }
+>   #endif
+> =
 
- 	return true;
- }
-+
-+LIB_EXPORT bool l_dhcp_client_set_rtnl(struct l_dhcp_client *client,
-+					struct l_netlink *rtnl)
-+{
-+	if (unlikely(!client))
-+		return false;
-+
-+	if (unlikely(client->state !=3D DHCP_STATE_INIT))
-+		return false;
-+
-+	client->rtnl =3D rtnl;
-+	return true;
-+}
-diff --git a/ell/dhcp.h b/ell/dhcp.h
-index a92f6aa..2af75cc 100644
---- a/ell/dhcp.h
-+++ b/ell/dhcp.h
-@@ -31,6 +31,7 @@ extern "C" {
- =
 
- struct l_dhcp_client;
- struct l_dhcp_lease;
-+struct l_netlink;
- struct l_dhcp_server;
- =
+Applied, thanks.
 
- /* RFC 2132 */
-@@ -85,6 +86,9 @@ bool l_dhcp_client_set_interface_name(struct l_dhcp_clien=
-t *client,
- bool l_dhcp_client_set_hostname(struct l_dhcp_client *client,
- 							const char *hostname);
- =
-
-+bool l_dhcp_client_set_rtnl(struct l_dhcp_client *client,
-+					struct l_netlink *rtnl);
-+
- const struct l_dhcp_lease *l_dhcp_client_get_lease(
- 					const struct l_dhcp_client *client);
- =
-
--- =
-
-2.26.2
-
---===============7582408533445131074==--
+Regards,
+-Denis
+--===============0130171068920056758==--
 
