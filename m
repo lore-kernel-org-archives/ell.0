@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============6421527269857338005=="
+Content-Type: multipart/mixed; boundary="===============8873503734451369470=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v5 02/12] dhcp-server: basic DHCP server skeleton
-Date: Mon, 19 Oct 2020 19:43:25 -0500
-Message-ID: <a458c1e4-9998-a760-447f-a7149db0e92b@gmail.com>
-In-Reply-To: <20201019232814.1541221-2-prestwoj@gmail.com>
+Subject: Re: [PATCH v5 09/12] unit: update dhcp test to use new builder APIs
+Date: Mon, 19 Oct 2020 19:56:27 -0500
+Message-ID: <86189ed2-052e-b580-7426-7a63cfbadc7c@gmail.com>
+In-Reply-To: <20201019232814.1541221-9-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6421527269857338005==
+--===============8873503734451369470==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -17,40 +17,32 @@ Hi James,
 
 On 10/19/20 6:28 PM, James Prestwood wrote:
 > ---
->   Makefile.am       |   1 +
->   ell/dhcp-server.c | 343 ++++++++++++++++++++++++++++++++++++++++++++++
->   ell/dhcp.h        |  36 +++++
->   ell/ell.sym       |  13 ++
->   4 files changed, 393 insertions(+)
->   create mode 100644 ell/dhcp-server.c
+>   unit/test-dhcp.c | 83 +++++++++++++++++++++---------------------------
+>   1 file changed, 37 insertions(+), 46 deletions(-)
 > =
 
-> v5:
->   * Store start/end IP in host order. This fixes some endianness problems
->     when searching for the next available IP
->   * Fixed debug_destroy not getting set
 
 <snip>
 
-> +	/*
-> +	 * Assign a default ip range if not already. This will default to
-> +	 * server->address + 1 ... 254
-> +	 */
-> +	if (!server->start_ip) {
-> +		server->start_ip =3D L_BE32_TO_CPU(server->address) + 1;
-> +		server->end_ip =3D (server->start_ip & 0x00ffffff) | 0xfe000000;
+> diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
+> index 6ae8d71..955ed29 100644
+> --- a/unit/test-dhcp.c
+> +++ b/unit/test-dhcp.c
+> @@ -33,7 +33,7 @@
+>   #include <ell/ell.h>
+>   #include "ell/dhcp-private.h"
+>   =
 
-Looks like the endianness got confused here, so I fixed this to use 0xfffff=
-f00 =
+> -static bool verbose =3D false;
+> +static bool verbose =3D true;
+>   static uint8_t client_packet[1024];
+>   static size_t client_packet_len;
+>   =
 
-and 0xfe respectively.
 
-> +	}
-> +
-
-Applied, thanks.
+I squashed this part and applied.
 
 Regards,
 -Denis
---===============6421527269857338005==--
+--===============8873503734451369470==--
 
