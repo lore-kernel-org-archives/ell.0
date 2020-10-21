@@ -1,38 +1,58 @@
-Content-Type: multipart/mixed; boundary="===============3978906632932183182=="
+Content-Type: multipart/mixed; boundary="===============1713162417433810464=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH v7 3/6] dhcp-server: handle DECLINE messages
-Date: Tue, 20 Oct 2020 11:33:39 -0500
-Message-ID: <2c578f3d-6067-3858-7c37-a538b851aae3@gmail.com>
-In-Reply-To: <20201020155249.1603105-3-prestwoj@gmail.com>
+From: Natanael Copa <ncopa@alpinelinux.org>
+Subject: ell 0.33 test suite fails on big endian machines
+Date: Wed, 21 Oct 2020 09:30:00 +0200
+Message-ID: <20201021093000.4e6aa340@ncopa-desktop.lan>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3978906632932183182==
+--===============1713162417433810464==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Hi!
 
-On 10/20/20 10:52 AM, James Prestwood wrote:
-> Process DECLINE messages from clients and remove any pending
-> leases that were created during DISCOVER.
-> ---
->   ell/dhcp-server.c | 18 ++++++++++++++++++
->   1 file changed, 18 insertions(+)
-> =
+On alpine linux edge on s390x:
 
-> v7:
->   * Removed event from remove_lease since this is only called due to
->     a DECLINE message and no NEW_LEASE event would have been called.
-> =
+ncopa-edge-s390x:~/aports/main/ell/src/ell-0.33$ cat test-suite.log =
+
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D
+   ell 0.33: ./test-suite.log
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D
+
+# TOTAL: 31
+# PASS:  30
+# SKIP:  0
+# XFAIL: 0
+# FAIL:  1
+# XPASS: 0
+# ERROR: 0
+
+.. contents:: :depth: 2
+
+FAIL: unit/test-dhcp6
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+
+TEST: option parsing
+Assertion failed: dhcp6_message_compare(solicit_data_1, sizeof(solicit_data=
+_1), client_packet, client_packet_len) (unit/test-dhcp6.c: test_obtain_leas=
+e: 238)
+TEST: lease parsing
+TEST: obtain lease - no rapid commit
+Aborted
+FAIL unit/test-dhcp6 (exit status: 134)
 
 
-Patch 3-5 applied, thanks.  Rest were applied from v6.
+Samme seems to happen on mips64.
 
-Regards,
--Denis
 
---===============3978906632932183182==--
+Test passes on all little endian architectures (x86, x86_64, ppc64le, armv7=
+, aarch64)
+
+-nc
+--===============1713162417433810464==--
 
