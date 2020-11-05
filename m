@@ -1,58 +1,65 @@
-Content-Type: multipart/mixed; boundary="===============1713162417433810464=="
+Content-Type: multipart/mixed; boundary="===============3533064747954578159=="
 MIME-Version: 1.0
-From: Natanael Copa <ncopa@alpinelinux.org>
-Subject: ell 0.33 test suite fails on big endian machines
-Date: Wed, 21 Oct 2020 09:30:00 +0200
-Message-ID: <20201021093000.4e6aa340@ncopa-desktop.lan>
+From: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH] dhcp-lease: allow shorter lease times
+Date: Thu, 05 Nov 2020 09:21:02 -0800
+Message-ID: <20201105172102.2932758-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1713162417433810464==
+--===============3533064747954578159==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi!
+In practice a DHCP server shouldn't be handing out such
+short leases, but for testing purposes its convenient having
+short leases for testing renews.
 
-On alpine linux edge on s390x:
+The existing math for t1/t2 had integer rounding limitations
+which prevented any leases under 8 seconds. Intead we can
+use floating point math then case back to a uint32_t to
+allow leases of 2 seconds or more.
+---
+ ell/dhcp-lease.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-ncopa-edge-s390x:~/aports/main/ell/src/ell-0.33$ cat test-suite.log =
+diff --git a/ell/dhcp-lease.c b/ell/dhcp-lease.c
+index 59de3e3..8f73b0b 100644
+--- a/ell/dhcp-lease.c
++++ b/ell/dhcp-lease.c
+@@ -142,7 +142,7 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct d=
+hcp_message_iter *iter)
+ 	if (!lease->server_address || !lease->lifetime)
+ 		goto error;
+ =
 
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D
-   ell 0.33: ./test-suite.log
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D
+-	if (lease->lifetime < 10)
++	if (lease->lifetime < 2)
+ 		goto error;
+ =
 
-# TOTAL: 31
-# PASS:  30
-# SKIP:  0
-# XFAIL: 0
-# FAIL:  1
-# XPASS: 0
-# ERROR: 0
+ 	/*
+@@ -157,10 +157,10 @@ struct l_dhcp_lease *_dhcp_lease_parse_options(struct=
+ dhcp_message_iter *iter)
+ 		return lease;
+ =
 
-.. contents:: :depth: 2
+ 	if (!lease->t1)
+-		lease->t1 =3D lease->lifetime / 2;
++		lease->t1 =3D (uint32_t)((float)lease->lifetime * 0.5);
+ =
 
-FAIL: unit/test-dhcp6
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+ 	if (!lease->t2)
+-		lease->t2 =3D lease->lifetime / 8 * 7;
++		lease->t2 =3D (uint32_t)((float)lease->lifetime * 0.875);
+ =
 
-TEST: option parsing
-Assertion failed: dhcp6_message_compare(solicit_data_1, sizeof(solicit_data=
-_1), client_packet, client_packet_len) (unit/test-dhcp6.c: test_obtain_leas=
-e: 238)
-TEST: lease parsing
-TEST: obtain lease - no rapid commit
-Aborted
-FAIL unit/test-dhcp6 (exit status: 134)
+ 	if (lease->t1 > lease->t2)
+ 		goto error;
+-- =
 
+2.26.2
 
-Samme seems to happen on mips64.
-
-
-Test passes on all little endian architectures (x86, x86_64, ppc64le, armv7=
-, aarch64)
-
--nc
---===============1713162417433810464==--
+--===============3533064747954578159==--
 
