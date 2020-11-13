@@ -1,57 +1,47 @@
-Content-Type: multipart/mixed; boundary="===============0976607626407291387=="
+Content-Type: multipart/mixed; boundary="===============3095213184599183797=="
 MIME-Version: 1.0
-From: Othman, Ossama <ossama.othman@intel.com>
-Subject: RE: [PATCH] util: Fix C++ invalid pointer conversion
-Date: Tue, 10 Nov 2020 01:07:28 +0000
-Message-ID: <36e83abf99be4ae6940ef0aa075dba44@intel.com>
-In-Reply-To: <20201106170951.159439-1-ossama.othman@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] Check for NULL on output function pointer
+Date: Fri, 13 Nov 2020 11:59:24 -0600
+Message-ID: <70e26e11-3660-fc03-2563-320f7b290c4d@gmail.com>
+In-Reply-To: <CAEXMXLRbHRt95-=yGeUx=v7Weo3wcHVEkd4fQW4t1NJtmkXYXg@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0976607626407291387==
+--===============3095213184599183797==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Apologies for the duplicate patches.
+Hi Nuno,
 
--Ossama
-
-> -----Original Message-----
-> From: Ossama Othman <ossama.othman@gmail.com>
-> Sent: Friday, November 06, 2020 9:10 AM
-> To: ell(a)lists.01.org
-> Cc: Othman, Ossama <ossama.othman@intel.com>
-> Subject: [PATCH] util: Fix C++ invalid pointer conversion
+On 11/9/20 4:05 AM, Nuno Gon=C3=A7alves wrote:
+> While l_util_hexdump, l_util_hexdump_two and l_util_debug check
+> for a eventual NULL function pointer, l_util_hexdumpv did not.
 > =
 
-> Cast the void* arguments of l_secure_memcmp() to uint8_t* during
-> assignment to the latter.  C++ doesn't allow assignment of a void* to
-> a pointer of another type without a cast.  This allows <ell/util.h> to
-> once again be used in C++ code.
+> Add the same check to l_util_hexdumpv to make the interface uniform.
+> =
+
+> Signed-off-by: Nuno Goncalves <nunojpg@gmail.com>
+
+No S-o-b lines please, we do not use these.  I took this out when applying.
+
 > ---
->  ell/util.h | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> =
+>   ell/util.c | 3 +++
+>   1 file changed, 3 insertions(+)
 
-> diff --git a/ell/util.h b/ell/util.h
-> index 0b3e1a8..f3dd57a 100644
-> --- a/ell/util.h
-> +++ b/ell/util.h
-> @@ -351,8 +351,8 @@ const char *l_util_get_debugfs_path(void);
->  static inline int l_secure_memcmp(const void *a, const void *b,
->  					size_t size)
->  {
-> -	const volatile uint8_t *aa =3D a;
-> -	const volatile uint8_t *bb =3D b;
-> +	const volatile uint8_t *aa =3D (const uint8_t *) a;
-> +	const volatile uint8_t *bb =3D (const uint8_t *) b;
->  	int res =3D 0, diff, mask;
-> =
+Just FYI, your patch came through with tabs replaced by spaces, which made =
+it =
 
->  	/*
-> --
-> 2.25.1
+not apply.  This was easy to fix by hand for this small patch, but please c=
+heck =
 
---===============0976607626407291387==--
+your settings next time...
+
+Applied, thanks.
+
+Regards,
+-Denis
+--===============3095213184599183797==--
 
