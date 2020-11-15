@@ -1,47 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============3095213184599183797=="
+Content-Type: multipart/mixed; boundary="===============1637140095209062751=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] Check for NULL on output function pointer
-Date: Fri, 13 Nov 2020 11:59:24 -0600
-Message-ID: <70e26e11-3660-fc03-2563-320f7b290c4d@gmail.com>
-In-Reply-To: <CAEXMXLRbHRt95-=yGeUx=v7Weo3wcHVEkd4fQW4t1NJtmkXYXg@mail.gmail.com>
+From: Jonathan Liu <net147@gmail.com>
+Subject: [PATCH] ell.sym: Fix l_dhcp_server_set_netmask symbol
+Date: Sun, 15 Nov 2020 15:30:31 +1100
+Message-ID: <20201115043031.163742-1-net147@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3095213184599183797==
+--===============1637140095209062751==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Nuno,
+Fixes: 958b8b2cac54 ("dhcp-server: basic DHCP server skeleton")
+---
+ ell/ell.sym | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 11/9/20 4:05 AM, Nuno Gon=C3=A7alves wrote:
-> While l_util_hexdump, l_util_hexdump_two and l_util_debug check
-> for a eventual NULL function pointer, l_util_hexdumpv did not.
-> =
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 1a27fce..b02c60e 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -253,7 +253,7 @@ global:
+ 	l_dhcp_server_set_event_handler;
+ 	l_dhcp_server_set_ip_address;
+ 	l_dhcp_server_set_interface_name;
+-	l_dhcp_server_set_netmaks;
++	l_dhcp_server_set_netmask;
+ 	l_dhcp_server_set_gateway;
+ 	l_dhcp_server_set_dns;
+ 	/* dhcp6 */
+-- =
 
-> Add the same check to l_util_hexdumpv to make the interface uniform.
-> =
+2.29.2
 
-> Signed-off-by: Nuno Goncalves <nunojpg@gmail.com>
-
-No S-o-b lines please, we do not use these.  I took this out when applying.
-
-> ---
->   ell/util.c | 3 +++
->   1 file changed, 3 insertions(+)
-
-Just FYI, your patch came through with tabs replaced by spaces, which made =
-it =
-
-not apply.  This was easy to fix by hand for this small patch, but please c=
-heck =
-
-your settings next time...
-
-Applied, thanks.
-
-Regards,
--Denis
---===============3095213184599183797==--
+--===============1637140095209062751==--
 
