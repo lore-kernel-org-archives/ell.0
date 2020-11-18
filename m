@@ -1,112 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============3961857676615277832=="
+Content-Type: multipart/mixed; boundary="===============8347743481452507409=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 5/6] unit: add client expire checks to test-dhcp
-Date: Wed, 18 Nov 2020 11:00:55 -0800
-Message-ID: <20201118190056.3584080-5-prestwoj@gmail.com>
+Subject: [PATCH 6/6] dhcp-server: print actual lifetime for new lease
+Date: Wed, 18 Nov 2020 11:00:56 -0800
+Message-ID: <20201118190056.3584080-6-prestwoj@gmail.com>
 In-Reply-To: <20201118190056.3584080-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3961857676615277832==
+--===============8347743481452507409==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Verifies the proper events fire when clients release their lease.
+The leases expiration time was being printed, which is an
+offset off the current time rather than the actual lease
+time.
 ---
- unit/test-dhcp.c | 43 ++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 42 insertions(+), 1 deletion(-)
+ ell/dhcp-server.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
-index 877d649..2f41609 100644
---- a/unit/test-dhcp.c
-+++ b/unit/test-dhcp.c
-@@ -764,6 +764,24 @@ static void do_debug(const char *str, void *user_data)
- 	l_info("%s%s", prefix, str);
+diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+index f418ed5..c51ebf3 100644
+--- a/ell/dhcp-server.c
++++ b/ell/dhcp-server.c
+@@ -293,7 +293,7 @@ static struct l_dhcp_lease *add_lease(struct l_dhcp_ser=
+ver *server,
+ =
+
+ 	SERVER_DEBUG("added lease IP %s for "MAC " lifetime=3D%u",
+ 			IP_STR(yiaddr), MAC_STR(chaddr),
+-			lease->lifetime);
++			server->lease_seconds);
+ =
+
+ 	return lease;
  }
- =
-
-+static char *new_client;
-+static char *expired_client;
-+
-+static void server_event(struct l_dhcp_server *server,
-+					enum l_dhcp_server_event event,
-+					void *user_data,
-+					const struct l_dhcp_lease *lease)
-+{
-+	switch (event) {
-+	case L_DHCP_SERVER_EVENT_NEW_LEASE:
-+		new_client =3D l_dhcp_lease_get_address(lease);
-+		break;
-+	case L_DHCP_SERVER_EVENT_LEASE_EXPIRED:
-+		expired_client =3D l_dhcp_lease_get_address(lease);
-+		break;
-+	}
-+}
-+
- static void test_complete_run(const void *data)
- {
- 	static const uint8_t addr1[6] =3D { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
-@@ -794,6 +812,8 @@ static void test_complete_run(const void *data)
- 	assert(l_dhcp_server_set_netmask(server, "255.255.255.0"));
- 	assert(l_dhcp_server_set_gateway(server, "192.168.1.1"));
- 	assert(l_dhcp_server_set_dns(server, dns));
-+	assert(l_dhcp_server_set_event_handler(server, server_event,
-+						NULL, NULL));
- =
-
- 	if (verbose)
- 		l_dhcp_server_set_debug(server, do_debug, "[DHCP SERV] ", NULL);
-@@ -865,6 +885,11 @@ static void test_complete_run(const void *data)
- 	cli_addr =3D l_dhcp_lease_get_address(cli_lease);
- 	assert(cli_addr);
- 	assert(!strcmp(cli_addr, "192.168.1.2"));
-+	assert(new_client);
-+	assert(!strcmp(new_client, cli_addr));
-+	l_free(new_client);
-+	new_client =3D NULL;
-+
- 	srv_addr =3D l_dhcp_lease_get_server_id(cli_lease);
- 	assert(!strcmp(srv_addr, "192.168.1.1"));
- 	l_free(srv_addr);
-@@ -910,14 +935,30 @@ static void test_complete_run(const void *data)
- 	cli_addr =3D l_dhcp_lease_get_address(cli_lease);
- 	assert(cli_addr);
- 	assert(!strcmp(cli_addr, "192.168.1.3"));
-+	assert(new_client);
-+	assert(!strcmp(new_client, cli_addr));
-+	l_free(new_client);
-+	new_client =3D NULL;
- 	srv_addr =3D l_dhcp_lease_get_server_id(cli_lease);
- 	assert(!strcmp(srv_addr, "192.168.1.1"));
- 	l_free(srv_addr);
- 	l_free(cli_addr);
- =
-
--
- 	l_dhcp_client_stop(client1);
-+
-+	srv_transport->rx_cb(client_packet, client_packet_len, server);
-+	assert(expired_client);
-+	assert(!strcmp(expired_client, "192.168.1.2"));
-+	l_free(expired_client);
-+	expired_client =3D NULL;
-+
- 	l_dhcp_client_stop(client2);
-+	srv_transport->rx_cb(client_packet, client_packet_len, server);
-+	assert(expired_client);
-+	assert(!strcmp(expired_client, "192.168.1.3"));
-+	l_free(expired_client);
-+	expired_client =3D NULL;
-+
- 	l_dhcp_client_destroy(client1);
- 	l_dhcp_client_destroy(client2);
- =
-
 -- =
 
 2.26.2
 
---===============3961857676615277832==--
+--===============8347743481452507409==--
 
