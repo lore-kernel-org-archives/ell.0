@@ -1,172 +1,176 @@
-Content-Type: multipart/mixed; boundary="===============4236814022322514900=="
+Content-Type: multipart/mixed; boundary="===============0082093005373130409=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 5/5] unit: Test loading PKCS#1 PEM private key files
-Date: Fri, 20 Nov 2020 21:28:33 +0100
-Message-ID: <20201120202833.43358-5-andrew.zaborowski@intel.com>
-In-Reply-To: <20201120202833.43358-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 1/5] pem: Parse PKCS#1 formatted private keys
+Date: Sat, 21 Nov 2020 03:48:30 +0100
+Message-ID: <20201121024834.76213-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4236814022322514900==
+--===============0082093005373130409==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+The PKCS#1 RSAPrivateKey format is used within the PKCS#8 PrivateKey
+structure so we just need to wrap it in some extra ASN.1 data to get a
+format understood by the pkcs8-key-parse module.
+
+Improve some comments with the right RFC references.
 ---
- Makefile.am     | 20 ++++++++++++++
- unit/test-pem.c | 71 ++++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 84 insertions(+), 7 deletions(-)
+ ell/asn1-private.h |   1 +
+ ell/pem.c          | 106 +++++++++++++++++++++++++++++++++++++++++----
+ 2 files changed, 98 insertions(+), 9 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index 546a6aa..28082aa 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -214,6 +214,11 @@ cert_files =3D unit/cert-chain.pem \
- 			unit/cert-server-key-pkcs8.pem \
- 			unit/cert-client.pem \
- 			unit/cert-client-key-pkcs1.pem \
-+			unit/cert-client-key-pkcs1-des.pem \
-+			unit/cert-client-key-pkcs1-des3.pem \
-+			unit/cert-client-key-pkcs1-aes128.pem \
-+			unit/cert-client-key-pkcs1-aes192.pem \
-+			unit/cert-client-key-pkcs1-aes256.pem \
- 			unit/cert-client-key-pkcs8.pem \
- 			unit/cert-client-key-pkcs8-md5-des.pem \
- 			unit/cert-client-key-pkcs8-sha1-des.pem \
-@@ -420,6 +425,21 @@ unit/cert-server: unit/cert-server.pem unit/cert-ca.pem
- unit/cert-client-key-pkcs1.pem:
- 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
+diff --git a/ell/asn1-private.h b/ell/asn1-private.h
+index e34f977..2a31241 100644
+--- a/ell/asn1-private.h
++++ b/ell/asn1-private.h
+@@ -29,6 +29,7 @@
+ #define ASN1_ID_INTEGER		ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x02)
+ #define ASN1_ID_BIT_STRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x03)
+ #define ASN1_ID_OCTET_STRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x04)
++#define ASN1_ID_NULL		ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x05)
+ #define ASN1_ID_OID		ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x06)
+ #define ASN1_ID_UTF8STRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x0c)
+ #define ASN1_ID_PRINTABLESTRING	ASN1_ID(ASN1_CLASS_UNIVERSAL, 0, 0x13)
+diff --git a/ell/pem.c b/ell/pem.c
+index b54270e..99020b1 100644
+--- a/ell/pem.c
++++ b/ell/pem.c
+@@ -400,14 +400,21 @@ static struct l_key *pem_load_private_key(uint8_t *co=
+ntent,
+ 	struct l_key *pkey =3D NULL;
  =
 
-+unit/cert-client-key-pkcs1-des.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -des -passout pass:abc
-+
-+unit/cert-client-key-pkcs1-des3.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -des3 -passout pass:abc
-+
-+unit/cert-client-key-pkcs1-aes128.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -aes128 -passout pass:abc
-+
-+unit/cert-client-key-pkcs1-aes192.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -aes192 -passout pass:abc
-+
-+unit/cert-client-key-pkcs1-aes256.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -aes256 -passout pass:abc
-+
- unit/cert-client-key-pkcs8.pem: unit/cert-client-key-pkcs1.pem
- 	$(AM_V_GEN)openssl pkcs8 -topk8 -nocrypt -in $< -out $@
- =
-
-diff --git a/unit/test-pem.c b/unit/test-pem.c
-index e81ddde..95315fc 100644
---- a/unit/test-pem.c
-+++ b/unit/test-pem.c
-@@ -257,6 +257,39 @@ static void test_pem(const void *data)
- 	l_free(decoded);
- }
- =
-
-+static void test_unencrypted_pkey(const void *data)
-+{
-+	const char *pkcs1_pem =3D CERTDIR "cert-client-key-pkcs1.pem";
-+	const char *pkcs8_pem =3D CERTDIR "cert-client-key-pkcs8.pem";
-+	bool is_encrypted;
-+	size_t size;
-+	uint8_t encrypted1[256], encrypted2[256], plaintext[256];
-+	struct l_key *pkey1, *pkey2;
-+	bool is_public;
-+
-+	pkey1 =3D l_pem_load_private_key(pkcs1_pem, NULL, &is_encrypted);
-+	assert(pkey1);
-+	assert(!is_encrypted);
-+
-+	pkey2 =3D l_pem_load_private_key(pkcs8_pem, NULL, &is_encrypted);
-+	assert(pkey2);
-+	assert(!is_encrypted);
-+
-+	memset(plaintext, 42, 256);
-+	assert(l_key_get_info(pkey1, L_KEY_RSA_RAW, L_CHECKSUM_NONE,
-+				&size, &is_public));
-+	assert(size =3D=3D 2048);
-+	assert(!is_public);
-+	assert(l_key_encrypt(pkey1, L_KEY_RSA_RAW, L_CHECKSUM_NONE,
-+				plaintext, encrypted1, 256, 256) =3D=3D 256);
-+	assert(l_key_encrypt(pkey2, L_KEY_RSA_RAW, L_CHECKSUM_NONE,
-+				plaintext, encrypted2, 256, 256) =3D=3D 256);
-+	assert(!memcmp(encrypted1, encrypted2, 256));
-+
-+	l_key_free(pkey1);
-+	l_key_free(pkey2);
-+}
-+
- static void test_encrypted_pkey(const void *data)
- {
- 	const char *encrypted_pem =3D data;
-@@ -324,6 +357,9 @@ int main(int argc, char *argv[])
- 			!l_key_is_supported(L_KEY_FEATURE_CRYPTO))
+ 	/*
+-	 * RFC7469- and PKCS#8-compatible label (default in OpenSSL 1.0.1+)
+-	 * and the older (OpenSSL <=3D 0.9.8 default) label.
++	 * RFC7468 Section 10-compatible unencrypted private key label
++	 * (also mentioned in PKCS#8/RFC5958 Section 5), encodes
++	 * the PKCS#8/RFC5958 PrivateKeyInfo structure -- supported
++	 * directly by the pkcs8-key-parser kernel module.
+ 	 */
+-	if (!strcmp(label, "PRIVATE KEY") ||
+-			!strcmp(label, "RSA PRIVATE KEY"))
++	if (!strcmp(label, "PRIVATE KEY"))
  		goto done;
  =
 
-+	l_test_add("pem/PKCS#1 vs. PKCS#8 unenecrypted Private Key",
-+			test_unencrypted_pkey, NULL);
-+
- 	l_test_add("pem/v1 MD5AndDES encrypted Private Key",
- 			test_encrypted_pkey,
- 			CERTDIR "cert-client-key-pkcs8-md5-des.pem");
-@@ -340,18 +376,39 @@ int main(int argc, char *argv[])
- 				"cert-client-key-pkcs8-v2-des-ede3.pem");
+-	/* RFC5958 (PKCS#8) section 3 type encrypted key label */
++	/*
++	 * RFC7468 Section 11-compatible encrypted private key label
++	 * (also mentioned in PKCS#8/RFC5958 Section 5), encodes
++	 * the PKCS#8/RFC5958 EncryptedPrivateKeyInfo structure.  We
++	 * decrypt it into a plain PrivateKeyInfo for the
++	 * pkcs8-key-parser module.
++	 */
+ 	if (!strcmp(label, "ENCRYPTED PRIVATE KEY")) {
+ 		const uint8_t *key_info, *alg_id, *data;
+ 		uint8_t tag;
+@@ -479,11 +486,92 @@ static struct l_key *pem_load_private_key(uint8_t *co=
+ntent,
  	}
  =
 
--	if (!l_cipher_is_supported(L_CIPHER_AES))
--		goto done;
--
--	if (l_checksum_is_supported(L_CHECKSUM_SHA256, false))
--		l_test_add("pem/v2 AES128 encrypted Private Key",
-+	if (l_cipher_is_supported(L_CIPHER_AES)) {
-+		if (l_checksum_is_supported(L_CHECKSUM_SHA256, false))
-+			l_test_add("pem/v2 AES128 encrypted Private Key",
- 				test_encrypted_pkey,
- 				CERTDIR "cert-client-key-pkcs8-v2-aes128.pem");
+ 	/*
+-	 * TODO: handle RSA PRIVATE KEY format encrypted keys
+-	 * (as produced by "openssl rsa" commands), incompatible with
+-	 * RFC7468 parsing because of the headers present before
+-	 * base64-encoded data.
++	 * Legacy RSA private key label aka. SSLeay format label, created
++	 * by most software but not documented in an RFC.  Encodes the
++	 * PKCS#1/RFC8017 RSAPrivateKey structure.  We wrap it in a PKCS#8
++	 * PrivateKeyInfo for the pkcs8-key-parser module.
++	 *
++	 * TODO: decrypt RSA PRIVATE KEY format encrypted keys
++	 * as produced by "openssl rsa" commands.  These are incompatible
++	 * with RFC7468 parsing because of the RFC822 headers present
++	 * before base64-encoded data.  The format is documented in
++	 * RFC1421 and the encryption algorithms in RFC1423 although
++	 * openssl allows many more algorithms than those documented.
++	 * Then wrap in a PrivateKeyInfo like above.
+ 	 */
++	if (!strcmp(label, "RSA PRIVATE KEY")) {
++		const uint8_t *data;
++		uint8_t tag;
++		size_t data_len;
++		const uint8_t *key_data;
++		size_t key_data_len;
++		int i;
++		uint8_t *private_key;
++		size_t private_key_len;
++		uint8_t *one_asymmetric_key;
++		uint8_t *ptr;
++
++		static const uint8_t version0[] =3D {
++			ASN1_ID_INTEGER, 0x01, 0x00
++		};
++		static const uint8_t pkcs1_rsa_encryption[] =3D {
++			ASN1_ID_SEQUENCE, 0x0d,
++			ASN1_ID_OID, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
++			0x01, 0x01, 0x01,
++			ASN1_ID_NULL, 0x00,
++		};
++
++		/*
++		 * Sanity check that it's a version 0 or 1 RSAPrivateKey
++		 * structure with the 8 integers, if it's not, make a last
++		 * ditch attempt to load it into the kernel directly.
++		 */
++		key_data =3D asn1_der_find_elem(content, len, 0, &tag,
++						&key_data_len);
++		if (!key_data || tag !=3D ASN1_ID_SEQUENCE)
++			goto done;
++
++		data =3D asn1_der_find_elem(key_data, key_data_len, 0, &tag,
++						&data_len);
++		if (!data || tag !=3D ASN1_ID_INTEGER || data_len !=3D 1 ||
++				(data[0] !=3D 0x00 && data[0] !=3D 0x01))
++			goto done;
++
++		for (i =3D 1; i < 9; i++) {
++			data =3D asn1_der_find_elem(key_data, key_data_len,
++							i, &tag, &data_len);
++			if (!data || tag !=3D ASN1_ID_INTEGER || data_len < 1)
++				goto done;
++		}
++
++		private_key =3D l_malloc(10 + len);
++		ptr =3D private_key;
++		*ptr++ =3D ASN1_ID_OCTET_STRING;
++		asn1_write_definite_length(&ptr, len);
++		memcpy(ptr, content, len);
++		ptr +=3D len;
++		private_key_len =3D ptr - private_key;
++
++		one_asymmetric_key =3D l_malloc(32 + private_key_len);
++		ptr =3D one_asymmetric_key;
++		*ptr++ =3D ASN1_ID_SEQUENCE;
++		asn1_write_definite_length(&ptr,
++						sizeof(version0) +
++						sizeof(pkcs1_rsa_encryption) +
++						private_key_len);
++		memcpy(ptr, version0, sizeof(version0));
++		ptr +=3D sizeof(version0);
++		memcpy(ptr, pkcs1_rsa_encryption, sizeof(pkcs1_rsa_encryption));
++		ptr +=3D sizeof(pkcs1_rsa_encryption);
++		memcpy(ptr, private_key, private_key_len);
++		ptr +=3D private_key_len;
++		l_free(private_key);
++
++		l_free(content);
++		content =3D one_asymmetric_key;
++		len =3D ptr - one_asymmetric_key;
++		goto done;
++	}
  =
 
--	if (l_checksum_is_supported(L_CHECKSUM_SHA512, false))
--		l_test_add("pem/v2 AES256 encrypted Private Key",
-+		if (l_checksum_is_supported(L_CHECKSUM_SHA512, false))
-+			l_test_add("pem/v2 AES256 encrypted Private Key",
- 				test_encrypted_pkey,
- 				CERTDIR "cert-client-key-pkcs8-v2-aes256.pem");
-+	}
-+
-+	l_test_add("pem/PKCS#1 DES-encrypted RSA Private Key",
-+			test_encrypted_pkey,
-+			CERTDIR "cert-client-key-pkcs1-des.pem");
-+
-+	if (l_cipher_is_supported(L_CIPHER_DES3_EDE_CBC))
-+		l_test_add("pem/PKCS#1 DES-EDE3-encrypted RSA Private Key",
-+				test_encrypted_pkey,
-+				CERTDIR "cert-client-key-pkcs1-des3.pem");
-+
-+
-+	if (l_cipher_is_supported(L_CIPHER_AES_CBC)) {
-+		l_test_add("pem/PKCS#1 AES128-encrypted RSA Private Key",
-+				test_encrypted_pkey,
-+				CERTDIR "cert-client-key-pkcs1-aes128.pem");
-+		l_test_add("pem/PKCS#1 AES192-encrypted RSA Private Key",
-+				test_encrypted_pkey,
-+				CERTDIR "cert-client-key-pkcs1-aes192.pem");
-+		l_test_add("pem/PKCS#1 AES256-encrypted RSA Private Key",
-+				test_encrypted_pkey,
-+				CERTDIR "cert-client-key-pkcs1-aes256.pem");
-+	}
- =
-
- done:
- 	return l_test_run();
+ 	/* Label not known */
+ 	goto err;
 -- =
 
 2.25.1
 
---===============4236814022322514900==--
+--===============0082093005373130409==--
 
