@@ -1,270 +1,192 @@
-Content-Type: multipart/mixed; boundary="===============4224991788198973514=="
+Content-Type: multipart/mixed; boundary="===============1215053747803867380=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 3/5] examples: More error messages in https-{client,
- server}-test
-Date: Sat, 21 Nov 2020 03:48:32 +0100
-Message-ID: <20201121024834.76213-3-andrew.zaborowski@intel.com>
+Subject: [PATCH 4/5] treewide: Rename test private keys to include format
+Date: Sat, 21 Nov 2020 03:48:33 +0100
+Message-ID: <20201121024834.76213-4-andrew.zaborowski@intel.com>
 In-Reply-To: <20201121024834.76213-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4224991788198973514==
+--===============1215053747803867380==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Change the error messages to go to stderr and add messages on
-certificate and key loading errors.
+Include pkcs1 or pkcs8 in the names of the test client private keys.
 ---
- examples/https-client-test.c | 39 ++++++++++++++++++++++++--------
- examples/https-server-test.c | 44 ++++++++++++++++++++++++------------
- 2 files changed, 59 insertions(+), 24 deletions(-)
+ Makefile.am     | 39 ++++++++++++++++++++-------------------
+ unit/test-pem.c | 17 +++++++++--------
+ 2 files changed, 29 insertions(+), 27 deletions(-)
 
-diff --git a/examples/https-client-test.c b/examples/https-client-test.c
-index eaa7900..2c8d020 100644
---- a/examples/https-client-test.c
-+++ b/examples/https-client-test.c
-@@ -67,7 +67,7 @@ static void https_tls_disconnected(enum l_tls_alert_desc =
-reason, bool remote,
- 					void *user_data)
- {
- 	if (reason)
--		printf("TLS error: %s\n", l_tls_alert_to_str(reason));
-+		fprintf(stderr, "TLS error: %s\n", l_tls_alert_to_str(reason));
- 	l_main_quit();
- }
+diff --git a/Makefile.am b/Makefile.am
+index e358546..546a6aa 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -211,15 +211,16 @@ cert_tests =3D unit/test-pem \
+ cert_files =3D unit/cert-chain.pem \
+ 			unit/cert-entity-int.pem \
+ 			unit/cert-server.pem \
+-			unit/cert-client.pem \
+ 			unit/cert-server-key-pkcs8.pem \
++			unit/cert-client.pem \
++			unit/cert-client-key-pkcs1.pem \
+ 			unit/cert-client-key-pkcs8.pem \
+-			unit/cert-client-key-md5-des.pem \
+-			unit/cert-client-key-sha1-des.pem \
+-			unit/cert-client-key-v2-des.pem \
+-			unit/cert-client-key-v2-des-ede3.pem \
+-			unit/cert-client-key-v2-aes128.pem \
+-			unit/cert-client-key-v2-aes256.pem \
++			unit/cert-client-key-pkcs8-md5-des.pem \
++			unit/cert-client-key-pkcs8-sha1-des.pem \
++			unit/cert-client-key-pkcs8-v2-des.pem \
++			unit/cert-client-key-pkcs8-v2-des-ede3.pem \
++			unit/cert-client-key-pkcs8-v2-aes128.pem \
++			unit/cert-client-key-pkcs8-v2-aes256.pem \
+ 			unit/cert-no-keyid.pem
  =
 
-@@ -137,6 +137,7 @@ int main(int argc, char *argv[])
- 	struct l_certchain *cert =3D NULL;
- 	struct l_key *priv_key =3D NULL;
- 	struct l_queue *ca_cert =3D NULL;
-+	bool encrypted;
+ cert_checks =3D unit/cert-intca \
+@@ -416,37 +417,37 @@ unit/cert-server.pem: unit/cert-server.csr unit/cert-=
+ca.pem unit/gencerts.cnf
+ unit/cert-server: unit/cert-server.pem unit/cert-ca.pem
+ 	$(AM_V_GEN)openssl verify -CAfile $(builddir)/unit/cert-ca.pem $<
  =
 
- 	if (argc !=3D 2 && argc !=3D 3 && argc !=3D 6) {
- 		printf("Usage: %s <https-host-name> [<ca-cert-path> "
-@@ -153,19 +154,19 @@ int main(int argc, char *argv[])
- 	hostname =3D argv[1];
- 	he =3D gethostbyname(hostname);
- 	if (!he) {
--		printf("gethostbyname: %s\n", strerror(errno));
-+		fprintf(stderr, "gethostbyname: %s\n", strerror(errno));
- 		return -1;
- 	}
+-unit/cert-client-key.pem:
++unit/cert-client-key-pkcs1.pem:
+ 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
  =
 
- 	addr_list =3D (struct in_addr **) he->h_addr_list;
- 	if (!addr_list) {
--		printf("No host addresses found\n");
-+		fprintf(stderr, "No host addresses found\n");
- 		return -1;
- 	}
+-unit/cert-client-key-pkcs8.pem: unit/cert-client-key.pem
++unit/cert-client-key-pkcs8.pem: unit/cert-client-key-pkcs1.pem
+ 	$(AM_V_GEN)openssl pkcs8 -topk8 -nocrypt -in $< -out $@
  =
 
- 	fd =3D socket(AF_INET, SOCK_STREAM, 0);
- 	if (fd < 0) {
--		printf("socket: %s\n", strerror(errno));
-+		fprintf(stderr, "socket: %s\n", strerror(errno));
- 		return -1;
- 	}
+-unit/cert-client-key-md5-des.pem: unit/cert-client-key-pkcs8.pem
++unit/cert-client-key-pkcs8-md5-des.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+ 			-topk8 -v1 PBE-MD5-DES -passout pass:abc
  =
 
-@@ -174,7 +175,7 @@ int main(int argc, char *argv[])
- 	addr.sin_port =3D htons(443);
- 	memcpy(&addr.sin_addr, addr_list[0], sizeof(addr.sin_addr));
- 	if (connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
--		printf("connect: %s\n", strerror(errno));
-+		fprintf(stderr, "connect: %s\n", strerror(errno));
- 		return -1;
- 	}
+-unit/cert-client-key-sha1-des.pem: unit/cert-client-key-pkcs8.pem
++unit/cert-client-key-pkcs8-sha1-des.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+ 			-topk8 -v1 PBE-SHA1-DES -passout pass:abc
  =
 
-@@ -192,14 +193,32 @@ int main(int argc, char *argv[])
- 	if (getenv("TLS_DEBUG"))
- 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
+-unit/cert-client-key-v2-des.pem: unit/cert-client-key-pkcs8.pem
++unit/cert-client-key-pkcs8-v2-des.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+ 			-topk8 -v2 des-cbc -v2prf hmacWithSHA1 -passout pass:abc
  =
 
--	if (argc >=3D 3)
-+	if (argc >=3D 3) {
- 		ca_cert =3D l_pem_load_certificate_list(argv[2]);
-+		if (!cert) {
-+			fprintf(stderr, "Couldn't load the CA certificates\n");
-+			return -1;
-+		}
+-unit/cert-client-key-v2-des-ede3.pem: unit/cert-client-key-pkcs8.pem
++unit/cert-client-key-pkcs8-v2-des-ede3.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+ 			-topk8 -v2 des-ede3-cbc -v2prf hmacWithSHA224 -passout pass:abc
+ =
+
+-unit/cert-client-key-v2-aes128.pem: unit/cert-client-key-pkcs8.pem
++unit/cert-client-key-pkcs8-v2-aes128.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+ 			-topk8 -v2 aes128 -v2prf hmacWithSHA256 -passout pass:abc
+ =
+
+-unit/cert-client-key-v2-aes256.pem: unit/cert-client-key-pkcs8.pem
++unit/cert-client-key-pkcs8-v2-aes256.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+ 			-topk8 -v2 aes256 -v2prf hmacWithSHA512 -passout pass:abc
+ =
+
+-unit/cert-client.csr: unit/cert-client-key.pem unit/gencerts.cnf
++unit/cert-client.csr: unit/cert-client-key-pkcs1.pem unit/gencerts.cnf
+ 	$(AM_V_GEN)openssl req -new -extensions cert_ext \
+ 			-config $(srcdir)/unit/gencerts.cnf \
+ 			-subj '/O=3DBar Example Organization/CN=3DBar Example Organization/emai=
+lAddress=3Dbar(a)mail.example' \
+@@ -512,7 +513,7 @@ unit/cert-ca2.pem: unit/cert-ca-key.pem unit/gencerts.c=
+nf
+ 			-subj '/O=3DInternational Union of Example Organizations/CN=3DCertifica=
+te issuer guy/emailAddress=3Dca-no-akid(a)mail.example' \
+ 			-key $< -sha256 -days 10000 -out $@
+ =
+
+-unit/cert-no-keyid.csr: unit/cert-client-key.pem unit/gencerts.cnf
++unit/cert-no-keyid.csr: unit/cert-client-key-pkcs1.pem unit/gencerts.cnf
+ 	$(AM_V_GEN)openssl req -new \
+ 			-config $(srcdir)/unit/gencerts.cnf \
+ 			-subj '/O=3DBaz Example Organization/CN=3DBaz Example Organization/emai=
+lAddress=3Dbaz@mail.example' \
+@@ -539,9 +540,9 @@ unit/key-ciphertext.dat: unit/plaintext.txt unit/cert-c=
+lient.pem
+ unit/key-ciphertext.h: unit/key-ciphertext.dat
+ 	$(AM_V_GEN)xxd -i < $< > $@
+ =
+
+-unit/key-signature.dat: unit/plaintext.txt unit/cert-client-key.pem
++unit/key-signature.dat: unit/plaintext.txt unit/cert-client-key-pkcs1.pem
+ 	$(AM_V_GEN)openssl rsautl -sign -pkcs -in $< \
+-			-inkey $(builddir)/unit/cert-client-key.pem -out $@
++			-inkey $(builddir)/unit/cert-client-key-pkcs1.pem -out $@
+ =
+
+ unit/key-signature.h: unit/key-signature.dat
+ 	$(AM_V_GEN)xxd -i < $< > $@
+diff --git a/unit/test-pem.c b/unit/test-pem.c
+index a1e8110..e81ddde 100644
+--- a/unit/test-pem.c
++++ b/unit/test-pem.c
+@@ -326,18 +326,19 @@ int main(int argc, char *argv[])
+ =
+
+ 	l_test_add("pem/v1 MD5AndDES encrypted Private Key",
+ 			test_encrypted_pkey,
+-			CERTDIR "cert-client-key-md5-des.pem");
++			CERTDIR "cert-client-key-pkcs8-md5-des.pem");
+ 	l_test_add("pem/v1 SHA1AndDES encrypted Private Key",
+ 			test_encrypted_pkey,
+-			CERTDIR "cert-client-key-sha1-des.pem");
++			CERTDIR "cert-client-key-pkcs8-sha1-des.pem");
+ 	l_test_add("pem/v2 DES encrypted Private Key", test_encrypted_pkey,
+-			CERTDIR "cert-client-key-v2-des.pem");
++			CERTDIR "cert-client-key-pkcs8-v2-des.pem");
+ =
+
+ 	if (l_cipher_is_supported(L_CIPHER_DES3_EDE_CBC) &&
+-			l_checksum_is_supported(L_CHECKSUM_SHA224, false))
++			l_checksum_is_supported(L_CHECKSUM_SHA224, false)) {
+ 		l_test_add("pem/v2 DES EDE3 encrypted Private Key",
+-				test_encrypted_pkey,
+-				CERTDIR "cert-client-key-v2-des-ede3.pem");
++				test_encrypted_pkey, CERTDIR
++				"cert-client-key-pkcs8-v2-des-ede3.pem");
 +	}
  =
 
--	if (argc >=3D 4)
-+	if (argc >=3D 4) {
- 		cert =3D l_pem_load_certificate_chain(argv[3]);
-+		if (!cert) {
-+			fprintf(stderr,
-+				"Couldn't load the server certificate\n");
-+			return -1;
-+		}
-+	}
+ 	if (!l_cipher_is_supported(L_CIPHER_AES))
+ 		goto done;
+@@ -345,12 +346,12 @@ int main(int argc, char *argv[])
+ 	if (l_checksum_is_supported(L_CHECKSUM_SHA256, false))
+ 		l_test_add("pem/v2 AES128 encrypted Private Key",
+ 				test_encrypted_pkey,
+-				CERTDIR "cert-client-key-v2-aes128.pem");
++				CERTDIR "cert-client-key-pkcs8-v2-aes128.pem");
  =
 
--	if (argc >=3D 6)
--		priv_key =3D l_pem_load_private_key(argv[4], argv[5], NULL);
-+	if (argc >=3D 6) {
-+		priv_key =3D l_pem_load_private_key(argv[4], argv[5], &encrypted);
-+		if (!priv_key) {
-+			fprintf(stderr,
-+				"Couldn't load the client private key%s\n",
-+				encrypted ? " (encrypted)" : "");
-+			return -1;
-+		}
-+	}
+ 	if (l_checksum_is_supported(L_CHECKSUM_SHA512, false))
+ 		l_test_add("pem/v2 AES256 encrypted Private Key",
+ 				test_encrypted_pkey,
+-				CERTDIR "cert-client-key-v2-aes256.pem");
++				CERTDIR "cert-client-key-pkcs8-v2-aes256.pem");
  =
 
- 	auth_ok =3D (argc <=3D 2 || l_tls_set_cacert(tls, ca_cert)) &&
- 		(argc <=3D 5 ||
-@@ -209,7 +228,7 @@ int main(int argc, char *argv[])
- 	if (tls && auth_ok)
- 		l_main_run();
- 	else {
--		printf("TLS setup failed\n");
-+		fprintf(stderr, "TLS setup failed\n");
- 		l_queue_destroy(ca_cert, (l_queue_destroy_func_t) l_cert_free);
- 		l_certchain_free(cert);
- 		l_key_free(priv_key);
-diff --git a/examples/https-server-test.c b/examples/https-server-test.c
-index 2512601..8f3cb3c 100644
---- a/examples/https-server-test.c
-+++ b/examples/https-server-test.c
-@@ -42,7 +42,7 @@ bool served;
- static void https_io_disconnect(struct l_io *io, void *user_data)
- {
- 	if (!served)
--		printf("Disconnected before serving a page\n");
-+		fprintf(stderr, "Disconnected before serving a page\n");
- 	l_main_quit();
- }
- =
-
-@@ -54,7 +54,7 @@ static bool https_io_read(struct l_io *io, void *user_dat=
-a)
- 	l =3D read(l_io_get_fd(io), buf, sizeof(buf));
- 	if (l =3D=3D 0) {
- 		if (!served)
--			printf("EOF before serving a page\n");
-+			fprintf(stderr, "EOF before serving a page\n");
- 		l_main_quit();
- 	} else if (l > 0)
- 		l_tls_handle_rx(tls, buf, l);
-@@ -66,7 +66,7 @@ static void https_tls_disconnected(enum l_tls_alert_desc =
-reason, bool remote,
- 					void *user_data)
- {
- 	if (reason)
--		printf("TLS error: %s\n", l_tls_alert_to_str(reason));
-+		fprintf(stderr, "TLS error: %s\n", l_tls_alert_to_str(reason));
- 	l_main_quit();
- }
- =
-
-@@ -93,7 +93,7 @@ static void https_tls_write(const uint8_t *data, size_t l=
-en, void *user_data)
- 	while (len) {
- 		r =3D send(l_io_get_fd(io), data, len, MSG_NOSIGNAL);
- 		if (r < 0) {
--			printf("send: %s\n", strerror(errno));
-+			fprintf(stderr, "send: %s\n", strerror(errno));
- 			l_main_quit();
- 			break;
- 		}
-@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
- 	struct l_certchain *cert;
- 	struct l_key *priv_key;
- 	struct l_queue *ca_cert =3D NULL;
-+	bool encrypted;
- =
-
- 	if (argc !=3D 4 && argc !=3D 5) {
- 		printf("Usage: %s <server-cert-path> <server-key-path> "
-@@ -146,11 +147,11 @@ int main(int argc, char *argv[])
- 	addr.sin_port =3D htons(1234);
- =
-
- 	if (bind(listenfd, (struct sockaddr *) &addr, sizeof(addr)) =3D=3D -1) {
--		printf("bind: %s\n", strerror(errno));
-+		fprintf(stderr, "bind: %s\n", strerror(errno));
- 		return -1;
- 	}
- 	if (listen(listenfd, 1) =3D=3D -1) {
--		printf("listen: %s\n", strerror(errno));
-+		fprintf(stderr, "listen: %s\n", strerror(errno));
- 		return -1;
- 	}
- =
-
-@@ -159,13 +160,34 @@ int main(int argc, char *argv[])
- 	fd =3D accept(listenfd, NULL, NULL);
- 	close(listenfd);
- 	if (fd =3D=3D -1) {
--		printf("accept: %s\n", strerror(errno));
-+		fprintf(stderr, "accept: %s\n", strerror(errno));
- 		return -1;
- 	}
- =
-
- 	if (!l_main_init())
- 		return -1;
- =
-
-+	cert =3D l_pem_load_certificate_chain(argv[1]);
-+	if (!cert) {
-+		fprintf(stderr, "Couldn't load the server certificate\n");
-+		return -1;
-+	}
-+
-+	priv_key =3D l_pem_load_private_key(argv[2], argv[3], &encrypted);
-+	if (!priv_key) {
-+		fprintf(stderr, "Couldn't load the server private key%s\n",
-+			encrypted ? " (encrypted)" : "");
-+		return -1;
-+	}
-+
-+	if (argc >=3D 5) {
-+		ca_cert =3D l_pem_load_certificate_list(argv[4]);
-+		if (!ca_cert) {
-+			fprintf(stderr, "Couldn't load the CA certificates\n");
-+			return -1;
-+		}
-+	}
-+
- 	io =3D l_io_new(fd);
- 	l_io_set_close_on_destroy(io, true);
- 	l_io_set_read_handler(io, https_io_read, tls, NULL);
-@@ -177,12 +199,6 @@ int main(int argc, char *argv[])
- 	if (getenv("TLS_DEBUG"))
- 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
- =
-
--	cert =3D l_pem_load_certificate_chain(argv[1]);
--	priv_key =3D l_pem_load_private_key(argv[2], argv[3], NULL);
--
--	if (argc >=3D 5)
--		ca_cert =3D l_pem_load_certificate_list(argv[4]);
--
- 	auth_ok =3D l_tls_set_auth_data(tls, cert, priv_key) &&
- 		(argc <=3D 4 || l_tls_set_cacert(tls, ca_cert)) &&
- 		l_tls_start(tls);
-@@ -190,7 +206,7 @@ int main(int argc, char *argv[])
- 	if (tls && auth_ok)
- 		l_main_run();
- 	else {
--		printf("TLS setup failed\n");
-+		fprintf(stderr, "TLS setup failed\n");
- 		l_queue_destroy(ca_cert, (l_queue_destroy_func_t) l_cert_free);
- 		l_certchain_free(cert);
- 		l_key_free(priv_key);
+ done:
+ 	return l_test_run();
 -- =
 
 2.25.1
 
---===============4224991788198973514==--
+--===============1215053747803867380==--
 
