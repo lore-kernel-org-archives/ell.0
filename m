@@ -1,171 +1,145 @@
-Content-Type: multipart/mixed; boundary="===============3057390887633035666=="
+Content-Type: multipart/mixed; boundary="===============5086135012252676490=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 5/5] unit: Test loading PKCS#1 PEM private key files
-Date: Mon, 23 Nov 2020 12:54:17 +0100
-Message-ID: <20201123115417.218473-5-andrew.zaborowski@intel.com>
-In-Reply-To: <20201123115417.218473-1-andrew.zaborowski@intel.com>
+From: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH v2 1/9] dhcp: release lease when client stops
+Date: Mon, 23 Nov 2020 10:47:32 -0800
+Message-ID: <20201123184740.4023017-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3057390887633035666==
+--===============5086135012252676490==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+RFC 2131 does not explicitly require this but clients MAY
+release their IP address when they are done using it, e.g.
+when shutting down. This is also described as a "graceful shutdown"
+so its probably best the DHCP client does this.
 ---
- Makefile.am     | 20 ++++++++++++++
- unit/test-pem.c | 70 ++++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 83 insertions(+), 7 deletions(-)
+ ell/dhcp.c | 74 +++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 65 insertions(+), 9 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index 546a6aa..28082aa 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -214,6 +214,11 @@ cert_files =3D unit/cert-chain.pem \
- 			unit/cert-server-key-pkcs8.pem \
- 			unit/cert-client.pem \
- 			unit/cert-client-key-pkcs1.pem \
-+			unit/cert-client-key-pkcs1-des.pem \
-+			unit/cert-client-key-pkcs1-des3.pem \
-+			unit/cert-client-key-pkcs1-aes128.pem \
-+			unit/cert-client-key-pkcs1-aes192.pem \
-+			unit/cert-client-key-pkcs1-aes256.pem \
- 			unit/cert-client-key-pkcs8.pem \
- 			unit/cert-client-key-pkcs8-md5-des.pem \
- 			unit/cert-client-key-pkcs8-sha1-des.pem \
-@@ -420,6 +425,21 @@ unit/cert-server: unit/cert-server.pem unit/cert-ca.pem
- unit/cert-client-key-pkcs1.pem:
- 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
- =
+v2:
+ * Send release in BOUND, RENEW, and REBINDING states
 
-+unit/cert-client-key-pkcs1-des.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -des -passout pass:abc
-+
-+unit/cert-client-key-pkcs1-des3.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -des3 -passout pass:abc
-+
-+unit/cert-client-key-pkcs1-aes128.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -aes128 -passout pass:abc
-+
-+unit/cert-client-key-pkcs1-aes192.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -aes192 -passout pass:abc
-+
-+unit/cert-client-key-pkcs1-aes256.pem: unit/cert-client-key-pkcs1.pem
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -aes256 -passout pass:abc
-+
- unit/cert-client-key-pkcs8.pem: unit/cert-client-key-pkcs1.pem
- 	$(AM_V_GEN)openssl pkcs8 -topk8 -nocrypt -in $< -out $@
- =
-
-diff --git a/unit/test-pem.c b/unit/test-pem.c
-index e81ddde..f875adc 100644
---- a/unit/test-pem.c
-+++ b/unit/test-pem.c
-@@ -257,6 +257,39 @@ static void test_pem(const void *data)
- 	l_free(decoded);
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index e6fbda7..dc4e73b 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -367,6 +367,19 @@ static int dhcp_client_send_discover(struct l_dhcp_cli=
+ent *client)
+ 					discover, len);
  }
  =
 
-+static void test_unencrypted_pkey(const void *data)
++static int dhcp_client_send_unicast(struct l_dhcp_client *client,
++					struct dhcp_message *request,
++					unsigned int len)
 +{
-+	const char *pkcs1_pem =3D CERTDIR "cert-client-key-pkcs1.pem";
-+	const char *pkcs8_pem =3D CERTDIR "cert-client-key-pkcs8.pem";
-+	bool is_encrypted;
-+	size_t size;
-+	uint8_t encrypted1[256], encrypted2[256], plaintext[256];
-+	struct l_key *pkey1, *pkey2;
-+	bool is_public;
++	struct sockaddr_in si;
 +
-+	pkey1 =3D l_pem_load_private_key(pkcs1_pem, NULL, &is_encrypted);
-+	assert(pkey1);
-+	assert(!is_encrypted);
-+
-+	pkey2 =3D l_pem_load_private_key(pkcs8_pem, NULL, &is_encrypted);
-+	assert(pkey2);
-+	assert(!is_encrypted);
-+
-+	memset(plaintext, 42, 256);
-+	assert(l_key_get_info(pkey1, L_KEY_RSA_RAW, L_CHECKSUM_NONE,
-+				&size, &is_public));
-+	assert(size =3D=3D 2048);
-+	assert(!is_public);
-+	assert(l_key_encrypt(pkey1, L_KEY_RSA_RAW, L_CHECKSUM_NONE,
-+				plaintext, encrypted1, 256, 256) =3D=3D 256);
-+	assert(l_key_encrypt(pkey2, L_KEY_RSA_RAW, L_CHECKSUM_NONE,
-+				plaintext, encrypted2, 256, 256) =3D=3D 256);
-+	assert(!memcmp(encrypted1, encrypted2, 256));
-+
-+	l_key_free(pkey1);
-+	l_key_free(pkey2);
++	memset(&si, 0, sizeof(si));
++	si.sin_family =3D AF_INET;
++	si.sin_port =3D L_CPU_TO_BE16(DHCP_PORT_SERVER);
++	si.sin_addr.s_addr =3D client->lease->server_address;
++	return client->transport->send(client->transport, &si, request, len);
 +}
 +
- static void test_encrypted_pkey(const void *data)
+ static int dhcp_client_send_request(struct l_dhcp_client *client)
  {
- 	const char *encrypted_pem =3D data;
-@@ -324,6 +357,9 @@ int main(int argc, char *argv[])
- 			!l_key_is_supported(L_KEY_FEATURE_CRYPTO))
- 		goto done;
+ 	struct dhcp_message_builder builder;
+@@ -450,15 +463,8 @@ static int dhcp_client_send_request(struct l_dhcp_clie=
+nt *client)
+ 	 * 'server identifier' option for any unicast requests to the DHCP
+ 	 * server.
+ 	 */
+-	if (client->state =3D=3D DHCP_STATE_RENEWING) {
+-		struct sockaddr_in si;
+-		memset(&si, 0, sizeof(si));
+-		si.sin_family =3D AF_INET;
+-		si.sin_port =3D L_CPU_TO_BE16(DHCP_PORT_SERVER);
+-		si.sin_addr.s_addr =3D client->lease->server_address;
+-		return client->transport->send(client->transport,
+-							&si, request, len);
+-	}
++	if (client->state =3D=3D DHCP_STATE_RENEWING)
++		return dhcp_client_send_unicast(client, request, len);
  =
 
-+	l_test_add("pem/PKCS#1 vs. PKCS#8 unenecrypted Private Key",
-+			test_unencrypted_pkey, NULL);
+ 	return client->transport->l2_send(client->transport,
+ 					INADDR_ANY, DHCP_PORT_CLIENT,
+@@ -466,6 +472,45 @@ static int dhcp_client_send_request(struct l_dhcp_clie=
+nt *client)
+ 					NULL, request, len);
+ }
+ =
+
++static void dhcp_client_send_release(struct l_dhcp_client *client)
++{
++	struct dhcp_message_builder builder;
++	size_t optlen =3D DHCP_MIN_OPTIONS_SIZE;
++	size_t len =3D sizeof(struct dhcp_message) + optlen;
++	L_AUTO_FREE_VAR(struct dhcp_message *, request);
++	int err;
++	struct sockaddr_in si;
 +
- 	l_test_add("pem/v1 MD5AndDES encrypted Private Key",
- 			test_encrypted_pkey,
- 			CERTDIR "cert-client-key-pkcs8-md5-des.pem");
-@@ -340,18 +376,38 @@ int main(int argc, char *argv[])
- 				"cert-client-key-pkcs8-v2-des-ede3.pem");
- 	}
- =
-
--	if (!l_cipher_is_supported(L_CIPHER_AES))
--		goto done;
--
--	if (l_checksum_is_supported(L_CHECKSUM_SHA256, false))
--		l_test_add("pem/v2 AES128 encrypted Private Key",
-+	if (l_cipher_is_supported(L_CIPHER_AES)) {
-+		if (l_checksum_is_supported(L_CHECKSUM_SHA256, false))
-+			l_test_add("pem/v2 AES128-encrypted Private Key",
- 				test_encrypted_pkey,
- 				CERTDIR "cert-client-key-pkcs8-v2-aes128.pem");
- =
-
--	if (l_checksum_is_supported(L_CHECKSUM_SHA512, false))
--		l_test_add("pem/v2 AES256 encrypted Private Key",
-+		if (l_checksum_is_supported(L_CHECKSUM_SHA512, false))
-+			l_test_add("pem/v2 AES256-encrypted Private Key",
- 				test_encrypted_pkey,
- 				CERTDIR "cert-client-key-pkcs8-v2-aes256.pem");
++	CLIENT_DEBUG("");
++
++	memset(&si, 0, sizeof(si));
++	si.sin_family =3D AF_INET;
++	si.sin_port =3D L_CPU_TO_BE16(DHCP_PORT_SERVER);
++	si.sin_addr.s_addr =3D client->lease->server_address;
++
++	request =3D (struct dhcp_message *) l_new(uint8_t, len);
++
++	_dhcp_message_builder_init(&builder, request, len,
++					DHCP_MESSAGE_TYPE_RELEASE);
++
++	err =3D client_message_init(client, request, &builder);
++	if (err < 0)
++		return;
++
++	request->ciaddr =3D client->lease->address;
++
++	if (!_dhcp_message_builder_append(&builder,
++					L_DHCP_OPTION_SERVER_IDENTIFIER,
++					4, &client->lease->server_address)) {
++		CLIENT_DEBUG("Failed to append server ID");
++		return;
 +	}
 +
-+	l_test_add("pem/PKCS#1 DES-encrypted RSA Private Key",
-+			test_encrypted_pkey,
-+			CERTDIR "cert-client-key-pkcs1-des.pem");
++	_dhcp_message_builder_finalize(&builder, &len);
 +
-+	if (l_cipher_is_supported(L_CIPHER_DES3_EDE_CBC))
-+		l_test_add("pem/PKCS#1 DES-EDE3-encrypted RSA Private Key",
-+				test_encrypted_pkey,
-+				CERTDIR "cert-client-key-pkcs1-des3.pem");
++	dhcp_client_send_unicast(client, request, len);
++}
 +
-+	if (l_cipher_is_supported(L_CIPHER_AES_CBC)) {
-+		l_test_add("pem/PKCS#1 AES128-encrypted RSA Private Key",
-+				test_encrypted_pkey,
-+				CERTDIR "cert-client-key-pkcs1-aes128.pem");
-+		l_test_add("pem/PKCS#1 AES192-encrypted RSA Private Key",
-+				test_encrypted_pkey,
-+				CERTDIR "cert-client-key-pkcs1-aes192.pem");
-+		l_test_add("pem/PKCS#1 AES256-encrypted RSA Private Key",
-+				test_encrypted_pkey,
-+				CERTDIR "cert-client-key-pkcs1-aes256.pem");
-+	}
+ static void dhcp_client_timeout_resend(struct l_timeout *timeout,
+ 								void *user_data)
+ {
+@@ -1063,6 +1108,17 @@ LIB_EXPORT bool l_dhcp_client_stop(struct l_dhcp_cli=
+ent *client)
+ 	if (unlikely(!client))
+ 		return false;
  =
 
- done:
- 	return l_test_run();
++	/*
++	 * RFC 2131 Section 4.4.6
++	 * "If the client no longer requires use of its assigned network address
++	 * (e.g., the client is gracefully shut down), the client sends a
++	 * DHCPRELEASE message to the server.""
++	 */
++	if (client->state =3D=3D DHCP_STATE_BOUND ||
++			client->state =3D=3D DHCP_STATE_RENEWING ||
++			client->state =3D=3D DHCP_STATE_REBINDING)
++		dhcp_client_send_release(client);
++
+ 	if (client->rtnl_add_cmdid) {
+ 		l_netlink_cancel(client->rtnl, client->rtnl_add_cmdid);
+ 		client->rtnl_add_cmdid =3D 0;
 -- =
 
-2.27.0
+2.26.2
 
---===============3057390887633035666==--
+--===============5086135012252676490==--
 
