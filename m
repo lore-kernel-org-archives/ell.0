@@ -1,66 +1,67 @@
-Content-Type: multipart/mixed; boundary="===============5465629344372461542=="
+Content-Type: multipart/mixed; boundary="===============2096194444250475066=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v2 4/9] dhcp-server: add private _dhcp_server_get_transport
-Date: Mon, 23 Nov 2020 10:47:35 -0800
-Message-ID: <20201123184740.4023017-4-prestwoj@gmail.com>
+Subject: [PATCH v2 5/9] dhcp: add private _dhcp_client_get_transport
+Date: Mon, 23 Nov 2020 10:47:36 -0800
+Message-ID: <20201123184740.4023017-5-prestwoj@gmail.com>
 In-Reply-To: <20201123184740.4023017-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5465629344372461542==
+--===============2096194444250475066==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-A convenience for unit tests so the server transport doesn't need
+A convenience for unit tests so the client transport doesn't need
 to be tracked.
 ---
  ell/dhcp-private.h | 1 +
- ell/dhcp-server.c  | 8 ++++++++
- 2 files changed, 9 insertions(+)
+ ell/dhcp.c         | 9 +++++++++
+ 2 files changed, 10 insertions(+)
 
 diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
-index 17d0574..11f8220 100644
+index 11f8220..379792c 100644
 --- a/ell/dhcp-private.h
 +++ b/ell/dhcp-private.h
-@@ -144,6 +144,7 @@ void _dhcp_client_override_xid(struct l_dhcp_client *cl=
-ient, uint32_t xid);
+@@ -140,6 +140,7 @@ int _dhcp_option_append(uint8_t **buf, size_t *buflen, =
+uint8_t code,
+ =
+
+ bool _dhcp_client_set_transport(struct l_dhcp_client *client,
+ 					struct dhcp_transport *transport);
++struct dhcp_transport *_dhcp_client_get_transport(struct l_dhcp_client *cl=
+ient);
+ void _dhcp_client_override_xid(struct l_dhcp_client *client, uint32_t xid);
  =
 
  bool _dhcp_server_set_transport(struct l_dhcp_server *server,
- 					struct dhcp_transport *transport);
-+struct dhcp_transport *_dhcp_server_get_transport(struct l_dhcp_server *se=
-rver);
- =
-
- struct l_dhcp_lease {
- 	uint32_t address;
-diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index c01aba2..e4d65b8 100644
---- a/ell/dhcp-server.c
-+++ b/ell/dhcp-server.c
-@@ -689,6 +689,14 @@ bool _dhcp_server_set_transport(struct l_dhcp_server *=
-server,
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index dc4e73b..e104845 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -1025,6 +1025,15 @@ bool _dhcp_client_set_transport(struct l_dhcp_client=
+ *client,
  	return true;
  }
  =
 
-+struct dhcp_transport *_dhcp_server_get_transport(struct l_dhcp_server *se=
-rver)
++struct dhcp_transport *_dhcp_client_get_transport(struct l_dhcp_client *cl=
+ient)
 +{
-+	if (unlikely(!server))
++	if (unlikely(!client))
 +		return NULL;
 +
-+	return server->transport;
++	return client->transport;
 +}
 +
- LIB_EXPORT struct l_dhcp_server *l_dhcp_server_new(int ifindex)
++
+ void _dhcp_client_override_xid(struct l_dhcp_client *client, uint32_t xid)
  {
- 	struct l_dhcp_server *server =3D l_new(struct l_dhcp_server, 1);
+ 	client->override_xid =3D true;
 -- =
 
 2.26.2
 
---===============5465629344372461542==--
+--===============2096194444250475066==--
 
