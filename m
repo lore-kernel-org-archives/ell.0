@@ -1,90 +1,51 @@
-Content-Type: multipart/mixed; boundary="===============6671816275093176021=="
+Content-Type: multipart/mixed; boundary="===============4815469108424749843=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v3 5/5] unit: add DHCP expiration reuse test
-Date: Mon, 23 Nov 2020 12:49:06 -0800
-Message-ID: <20201123204906.4101813-5-prestwoj@gmail.com>
-In-Reply-To: <20201123204906.4101813-1-prestwoj@gmail.com>
+From: =?unknown-8bit?q?=C3=89rico?= Nogueira <ericonr@disroot.org>
+Subject: [BUG] ELL doesn't have a fallback for rawmemchr
+Date: Mon, 30 Nov 2020 13:49:47 -0300
+Message-ID: <C7GR3VAGOXZZ.37PH59CQ2TJO2@mussels>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6671816275093176021==
+--===============4815469108424749843==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Test that the DHCP server reuses expired IPs once the limit
-is reached.
----
- unit/test-dhcp.c | 42 ++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 42 insertions(+)
+Hi!
 
-diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
-index 1f4bd8b..ad06c14 100644
---- a/unit/test-dhcp.c
-+++ b/unit/test-dhcp.c
-@@ -962,6 +962,47 @@ static void test_complete_run(const void *data)
- 	l_dhcp_server_destroy(server);
- }
- =
+Building ELL 0.35 on a musl system fails, due to ell/pem.c using
+rawmemchr(), which is a glibc extension. Building IWD with internal
+ELL fails for the same reason.
 
-+static void test_expired_ip_reuse(const void *data)
-+{
-+	uint8_t addr[6] =3D {0x01, 0x02, 0x03, 0x04, 0x05, 0x00};
-+	struct l_dhcp_server *server =3D server_init();
-+	struct dhcp_transport *srv_transport =3D
-+					_dhcp_server_get_transport(server);
-+	struct l_dhcp_client *client_new;
-+	const struct l_dhcp_lease *lease;
-+	const char *cli_addr;
-+	int i;
-+
-+	l_dhcp_server_set_ip_range(server, "192.168.1.2", "192.168.1.11");
-+	_dhcp_server_set_max_expired_clients(server, 10);
-+
-+	/*
-+	 * Connect and release 10 clients, this should max out the expired
-+	 * queue (since we are setting it to 10) and force the first client that
-+	 * expired to be removed allowing 192.168.1.2 to be reused for a new
-+	 * client
-+	 */
-+	for (i =3D 0; i < 10; i++) {
-+		struct l_dhcp_client *client;
-+
-+		addr[5] =3D i;
-+		client =3D client_init(addr);
-+		client_connect(client, server);
-+
-+		l_dhcp_client_stop(client);
-+		srv_transport->rx_cb(client_packet, client_packet_len, server);
-+	}
-+
-+	addr[5] =3D i + 1;
-+	client_new =3D client_init(addr);
-+	client_connect(client_new, server);
-+
-+	lease =3D l_dhcp_client_get_lease(client_new);
-+	assert(lease);
-+	cli_addr =3D l_dhcp_lease_get_address(lease);
-+	assert(!strcmp(cli_addr, "192.168.1.2"));
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -986,6 +1027,7 @@ int main(int argc, char *argv[])
- 	l_test_add("discover", test_discover, NULL);
- =
+I see that IWD itself has src/missing.h with a fallback, but ELL lacks
+that.
 
- 	l_test_add("complete run", test_complete_run, NULL);
-+	l_test_add("expired IP reuse", test_expired_ip_reuse, NULL);
- =
+We are using the following patch to fix the build:
 
- 	return l_test_run();
- }
--- =
+diff --git a/ell/pem.c b/ell/pem.c
+index 790f2c2..237ae02 100644
+--- a/ell/pem.c
++++ b/ell/pem.c
+@@ -224,7 +224,7 @@ static uint8_t *pem_load_buffer(const void *buf, size_t=
+=3D
+ buf_len,
+=3D20
+ 		/* Check that each header line has a key and a colon */
+ 		while (start < end) {
+-			const char *lf =3D3D rawmemchr(start, '\n');
++			const char *lf =3D3D memchr(start, '\n', end - start);
+ 			const char *colon =3D3D memchr(start, ':', lf - start);
+=3D20
+ 			if (!colon)
 
-2.26.2
+--
 
---===============6671816275093176021==--
+If ELL is willing to include a src/missing.h of their own, that would
+solve the issue, but avoiding rawmemchr() completely is also a
+possibility.
+
+Thanks,
+=C3=89rico
+--===============4815469108424749843==--
 
