@@ -1,43 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============4783420780954232307=="
+Content-Type: multipart/mixed; boundary="===============4208879141453528020=="
 MIME-Version: 1.0
-From: =?unknown-8bit?q?=C3=89rico?= Nogueira <ericonr@disroot.org>
-Subject: [PATCH] ell: add missing include in dhcp-server.
-Date: Mon, 30 Nov 2020 14:10:16 -0300
-Message-ID: <20201130171016.22457-1-ericonr@disroot.org>
+From: Ossama Othman <ossama.othman@gmail.com>
+Subject: [PATCH 0/2] Fix "NLA_F_NESTED is missing" error
+Date: Mon, 30 Nov 2020 10:57:34 -0800
+Message-ID: <20201130185736.30474-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4783420780954232307==
+--===============4208879141453528020==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-From: =C3=89rico Rolim <erico.erc@gmail.com>
+This set of patches addresses a "NLA_F_NESTED is missing" error under
+strict nested netlink attribute validation by the kernel.  Users can
+work around the error by explicitly setting the NLA_F_NESTED bit in
+the type passed to l_genl_msg_enter_nested(), but having ELL
+transparently set the bit seems more appropriate.
 
----
+Ossama Othman (2):
+  genl: Add missing NLA_F_NESTED bit
+  unit: Update expected nested netlink attr data
 
-I would prefer adding `#include <linux/types>` directly in
-dhcp-private.h, but this patch follows the current style.
+ ell/genl.c           | 2 +-
+ unit/test-genl-msg.c | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
- ell/dhcp-server.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index c983ed4..144e83e 100644
---- a/ell/dhcp-server.c
-+++ b/ell/dhcp-server.c
-@@ -24,6 +24,7 @@
- #include <config.h>
- #endif
- =
-
-+#include <linux/types.h>
- #include <net/ethernet.h>
- #include <sys/socket.h>
- #include <arpa/inet.h>
 -- =
 
-2.29.2
+2.25.1
 
---===============4783420780954232307==--
+--===============4208879141453528020==--
 
