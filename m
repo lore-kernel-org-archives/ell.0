@@ -1,42 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============3124271668961329133=="
+Content-Type: multipart/mixed; boundary="===============8433238550185100144=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 0/2] Fix "NLA_F_NESTED is missing" error
-Date: Mon, 30 Nov 2020 12:56:41 -0600
-Message-ID: <637bcd88-f32c-c954-4a8f-ca42a8a16131@gmail.com>
-In-Reply-To: <20201130185736.30474-1-ossama.othman@intel.com>
+Subject: Re: [BUG] ELL doesn't have a fallback for rawmemchr
+Date: Mon, 30 Nov 2020 13:05:07 -0600
+Message-ID: <3ebc8c31-27ab-eaed-e6bf-4648bf5e6990@gmail.com>
+In-Reply-To: <C7GR3VAGOXZZ.37PH59CQ2TJO2@mussels>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3124271668961329133==
+--===============8433238550185100144==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+Hi =C3=89rico,
 
-On 11/30/20 12:57 PM, Ossama Othman wrote:
-> This set of patches addresses a "NLA_F_NESTED is missing" error under
-> strict nested netlink attribute validation by the kernel.  Users can
-> work around the error by explicitly setting the NLA_F_NESTED bit in
-> the type passed to l_genl_msg_enter_nested(), but having ELL
-> transparently set the bit seems more appropriate.
+On 11/30/20 10:49 AM, =C3=89rico Nogueira wrote:
+> Hi!
 > =
 
-> Ossama Othman (2):
->    genl: Add missing NLA_F_NESTED bit
->    unit: Update expected nested netlink attr data
+> Building ELL 0.35 on a musl system fails, due to ell/pem.c using
+> rawmemchr(), which is a glibc extension. Building IWD with internal
+> ELL fails for the same reason.
+
+Thanks for reporting this.
+
 > =
 
->   ell/genl.c           | 2 +-
->   unit/test-genl-msg.c | 6 +++---
->   2 files changed, 4 insertions(+), 4 deletions(-)
-> =
+> I see that IWD itself has src/missing.h with a fallback, but ELL lacks
+> that.
 
+I ported the rawmemchr bits in missing.h from iwd to ell in commit =
 
-Both applied, thanks.
+3916c1cc32be205e185a8a56de5cde1b9ec60e81.
 
 Regards,
 -Denis
---===============3124271668961329133==--
+--===============8433238550185100144==--
 
