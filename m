@@ -1,43 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============3329162798552742160=="
+Content-Type: multipart/mixed; boundary="===============6158646984420132598=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] ell: add missing include in dhcp-server.
-Date: Mon, 30 Nov 2020 13:06:40 -0600
-Message-ID: <5e9e28b4-21be-d6d6-de99-d9c5780b508b@gmail.com>
-In-Reply-To: <20201130171016.22457-1-ericonr@disroot.org>
+From: =?unknown-8bit?q?=C3=89rico?= Nogueira <ericonr@disroot.org>
+Subject: [PATCH v2] ell: add missing include in dhcp-server.
+Date: Mon, 30 Nov 2020 18:40:33 -0300
+Message-ID: <C7GXAHWOYET1.RX1LFTLT7WVC@mussels>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3329162798552742160==
+--===============6158646984420132598==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi =C3=89rico,
+This is v2 only because I'm attempting to send it again.
 
-> =
+Hope it works!
 
-> I would prefer adding `#include <linux/types>` directly in
-> dhcp-private.h, but this patch follows the current style.
+ ell/dhcp-server.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-We prefer to not have #includes in -private.h files.  So the way you have i=
-t is =
+diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+index c983ed4..144e83e 100644
+--- a/ell/dhcp-server.c
++++ b/ell/dhcp-server.c
+@@ -24,6 +24,7 @@
+ #include <config.h>
+ #endif
+ =
 
-correct.
++#include <linux/types.h>
+ #include <net/ethernet.h>
+ #include <sys/socket.h>
+ #include <arpa/inet.h>
+-- =
 
-> =
+2.29.2
 
->   ell/dhcp-server.c | 1 +
->   1 file changed, 1 insertion(+)
-> =
-
-
-Note that the patch seems to come through MIME encoded and doesn't apply vi=
-a =
-
-'git am'.
-
-Regards,
--Denis
---===============3329162798552742160==--
+--===============6158646984420132598==--
 
