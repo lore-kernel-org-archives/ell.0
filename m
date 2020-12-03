@@ -1,189 +1,227 @@
-Content-Type: multipart/mixed; boundary="===============0599322951571841750=="
+Content-Type: multipart/mixed; boundary="===============2737734718716463745=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 6/7] acd: add defend policy concept
-Date: Thu, 03 Dec 2020 12:41:43 -0800
-Message-ID: <20201203204144.480090-6-prestwoj@gmail.com>
+Subject: [PATCH 7/7] examples: add acd client implementation
+Date: Thu, 03 Dec 2020 12:41:44 -0800
+Message-ID: <20201203204144.480090-7-prestwoj@gmail.com>
 In-Reply-To: <20201203204144.480090-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0599322951571841750==
+--===============2737734718716463745==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The ACD RFC defines 3 possible policies for defending an address:
-
-a) Give up address immediately (L_ACD_DEFEND_POLICY_NONE)
-b) Send single annoucement (L_ACD_DEFEND_POLICY_DEFEND)
-c) Defend infinitely (L_ACD_DEFEND_POLICY_INFINITE)
-
-The policy can be set to a stopped/not started ACD object by
-calling l_acd_set_defend_policy.
-
-In the event of a lost address (a or b) ACD will be stopped and
-the LOST event will be generated. If an infinite policy (c) is
-used, the ACD client will not be stopped and no events will fire.
-ACD will continue defending the address by sending sending a
-single annoucement every 10 seconds while conflicting packets are
-still being received.
+Very basic ACD client which takes an ifindex and IP and performs
+ACD on the network.
 ---
- ell/acd.c   | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/acd.h   |  8 ++++++++
- ell/ell.sym |  1 +
- 3 files changed, 68 insertions(+)
+ Makefile.am           |   3 +-
+ examples/acd-client.c | 166 ++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 168 insertions(+), 1 deletion(-)
+ create mode 100644 examples/acd-client.c
 
-diff --git a/ell/acd.c b/ell/acd.c
-index 2c8d788..ef72fef 100644
---- a/ell/acd.c
-+++ b/ell/acd.c
-@@ -78,6 +78,7 @@ struct l_acd {
- 	uint8_t mac[ETH_ALEN];
+diff --git a/Makefile.am b/Makefile.am
+index 9bb106b..df4bfff 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -335,7 +335,7 @@ unit_test_data_files =3D unit/settings.test unit/dbus.c=
+onf
+ examples =3D examples/dbus-service examples/https-client-test \
+ 		examples/https-server-test examples/dbus-client \
+ 		examples/dhcp-client examples/dhcp6-client \
+-		examples/dhcp-server
++		examples/dhcp-server examples/acd-client
  =
 
- 	enum acd_state state;
-+	enum l_acd_defend_policy policy;
+ if GLIB
+ examples +=3D examples/glib-eventloop
+@@ -354,6 +354,7 @@ examples_glib_eventloop_LDADD =3D ell/libell-private.la=
+ @GLIB_LIBS@
+ examples_dhcp_client_LDADD =3D ell/libell-private.la
+ examples_dhcp6_client_LDADD =3D ell/libell-private.la
+ examples_dhcp_server_LDADD =3D ell/libell-private.la
++examples_acd_client_LDADD =3D ell/libell-private.la
  =
 
- 	struct l_io *io;
- 	struct l_timeout *timeout;
-@@ -321,6 +322,25 @@ static bool acd_read_handler(struct l_io *io, void *us=
-er_data)
- 		if (!source_conflict)
- 			return true;
- =
-
-+		/*
-+		 * RFC 5227 - Section 2.4 (a)
-+		 *
-+		 * "Upon receiving a conflicting ARP packet, a host MAY elect to
-+		 * immediately cease using the address, and signal an error to
-+		 * the configuring agent as described above."
-+		 */
-+		if (acd->policy =3D=3D L_ACD_DEFEND_POLICY_NONE) {
-+			ACD_DEBUG("Conflict detected, giving up address");
+ noinst_PROGRAMS +=3D tools/certchain-verify tools/genl-discover \
+ 		   tools/genl-watch tools/genl-request tools/gpio
+diff --git a/examples/acd-client.c b/examples/acd-client.c
+new file mode 100644
+index 0000000..e737288
+--- /dev/null
++++ b/examples/acd-client.c
+@@ -0,0 +1,166 @@
++/*
++ *
++ *  Embedded Linux library
++ *
++ *  Copyright (C) 2020  Intel Corporation. All rights reserved.
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
+ USA
++ *
++ */
 +
-+			if (acd->event_func)
-+				acd->event_func(L_ACD_EVENT_LOST,
-+							acd->user_data);
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
 +
-+			l_acd_stop(acd);
++#define _GNU_SOURCE
++#include <stdio.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <assert.h>
++#include <signal.h>
++#include <sys/socket.h>
++#include <linux/if_arp.h>
++#include <getopt.h>
 +
-+			break;
-+		}
++#include <ell/ell.h>
 +
- 		/*
- 		 * RFC 5227 - Section 2.4 (b)
- 		 * [If the host] "has not seen any other conflicting ARP packets
-@@ -352,6 +372,29 @@ static bool acd_read_handler(struct l_io *io, void *us=
-er_data)
- 		if (!source_conflict)
- 			return true;
- =
-
-+		/*
-+		 * RFC 5227 Section 2.4 (c)
-+		 * "If a host has been configured such that it should not give
-+		 * up its address under any circumstances ... then it MAY elect
-+		 * to defend its address indefinitely."
-+		 */
-+		if (acd->policy =3D=3D L_ACD_DEFEND_POLICY_INFINITE) {
-+			ACD_DEBUG("Conflict "MAC" found with infinite policy",
-+					MAC_STR(arp.arp_sha));
++static enum l_acd_defend_policy policy =3D L_ACD_DEFEND_POLICY_DEFEND;
 +
-+			/*
-+			 * Nothing to do at this point. We are in the DEFEND
-+			 * state meaning there is a defend wait timeout pending.
-+			 * Once that fires it will transition back into
-+			 * ANNOUNCED. Once in ANNOUNCED and another conflict is
-+			 * received, a single announcement will be sent. This
-+			 * ensures a maximum of only 1 announcement every
-+			 * DEFEND_INTERVAL seconds as long as conflicting
-+			 * packets are being received.
-+			 */
-+			break;
-+		}
-+
- 		l_timeout_remove(acd->timeout);
- 		acd->timeout =3D NULL;
- =
-
-@@ -380,6 +423,7 @@ LIB_EXPORT struct l_acd *l_acd_new(int ifindex)
- 	struct l_acd *acd =3D l_new(struct l_acd, 1);
- =
-
- 	acd->ifindex =3D ifindex;
-+	acd->policy =3D L_ACD_DEFEND_POLICY_DEFEND;
- =
-
- 	return acd;
- }
-@@ -517,3 +561,18 @@ LIB_EXPORT bool l_acd_set_skip_probes(struct l_acd *ac=
-d, bool skip)
- =
-
- 	return true;
- }
-+
-+LIB_EXPORT bool l_acd_set_defend_policy(struct l_acd *acd,
-+				enum l_acd_defend_policy policy)
++static void do_debug(const char *str, void *user_data)
 +{
-+	if (unlikely(!acd))
-+		return false;
++	const char *prefix =3D user_data;
 +
-+	/* ACD has already been started */
-+	if (acd->io)
-+		return false;
-+
-+	acd->policy =3D policy;
-+
-+	return true;
++	l_info("%s%s", prefix, str);
 +}
-diff --git a/ell/acd.h b/ell/acd.h
-index eba504d..f537536 100644
---- a/ell/acd.h
-+++ b/ell/acd.h
-@@ -37,6 +37,12 @@ enum l_acd_event {
- 	L_ACD_EVENT_LOST,
- };
- =
-
-+enum l_acd_defend_policy {
-+	L_ACD_DEFEND_POLICY_NONE,	/* Never defend */
-+	L_ACD_DEFEND_POLICY_DEFEND,	/* Default, defend once */
-+	L_ACD_DEFEND_POLICY_INFINITE,	/* Defend indefinitely */
++
++static void signal_handler(uint32_t signo, void *user_data)
++{
++	switch (signo) {
++	case SIGINT:
++	case SIGTERM:
++		l_info("Terminate");
++		l_main_quit();
++		break;
++	}
++}
++
++static void event_handler(enum l_acd_event event, void *user_data)
++{
++	char *ip =3D user_data;
++
++	switch (event) {
++	case L_ACD_EVENT_CONFLICT:
++		l_info("IP %s conflicts with another host", ip);
++		break;
++	case L_ACD_EVENT_AVAILABLE:
++		l_info("IP %s is available", ip);
++		break;
++	case L_ACD_EVENT_LOST:
++		l_info("IP %s has been lost", ip);
++		l_main_quit();
++		break;
++	}
++
++	if (policy =3D=3D L_ACD_DEFEND_POLICY_NONE)
++		l_main_quit();
++}
++
++static void usage(void)
++{
++	printf("acd-client usage\n"
++		"Usage:\n");
++	printf("\tacd-client <ifindex> <ip> [options]\n");
++	printf("Options:\n"
++		"\t-D, --defend [=3Dpolicy] Keep running to defend address, "
++			"optionally by policy:\n"
++			"\t\tnone: never defend\n"
++			"\t\tdefend: defend once (default)\n"
++			"\t\tinfinite: defend infinitely\n"
++		"\t-n, --no-probes       Disable initial probe stage\n"
++		"\t-d, --debug           Run with debugging on\n");
++}
++
++static const struct option main_options[] =3D {
++	{ "defend",	 optional_argument,	NULL, 'D' },
++	{ "no-probes",	 no_argument,		NULL, 'n' },
++	{ "debug",	 no_argument,		NULL, 'd' },
++	{ }
 +};
 +
- typedef void (*l_acd_event_func_t)(enum l_acd_event event, void *user_data=
-);
- typedef void (*l_acd_destroy_func_t)(void *user_data);
- =
-
-@@ -51,6 +57,8 @@ void l_acd_destroy(struct l_acd *acd);
- bool l_acd_set_debug(struct l_acd *acd, l_acd_debug_cb_t function,
- 			void *user_data, l_acd_destroy_func_t destory);
- bool l_acd_set_skip_probes(struct l_acd *acd, bool skip);
-+bool l_acd_set_defend_policy(struct l_acd *acd,
-+				enum l_acd_defend_policy policy);
- #ifdef __cplusplus
- }
- #endif
-diff --git a/ell/ell.sym b/ell/ell.sym
-index a566a83..d94b585 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -662,6 +662,7 @@ global:
- 	l_acd_destroy;
- 	l_acd_set_debug;
- 	l_acd_set_skip_probes;
-+	l_acd_set_defend_policy;
- local:
- 	*;
- };
++int main(int argc, char *argv[])
++{
++	struct l_acd *acd;
++	int ifindex;
++	bool debug =3D false;
++	bool no_probe =3D false;
++
++	l_log_set_stderr();
++	l_debug_enable("*");
++
++	if (argc < 3) {
++		usage();
++		exit(0);
++	}
++
++	for (;;) {
++		int opt;
++
++		opt =3D getopt_long(argc - 2, argv + 2, "ndD::",
++					main_options, NULL);
++		if (opt < 0)
++			break;
++
++		switch (opt) {
++		case 'D':
++			if (optarg) {
++				if (!strcmp(optarg, "infinite"))
++					policy =3D L_ACD_DEFEND_POLICY_INFINITE;
++				else if (!strcmp(optarg, "none"))
++					policy =3D L_ACD_DEFEND_POLICY_NONE;
++			}
++
++			break;
++		case 'n':
++			no_probe =3D true;
++			break;
++		case 'd':
++			debug =3D true;
++			break;
++		}
++	}
++
++	ifindex =3D atoi(argv[1]);
++
++	if (!l_main_init())
++		return -1;
++
++	acd =3D l_acd_new(ifindex);
++	l_acd_set_skip_probes(acd, no_probe);
++	l_acd_set_defend_policy(acd, policy);
++
++	if (debug) {
++		l_acd_set_debug(acd, do_debug, "[ACD] ", NULL);
++		l_info("Set debug");
++	}
++	l_acd_set_event_handler(acd, event_handler, argv[2], NULL);
++	l_acd_start(acd, argv[2]);
++
++	l_main_run_with_signal(signal_handler, NULL);
++
++	l_acd_destroy(acd);
++	l_main_exit();
++
++	return 0;
++}
 -- =
 
 2.26.2
 
---===============0599322951571841750==--
+--===============2737734718716463745==--
 
