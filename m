@@ -1,188 +1,149 @@
-Content-Type: multipart/mixed; boundary="===============6277173863592521006=="
+Content-Type: multipart/mixed; boundary="===============3347548609411817575=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 3/7] acd: add probe/annouce states, and announce address
-Date: Thu, 03 Dec 2020 12:41:40 -0800
-Message-ID: <20201203204144.480090-3-prestwoj@gmail.com>
+Subject: [PATCH 4/7] acd: add address defence and address lost events
+Date: Thu, 03 Dec 2020 12:41:41 -0800
+Message-ID: <20201203204144.480090-4-prestwoj@gmail.com>
 In-Reply-To: <20201203204144.480090-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6277173863592521006==
+--===============3347548609411817575==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Tracks state (probe/annouce) and will stop probing if an address
-conflict is detected. Once all probes have been sent the state
-transitions to announce. At this point the IP is safe to use.
-
-Events are now signaled for conflicts and available IPs.
-
-Going forward, the ANNOUNCED state will be the normal state the
-ACD client is in while monitoring for conflicting packets.
 ---
- ell/acd.c | 84 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 80 insertions(+), 4 deletions(-)
+ ell/acd.c | 68 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/acd.h |  1 +
+ 2 files changed, 69 insertions(+)
 
 diff --git a/ell/acd.c b/ell/acd.c
-index f8f3df4..4528d76 100644
+index 4528d76..8fa8d95 100644
 --- a/ell/acd.c
 +++ b/ell/acd.c
-@@ -43,6 +43,10 @@
- #define PROBE_MIN		1
- #define PROBE_MAX		2
+@@ -47,6 +47,8 @@
+ #define ANNOUNCE_NUM		2
+ #define ANNOUNCE_INTERVAL	2
  =
 
-+#define ANNOUNCE_WAIT		2
-+#define ANNOUNCE_NUM		2
-+#define ANNOUNCE_INTERVAL	2
++#define DEFEND_INTERVAL		10
 +
  #define MAC "%02x:%02x:%02x:%02x:%02x:%02x"
  #define MAC_STR(a) a[0], a[1], a[2], a[3], a[4], a[5]
  =
 
-@@ -59,12 +63,19 @@
- 	l_util_debug(acd->debug_handler, acd->debug_data,		\
- 			"%s:%i " fmt, __func__, __LINE__, ## args)
+@@ -66,6 +68,7 @@
+ enum acd_state {
+ 	ACD_STATE_PROBE,
+ 	ACD_STATE_ANNOUNCED,
++	ACD_STATE_DEFEND,
+ };
  =
 
-+enum acd_state {
-+	ACD_STATE_PROBE,
-+	ACD_STATE_ANNOUNCED,
-+};
-+
  struct l_acd {
- 	int ifindex;
- =
-
- 	uint32_t ip;
- 	uint8_t mac[ETH_ALEN];
- =
-
-+	enum acd_state state;
-+
- 	struct l_io *io;
- 	struct l_timeout *timeout;
- 	unsigned int retries;
-@@ -152,6 +163,49 @@ static uint32_t acd_random_delay_ms(uint32_t max_sec)
- 	return rand % (max_sec * 1000);
+@@ -250,6 +253,17 @@ static void probe_wait_timeout(struct l_timeout *timeo=
+ut, void *user_data)
+ 	}
  }
  =
 
-+static void announce_wait_timeout(struct l_timeout *timeout, void *user_da=
-ta)
++static void defend_wait_timeout(struct l_timeout *timeout, void *user_data)
 +{
 +	struct l_acd *acd =3D user_data;
 +
 +	l_timeout_remove(acd->timeout);
 +	acd->timeout =3D NULL;
 +
-+	if (acd->state =3D=3D ACD_STATE_PROBE) {
-+		ACD_DEBUG("No conflicts found for %s, announcing address",
-+				IP_STR(htonl(acd->ip)));
-+
-+		acd->state =3D ACD_STATE_ANNOUNCED;
-+
-+		/*
-+		 * RFC 5227 - Section 2.3
-+		 *
-+		 * "The host may begin legitimately using the IP address
-+		 *  immediately after sending the first of the two ARP
-+		 *  Announcements"
-+		 */
-+
-+		if (acd->event_func)
-+			acd->event_func(L_ACD_EVENT_AVAILABLE, acd->user_data);
-+	}
-+
-+	if (acd->retries !=3D ANNOUNCE_NUM) {
-+		acd->retries++;
-+
-+		if (acd_send_packet(acd, acd->ip) < 0) {
-+			ACD_DEBUG("Failed to send ACD announcement");
-+			return;
-+		}
-+
-+		acd->timeout =3D l_timeout_create(ANNOUNCE_INTERVAL,
-+						announce_wait_timeout,
-+						acd, NULL);
-+
-+		return;
-+	}
-+
-+	ACD_DEBUG("Done announcing");
++	/* Successfully defended address */
++	acd->state =3D ACD_STATE_ANNOUNCED;
 +}
 +
- static void probe_wait_timeout(struct l_timeout *timeout, void *user_data)
+ static bool acd_read_handler(struct l_io *io, void *user_data)
  {
  	struct l_acd *acd =3D user_data;
-@@ -181,9 +235,19 @@ static void probe_wait_timeout(struct l_timeout *timeo=
-ut, void *user_data)
- 		delay +=3D PROBE_MIN * 1000;
- 		acd->timeout =3D l_timeout_create_ms(delay, probe_wait_timeout,
- 							acd, NULL);
--	} else
-+	} else {
-+		/*
-+		 * Wait for ANNOUNCE_WAIT seconds after probe period before
-+		 * announcing address.
-+		 */
- 		ACD_DEBUG("Done probing");
- =
-
-+		acd->retries =3D 1;
-+
-+		acd->timeout =3D l_timeout_create(ANNOUNCE_WAIT,
-+							announce_wait_timeout,
-+							acd, NULL);
-+	}
- }
- =
-
- static bool acd_read_handler(struct l_io *io, void *user_data)
-@@ -223,9 +287,20 @@ static bool acd_read_handler(struct l_io *io, void *us=
+@@ -298,7 +312,61 @@ static bool acd_read_handler(struct l_io *io, void *us=
 er_data)
- 		return true;
+ 			acd->event_func(L_ACD_EVENT_CONFLICT, acd->user_data);
+ =
+
+ 		l_acd_stop(acd);
++
++		break;
+ 	case ACD_STATE_ANNOUNCED:
++		/* Only defend packets with a source conflict */
++		if (!source_conflict)
++			return true;
++
++		/*
++		 * RFC 5227 - Section 2.4 (b)
++		 * [If the host] "has not seen any other conflicting ARP packets
++		 * within the last DEFEND_INTERVAL seconds, MAY elect to attempt
++		 * to defend its address by recording the time that the
++		 * conflicting ARP packet was received, and then broadcasting
++		 * one single ARP Announcement"
++		 */
++		acd->state =3D ACD_STATE_DEFEND;
++
++		/*
++		 * We still have an initial announcement to send, but rather
++		 * than wait for that (potentially 2 seconds) we can remove
++		 * the timeout, send annouce now, and still transition to the
++		 * defending state.
++		 */
++		if (acd->timeout)
++			l_timeout_remove(acd->timeout);
++
++		acd_send_packet(acd, acd->ip);
++
++		ACD_DEBUG("Defending address");
++
++		acd->timeout =3D l_timeout_create(DEFEND_INTERVAL,
++						defend_wait_timeout, acd, NULL);
++
++		break;
++	case ACD_STATE_DEFEND:
++		if (!source_conflict)
++			return true;
++
++		l_timeout_remove(acd->timeout);
++		acd->timeout =3D NULL;
++
++		ACD_DEBUG("Lost address");
++		/*
++		* RFC 5227 Section 2.4(b)
++		* "if this is not the first conflicting ARP packet the host has seen,
++		* and the time recorded for the previous conflicting ARP packet is
++		* recent, within DEFEND_INTERVAL seconds, then the host MUST
++		* immediately cease using this address and signal an error to the
++		* configuring agent"
++		*/
++		if (acd->event_func)
++			acd->event_func(L_ACD_EVENT_LOST, acd->user_data);
++
++		l_acd_stop(acd);
++
+ 		break;
  	}
  =
 
--	ACD_DEBUG("%s conflict detected for %s",
--			target_conflict ? "Target" : "Source",
--			IP_STR(ip));
-+	switch (acd->state) {
-+	case ACD_STATE_PROBE:
-+		/* No reason to continue probing */
-+		ACD_DEBUG("%s conflict detected for %s",
-+				target_conflict ? "Target" : "Source",
-+				IP_STR(ip));
-+
-+		if (acd->event_func)
-+			acd->event_func(L_ACD_EVENT_CONFLICT, acd->user_data);
-+
-+		l_acd_stop(acd);
-+	case ACD_STATE_ANNOUNCED:
-+		break;
-+	}
+diff --git a/ell/acd.h b/ell/acd.h
+index 121d119..21a6958 100644
+--- a/ell/acd.h
++++ b/ell/acd.h
+@@ -34,6 +34,7 @@ struct l_acd;
+ enum l_acd_event {
+ 	L_ACD_EVENT_AVAILABLE,
+ 	L_ACD_EVENT_CONFLICT,
++	L_ACD_EVENT_LOST,
+ };
  =
 
- 	return true;
- }
-@@ -266,6 +341,7 @@ LIB_EXPORT bool l_acd_start(struct l_acd *acd, const ch=
-ar *ip)
- 	l_io_set_read_handler(acd->io, acd_read_handler, acd, NULL);
- =
-
- 	acd->ip =3D ntohl(ia.s_addr);
-+	acd->state =3D ACD_STATE_PROBE;
- =
-
- 	delay =3D acd_random_delay_ms(PROBE_WAIT);
- =
-
+ typedef void (*l_acd_event_func_t)(enum l_acd_event event, void *user_data=
+);
 -- =
 
 2.26.2
 
---===============6277173863592521006==--
+--===============3347548609411817575==--
 
