@@ -1,29 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============1503613290405346329=="
+Content-Type: multipart/mixed; boundary="===============9101502715169722991=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: Phil <philip.hodges@bluewin.ch>
 Subject: Re: [PATCH 7/7] examples: add acd client implementation [async safety
  in example signal handler?]
-Date: Tue, 08 Dec 2020 18:43:09 +0000
-Message-ID: <ad44cf2d-02d3-9254-6413-10ca04bf7ddc@gmail.com>
+Date: Tue, 08 Dec 2020 20:22:58 +0100
+Message-ID: <BDF1E310-F560-4B59-BF0D-6B6307E8B911@bluewin.ch>
 In-Reply-To: <b6fdd57c205e529686f5587c3704258191effc72.camel@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1503613290405346329==
+--===============9101502715169722991==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+If it is indeed just a callback from polling signalfd and not an asynchrono=
+us signal handler then it should be fine.
 
-On 12/8/20 11:16 AM, James Prestwood wrote:
+It might help avoid false alarms if it were named accordingly, with a brief=
+ comment to explain that the callback uses signalfd so that it does not nee=
+d to be async-safe.
+
+It's always good to draw attention to async-safety. Someone could be readin=
+g about it for the first time, and it will suddenly dawn on them why their =
+production application sometimes crashes on a termination signal.
+
+> On 8 Dec 2020, at 18:16, James Prestwood <prestwoj@gmail.com> wrote:
+> =
+
 > Hi Phil,
 > =
 
 > On Sun, 2020-12-06 at 23:06 +0100, Phil wrote:
 >> Hope you are not calling any functions that are not "async-safe" in
 >> that signal handler.
->>
+>> =
+
 >> Looks like l_main_quit just sets a flag so is probably ok, but what
 >> is to stop l_info interrupting another log call?
 > =
@@ -35,18 +47,6 @@ On 12/8/20 11:16 AM, James Prestwood wrote:
 > handler call is from an interrupt or not. Looks like the l_signal APIs
 > use an IO read handler and are a bit more complex than e.g. calling the
 > POSIX signal().
-
-l_signal uses signalfd syscall underneath, which reports all signals via a =
-file =
-
-descriptor.   What this means is that none of the callbacks are running in =
-the =
-
-interrupt context.  They're dispatched from the main event loop like any ot=
-her =
-
-io callback.
-
 > =
 
 > Not that it makes it 'ok' but every single example/tool, even IWD,
@@ -56,10 +56,17 @@ io callback.
 
 > Does anyone else know the details of this? Are signal handlers
 > registered from l_main_run_with_signal printf safe?
+> =
 
-Yes.
+> Thanks,
+> James
+> =
 
-Regards,
--Denis
---===============1503613290405346329==--
+> =
+
+> _______________________________________________
+> ell mailing list -- ell(a)lists.01.org
+> To unsubscribe send an email to ell-leave(a)lists.01.org
+
+--===============9101502715169722991==--
 
