@@ -1,92 +1,80 @@
-Content-Type: multipart/mixed; boundary="===============5531014439110884525=="
+Content-Type: multipart/mixed; boundary="===============3807218402175746171=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 2/2] dhcp-server: add ACD client
-Date: Thu, 10 Dec 2020 09:39:58 -0800
-Message-ID: <20201210173958.873756-2-prestwoj@gmail.com>
-In-Reply-To: <20201210173958.873756-1-prestwoj@gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 01/13] pem: Wipe more memory in PKCS#1 private key decoding
+Date: Thu, 10 Dec 2020 20:31:54 +0100
+Message-ID: <20201210193202.526451-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5531014439110884525==
+--===============3807218402175746171==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Starts ACD on the servers IP address. This address will be
-defended indefinitely.
+bzero some more potentially sensitive memory that we weren't bzeroing in
+the recently added openssl legacy PKCS#1 private key format decoding.
 ---
- ell/dhcp-server.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ ell/pem.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
 
-diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index 144e83e..3bc1eac 100644
---- a/ell/dhcp-server.c
-+++ b/ell/dhcp-server.c
-@@ -39,6 +39,7 @@
- #include "util.h"
- #include "strv.h"
- #include "timeout.h"
-+#include "acd.h"
+diff --git a/ell/pem.c b/ell/pem.c
+index 790f2c2..70d1f62 100644
+--- a/ell/pem.c
++++ b/ell/pem.c
+@@ -581,18 +581,24 @@ static struct l_cipher *cipher_from_dek_info(const ch=
+ar *algid, const char *para
  =
 
- /* 8 hours */
- #define DEFAULT_DHCP_LEASE_SEC (8*60*60)
-@@ -80,6 +81,8 @@ struct l_dhcp_server {
- 	l_dhcp_destroy_cb_t event_destroy;
+ 	l_checksum_free(md5);
  =
 
- 	struct dhcp_transport *transport;
-+
-+	struct l_acd *acd;
- };
- =
-
- #define MAC "%02x:%02x:%02x:%02x:%02x:%02x"
-@@ -807,6 +810,21 @@ LIB_EXPORT bool l_dhcp_server_start(struct l_dhcp_serv=
-er *server)
- =
-
- 	server->started =3D true;
- =
-
-+	server->acd =3D l_acd_new(server->ifindex);
-+	l_acd_set_skip_probes(server->acd, true);
-+	l_acd_set_defend_policy(server->acd, L_ACD_DEFEND_POLICY_INFINITE);
-+
-+	ia.s_addr =3D server->address;
-+
-+	/* In case of unit testing we don't want this to be a fatal error */
-+	if (!l_acd_start(server->acd, inet_ntoa(ia))) {
-+		SERVER_DEBUG("Failed to start ACD on %s, continuing without",
-+				IP_STR(server->address));
-+
-+		l_acd_destroy(server->acd);
-+		server->acd =3D NULL;
+-	if (!ok)
+-		return NULL;
++	if (!ok) {
++		cipher =3D NULL;
++		goto cleanup;
 +	}
+ =
+
+ 	cipher  =3D l_cipher_new(type, key, key_len);
+ 	if (!cipher)
+-		return NULL;
++		goto cleanup;
+ =
+
+ 	if (l_cipher_set_iv(cipher, iv, iv_len))
+-		return cipher;
++		goto cleanup;
+ =
+
+ 	l_cipher_free(cipher);
+-	return NULL;
++	cipher =3D NULL;
 +
- 	return true;
++cleanup:
++	explicit_bzero(key, sizeof(key));
++	return cipher;
  }
  =
 
-@@ -828,6 +846,11 @@ LIB_EXPORT bool l_dhcp_server_stop(struct l_dhcp_serve=
-r *server)
- 		server->next_expire =3D NULL;
- 	}
+ static struct l_key *pem_load_private_key(uint8_t *content,
+@@ -821,8 +827,10 @@ static struct l_key *pem_load_private_key(uint8_t *con=
+tent,
+ 		ptr +=3D sizeof(pkcs1_rsa_encryption);
+ 		memcpy(ptr, private_key, private_key_len);
+ 		ptr +=3D private_key_len;
++		explicit_bzero(private_key, private_key_len);
+ 		l_free(private_key);
  =
 
-+	if (server->acd) {
-+		l_acd_destroy(server->acd);
-+		server->acd =3D NULL;
-+	}
-+
- 	/* TODO: Add ability to save leases */
- =
-
- 	return true;
++		explicit_bzero(content, len);
+ 		l_free(content);
+ 		content =3D one_asymmetric_key;
+ 		len =3D ptr - one_asymmetric_key;
 -- =
 
-2.26.2
+2.27.0
 
---===============5531014439110884525==--
+--===============3807218402175746171==--
 
