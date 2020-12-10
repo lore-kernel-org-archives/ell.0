@@ -1,118 +1,92 @@
-Content-Type: multipart/mixed; boundary="===============7177148810032243359=="
+Content-Type: multipart/mixed; boundary="===============5531014439110884525=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 1/2] dhcp: add ACD to DHCP client
-Date: Thu, 10 Dec 2020 09:39:57 -0800
-Message-ID: <20201210173958.873756-1-prestwoj@gmail.com>
+Subject: [PATCH 2/2] dhcp-server: add ACD client
+Date: Thu, 10 Dec 2020 09:39:58 -0800
+Message-ID: <20201210173958.873756-2-prestwoj@gmail.com>
+In-Reply-To: <20201210173958.873756-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7177148810032243359==
+--===============5531014439110884525==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This starts the ACD client once DHCP binds to an address.
-The ACD client is (for now) configured to defend its address
-infinitely. This maintains existing behavior except that
-ACD announcements are now sent if conflicts are detected.
+Starts ACD on the servers IP address. This address will be
+defended indefinitely.
 ---
- ell/dhcp.c | 43 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+ ell/dhcp-server.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
 
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index e104845..f212e9b 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -41,6 +41,7 @@
- #include "dhcp-private.h"
- #include "netlink.h"
- #include "rtnl.h"
+diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+index 144e83e..3bc1eac 100644
+--- a/ell/dhcp-server.c
++++ b/ell/dhcp-server.c
+@@ -39,6 +39,7 @@
+ #include "util.h"
+ #include "strv.h"
+ #include "timeout.h"
 +#include "acd.h"
  =
 
- #define CLIENT_DEBUG(fmt, args...)					\
- 	l_util_debug(client->debug_handler, client->debug_data,		\
-@@ -190,6 +191,7 @@ struct l_dhcp_client {
+ /* 8 hours */
+ #define DEFAULT_DHCP_LEASE_SEC (8*60*60)
+@@ -80,6 +81,8 @@ struct l_dhcp_server {
  	l_dhcp_destroy_cb_t event_destroy;
- 	l_dhcp_debug_cb_t debug_handler;
- 	l_dhcp_destroy_cb_t debug_destroy;
+ =
+
+ 	struct dhcp_transport *transport;
++
 +	struct l_acd *acd;
- 	void *debug_data;
- 	bool have_addr : 1;
- 	bool override_xid : 1;
-@@ -777,6 +779,7 @@ static void dhcp_client_rx_message(const void *data, si=
-ze_t len, void *userdata)
- 	uint8_t t, l;
- 	const void *v;
- 	int r;
-+	struct in_addr ia;
+ };
  =
 
- 	CLIENT_DEBUG("");
+ #define MAC "%02x:%02x:%02x:%02x:%02x:%02x"
+@@ -807,6 +810,21 @@ LIB_EXPORT bool l_dhcp_server_start(struct l_dhcp_serv=
+er *server)
  =
 
-@@ -877,6 +880,41 @@ static void dhcp_client_rx_message(const void *data, s=
-ize_t len, void *userdata)
- 							dhcp_client_t1_expired,
- 							client, NULL);
- 		}
-+
-+		/* ACD is already running, no need to re-announce */
-+		if (client->acd)
-+			break;
-+
-+		client->acd =3D l_acd_new(client->ifindex);
-+
-+		if (client->debug_handler)
-+			l_acd_set_debug(client->acd, client->debug_handler,
-+					client->debug_data,
-+					client->debug_destroy);
-+
-+		/*
-+		 * TODO: There is no mechanism yet to deal with IPs leased by
-+		 * the DHCP server which conflict with other devices. For now
-+		 * the ACD object is being initialized to defend infinitely
-+		 * which is effectively no different than the non-ACD behavior
-+		 * (ignore conflicts and continue using address). The only
-+		 * change is that announcements will be sent if conflicts are
-+		 * found.
-+		 */
-+		l_acd_set_defend_policy(client->acd,
-+						L_ACD_DEFEND_POLICY_INFINITE);
-+		l_acd_set_skip_probes(client->acd, true);
-+
-+		ia.s_addr =3D client->lease->address;
-+
-+		/* For unit testing we don't want this to be a fatal error */
-+		if (!l_acd_start(client->acd, inet_ntoa(ia))) {
-+			CLIENT_DEBUG("Failed to start ACD on %s, continuing",
-+						inet_ntoa(ia));
-+			l_acd_destroy(client->acd);
-+			client->acd =3D NULL;
-+		}
-+
- 		break;
- 	case DHCP_STATE_INIT_REBOOT:
- 	case DHCP_STATE_REBOOTING:
-@@ -1156,6 +1194,11 @@ LIB_EXPORT bool l_dhcp_client_stop(struct l_dhcp_cli=
-ent *client)
- 	_dhcp_lease_free(client->lease);
- 	client->lease =3D NULL;
+ 	server->started =3D true;
  =
 
-+	if (client->acd) {
-+		l_acd_destroy(client->acd);
-+		client->acd =3D NULL;
++	server->acd =3D l_acd_new(server->ifindex);
++	l_acd_set_skip_probes(server->acd, true);
++	l_acd_set_defend_policy(server->acd, L_ACD_DEFEND_POLICY_INFINITE);
++
++	ia.s_addr =3D server->address;
++
++	/* In case of unit testing we don't want this to be a fatal error */
++	if (!l_acd_start(server->acd, inet_ntoa(ia))) {
++		SERVER_DEBUG("Failed to start ACD on %s, continuing without",
++				IP_STR(server->address));
++
++		l_acd_destroy(server->acd);
++		server->acd =3D NULL;
 +	}
 +
  	return true;
  }
  =
 
+@@ -828,6 +846,11 @@ LIB_EXPORT bool l_dhcp_server_stop(struct l_dhcp_serve=
+r *server)
+ 		server->next_expire =3D NULL;
+ 	}
+ =
+
++	if (server->acd) {
++		l_acd_destroy(server->acd);
++		server->acd =3D NULL;
++	}
++
+ 	/* TODO: Add ability to save leases */
+ =
+
+ 	return true;
 -- =
 
 2.26.2
 
---===============7177148810032243359==--
+--===============5531014439110884525==--
 
