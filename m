@@ -1,163 +1,101 @@
-Content-Type: multipart/mixed; boundary="===============8080960010714999764=="
+Content-Type: multipart/mixed; boundary="===============5410061280645080101=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 11/13] unit: Add l_pem_load_container_file tests
-Date: Thu, 10 Dec 2020 20:32:22 +0100
-Message-ID: <20201210193224.526513-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 12/13] unit: Re-add the ARC4 test
+Date: Thu, 10 Dec 2020 20:32:23 +0100
+Message-ID: <20201210193224.526513-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20201210193224.526513-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8080960010714999764==
+--===============5410061280645080101==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-pem.c | 118 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 118 insertions(+)
+ unit/test-cipher.c | 56 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 56 insertions(+)
 
-diff --git a/unit/test-pem.c b/unit/test-pem.c
-index f875adc..eddb6c6 100644
---- a/unit/test-pem.c
-+++ b/unit/test-pem.c
-@@ -337,6 +337,74 @@ static void test_encrypted_pkey(const void *data)
- 	l_key_free(pkey2);
+diff --git a/unit/test-cipher.c b/unit/test-cipher.c
+index 7dddffd..8eca796 100644
+--- a/unit/test-cipher.c
++++ b/unit/test-cipher.c
+@@ -103,6 +103,60 @@ static void test_aes_ctr(const void *data)
+ 	l_cipher_free(cipher);
  }
  =
 
-+static bool test_cert_count(struct l_cert *cert, void *user_data)
++static void test_arc4(const void *data)
 +{
-+	int *count =3D user_data;
++	struct l_cipher *cipher;
++	char buf[256];
++	int r;
 +
-+	(*count)++;
-+	return false;
++	static const unsigned char expect_plaintext[] =3D {
++		0xbb, 0xf3, 0x16, 0xe8, 0xd9, 0x40, 0xaf, 0x0a, 0xd3,
++	};
++	static const unsigned char expect_pedia[] =3D {
++		0x10, 0x21, 0xbf, 0x04, 0x20,
++	};
++	static const unsigned char expect_attack[] =3D {
++		0x45, 0xa0, 0x1f, 0x64, 0x5f, 0xc3, 0x5b, 0x38, 0x35, 0x52,
++		0x54, 0x4b, 0x9b, 0xf5,
++	};
++
++	assert(l_cipher_is_supported(L_CIPHER_ARC4));
++
++	cipher =3D l_cipher_new(L_CIPHER_ARC4, "Key", 3);
++	assert(cipher);
++	l_cipher_encrypt(cipher, "Plaintext", buf, 9);
++	assert(!memcmp(buf, expect_plaintext, 9));
++	l_cipher_free(cipher);
++
++	cipher =3D l_cipher_new(L_CIPHER_ARC4, "Wiki", 4);
++	assert(cipher);
++	l_cipher_encrypt(cipher, "pedia", buf, 5);
++	assert(!memcmp(buf, expect_pedia, 5));
++	l_cipher_free(cipher);
++
++	cipher =3D l_cipher_new(L_CIPHER_ARC4, "Secret", 6);
++	assert(cipher);
++	l_cipher_encrypt(cipher, "Attack at dawn", buf, 14);
++	assert(!memcmp(buf, expect_attack, 14));
++	l_cipher_free(cipher);
++
++	cipher =3D l_cipher_new(L_CIPHER_ARC4, KEY_STR, KEY_LEN);
++	assert(cipher);
++
++	memcpy(buf, FIXED_STR, FIXED_LEN);
++
++	l_cipher_encrypt(cipher, buf, buf, FIXED_LEN);
++
++	r =3D memcmp(buf, FIXED_STR, FIXED_LEN);
++	assert(r);
++
++	l_cipher_decrypt(cipher, buf, buf, FIXED_LEN);
++	l_cipher_free(cipher);
++
++	r =3D memcmp(buf, FIXED_STR, FIXED_LEN);
++	assert(!r);
 +}
 +
-+struct test_load_file_params {
-+	const char *path;
-+	bool expect_cert;
-+	bool expect_certchain;
-+	bool expect_privkey;
-+	bool expect_encrypted;
-+};
-+
-+#define TEST_LOAD_PARAMS(fn, cert, certchain, privkey, encrypted)	\
-+	(&(struct test_load_file_params) {				\
-+		CERTDIR fn, (cert), (certchain), (privkey), (encrypted) })
-+
-+static void test_load_file(const void *data)
-+{
-+	const struct test_load_file_params *params =3D data;
-+	struct l_certchain *certchain;
-+	struct l_key *privkey;
-+	bool encrypted;
-+
-+	l_pem_load_container_file(params->path, false, &certchain,
-+					&privkey, &encrypted);
-+	assert(encrypted =3D=3D params->expect_encrypted);
-+
-+	if (encrypted) {
-+		/*
-+		 * Depending on the format the certificates may be encrypted
-+		 * or unencrypted even when the private key was encrypted.
-+		 */
-+		if (certchain) {
-+			assert(params->expect_privkey);
-+			l_certchain_free(certchain);
-+			certchain =3D NULL;
-+		}
-+
-+		assert(!privkey);
-+
-+		l_pem_load_container_file(params->path, "abc", &certchain,
-+						&privkey, &encrypted);
-+	}
-+
-+	assert(!!certchain =3D=3D params->expect_cert);
-+	assert(!!privkey =3D=3D params->expect_privkey);
-+
-+	if (certchain) {
-+		int count =3D 0;
-+
-+		l_certchain_walk_from_leaf(certchain, test_cert_count, &count);
-+		assert(count =3D=3D (params->expect_certchain ? 3 : 1));
-+
-+		if (params->expect_certchain)
-+			assert(l_certchain_verify(certchain, NULL, NULL));
-+	}
-+
-+	if (certchain)
-+		l_certchain_free(certchain);
-+
-+	if (privkey)
-+		l_key_free(privkey);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -409,6 +477,56 @@ int main(int argc, char *argv[])
- 				CERTDIR "cert-client-key-pkcs1-aes256.pem");
- 	}
+ struct aead_test_vector {
+ 	enum l_aead_cipher_type type;
+ 	char *aad;
+@@ -337,6 +391,8 @@ int main(int argc, char *argv[])
+ 	if (l_cipher_is_supported(L_CIPHER_AES_CTR))
+ 		l_test_add("aes_ctr", test_aes_ctr, NULL);
  =
 
-+	l_test_add("detect-format/PEM PKCS#1 unencrypted private key",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client-key-pkcs1.pem",
-+						false, false, true, false));
-+	l_test_add("detect-format/PEM PKCS#1 encrypted private key",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client-key-pkcs1-des.pem",
-+						false, false, true, true));
-+	l_test_add("detect-format/PEM PKCS#8 unencrypted private key",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client-key-pkcs8.pem",
-+						false, false, true, false));
-+	l_test_add("detect-format/PEM PKCS#8 encrypted private key",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client-key-pkcs8-sha1-des.pem",
-+						false, false, true, true));
-+	l_test_add("detect-format/PEM X.509 certificate",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client.pem",
-+						true, false, false, false));
-+	l_test_add("detect-format/DER X.509 certificate",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client.crt",
-+						true, false, false, false));
-+	l_test_add("detect-format/PEM combined",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-combined.pem",
-+						true, true, true, true));
-+	l_test_add("detect-format/DER PKCS#12 combined",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-nomac.p12",
-+						true, false, true, true));
++	l_test_add("arc4", test_arc4, NULL);
 +
-+	l_test_add("pkcs#12/Combined RC2-based ciphers + SHA1",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-rc2-sha1.p12",
-+						true, true, true, true));
-+	l_test_add("pkcs#12/Combined DES-based ciphers + SHA256",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-des-sha256.p12",
-+						true, true, true, true));
-+	l_test_add("pkcs#12/Combined RC4-based ciphers + SHA384",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-rc4-sha384.p12",
-+						true, true, true, true));
-+	l_test_add("pkcs#12/Combined PKCS#5 ciphers + SHA512",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-pkcs5-sha512.p12",
-+						true, true, true, true));
-+
- done:
- 	return l_test_run();
- }
+ 	if (l_aead_cipher_is_supported(L_AEAD_CIPHER_AES_CCM)) {
+ 		l_test_add("aes_ccm long nonce", test_aead, &ccm_long_nonce);
+ 		l_test_add("aes_ccm short nonce", test_aead, &ccm_short_nonce);
 -- =
 
 2.27.0
 
---===============8080960010714999764==--
+--===============5410061280645080101==--
 
