@@ -1,178 +1,163 @@
-Content-Type: multipart/mixed; boundary="===============4341727652634566861=="
+Content-Type: multipart/mixed; boundary="===============2634522223543596641=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 04/13] cipher: Add ARC4 implementation
-Date: Thu, 10 Dec 2020 20:31:57 +0100
-Message-ID: <20201210193202.526451-4-andrew.zaborowski@intel.com>
+Subject: [PATCH 05/13] pem: Don't expect padding with stream ciphers
+Date: Thu, 10 Dec 2020 20:31:58 +0100
+Message-ID: <20201210193202.526451-5-andrew.zaborowski@intel.com>
 In-Reply-To: <20201210193202.526451-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4341727652634566861==
+--===============2634522223543596641==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Re-add the L_CIPHER_ARC4 stream cipher for use in decoding PKCS#12
-files.  Like RC2 it's implemented completely in cipher.c because the
-kernel API doesn't support it.  This cipher is also discouraged where it
-can be avoided.
+When decoding PKCS#8 encrypted certificates don't try to strip padding
+when the encryption uses a stream cipher (RC4).  Standalone PKCS#8 files
+encrypted with PKCS#12 ciphers are not common (that I know of..) but
+they can be found embedded in PKCS#12 files.
 ---
- ell/cipher.c | 98 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/cipher.h |  4 +--
- 2 files changed, 100 insertions(+), 2 deletions(-)
+ ell/pem.c           | 36 +++++++++++++++++++++++-------------
+ ell/pkcs5-private.h |  3 ++-
+ ell/pkcs5.c         | 13 +++++++++++--
+ 3 files changed, 36 insertions(+), 16 deletions(-)
 
-diff --git a/ell/cipher.c b/ell/cipher.c
-index a2db608..5d67d7a 100644
---- a/ell/cipher.c
-+++ b/ell/cipher.c
-@@ -162,6 +162,8 @@ static const char *cipher_type_to_name(enum l_cipher_ty=
-pe type)
- 		return "cbc(aes)";
- 	case L_CIPHER_AES_CTR:
- 		return "ctr(aes)";
-+	case L_CIPHER_ARC4:
-+		return NULL;
- 	case L_CIPHER_DES:
- 		return "ecb(des)";
- 	case L_CIPHER_DES_CBC:
-@@ -175,9 +177,11 @@ static const char *cipher_type_to_name(enum l_cipher_t=
-ype type)
- 	return NULL;
- }
+diff --git a/ell/pem.c b/ell/pem.c
+index 42c7975..1b995d5 100644
+--- a/ell/pem.c
++++ b/ell/pem.c
+@@ -619,6 +619,8 @@ struct l_key *pem_key_from_pkcs8_encrypted_private_key_=
+info(const uint8_t *der,
+ 	int i;
+ 	struct l_key *pkey;
+ 	bool r;
++	bool is_block;
++	size_t decrypted_len;
  =
 
-+static const struct local_impl local_arc4;
- static const struct local_impl local_rc2_cbc;
+ 	/* Technically this is BER, not limited to DER */
+ 	key_info =3D asn1_der_find_elem(der, der_len, 0, &tag, &key_info_len);
+@@ -638,7 +640,8 @@ struct l_key *pem_key_from_pkcs8_encrypted_private_key_=
+info(const uint8_t *der,
+ 	if (asn1_der_find_elem(der, der_len, 2, &tag, &tmp_len))
+ 		return NULL;
  =
 
- static const struct local_impl *local_impl_ciphers[] =3D {
-+	[L_CIPHER_ARC4] =3D &local_arc4,
- 	[L_CIPHER_RC2_CBC] =3D &local_rc2_cbc,
- };
+-	alg =3D pkcs5_cipher_from_alg_id(alg_id, alg_id_len, passphrase);
++	alg =3D pkcs5_cipher_from_alg_id(alg_id, alg_id_len, passphrase,
++					&is_block);
+ 	if (!alg)
+ 		return NULL;
  =
 
-@@ -729,6 +733,100 @@ LIB_EXPORT bool l_aead_cipher_is_supported(enum l_aea=
-d_cipher_type type)
- 	return supported_aead_ciphers & (1 << type);
- }
+@@ -652,21 +655,28 @@ struct l_key *pem_key_from_pkcs8_encrypted_private_ke=
+y_info(const uint8_t *der,
+ 		return NULL;
+ 	}
  =
 
-+/* ARC4 implementation copyright (c) 2001 Niels M=C3=B6ller */
+-	/*
+-	 * Strip padding as defined in RFC8018 (for PKCS#5 v1) or
+-	 * RFC1423 / RFC5652 (for v2).
+-	 */
+-	pkey =3D NULL;
+-	if (decrypted[data_len - 1] >=3D data_len ||
+-			decrypted[data_len - 1] > 16)
+-		goto cleanup;
++	decrypted_len =3D data_len;
 +
-+#define SWAP(a, b) do { uint8_t _t =3D a; a =3D b; b =3D _t; } while (0)
++	if (is_block) {
++		/*
++		 * For block ciphers strip padding as defined in RFC8018
++		 * (for PKCS#5 v1) or RFC1423 / RFC5652 (for v2).
++		 */
++		pkey =3D NULL;
+ =
+
+-	for (i =3D 1; i < decrypted[data_len - 1]; i++)
+-		if (decrypted[data_len - 1 - i] !=3D decrypted[data_len - 1])
++		if (decrypted[data_len - 1] >=3D data_len ||
++				decrypted[data_len - 1] > 16)
+ 			goto cleanup;
+ =
+
+-	pkey =3D pem_key_from_pkcs8_private_key_info(decrypted,
+-					data_len - decrypted[data_len - 1]);
++		for (i =3D 1; i < decrypted[data_len - 1]; i++)
++			if (decrypted[data_len - 1 - i] !=3D
++					decrypted[data_len - 1])
++				goto cleanup;
 +
-+static void arc4_set_key(uint8_t *S, const uint8_t *key, size_t key_length)
-+{
-+	unsigned int i;
-+	uint8_t j;
-+
-+	for (i =3D 0; i < 256; i++)
-+		S[i] =3D i;
-+
-+	for (i =3D j =3D 0; i < 256; i++) {
-+		j +=3D S[i] + key[i % key_length];
-+		SWAP(S[i], S[j]);
++		decrypted_len -=3D decrypted[data_len - 1];
 +	}
-+}
 +
-+struct arc4_state {
-+	struct arc4_state_ctx {
-+		uint8_t S[256];
-+		uint8_t i;
-+		uint8_t j;
-+	} ctx[2];
-+};
++	pkey =3D pem_key_from_pkcs8_private_key_info(decrypted, decrypted_len);
+ =
+
+ cleanup:
+ 	explicit_bzero(decrypted, data_len);
+diff --git a/ell/pkcs5-private.h b/ell/pkcs5-private.h
+index f4f41f5..27ff41c 100644
+--- a/ell/pkcs5-private.h
++++ b/ell/pkcs5-private.h
+@@ -22,4 +22,5 @@
+ =
+
+ struct l_cipher *pkcs5_cipher_from_alg_id(const uint8_t *id_asn1,
+ 						size_t id_asn1_len,
+-						const char *password);
++						const char *password,
++						bool *out_is_block);
+diff --git a/ell/pkcs5.c b/ell/pkcs5.c
+index f225c71..21fda2b 100644
+--- a/ell/pkcs5.c
++++ b/ell/pkcs5.c
+@@ -415,7 +415,8 @@ static struct l_cipher *pkcs5_cipher_from_pbes2_params(
+ =
+
+ struct l_cipher *pkcs5_cipher_from_alg_id(const uint8_t *id_asn1,
+ 						size_t id_asn1_len,
+-						const char *password)
++						const char *password,
++						bool *out_is_block)
+ {
+ 	uint8_t tag;
+ 	const uint8_t *oid, *params, *salt, *iter_count_buf;
+@@ -436,9 +437,13 @@ struct l_cipher *pkcs5_cipher_from_alg_id(const uint8_=
+t *id_asn1,
+ 	if (asn1_der_find_elem(id_asn1, id_asn1_len, 2, &tag, &tmp_len))
+ 		return NULL;
+ =
+
+-	if (asn1_oid_eq(&pkcs5_pbes2_oid, oid_len, oid))
++	if (asn1_oid_eq(&pkcs5_pbes2_oid, oid_len, oid)) {
++		if (out_is_block)
++			*out_is_block =3D true;
 +
-+static void *local_arc4_new(enum l_cipher_type type,
-+				const void *key, size_t key_length)
-+{
-+	struct arc4_state *s;
-+
-+	if (unlikely(key_length =3D=3D 0 || key_length > 256))
-+		return NULL;
-+
-+	s =3D l_new(struct arc4_state, 1);
-+	arc4_set_key(s->ctx[0].S, key, key_length);
-+	s->ctx[1] =3D s->ctx[0];
-+	return s;
-+}
-+
-+static void local_arc4_free(void *data)
-+{
-+	explicit_bzero(data, sizeof(struct arc4_state));
-+	l_free(data);
-+}
-+
-+static ssize_t local_arc4_operate(void *data, __u32 operation,
-+					const struct iovec *in, size_t in_cnt,
-+					const struct iovec *out, size_t out_cnt)
-+{
-+	struct arc4_state *s =3D data;
-+	struct iovec cur_in;
-+	struct iovec cur_out;
-+	struct arc4_state_ctx *ctx =3D
-+		&s->ctx[operation =3D=3D ALG_OP_ENCRYPT ? 1 : 0];
-+
-+	if (!in_cnt || !out_cnt)
-+		return 0;
-+
-+	cur_in =3D *in;
-+	cur_out =3D *out;
-+
-+	while (1) {
-+		while (!cur_in.iov_len) {
-+			cur_in =3D *in++;
-+
-+			if (!--in_cnt)
-+				return 0;
-+		}
-+
-+		while (!cur_out.iov_len) {
-+			cur_out =3D *out++;
-+
-+			if (!--out_cnt)
-+				return 0;
-+		}
-+
-+		ctx->j +=3D ctx->S[++ctx->i];
-+		SWAP(ctx->S[ctx->i], ctx->S[ctx->j]);
-+		*(uint8_t *) cur_out.iov_base++ =3D
-+			*(uint8_t *) cur_in.iov_base++ ^
-+			ctx->S[(ctx->S[ctx->i] + ctx->S[ctx->j]) & 0xff];
-+		cur_in.iov_len--;
-+		cur_out.iov_len--;
+ 		return pkcs5_cipher_from_pbes2_params(params, params_len,
+ 							password);
 +	}
-+}
+ =
+
+ 	/* RFC8018 section A.3 */
+ =
+
+@@ -484,5 +489,9 @@ struct l_cipher *pkcs5_cipher_from_alg_id(const uint8_t=
+ *id_asn1,
+ 	}
+ =
+
+ 	explicit_bzero(derived_key, 16);
 +
-+static const struct local_impl local_arc4 =3D {
-+	local_arc4_new,
-+	local_arc4_free,
-+	NULL,
-+	local_arc4_operate,
-+};
++	if (out_is_block)
++		*out_is_block =3D true;
 +
- struct rc2_state {
- 	union {
- 		uint16_t xkey[64];
-diff --git a/ell/cipher.h b/ell/cipher.h
-index ed277a6..f4c31fa 100644
---- a/ell/cipher.h
-+++ b/ell/cipher.h
-@@ -33,8 +33,8 @@ enum l_cipher_type {
- 	L_CIPHER_AES =3D 0,
- 	L_CIPHER_AES_CBC,
- 	L_CIPHER_AES_CTR,
--	/* L_CIPHER_ARC4, */
--	L_CIPHER_DES =3D 4,
-+	L_CIPHER_ARC4,
-+	L_CIPHER_DES,
- 	L_CIPHER_DES_CBC,
- 	L_CIPHER_DES3_EDE_CBC,
- 	L_CIPHER_RC2_CBC,
+ 	return cipher;
+ }
 -- =
 
 2.27.0
 
---===============4341727652634566861==--
+--===============2634522223543596641==--
 
