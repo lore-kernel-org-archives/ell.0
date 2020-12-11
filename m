@@ -1,70 +1,66 @@
-Content-Type: multipart/mixed; boundary="===============0888360436029187881=="
+Content-Type: multipart/mixed; boundary="===============6675210271522721138=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH 06/13] pkcs5: Add the PKCS#12 KDF
-Date: Fri, 11 Dec 2020 11:34:38 +0100
-Message-ID: <CAOq732J+dz7SEh9sV9x=SZE0ii1KGAWBYvZj2_RGMcyp1BqZTw@mail.gmail.com>
-In-Reply-To: <183e3ea3-5ed1-4b15-3030-89a53d3eb4d5@gmail.com>
+Date: Fri, 11 Dec 2020 15:50:33 +0000
+Message-ID: <481d483e-22b3-9604-40c4-4cbc58a2ba2c@gmail.com>
+In-Reply-To: <CAOq732J+dz7SEh9sV9x=SZE0ii1KGAWBYvZj2_RGMcyp1BqZTw@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0888360436029187881==
+--===============6675210271522721138==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi Andrew,
 
-On Thu, 10 Dec 2020 at 23:51, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 12/10/20 1:31 PM, Andrew Zaborowski wrote:
-> > Add the key derivation algorithm used with PKCS#12 to pkcs5.c so that it
-> > can be found together with the two PKCS#5 KDFs, and so that it can also
-> > be used when parsing of the PKCS#12 AlgorithmIdentifiers in the next
-> > commit.  This KDF is not recommended for new uses.
-> > ---
-> >   ell/pkcs5-private.h |  12 ++++
-> >   ell/pkcs5.c         | 146 ++++++++++++++++++++++++++++++++++++++++++++
-> >   2 files changed, 158 insertions(+)
-> >
->
-> <snip>
->
-> > +static bool utf8_to_bmpstring(const char *utf, uint8_t *out_buf,
-> > +                             unsigned int *out_len)
-> > +{
-> > +     unsigned int n;
-> > +     int utflen;
-> > +     wchar_t cp;
-> > +     uint16_t *ptr =3D (uint16_t *) out_buf;
-> > +
-> > +     for (n =3D strlen(utf); n; n -=3D utflen, utf +=3D utflen) {
-> > +             if ((utflen =3D l_utf8_get_codepoint(utf, n, &cp)) <=3D 0=
- ||
-> > +                             cp > 0xffff)
-> > +                     return false;
->
-> So is this just a UCS2BE conversion?  If so, then using l_utf8_to_ucs2be =
-might
-> be clearer.
+>> So is this just a UCS2BE conversion?  If so, then using l_utf8_to_ucs2be=
+ might
+>> be clearer.
+> =
 
-Basically yes.  But with l_utf8_to_ucs2be this will look something like:
+> Basically yes.  But with l_utf8_to_ucs2be this will look something like:
+> =
 
-  uint8_t *usc2;
+>    uint8_t *usc2;
+> =
 
-  if (!l_utf8_validate(utf))
-    return false;
+>    if (!l_utf8_validate(utf))
+>      return false;
 
-  ucs2 =3D l_utf8_to_ucs2be(utf, out_len);
-  if (!str)
-    return false;
+You'll potentially need this step in either version actually. =
 
-  memcpy(out_buf, ucs2, *out_len);
-  explicit_bzero(ucs2);
-  l_free(ucs2);
+utf8_get_codepoint isn't really enough to tell whether the entire string is =
 
-I can do that but it seems we're doing less work without using
-l_utf8_to_ucs2be here.
+valid utf8.  Where is the password coming from?
 
-Best regards
---===============0888360436029187881==--
+Also, I would think you'd pre-validate utf8 validity before ever getting to=
+ this =
+
+point?
+
+> =
+
+>    ucs2 =3D l_utf8_to_ucs2be(utf, out_len);
+>    if (!str)
+>      return false;
+> =
+
+>    memcpy(out_buf, ucs2, *out_len);
+>    explicit_bzero(ucs2);
+>    l_free(ucs2);
+> =
+
+> I can do that but it seems we're doing less work without using
+> l_utf8_to_ucs2be here.
+
+You could add an own buffer version of utf8_to_ucs2be.  But even this memcp=
+y =
+
+version seems to be cleaner than open-coding it.
+
+Regards,
+-Denis
+--===============6675210271522721138==--
 
