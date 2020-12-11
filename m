@@ -1,32 +1,70 @@
-Content-Type: multipart/mixed; boundary="===============2476474460088910947=="
+Content-Type: multipart/mixed; boundary="===============0888360436029187881=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 10/13] build: Add more test certificates in various formats
-Date: Thu, 10 Dec 2020 22:53:19 +0000
-Message-ID: <e74ea044-53db-63e7-0b5d-a0491e910f67@gmail.com>
-In-Reply-To: <20201210193224.526513-1-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 06/13] pkcs5: Add the PKCS#12 KDF
+Date: Fri, 11 Dec 2020 11:34:38 +0100
+Message-ID: <CAOq732J+dz7SEh9sV9x=SZE0ii1KGAWBYvZj2_RGMcyp1BqZTw@mail.gmail.com>
+In-Reply-To: <183e3ea3-5ed1-4b15-3030-89a53d3eb4d5@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2476474460088910947==
+--===============0888360436029187881==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi Denis,
 
-On 12/10/20 1:32 PM, Andrew Zaborowski wrote:
-> Add a binary X.509 test certificate and PKCS#12 files using various
-> cipher combinations.
-> ---
->   Makefile.am | 28 ++++++++++++++++++++++++++++
->   1 file changed, 28 insertions(+)
-> =
+On Thu, 10 Dec 2020 at 23:51, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 12/10/20 1:31 PM, Andrew Zaborowski wrote:
+> > Add the key derivation algorithm used with PKCS#12 to pkcs5.c so that it
+> > can be found together with the two PKCS#5 KDFs, and so that it can also
+> > be used when parsing of the PKCS#12 AlgorithmIdentifiers in the next
+> > commit.  This KDF is not recommended for new uses.
+> > ---
+> >   ell/pkcs5-private.h |  12 ++++
+> >   ell/pkcs5.c         | 146 ++++++++++++++++++++++++++++++++++++++++++++
+> >   2 files changed, 158 insertions(+)
+> >
+>
+> <snip>
+>
+> > +static bool utf8_to_bmpstring(const char *utf, uint8_t *out_buf,
+> > +                             unsigned int *out_len)
+> > +{
+> > +     unsigned int n;
+> > +     int utflen;
+> > +     wchar_t cp;
+> > +     uint16_t *ptr =3D (uint16_t *) out_buf;
+> > +
+> > +     for (n =3D strlen(utf); n; n -=3D utflen, utf +=3D utflen) {
+> > +             if ((utflen =3D l_utf8_get_codepoint(utf, n, &cp)) <=3D 0=
+ ||
+> > +                             cp > 0xffff)
+> > +                     return false;
+>
+> So is this just a UCS2BE conversion?  If so, then using l_utf8_to_ucs2be =
+might
+> be clearer.
 
+Basically yes.  But with l_utf8_to_ucs2be this will look something like:
 
-Patch 10 & 13 applied, thanks.
+  uint8_t *usc2;
 
-Regards,
--Denis
---===============2476474460088910947==--
+  if (!l_utf8_validate(utf))
+    return false;
+
+  ucs2 =3D l_utf8_to_ucs2be(utf, out_len);
+  if (!str)
+    return false;
+
+  memcpy(out_buf, ucs2, *out_len);
+  explicit_bzero(ucs2);
+  l_free(ucs2);
+
+I can do that but it seems we're doing less work without using
+l_utf8_to_ucs2be here.
+
+Best regards
+--===============0888360436029187881==--
 
