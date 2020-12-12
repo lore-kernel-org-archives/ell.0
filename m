@@ -1,261 +1,288 @@
-Content-Type: multipart/mixed; boundary="===============6647380370093385908=="
+Content-Type: multipart/mixed; boundary="===============2674641262489571583=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/5] pkcs5: Add PKCS#12 algorithms in pkcs5_cipher_from_alg_id
-Date: Sat, 12 Dec 2020 01:50:57 +0100
-Message-ID: <20201212005100.578174-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/5] pem: Add l_pem_load_container_file
+Date: Sat, 12 Dec 2020 01:50:58 +0100
+Message-ID: <20201212005100.578174-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20201212005100.578174-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6647380370093385908==
+--===============2674641262489571583==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Since pkcs5_cipher_from_alg_id() is used for decrypting PKCS#8 private
-keys, teach it to also parse PKCS#12 AlgorithmIdentifier asn1 syntax
-(almost identical to PKCS#5).  Ideally the pkcs5_* functions and pkcs5.c
-should be renamed to not include the PKCS#5 string because the callers
-are probably not interested in what cipher is used as long as they can
-use it to decrypt data their input.  So ideally they want to call
-one function that understands all the common algorithm OIDs.
+Add a function that takes a file path and detects what X.509 certificate
+and/or private key format it uses and parses it accordingly.  This is to
+make it easier for clients to support multiple file formats, including
+raw X.509 certificates -- without this they would have to load the
+contents of the file and call l_cert_new_from_der().
+l_pem_load_container can also be used instead of
+l_pem_load_certificate_chain() and l_pem_load_private_key().
+
+This function can now load binary certificate files which are not PEM
+but there wasn't a better place for it than pem.c.  I guess the name
+could also be improved to imply that it's for certificate and private
+key container files, but I couldn't come up with a name that isn't too
+long.
+
+This function treats PEM files as containers that can have both private
+keys and certificates at the same time, openssl can parse such files and
+also produces such files in some situations and they may have some good
+uses.
 ---
- ell/pkcs5.c | 181 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 178 insertions(+), 3 deletions(-)
+ ell/ell.sym |   1 +
+ ell/pem.c   | 157 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ ell/pem.h   |   5 ++
+ 3 files changed, 158 insertions(+), 5 deletions(-)
 
-diff --git a/ell/pkcs5.c b/ell/pkcs5.c
-index 979cebe..25bf431 100644
---- a/ell/pkcs5.c
-+++ b/ell/pkcs5.c
-@@ -300,6 +300,15 @@ uint8_t *pkcs12_pbkdf(const char *password, const stru=
-ct pkcs12_hash *hash,
- 	return key;
+diff --git a/ell/ell.sym b/ell/ell.sym
+index d94b585..03c46d0 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -415,6 +415,7 @@ global:
+ 	l_pem_load_file;
+ 	l_pem_load_private_key;
+ 	l_pem_load_private_key_from_data;
++	l_pem_load_container_file;
+ 	/* pkcs5 */
+ 	l_pkcs5_pbkdf1;
+ 	l_pkcs5_pbkdf2;
+diff --git a/ell/pem.c b/ell/pem.c
+index 1b995d5..90d06fb 100644
+--- a/ell/pem.c
++++ b/ell/pem.c
+@@ -195,7 +195,7 @@ const char *pem_next(const void *buf, size_t buf_len, c=
+har **type_label,
+ =
+
+ static uint8_t *pem_load_buffer(const void *buf, size_t buf_len,
+ 				char **out_type_label, size_t *out_len,
+-				char **out_headers)
++				char **out_headers, const char **out_endp)
+ {
+ 	size_t base64_len;
+ 	const char *base64;
+@@ -203,7 +203,7 @@ static uint8_t *pem_load_buffer(const void *buf, size_t=
+ buf_len,
+ 	uint8_t *ret;
+ =
+
+ 	base64 =3D pem_next(buf, buf_len, &label, &base64_len,
+-				NULL, false);
++				out_endp, false);
+ 	if (!base64)
+ 		return NULL;
+ =
+
+@@ -262,7 +262,7 @@ static uint8_t *pem_load_buffer(const void *buf, size_t=
+ buf_len,
+ LIB_EXPORT uint8_t *l_pem_load_buffer(const void *buf, size_t buf_len,
+ 					char **type_label, size_t *out_len)
+ {
+-	return pem_load_buffer(buf, buf_len, type_label, out_len, NULL);
++	return pem_load_buffer(buf, buf_len, type_label, out_len, NULL, NULL);
  }
  =
 
-+/* RFC7292 Appendix A */
-+static const struct pkcs12_hash pkcs12_sha1_hash =3D {
-+	.alg =3D L_CHECKSUM_SHA1,
-+	.len =3D 20,
-+	.u   =3D 20,
-+	.v   =3D 64,
-+	.oid =3D { 5, { 0x2b, 0x0e, 0x03, 0x02, 0x1a } },
-+};
-+
- /* RFC8018 Section A.2 */
- static struct asn1_oid pkcs5_pbkdf2_oid =3D {
- 	9, { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x05, 0x0c }
-@@ -327,6 +336,74 @@ static const struct pkcs5_pbes1_encryption_oid {
- 	/* MD2- and RC2-based schemes 1, 4, 6 and 11 not supported */
- };
+ struct pem_file_info {
+@@ -315,7 +315,8 @@ static uint8_t *pem_load_file(const char *filename, cha=
+r **out_type_label,
+ 		return NULL;
  =
 
-+/* RFC7292 Appendix C */
-+static const struct pkcs12_encryption_oid {
-+	enum l_cipher_type cipher_type;
-+	unsigned int key_length;
-+	unsigned int iv_length;
-+	bool copy_k1;	/* Expand the 2-Key 3DES key for 3-Key 3DES */
-+	bool is_block;
-+	struct asn1_oid oid;
-+} pkcs12_encryption_oids[] =3D {
-+	{ /* pbeWithSHAAnd128BitRC4 */
-+		.cipher_type =3D L_CIPHER_ARC4,
-+		.key_length =3D 16,
-+		.oid =3D { 10, {
-+			0x2a, 0x86, 0x48, 0x86, 0xf7,
-+			0x0d, 0x01, 0x0c, 0x01, 0x01,
-+		} }
-+	},
-+	{ /* pbeWithSHAAnd40BitRC4 */
-+		.cipher_type =3D L_CIPHER_ARC4,
-+		.key_length =3D 5,
-+		.oid =3D { 10, {
-+			0x2a, 0x86, 0x48, 0x86, 0xf7,
-+			0x0d, 0x01, 0x0c, 0x01, 0x02,
-+		} }
-+	},
-+	{ /* pbeWithSHAAnd3-KeyTripleDES-CBC */
-+		.cipher_type =3D L_CIPHER_DES3_EDE_CBC,
-+		.key_length =3D 24,
-+		.iv_length =3D 8,
-+		.is_block =3D true,
-+		.oid =3D { 10, {
-+			0x2a, 0x86, 0x48, 0x86, 0xf7,
-+			0x0d, 0x01, 0x0c, 0x01, 0x03,
-+		} }
-+	},
-+	{ /* pbeWithSHAAnd2-KeyTripleDES-CBC */
-+		.cipher_type =3D L_CIPHER_DES3_EDE_CBC,
-+		.key_length =3D 16,
-+		.iv_length =3D 8,
-+		.copy_k1 =3D true,
-+		.is_block =3D true,
-+		.oid =3D { 10, {
-+			0x2a, 0x86, 0x48, 0x86, 0xf7,
-+			0x0d, 0x01, 0x0c, 0x01, 0x04,
-+		} }
-+	},
-+	{ /* pbeWithSHAAnd128BitRC2-CBC */
-+		.cipher_type =3D L_CIPHER_RC2_CBC,
-+		.key_length =3D 16,
-+		.iv_length =3D 8,
-+		.is_block =3D true,
-+		.oid =3D { 10, {
-+			0x2a, 0x86, 0x48, 0x86, 0xf7,
-+			0x0d, 0x01, 0x0c, 0x01, 0x05,
-+		} }
-+	},
-+	{ /* pbeWithSHAAnd40BitRC2-CBC */
-+		.cipher_type =3D L_CIPHER_RC2_CBC,
-+		.key_length =3D 5,
-+		.iv_length =3D 8,
-+		.is_block =3D true,
-+		.oid =3D { 10, {
-+			0x2a, 0x86, 0x48, 0x86, 0xf7,
-+			0x0d, 0x01, 0x0c, 0x01, 0x06,
-+		} }
-+	},
-+};
-+
- static const struct pkcs5_digest_alg_oid {
- 	enum l_checksum_type type;
- 	struct asn1_oid oid;
-@@ -503,8 +580,8 @@ static struct l_cipher *pkcs5_cipher_from_pbes2_params(
- 	/* RFC8018 section B.2 */
- =
-
- 	/*
--	 * Since we don't support RC2/RC5, all our PKCS#5 ciphers only
--	 * have an obligatory OCTET STRING IV parameter and a fixed key
-+	 * Since we don't support the RC2/RC5 PBES2 ciphers, our parameters
-+	 * only have an obligatory OCTET STRING IV parameter and a fixed key
- 	 * length.
- 	 */
- 	if (tag !=3D ASN1_ID_OCTET_STRING || params_len !=3D enc_scheme->iv_size)
-@@ -534,6 +611,94 @@ static struct l_cipher *pkcs5_cipher_from_pbes2_params(
- 	return cipher;
+ 	result =3D pem_load_buffer(file.data, file.st.st_size,
+-					out_type_label, out_len, out_headers);
++					out_type_label, out_len, out_headers,
++					NULL);
+ 	pem_file_close(&file);
+ 	return result;
  }
+@@ -888,7 +889,7 @@ LIB_EXPORT struct l_key *l_pem_load_private_key_from_da=
+ta(const void *buf,
+ 	if (encrypted)
+ 		*encrypted =3D false;
  =
 
-+static struct l_cipher *pkcs12_cipher_from_alg_id(
-+				const struct pkcs12_encryption_oid *scheme,
-+				const uint8_t *params, size_t params_len,
-+				const char *password, bool *out_is_block)
+-	content =3D pem_load_buffer(buf, buf_len, &label, &len, &headers);
++	content =3D pem_load_buffer(buf, buf_len, &label, &len, &headers, NULL);
+ =
+
+ 	if (!content)
+ 		return NULL;
+@@ -933,3 +934,149 @@ LIB_EXPORT struct l_key *l_pem_load_private_key(const=
+ char *filename,
+ 	return pem_load_private_key(content, len, label, passphrase, headers,
+ 					encrypted);
+ }
++
++/*
++ * Look at a file, try to detect which of the few X.509 certificate and/or
++ * private key container formats it uses and load any certificates in it as
++ * a certificate chain object, and load the first private key as an l_key
++ * object.
++ *
++ * Currently supported are:
++ *  PEM X.509 certificates
++ *  PEM PKCS#8 encrypted and unenecrypted private keys
++ *  PEM legacy PKCS#1 encrypted and unenecrypted private keys
++ *  Raw X.509 certificates (.cer, .der, .crt)
++ *
++ * The raw format contains exactly one certificate, PEM and PKCS#12 files
++ * can contain any combination of certificates and private keys.
++ */
++LIB_EXPORT void l_pem_load_container_file(const char *filename,
++					const char *password,
++					struct l_certchain **out_certchain,
++					struct l_key **out_privkey,
++					bool *out_encrypted)
 +{
-+	uint8_t tag;
-+	const uint8_t *salt;
-+	const uint8_t *iterations_data;
-+	size_t salt_len;
-+	size_t iterations_len;
-+	unsigned int iterations;
-+	uint8_t *key;
-+	size_t key_len;
-+	struct l_cipher *cipher;
++	struct pem_file_info file;
++	const char *ptr;
++	size_t len;
++	bool error =3D false;
 +
-+	/* Same parameters as in PKCS#5 */
-+	salt =3D asn1_der_find_elem(params, params_len, 0, &tag, &salt_len);
-+	if (!salt || tag !=3D ASN1_ID_OCTET_STRING)
-+		return NULL;
++	if (out_encrypted)
++		*out_encrypted =3D false;
 +
-+	iterations_data =3D asn1_der_find_elem(params, params_len, 1,
-+						&tag, &iterations_len);
-+	if (!iterations_data || tag !=3D ASN1_ID_INTEGER ||
-+			iterations_len < 1 || iterations_len > 4)
-+		return NULL;
++	if (out_certchain)
++		*out_certchain =3D NULL;
 +
-+	for (iterations =3D 0; iterations_len; iterations_len--)
-+		iterations =3D (iterations << 8) | *iterations_data++;
++	if (out_privkey)
++		*out_privkey =3D NULL;
 +
-+	if (iterations < 1 || iterations > 8192)
-+		return NULL;
++	if (unlikely(!filename))
++		return;
 +
-+	if (iterations_data !=3D params + params_len)
-+		return NULL;
++	if (pem_file_open(&file, filename) < 0)
++		return;
 +
-+	key_len =3D scheme->key_length;
-+	key =3D pkcs12_pbkdf(password, &pkcs12_sha1_hash, salt, salt_len,
-+				iterations, 1, key_len);
-+	if (!key)
-+		return NULL;
++	if (file.st.st_size < 1)
++		goto close;
 +
-+	if (scheme->copy_k1) {
++	/* See if we have a DER sequence tag@the start */
++	if (file.data[0] =3D=3D ASN1_ID_SEQUENCE) {
++		const uint8_t *seq_data;
++		const uint8_t *elem_data;
++		size_t elem_len;
++		uint8_t tag;
++
++		if (!(seq_data =3D asn1_der_find_elem(file.data, file.st.st_size,
++							0, &tag, &len)))
++			goto not_der_after_all;
++
 +		/*
-+		 * 2-Key 3DES is like L_CIPHER_DES3_EDE_CBC except the last
-+		 * of the 3 8-byte keys is not generated using a KDF and
-+		 * instead is a copy of the first key.  In other words
-+		 * the first half of the 16-byte key material is appended
-+		 * at the end to produce the 24 bytes for DES3_EDE_CBC.
++		 * See if the first sub-element is another sequence, then, out
++		 * of the formats that we currently support this can only be a
++		 * raw certificate.  If integer, it's going to be PKCS#12.  If
++		 * we wish to add any more formats we'll probably need to start
++		 * guessing from the filename suffix.
 +		 */
-+		uint8_t *key2 =3D l_malloc(24);
++		if (!(elem_data =3D asn1_der_find_elem(seq_data, len,
++							0, &tag, &elem_len)))
++			goto not_der_after_all;
 +
-+		memcpy(key2, key, 16);
-+		memcpy(key2 + 16, key, 8);
-+		explicit_bzero(key, key_len);
-+		l_free(key);
-+		key =3D key2;
-+		key_len =3D 24;
++		if (tag =3D=3D ASN1_ID_SEQUENCE) {
++			if (out_certchain) {
++				struct l_cert *cert;
++
++				if (!(cert =3D l_cert_new_from_der(file.data,
++							file.st.st_size)))
++					goto close;
++
++				*out_certchain =3D certchain_new_from_leaf(cert);
++			}
++
++			goto close;
++		}
 +	}
 +
-+	cipher =3D l_cipher_new(scheme->cipher_type, key, key_len);
-+	explicit_bzero(key, key_len);
-+	l_free(key);
++not_der_after_all:
++	/*
++	 * RFC 7486 allows whitespace and possibly other data before the
++	 * PEM "encapsulation boundary" so rather than check if the start
++	 * of the data looks like PEM, we fall back to this format if the
++	 * data didn't look like anything else we knew about.
++	 */
++	ptr =3D (const char *) file.data;
++	len =3D file.st.st_size;
++	while (!error && len) {
++		uint8_t *der;
++		size_t der_len;
++		char *type_label;
++		char *headers;
++		const char *endp;
 +
-+	if (!cipher)
-+		return NULL;
++		if (!(der =3D pem_load_buffer(ptr, len, &type_label, &der_len,
++						&headers, &endp)))
++			break;
 +
-+	if (scheme->iv_length) {
-+		uint8_t *iv =3D pkcs12_pbkdf(password, &pkcs12_sha1_hash,
-+						salt, salt_len, iterations, 2,
-+						scheme->iv_length);
++		len -=3D endp - ptr;
++		ptr =3D endp;
 +
-+		if (!iv || !l_cipher_set_iv(cipher, iv, scheme->iv_length)) {
-+			l_cipher_free(cipher);
-+			cipher =3D NULL;
++		if (!strcmp(type_label, "CERTIFICATE")) {
++			struct l_cert *cert;
++
++			if (!out_certchain)
++				goto next;
++
++			if (!(cert =3D l_cert_new_from_der(der, der_len))) {
++				l_certchain_free(*out_certchain);
++				*out_certchain =3D NULL;
++				error =3D true;
++				goto next;
++			}
++
++			if (!*out_certchain)
++				*out_certchain =3D certchain_new_from_leaf(cert);
++			else
++				certchain_link_issuer(*out_certchain, cert);
++
++			goto next;
 +		}
 +
-+		if (iv)
-+			explicit_bzero(iv, scheme->iv_length);
++		/* Only use the first private key found */
++		if (out_privkey && !*out_privkey) {
++			*out_privkey =3D pem_load_private_key(der, der_len,
++								type_label,
++								password,
++								headers,
++								out_encrypted);
++			continue;
++		}
 +
-+		l_free(iv);
++next:
++		explicit_bzero(der, der_len);
++		l_free(der);
++		l_free(type_label);
++		l_free(headers);
 +	}
 +
-+	if (out_is_block)
-+		*out_is_block =3D scheme->is_block;
-+
-+	return cipher;
++close:
++	pem_file_close(&file);
 +}
-+
- struct l_cipher *pkcs5_cipher_from_alg_id(const uint8_t *id_asn1,
- 						size_t id_asn1_len,
- 						const char *password,
-@@ -576,8 +741,18 @@ struct l_cipher *pkcs5_cipher_from_alg_id(const uint8_=
-t *id_asn1,
- 		}
- 	}
+diff --git a/ell/pem.h b/ell/pem.h
+index 1c93e7a..ce5af04 100644
+--- a/ell/pem.h
++++ b/ell/pem.h
+@@ -50,6 +50,11 @@ struct l_key *l_pem_load_private_key_from_data(const voi=
+d *buf, size_t len,
+ 						const char *passphrase,
+ 						bool *encrypted);
  =
 
--	if (!pbes1_scheme)
-+	/* Check if this is a PKCS#12 OID */
-+	if (!pbes1_scheme) {
-+		for (i =3D 0; i < L_ARRAY_SIZE(pkcs12_encryption_oids); i++)
-+			if (asn1_oid_eq(&pkcs12_encryption_oids[i].oid,
-+					oid_len, oid))
-+				return pkcs12_cipher_from_alg_id(
-+						&pkcs12_encryption_oids[i],
-+						params, params_len, password,
-+						out_is_block);
++void l_pem_load_container_file(const char *filename, const char *password,
++				struct l_certchain **out_certchain,
++				struct l_key **out_privkey,
++				bool *out_encrypted);
 +
- 		return NULL;
-+	}
- =
-
- 	salt =3D asn1_der_find_elem(params, params_len, 0, &tag, &tmp_len);
- 	if (!salt || tag !=3D ASN1_ID_OCTET_STRING || tmp_len !=3D 8)
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
 2.27.0
 
---===============6647380370093385908==--
+--===============2674641262489571583==--
 
