@@ -1,204 +1,261 @@
-Content-Type: multipart/mixed; boundary="===============7346357050498047508=="
+Content-Type: multipart/mixed; boundary="===============6647380370093385908=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/5] pkcs5: Add the PKCS#12 KDF
-Date: Sat, 12 Dec 2020 01:50:56 +0100
-Message-ID: <20201212005100.578174-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/5] pkcs5: Add PKCS#12 algorithms in pkcs5_cipher_from_alg_id
+Date: Sat, 12 Dec 2020 01:50:57 +0100
+Message-ID: <20201212005100.578174-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20201212005100.578174-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7346357050498047508==
+--===============6647380370093385908==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add the key derivation algorithm used with PKCS#12 to pkcs5.c so that it
-can be found together with the two PKCS#5 KDFs, and so that it can also
-be used when parsing of the PKCS#12 AlgorithmIdentifiers in the next
-commit.  This KDF is not recommended for new uses.
+Since pkcs5_cipher_from_alg_id() is used for decrypting PKCS#8 private
+keys, teach it to also parse PKCS#12 AlgorithmIdentifier asn1 syntax
+(almost identical to PKCS#5).  Ideally the pkcs5_* functions and pkcs5.c
+should be renamed to not include the PKCS#5 string because the callers
+are probably not interested in what cipher is used as long as they can
+use it to decrypt data their input.  So ideally they want to call
+one function that understands all the common algorithm OIDs.
 ---
- ell/pkcs5-private.h |  12 +++++
- ell/pkcs5.c         | 121 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 133 insertions(+)
+ ell/pkcs5.c | 181 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 178 insertions(+), 3 deletions(-)
 
-diff --git a/ell/pkcs5-private.h b/ell/pkcs5-private.h
-index 27ff41c..9b85fdd 100644
---- a/ell/pkcs5-private.h
-+++ b/ell/pkcs5-private.h
-@@ -20,6 +20,18 @@
-  *
-  */
+diff --git a/ell/pkcs5.c b/ell/pkcs5.c
+index 979cebe..25bf431 100644
+--- a/ell/pkcs5.c
++++ b/ell/pkcs5.c
+@@ -300,6 +300,15 @@ uint8_t *pkcs12_pbkdf(const char *password, const stru=
+ct pkcs12_hash *hash,
+ 	return key;
+ }
  =
 
-+struct pkcs12_hash {
-+	enum l_checksum_type alg;
-+	unsigned int len;
-+	unsigned int u;
-+	unsigned int v;
-+	struct asn1_oid oid;
++/* RFC7292 Appendix A */
++static const struct pkcs12_hash pkcs12_sha1_hash =3D {
++	.alg =3D L_CHECKSUM_SHA1,
++	.len =3D 20,
++	.u   =3D 20,
++	.v   =3D 64,
++	.oid =3D { 5, { 0x2b, 0x0e, 0x03, 0x02, 0x1a } },
 +};
 +
-+uint8_t *pkcs12_pbkdf(const char *password, const struct pkcs12_hash *hash,
-+			const uint8_t *salt, size_t salt_len,
-+			unsigned int iterations, uint8_t id, size_t key_len);
+ /* RFC8018 Section A.2 */
+ static struct asn1_oid pkcs5_pbkdf2_oid =3D {
+ 	9, { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x05, 0x0c }
+@@ -327,6 +336,74 @@ static const struct pkcs5_pbes1_encryption_oid {
+ 	/* MD2- and RC2-based schemes 1, 4, 6 and 11 not supported */
+ };
+ =
+
++/* RFC7292 Appendix C */
++static const struct pkcs12_encryption_oid {
++	enum l_cipher_type cipher_type;
++	unsigned int key_length;
++	unsigned int iv_length;
++	bool copy_k1;	/* Expand the 2-Key 3DES key for 3-Key 3DES */
++	bool is_block;
++	struct asn1_oid oid;
++} pkcs12_encryption_oids[] =3D {
++	{ /* pbeWithSHAAnd128BitRC4 */
++		.cipher_type =3D L_CIPHER_ARC4,
++		.key_length =3D 16,
++		.oid =3D { 10, {
++			0x2a, 0x86, 0x48, 0x86, 0xf7,
++			0x0d, 0x01, 0x0c, 0x01, 0x01,
++		} }
++	},
++	{ /* pbeWithSHAAnd40BitRC4 */
++		.cipher_type =3D L_CIPHER_ARC4,
++		.key_length =3D 5,
++		.oid =3D { 10, {
++			0x2a, 0x86, 0x48, 0x86, 0xf7,
++			0x0d, 0x01, 0x0c, 0x01, 0x02,
++		} }
++	},
++	{ /* pbeWithSHAAnd3-KeyTripleDES-CBC */
++		.cipher_type =3D L_CIPHER_DES3_EDE_CBC,
++		.key_length =3D 24,
++		.iv_length =3D 8,
++		.is_block =3D true,
++		.oid =3D { 10, {
++			0x2a, 0x86, 0x48, 0x86, 0xf7,
++			0x0d, 0x01, 0x0c, 0x01, 0x03,
++		} }
++	},
++	{ /* pbeWithSHAAnd2-KeyTripleDES-CBC */
++		.cipher_type =3D L_CIPHER_DES3_EDE_CBC,
++		.key_length =3D 16,
++		.iv_length =3D 8,
++		.copy_k1 =3D true,
++		.is_block =3D true,
++		.oid =3D { 10, {
++			0x2a, 0x86, 0x48, 0x86, 0xf7,
++			0x0d, 0x01, 0x0c, 0x01, 0x04,
++		} }
++	},
++	{ /* pbeWithSHAAnd128BitRC2-CBC */
++		.cipher_type =3D L_CIPHER_RC2_CBC,
++		.key_length =3D 16,
++		.iv_length =3D 8,
++		.is_block =3D true,
++		.oid =3D { 10, {
++			0x2a, 0x86, 0x48, 0x86, 0xf7,
++			0x0d, 0x01, 0x0c, 0x01, 0x05,
++		} }
++	},
++	{ /* pbeWithSHAAnd40BitRC2-CBC */
++		.cipher_type =3D L_CIPHER_RC2_CBC,
++		.key_length =3D 5,
++		.iv_length =3D 8,
++		.is_block =3D true,
++		.oid =3D { 10, {
++			0x2a, 0x86, 0x48, 0x86, 0xf7,
++			0x0d, 0x01, 0x0c, 0x01, 0x06,
++		} }
++	},
++};
++
+ static const struct pkcs5_digest_alg_oid {
+ 	enum l_checksum_type type;
+ 	struct asn1_oid oid;
+@@ -503,8 +580,8 @@ static struct l_cipher *pkcs5_cipher_from_pbes2_params(
+ 	/* RFC8018 section B.2 */
+ =
+
+ 	/*
+-	 * Since we don't support RC2/RC5, all our PKCS#5 ciphers only
+-	 * have an obligatory OCTET STRING IV parameter and a fixed key
++	 * Since we don't support the RC2/RC5 PBES2 ciphers, our parameters
++	 * only have an obligatory OCTET STRING IV parameter and a fixed key
+ 	 * length.
+ 	 */
+ 	if (tag !=3D ASN1_ID_OCTET_STRING || params_len !=3D enc_scheme->iv_size)
+@@ -534,6 +611,94 @@ static struct l_cipher *pkcs5_cipher_from_pbes2_params(
+ 	return cipher;
+ }
+ =
+
++static struct l_cipher *pkcs12_cipher_from_alg_id(
++				const struct pkcs12_encryption_oid *scheme,
++				const uint8_t *params, size_t params_len,
++				const char *password, bool *out_is_block)
++{
++	uint8_t tag;
++	const uint8_t *salt;
++	const uint8_t *iterations_data;
++	size_t salt_len;
++	size_t iterations_len;
++	unsigned int iterations;
++	uint8_t *key;
++	size_t key_len;
++	struct l_cipher *cipher;
++
++	/* Same parameters as in PKCS#5 */
++	salt =3D asn1_der_find_elem(params, params_len, 0, &tag, &salt_len);
++	if (!salt || tag !=3D ASN1_ID_OCTET_STRING)
++		return NULL;
++
++	iterations_data =3D asn1_der_find_elem(params, params_len, 1,
++						&tag, &iterations_len);
++	if (!iterations_data || tag !=3D ASN1_ID_INTEGER ||
++			iterations_len < 1 || iterations_len > 4)
++		return NULL;
++
++	for (iterations =3D 0; iterations_len; iterations_len--)
++		iterations =3D (iterations << 8) | *iterations_data++;
++
++	if (iterations < 1 || iterations > 8192)
++		return NULL;
++
++	if (iterations_data !=3D params + params_len)
++		return NULL;
++
++	key_len =3D scheme->key_length;
++	key =3D pkcs12_pbkdf(password, &pkcs12_sha1_hash, salt, salt_len,
++				iterations, 1, key_len);
++	if (!key)
++		return NULL;
++
++	if (scheme->copy_k1) {
++		/*
++		 * 2-Key 3DES is like L_CIPHER_DES3_EDE_CBC except the last
++		 * of the 3 8-byte keys is not generated using a KDF and
++		 * instead is a copy of the first key.  In other words
++		 * the first half of the 16-byte key material is appended
++		 * at the end to produce the 24 bytes for DES3_EDE_CBC.
++		 */
++		uint8_t *key2 =3D l_malloc(24);
++
++		memcpy(key2, key, 16);
++		memcpy(key2 + 16, key, 8);
++		explicit_bzero(key, key_len);
++		l_free(key);
++		key =3D key2;
++		key_len =3D 24;
++	}
++
++	cipher =3D l_cipher_new(scheme->cipher_type, key, key_len);
++	explicit_bzero(key, key_len);
++	l_free(key);
++
++	if (!cipher)
++		return NULL;
++
++	if (scheme->iv_length) {
++		uint8_t *iv =3D pkcs12_pbkdf(password, &pkcs12_sha1_hash,
++						salt, salt_len, iterations, 2,
++						scheme->iv_length);
++
++		if (!iv || !l_cipher_set_iv(cipher, iv, scheme->iv_length)) {
++			l_cipher_free(cipher);
++			cipher =3D NULL;
++		}
++
++		if (iv)
++			explicit_bzero(iv, scheme->iv_length);
++
++		l_free(iv);
++	}
++
++	if (out_is_block)
++		*out_is_block =3D scheme->is_block;
++
++	return cipher;
++}
 +
  struct l_cipher *pkcs5_cipher_from_alg_id(const uint8_t *id_asn1,
  						size_t id_asn1_len,
  						const char *password,
-diff --git a/ell/pkcs5.c b/ell/pkcs5.c
-index 21fda2b..979cebe 100644
---- a/ell/pkcs5.c
-+++ b/ell/pkcs5.c
-@@ -33,6 +33,7 @@
- #include "checksum.h"
- #include "cipher.h"
- #include "util.h"
-+#include "utf8.h"
- #include "asn1-private.h"
- #include "pkcs5.h"
- #include "pkcs5-private.h"
-@@ -182,14 +183,134 @@ LIB_EXPORT bool l_pkcs5_pbkdf2(enum l_checksum_type =
-type, const char *password,
- 	return !dk_len;
- }
+@@ -576,8 +741,18 @@ struct l_cipher *pkcs5_cipher_from_alg_id(const uint8_=
+t *id_asn1,
+ 		}
+ 	}
  =
 
-+/* RFC7292 Appendix B */
-+uint8_t *pkcs12_pbkdf(const char *password, const struct pkcs12_hash *hash,
-+			const uint8_t *salt, size_t salt_len,
-+			unsigned int iterations, uint8_t id, size_t key_len)
-+{
-+	/* All lengths in bytes instead of bits */
-+	size_t passwd_len =3D password ? 2 * strlen(password) + 2 : 0;
-+	uint8_t *bmpstring;
-+	/* Documented as v(ceiling(s/v)), usually will just equal v */
-+	unsigned int s_len =3D (salt_len + hash->v - 1) & ~(hash->v - 1);
-+	/* Documented as p(ceiling(s/p)), usually will just equal v */
-+	unsigned int p_len =3D (passwd_len + hash->v - 1) & ~(hash->v - 1);
-+	uint8_t di[hash->v + s_len + p_len];
-+	uint8_t *ptr;
-+	unsigned int j;
-+	uint8_t *key;
-+	unsigned int bytes;
-+	struct l_checksum *h =3D l_checksum_new(hash->alg);
+-	if (!pbes1_scheme)
++	/* Check if this is a PKCS#12 OID */
++	if (!pbes1_scheme) {
++		for (i =3D 0; i < L_ARRAY_SIZE(pkcs12_encryption_oids); i++)
++			if (asn1_oid_eq(&pkcs12_encryption_oids[i].oid,
++					oid_len, oid))
++				return pkcs12_cipher_from_alg_id(
++						&pkcs12_encryption_oids[i],
++						params, params_len, password,
++						out_is_block);
 +
-+	if (!h)
-+		return NULL;
-+
-+	/*
-+	 * The BMPString encoding, in practice same as UCS-2, can end up
-+	 * at 2 * strlen(password) + 2 bytes or shorter depending on the
-+	 * characters used.  Recalculate p_len after we know it.
-+	 * Important: The password must be valid UTF-8 here.
-+	 */
-+	if (password) {
-+		if (!(bmpstring =3D l_utf8_to_ucs2be(password, &passwd_len))) {
-+			l_checksum_free(h);
-+			return NULL;
-+		}
-+
-+		p_len =3D (passwd_len + hash->v - 1) & ~(hash->v - 1);
+ 		return NULL;
 +	}
-+
-+	memset(di, id, hash->v);
-+	ptr =3D di + hash->v;
-+
-+	for (j =3D salt_len; j < s_len; j +=3D salt_len, ptr +=3D salt_len)
-+		memcpy(ptr, salt, salt_len);
-+
-+	if (s_len) {
-+		memcpy(ptr, salt, s_len + salt_len - j);
-+		ptr +=3D s_len + salt_len - j;
-+	}
-+
-+	for (j =3D passwd_len; j < p_len; j +=3D passwd_len, ptr +=3D passwd_len)
-+		memcpy(ptr, bmpstring, passwd_len);
-+
-+	if (p_len) {
-+		memcpy(ptr, bmpstring, p_len + passwd_len - j);
-+
-+		explicit_bzero(bmpstring, passwd_len);
-+		l_free(bmpstring);
-+	}
-+
-+	key =3D l_malloc(key_len + hash->len);
-+
-+	for (bytes =3D 0; bytes < key_len; bytes +=3D hash->u) {
-+		uint8_t b[hash->v];
-+		uint8_t *input =3D di;
-+		unsigned int input_len =3D hash->v + s_len + p_len;
-+
-+		for (j =3D 0; j < iterations; j++) {
-+			if (!l_checksum_update(h, input, input_len) ||
-+					l_checksum_get_digest(h,
-+							key + bytes,
-+							hash->len) <=3D 0) {
-+				l_checksum_free(h);
-+				l_free(key);
-+				return NULL;
-+			}
-+
-+			input =3D key + bytes;
-+			input_len =3D hash->u;
-+			l_checksum_reset(h);
-+		}
-+
-+		if (bytes + hash->u >=3D key_len)
-+			break;
-+
-+		for (j =3D 0; j < hash->v - hash->u; j +=3D hash->u)
-+			memcpy(b + j, input, hash->u);
-+
-+		memcpy(b + j, input, hash->v - j);
-+
-+		ptr =3D di + hash->v;
-+		for (j =3D 0; j < s_len + p_len; j +=3D hash->v, ptr +=3D hash->v) {
-+			unsigned int k;
-+			uint16_t carry =3D 1;
-+
-+			/*
-+			 * Not specified in the RFC7292 but implementations
-+			 * sum these octet strings as big-endian integers.
-+			 * We could use 64-bit additions here but the benefit
-+			 * may not compensate the cost of the byteswapping.
-+			 */
-+			for (k =3D hash->v - 1; k > 0; k--) {
-+				carry =3D ptr[k] + b[k] + carry;
-+				ptr[k] =3D carry;
-+				carry >>=3D 8;
-+			}
-+
-+			ptr[k] +=3D b[k] + carry;
-+			explicit_bzero(&carry, sizeof(carry));
-+		}
-+
-+		explicit_bzero(b, sizeof(b));
-+	}
-+
-+	explicit_bzero(di, sizeof(di));
-+	l_checksum_free(h);
-+	return key;
-+}
-+
-+/* RFC8018 Section A.2 */
- static struct asn1_oid pkcs5_pbkdf2_oid =3D {
- 	9, { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x05, 0x0c }
- };
  =
 
-+/* RFC8018 Section A.4 */
- static struct asn1_oid pkcs5_pbes2_oid =3D {
- 	9, { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x05, 0x0d }
- };
- =
-
-+/* RFC8018 Section A.3 */
- static const struct pkcs5_pbes1_encryption_oid {
- 	enum l_checksum_type checksum_type;
- 	enum l_cipher_type cipher_type;
+ 	salt =3D asn1_der_find_elem(params, params_len, 0, &tag, &tmp_len);
+ 	if (!salt || tag !=3D ASN1_ID_OCTET_STRING || tmp_len !=3D 8)
 -- =
 
 2.27.0
 
---===============7346357050498047508==--
+--===============6647380370093385908==--
 
