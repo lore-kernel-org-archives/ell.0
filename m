@@ -1,120 +1,128 @@
-Content-Type: multipart/mixed; boundary="===============3135634190646731077=="
+Content-Type: multipart/mixed; boundary="===============5065851957143246309=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/5] pem: Add pem_write_certificate_chain
-Date: Tue, 15 Dec 2020 23:53:42 +0100
-Message-ID: <20201215225345.791738-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/5] tls: Add l_tls_set_cert_dump_path
+Date: Tue, 15 Dec 2020 23:53:43 +0100
+Message-ID: <20201215225345.791738-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20201215225345.791738-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3135634190646731077==
+--===============5065851957143246309==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+If this function is used to set a file path, l_tls will write the peer's
+certificate chain received in the TLS Certificate message if it is used
+(on the server side we may receive no client certificate).  This can be
+used to diagnose 802.1x connection configurations for example.
 ---
- ell/pem-private.h |  5 +++++
- ell/pem.c         | 50 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 55 insertions(+)
+ ell/ell.sym       |  1 +
+ ell/tls-private.h |  1 +
+ ell/tls.c         | 22 ++++++++++++++++++++++
+ ell/tls.h         |  1 +
+ 4 files changed, 25 insertions(+)
 
-diff --git a/ell/pem-private.h b/ell/pem-private.h
-index 6e9458d..10f918f 100644
---- a/ell/pem-private.h
-+++ b/ell/pem-private.h
-@@ -27,6 +27,8 @@
- #define _GNU_SOURCE
- #include <sys/types.h>
+diff --git a/ell/ell.sym b/ell/ell.sym
+index d94b585..c98bd8c 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -498,6 +498,7 @@ global:
+ 	l_tls_set_domain_mask;
+ 	l_tls_alert_to_str;
+ 	l_tls_set_debug;
++	l_tls_set_cert_dump_path;
+ 	/* uintset */
+ 	l_uintset_new_from_range;
+ 	l_uintset_new;
+diff --git a/ell/tls-private.h b/ell/tls-private.h
+index 908c622..8d0540a 100644
+--- a/ell/tls-private.h
++++ b/ell/tls-private.h
+@@ -205,6 +205,7 @@ struct l_tls {
+ 	l_tls_debug_cb_t debug_handler;
+ 	l_tls_destroy_cb_t debug_destroy;
+ 	void *debug_data;
++	char *cert_dump_path;
+ 	enum l_tls_version min_version;
+ 	enum l_tls_version max_version;
  =
 
-+struct l_certchain;
-+
- const char *pem_next(const void *buf, size_t buf_len, char **type_label,
- 				size_t *base64_len,
- 				const char **endp, bool strict);
-@@ -37,3 +39,6 @@ struct l_key *pem_key_from_pkcs8_private_key_info(const u=
-int8_t *der,
- struct l_key *pem_key_from_pkcs8_encrypted_private_key_info(const uint8_t =
-*der,
- 							size_t der_len,
- 							const char *passphrase);
-+
-+int pem_write_certificate_chain(const struct l_certchain *cert,
-+				const char *filename);
-diff --git a/ell/pem.c b/ell/pem.c
-index 1b995d5..321bc3e 100644
---- a/ell/pem.c
-+++ b/ell/pem.c
-@@ -45,6 +45,7 @@
- #include "cipher.h"
+diff --git a/ell/tls.c b/ell/tls.c
+index 1452909..4eaa66d 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -37,6 +37,7 @@
+ #include "random.h"
+ #include "queue.h"
+ #include "pem.h"
++#include "pem-private.h"
+ #include "cert.h"
  #include "cert-private.h"
- #include "missing.h"
-+#include "io.h"
- #include "pem-private.h"
+ #include "tls-private.h"
+@@ -1942,6 +1943,19 @@ static void tls_handle_certificate(struct l_tls *tls,
+ 		goto done;
+ 	}
  =
 
- #define PEM_START_BOUNDARY	"-----BEGIN "
-@@ -364,6 +365,55 @@ LIB_EXPORT struct l_certchain *l_pem_load_certificate_=
-chain(
- 	return pem_list_to_chain(list);
++	if (tls->cert_dump_path) {
++		int r =3D pem_write_certificate_chain(certchain,
++							tls->cert_dump_path);
++
++		if (r < 0)
++			TLS_DEBUG("Error %i (%s) writing the peer certchain "
++					"to %s",
++					-r, strerror(-r), tls->cert_dump_path);
++		else
++			TLS_DEBUG("Peer certchain written to %s",
++					tls->cert_dump_path);
++	}
++
+ 	/*
+ 	 * Validate the certificate chain's consistency and validate it
+ 	 * against our CAs if we have any.
+@@ -2614,6 +2628,7 @@ LIB_EXPORT void l_tls_free(struct l_tls *tls)
+ 	l_tls_set_cacert(tls, NULL);
+ 	l_tls_set_auth_data(tls, NULL, NULL);
+ 	l_tls_set_domain_mask(tls, NULL);
++	l_tls_set_cert_dump_path(tls, NULL);
+ =
+
+ 	tls_reset_handshake(tls);
+ 	tls_cleanup_handshake(tls);
+@@ -3104,3 +3119,10 @@ LIB_EXPORT bool l_tls_set_debug(struct l_tls *tls, l=
+_tls_debug_cb_t function,
+ =
+
+ 	return true;
  }
- =
-
-+static bool pem_write_one_cert(struct l_cert *cert, void *user_data)
++
++LIB_EXPORT bool l_tls_set_cert_dump_path(struct l_tls *tls, const char *pa=
+th)
 +{
-+	int *fd =3D user_data;
-+	const uint8_t *der;
-+	size_t der_len;
-+	struct iovec iov[3];
-+	ssize_t r;
-+
-+	der =3D l_cert_get_der_data(cert, &der_len);
-+
-+	iov[0].iov_base =3D "-----BEGIN CERTIFICATE-----\n";
-+	iov[0].iov_len =3D strlen(iov[0].iov_base);
-+	iov[1].iov_base =3D l_base64_encode(der, der_len, 64, &iov[1].iov_len);
-+	iov[2].iov_base =3D "\n-----END CERTIFICATE-----\n";
-+	iov[2].iov_len =3D strlen(iov[2].iov_base);
-+	r =3D L_TFR(writev(*fd, iov, 3));
-+
-+	if (r =3D=3D (ssize_t) (iov[0].iov_len + iov[1].iov_len + iov[2].iov_len))
-+		return false;
-+
-+	close(*fd);
-+
-+	if (r < 0)
-+		*fd =3D -errno;
-+	else
-+		*fd =3D -EIO;
-+
++	l_free(tls->cert_dump_path);
++	tls->cert_dump_path =3D path ? l_strdup(path) : NULL;
 +	return true;
 +}
-+
-+int pem_write_certificate_chain(const struct l_certchain *chain,
-+				const char *filename)
-+{
-+	int fd =3D L_TFR(open(filename, O_CREAT | O_WRONLY | O_CLOEXEC, 0600));
-+	int err =3D fd;
-+
-+	if (err < 0)
-+		return -errno;
-+
-+	l_certchain_walk_from_leaf((struct l_certchain *) chain,
-+					pem_write_one_cert, &err);
-+
-+	if (err < 0)
-+		return err;
-+
-+	close(fd);
-+	return 0;
-+}
-+
- LIB_EXPORT struct l_queue *l_pem_load_certificate_list_from_data(
- 						const void *buf, size_t len)
- {
+diff --git a/ell/tls.h b/ell/tls.h
+index b67492b..683c54c 100644
+--- a/ell/tls.h
++++ b/ell/tls.h
+@@ -133,6 +133,7 @@ bool l_tls_prf_get_bytes(struct l_tls *tls, bool use_ma=
+ster_secret,
+ =
+
+ bool l_tls_set_debug(struct l_tls *tls, l_tls_debug_cb_t function,
+ 			void *user_data, l_tls_destroy_cb_t destroy);
++bool l_tls_set_cert_dump_path(struct l_tls *tls, const char *path);
+ =
+
+ #ifdef __cplusplus
+ }
 -- =
 
 2.27.0
 
---===============3135634190646731077==--
+--===============5065851957143246309==--
 
