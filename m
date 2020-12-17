@@ -1,40 +1,73 @@
-Content-Type: multipart/mixed; boundary="===============1087638293947032389=="
+Content-Type: multipart/mixed; boundary="===============7646599354795521350=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/4] tls: Print only one tls_cert_domains_match_mask debug
- msg
-Date: Thu, 17 Dec 2020 13:33:48 -0600
-Message-ID: <d0125272-6d2b-b264-e217-6cf1b38d04f8@gmail.com>
-In-Reply-To: <20201217013225.821303-1-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 2/4] pem: Add pem_write_certificate_chain
+Date: Thu, 17 Dec 2020 22:19:27 +0100
+Message-ID: <CAOq732KosmVovMf9d4VxTf-=q9=R8FytjQvWbaoDdM0dnEAs7g@mail.gmail.com>
+In-Reply-To: <719043d6-db51-5e4f-5ce2-993315d59f2c@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1087638293947032389==
+--===============7646599354795521350==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+On Thu, 17 Dec 2020 at 21:08, Denis Kenzior <denkenz@gmail.com> wrote:
+> On 12/16/20 7:32 PM, Andrew Zaborowski wrote:
+> > @@ -45,6 +45,7 @@
+> >   #include "cipher.h"
+> >   #include "cert-private.h"
+> >   #include "missing.h"
+> > +#include "io.h"
+>
+> Is this really needed?
 
-On 12/16/20 7:32 PM, Andrew Zaborowski wrote:
-> Change tls_cert_domains_match_mask to compile one error message string
-> instead of printing messages at different step.  The rest of the TLS debug
-> log tries to be concise when there's no errors so try to be concise here
-> too.
-> ---
-> This is the tls_cert_domains_match_mask version I had in my tree and
-> thought I might just send it.
-> =
+Oops, I forgot to clean up after refactoring this a few times.
 
->   ell/tls.c | 71 +++++++++++++++++++++++++++++++++++--------------------
->   1 file changed, 45 insertions(+), 26 deletions(-)
-> =
+>
+> >   #include "pem-private.h"
+> >
+> >   #define PEM_START_BOUNDARY  "-----BEGIN "
+> > @@ -364,6 +365,55 @@ LIB_EXPORT struct l_certchain *l_pem_load_certific=
+ate_chain(
+> >       return pem_list_to_chain(list);
+> >   }
+> >
+> > +static bool pem_write_one_cert(struct l_cert *cert, void *user_data)
+> > +{
+> > +     int *fd =3D user_data;
+> > +     const uint8_t *der;
+> > +     size_t der_len;
+> > +     struct iovec iov[3];
+> > +     ssize_t r;
+> > +
+> > +     der =3D l_cert_get_der_data(cert, &der_len);
+> > +
+> > +     iov[0].iov_base =3D "-----BEGIN CERTIFICATE-----\n";
+> > +     iov[0].iov_len =3D strlen(iov[0].iov_base);
+> > +     iov[1].iov_base =3D l_base64_encode(der, der_len, 64, &iov[1].iov=
+_len);
+>
+> Is this being leaked?
 
+Yep.
 
-Applied, thanks.
+>
+> > +     iov[2].iov_base =3D "\n-----END CERTIFICATE-----\n";
+> > +     iov[2].iov_len =3D strlen(iov[2].iov_base);
+> > +     r =3D L_TFR(writev(*fd, iov, 3));
+> > +
+> > +     if (r =3D=3D (ssize_t) (iov[0].iov_len + iov[1].iov_len + iov[2].=
+iov_len))
+> > +             return false;
+> > +
+> > +     close(*fd);
+>
+> Maybe the close should be in pem_write_certificate_chain()?
 
-Regards,
--Denis
+Ok.
 
---===============1087638293947032389==--
+Best regards
+--===============7646599354795521350==--
 
