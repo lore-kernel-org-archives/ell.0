@@ -1,128 +1,109 @@
-Content-Type: multipart/mixed; boundary="===============0958787479950089863=="
+Content-Type: multipart/mixed; boundary="===============5968337619175682127=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 3/4] tls: Add l_tls_set_cert_dump_path
-Date: Thu, 17 Dec 2020 02:32:24 +0100
-Message-ID: <20201217013225.821303-3-andrew.zaborowski@intel.com>
+Subject: [PATCH 4/4] examples: Use l_tls_set_cert_dump_path in https examples
+Date: Thu, 17 Dec 2020 02:32:25 +0100
+Message-ID: <20201217013225.821303-4-andrew.zaborowski@intel.com>
 In-Reply-To: <20201217013225.821303-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0958787479950089863==
+--===============5968337619175682127==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-If this function is used to set a file path, l_tls will write the peer's
-certificate chain received in the TLS Certificate message if it is used
-(on the server side we may receive no client certificate).  This can be
-used to diagnose 802.1x connection configurations for example.
 ---
- ell/ell.sym       |  1 +
- ell/tls-private.h |  1 +
- ell/tls.c         | 22 ++++++++++++++++++++++
- ell/tls.h         |  1 +
- 4 files changed, 25 insertions(+)
+ examples/https-client-test.c |  9 ++++++++-
+ examples/https-server-test.c | 18 ++++++++++++++----
+ 2 files changed, 22 insertions(+), 5 deletions(-)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index d94b585..c98bd8c 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -498,6 +498,7 @@ global:
- 	l_tls_set_domain_mask;
- 	l_tls_alert_to_str;
- 	l_tls_set_debug;
-+	l_tls_set_cert_dump_path;
- 	/* uintset */
- 	l_uintset_new_from_range;
- 	l_uintset_new;
-diff --git a/ell/tls-private.h b/ell/tls-private.h
-index 908c622..8d0540a 100644
---- a/ell/tls-private.h
-+++ b/ell/tls-private.h
-@@ -205,6 +205,7 @@ struct l_tls {
- 	l_tls_debug_cb_t debug_handler;
- 	l_tls_destroy_cb_t debug_destroy;
- 	void *debug_data;
-+	char *cert_dump_path;
- 	enum l_tls_version min_version;
- 	enum l_tls_version max_version;
+diff --git a/examples/https-client-test.c b/examples/https-client-test.c
+index e17b271..b0c24b4 100644
+--- a/examples/https-client-test.c
++++ b/examples/https-client-test.c
+@@ -190,9 +190,16 @@ int main(int argc, char *argv[])
+ 	tls =3D l_tls_new(false, https_new_data, https_tls_write,
+ 			https_tls_ready, https_tls_disconnected, NULL);
  =
 
-diff --git a/ell/tls.c b/ell/tls.c
-index 1452909..4eaa66d 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -37,6 +37,7 @@
- #include "random.h"
- #include "queue.h"
- #include "pem.h"
-+#include "pem-private.h"
- #include "cert.h"
- #include "cert-private.h"
- #include "tls-private.h"
-@@ -1942,6 +1943,19 @@ static void tls_handle_certificate(struct l_tls *tls,
- 		goto done;
- 	}
- =
-
-+	if (tls->cert_dump_path) {
-+		int r =3D pem_write_certificate_chain(certchain,
-+							tls->cert_dump_path);
+-	if (getenv("TLS_DEBUG"))
++	if (getenv("TLS_DEBUG")) {
++		char *str;
 +
-+		if (r < 0)
-+			TLS_DEBUG("Error %i (%s) writing the peer certchain "
-+					"to %s",
-+					-r, strerror(-r), tls->cert_dump_path);
-+		else
-+			TLS_DEBUG("Peer certchain written to %s",
-+					tls->cert_dump_path);
+ 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
+ =
+
++		str =3D l_strdup_printf("/tmp/ell-certchain-%s.pem", hostname);
++		l_tls_set_cert_dump_path(tls, str);
++		l_free(str);
 +	}
 +
- 	/*
- 	 * Validate the certificate chain's consistency and validate it
- 	 * against our CAs if we have any.
-@@ -2614,6 +2628,7 @@ LIB_EXPORT void l_tls_free(struct l_tls *tls)
- 	l_tls_set_cacert(tls, NULL);
- 	l_tls_set_auth_data(tls, NULL, NULL);
- 	l_tls_set_domain_mask(tls, NULL);
-+	l_tls_set_cert_dump_path(tls, NULL);
+ 	if (argc >=3D 3) {
+ 		ca_cert =3D l_pem_load_certificate_list(argv[2]);
+ 		if (!ca_cert) {
+diff --git a/examples/https-server-test.c b/examples/https-server-test.c
+index 8f3cb3c..6362722 100644
+--- a/examples/https-server-test.c
++++ b/examples/https-server-test.c
+@@ -117,7 +117,9 @@ static void https_tls_debug_cb(const char *str, void *u=
+ser_data)
  =
 
- 	tls_reset_handshake(tls);
- 	tls_cleanup_handshake(tls);
-@@ -3104,3 +3119,10 @@ LIB_EXPORT bool l_tls_set_debug(struct l_tls *tls, l=
-_tls_debug_cb_t function,
+ int main(int argc, char *argv[])
+ {
+-	struct sockaddr_in addr;
++	struct sockaddr_in addr =3D {};
++	struct sockaddr_in client_addr =3D {};
++	socklen_t client_addr_len =3D sizeof(client_addr);
+ 	int fd, listenfd;
+ 	bool auth_ok;
+ 	struct l_certchain *cert;
+@@ -141,7 +143,6 @@ int main(int argc, char *argv[])
+ 	setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &(int) { 1 },
+ 			sizeof(int));
  =
 
- 	return true;
- }
+-	memset(&addr, 0, sizeof(addr));
+ 	addr.sin_family =3D AF_INET;
+ 	addr.sin_addr.s_addr =3D htonl(INADDR_ANY);
+ 	addr.sin_port =3D htons(1234);
+@@ -157,7 +158,8 @@ int main(int argc, char *argv[])
+ =
+
+ 	printf("Try https://localhost:1234/ now\n");
+ =
+
+-	fd =3D accept(listenfd, NULL, NULL);
++	fd =3D accept(listenfd, (struct sockaddr *) &client_addr,
++			&client_addr_len);
+ 	close(listenfd);
+ 	if (fd =3D=3D -1) {
+ 		fprintf(stderr, "accept: %s\n", strerror(errno));
+@@ -196,9 +198,17 @@ int main(int argc, char *argv[])
+ 	tls =3D l_tls_new(true, https_new_data, https_tls_write,
+ 			https_tls_ready, https_tls_disconnected, NULL);
+ =
+
+-	if (getenv("TLS_DEBUG"))
++	if (getenv("TLS_DEBUG")) {
++		char *str;
 +
-+LIB_EXPORT bool l_tls_set_cert_dump_path(struct l_tls *tls, const char *pa=
-th)
-+{
-+	l_free(tls->cert_dump_path);
-+	tls->cert_dump_path =3D path ? l_strdup(path) : NULL;
-+	return true;
-+}
-diff --git a/ell/tls.h b/ell/tls.h
-index b67492b..683c54c 100644
---- a/ell/tls.h
-+++ b/ell/tls.h
-@@ -133,6 +133,7 @@ bool l_tls_prf_get_bytes(struct l_tls *tls, bool use_ma=
-ster_secret,
+ 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
  =
 
- bool l_tls_set_debug(struct l_tls *tls, l_tls_debug_cb_t function,
- 			void *user_data, l_tls_destroy_cb_t destroy);
-+bool l_tls_set_cert_dump_path(struct l_tls *tls, const char *path);
- =
-
- #ifdef __cplusplus
- }
++		str =3D l_strdup_printf("/tmp/ell-certchain-%s.pem",
++					inet_ntoa(client_addr.sin_addr));
++		l_tls_set_cert_dump_path(tls, str);
++		l_free(str);
++	}
++
+ 	auth_ok =3D l_tls_set_auth_data(tls, cert, priv_key) &&
+ 		(argc <=3D 4 || l_tls_set_cacert(tls, ca_cert)) &&
+ 		l_tls_start(tls);
 -- =
 
 2.27.0
 
---===============0958787479950089863==--
+--===============5968337619175682127==--
 
