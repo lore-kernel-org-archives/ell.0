@@ -1,66 +1,61 @@
-Content-Type: multipart/mixed; boundary="===============5162911215582421752=="
+Content-Type: multipart/mixed; boundary="===============4434160939041295739=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 6/8] unit: Add an L_IN_SET test
-Date: Thu, 24 Dec 2020 00:14:35 +0100
-Message-ID: <20201223231437.1078130-6-andrew.zaborowski@intel.com>
+Subject: [PATCH 7/8] unit: Update tests after l_pkcs5_* renaming
+Date: Thu, 24 Dec 2020 00:14:36 +0100
+Message-ID: <20201223231437.1078130-7-andrew.zaborowski@intel.com>
 In-Reply-To: <20201223231437.1078130-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5162911215582421752==
+--===============4434160939041295739==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-util.c | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+ unit/test-pbkdf2.c | 6 +++---
+ unit/test-tls.c    | 1 +
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/unit/test-util.c b/unit/test-util.c
-index 883319c..dc74913 100644
---- a/unit/test-util.c
-+++ b/unit/test-util.c
-@@ -124,6 +124,25 @@ static void test_strlcpy(const void *test_data)
- 	do_strlcpy(10, 12);
- }
+diff --git a/unit/test-pbkdf2.c b/unit/test-pbkdf2.c
+index 37d87ed..3f272ce 100644
+--- a/unit/test-pbkdf2.c
++++ b/unit/test-pbkdf2.c
+@@ -51,9 +51,9 @@ static void pbkdf2_test(const void *data)
  =
 
-+static void test_in_set(const void *test_data)
-+{
-+	char a[2] =3D "a";
-+
-+	assert(L_IN_SET(1, 1, 2, 3));
-+	assert(L_IN_SET(2U, 1, 2, 3));
-+	assert(L_IN_SET(3LL, 1, 2, 3));
-+	assert(!L_IN_SET(4, 1, 2, 3));
-+	assert(!L_IN_SET(4));
-+
-+	assert(L_IN_STRSET(a, a, "b"));
-+	assert(L_IN_STRSET("b", "a", "b"));
-+	assert(!L_IN_STRSET("c", "a", "b"));
-+	assert(L_IN_STRSET(NULL, "a", NULL));
-+	assert(!L_IN_STRSET(NULL, "a", "b"));
-+	assert(!L_IN_STRSET("a", NULL, NULL));
-+	assert(!L_IN_STRSET("a"));
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -136,5 +155,7 @@ int main(int argc, char *argv[])
+ 	key_len =3D test->key_len ? : (strlen(test->key) / 2);
  =
 
- 	l_test_add("l_strlcpy", test_strlcpy, NULL);
+-	result =3D l_pkcs5_pbkdf2(L_CHECKSUM_SHA1, test->password,
+-				(const uint8_t *) test->salt, salt_len,
+-				test->count, output, key_len);
++	result =3D l_cert_pkcs5_pbkdf2(L_CHECKSUM_SHA1, test->password,
++					(const uint8_t *) test->salt, salt_len,
++					test->count, output, key_len);
  =
 
-+	l_test_add("L_IN_SET", test_in_set, NULL);
-+
- 	return l_test_run();
- }
+ 	assert(result =3D=3D true);
+ =
+
+diff --git a/unit/test-tls.c b/unit/test-tls.c
+index 9503f6b..7937962 100644
+--- a/unit/test-tls.c
++++ b/unit/test-tls.c
+@@ -31,6 +31,7 @@
+ #include <ell/ell.h>
+ =
+
+ #include "ell/tls-private.h"
++#include "ell/asn1-private.h"
+ #include "ell/cert-private.h"
+ =
+
+ static void test_tls10_prf(const void *data)
 -- =
 
 2.27.0
 
---===============5162911215582421752==--
+--===============4434160939041295739==--
 
