@@ -1,67 +1,68 @@
-Content-Type: multipart/mixed; boundary="===============1017398741846451743=="
+Content-Type: multipart/mixed; boundary="===============0377506836849101207=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/8] util: Add L_IN_SET macros
-Date: Wed, 06 Jan 2021 20:54:39 +0100
-Message-ID: <20210106195446.1428769-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/8] unit: Add an L_IN_SET test
+Date: Wed, 06 Jan 2021 20:54:40 +0100
+Message-ID: <20210106195446.1428769-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20210106195446.1428769-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1017398741846451743==
+--===============0377506836849101207==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This can be used with enum types or ints as in L_IN_SET(-err, EIO, EINVAL).
-I'm also adding an L_IN_STRSET() for string comparisons.  This
-macro is not equivalent to (x =3D=3D (val1) || x =3D=3D (val2) || ...)
-because val2 will be evaluated even if (x =3D=3D (val1)) was true.  There
-seems to be no way to avoid that without adding another numbr of macros
-dependent on the maximum number of arguments expected.  The "x" in the
-above example is evaluated once.
-
-We may have to add a warning about everything being cast to the type of
-the "x", I'm not sure how important of a problem this is.
 ---
- ell/util.h | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ unit/test-util.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
 
-diff --git a/ell/util.h b/ell/util.h
-index 0b3e1a8..11708c2 100644
---- a/ell/util.h
-+++ b/ell/util.h
-@@ -315,6 +315,26 @@ const char *l_util_get_debugfs_path(void);
-        while (__result =3D=3D -1L && errno =3D=3D EINTR);  \
-        __result; }))
+diff --git a/unit/test-util.c b/unit/test-util.c
+index 883319c..067a708 100644
+--- a/unit/test-util.c
++++ b/unit/test-util.c
+@@ -124,6 +124,27 @@ static void test_strlcpy(const void *test_data)
+ 	do_strlcpy(10, 12);
+ }
  =
 
-+#define _L_IN_SET_CMP(val, type, cmp, ...) __extension__ ({		\
-+		const type __v =3D (val);					\
-+		const typeof(__v) __elems[] =3D {__VA_ARGS__};		\
-+		unsigned int __i;					\
-+		static const unsigned int __n =3D L_ARRAY_SIZE(__elems);	\
-+		bool __r =3D false;					\
-+		for (__i =3D 0; __i < __n && !__r; __i++)			\
-+			__r =3D (cmp);					\
-+		__r;							\
-+	})
++static void test_in_set(const void *test_data)
++{
++	char *a1 =3D "a";
++	const char *a2 =3D a1;
 +
-+/* Warning: evaluates all set elements even after @val has matched one */
-+#define L_IN_SET(val, ...)	\
-+	_L_IN_SET_CMP((val), __auto_type, __v =3D=3D __elems[__i], ##__VA_ARGS__)
++	assert(L_IN_SET(1, 1, 2, 3));
++	assert(L_IN_SET(2U, 1, 2, 3));
++	assert(L_IN_SET(3LL, 1, 2, 3));
++	assert(!L_IN_SET(4, 1, 2, 3));
++	assert(!L_IN_SET(4));
 +
-+#define L_IN_STRSET(val, ...)						\
-+	_L_IN_SET_CMP((val), const char *, __v =3D=3D __elems[__i] ||	\
-+				(__v && __elems[__i] &&			\
-+				 !strcmp(__v, __elems[__i])), ##__VA_ARGS__)
++	assert(L_IN_STRSET(a1, a2, "b"));
++	assert(L_IN_STRSET(a2, a1, "b"));
++	assert(L_IN_STRSET("b", "a", "b"));
++	assert(!L_IN_STRSET("c", "a", "b"));
++	assert(L_IN_STRSET(NULL, "a", NULL));
++	assert(!L_IN_STRSET(NULL, "a", "b"));
++	assert(!L_IN_STRSET("a", NULL, NULL));
++	assert(!L_IN_STRSET("a"));
++}
 +
- /*
-  * Taken from https://github.com/chmike/cst_time_memcmp, adding a volatile=
- to
-  * ensure the compiler does not try to optimize the constant time behavior.
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -136,5 +157,7 @@ int main(int argc, char *argv[])
+ =
+
+ 	l_test_add("l_strlcpy", test_strlcpy, NULL);
+ =
+
++	l_test_add("L_IN_SET", test_in_set, NULL);
++
+ 	return l_test_run();
+ }
 -- =
 
 2.27.0
 
---===============1017398741846451743==--
+--===============0377506836849101207==--
 
