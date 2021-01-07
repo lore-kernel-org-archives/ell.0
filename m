@@ -1,157 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============0403060735930140534=="
+Content-Type: multipart/mixed; boundary="===============0371751030695641650=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 8/8] unit: Add l_cert_load_container_file tests
-Date: Wed, 06 Jan 2021 20:54:46 +0100
-Message-ID: <20210106195446.1428769-8-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/8] util: Add L_IN_SET macros
+Date: Thu, 07 Jan 2021 14:01:55 -0600
+Message-ID: <29dbd5bc-be44-dcda-ff06-973ebace2092@gmail.com>
 In-Reply-To: <20210106195446.1428769-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0403060735930140534==
+--===============0371751030695641650==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Most of the tests are abour PEM files so place them together in
-test-pem.ca.
----
- unit/test-pem.c | 110 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 110 insertions(+)
+Hi Andrew,
 
-diff --git a/unit/test-pem.c b/unit/test-pem.c
-index f875adc..64dfb81 100644
---- a/unit/test-pem.c
-+++ b/unit/test-pem.c
-@@ -337,6 +337,66 @@ static void test_encrypted_pkey(const void *data)
- 	l_key_free(pkey2);
- }
- =
+On 1/6/21 1:54 PM, Andrew Zaborowski wrote:
+> This can be used with enum types or ints as in L_IN_SET(-err, EIO, EINVAL=
+).
+> I'm also adding an L_IN_STRSET() for string comparisons.  This
+> macro is not equivalent to (x =3D=3D (val1) || x =3D=3D (val2) || ...)
+> because val2 will be evaluated even if (x =3D=3D (val1)) was true.  There
+> seems to be no way to avoid that without adding another numbr of macros
+> dependent on the maximum number of arguments expected.  The "x" in the
+> above example is evaluated once.
+> =
 
-+static bool test_cert_count(struct l_cert *cert, void *user_data)
-+{
-+	int *count =3D user_data;
-+
-+	(*count)++;
-+	return false;
-+}
-+
-+struct test_load_file_params {
-+	const char *path;
-+	bool expect_cert;
-+	bool expect_certchain;
-+	bool expect_privkey;
-+	bool expect_encrypted;
-+};
-+
-+#define TEST_LOAD_PARAMS(fn, cert, certchain, privkey, encrypted)	\
-+	(&(struct test_load_file_params) {				\
-+		CERTDIR fn, (cert), (certchain), (privkey), (encrypted) })
-+
-+static void test_load_file(const void *data)
-+{
-+	const struct test_load_file_params *params =3D data;
-+	struct l_certchain *certchain;
-+	struct l_key *privkey;
-+	bool encrypted;
-+
-+	assert(l_cert_load_container_file(params->path, NULL, &certchain,
-+						&privkey, &encrypted));
-+	assert(encrypted =3D=3D params->expect_encrypted);
-+
-+	if (encrypted) {
-+		assert(!certchain && !privkey);
-+
-+		assert(l_cert_load_container_file(params->path, "abc",
-+							&certchain, &privkey,
-+							&encrypted));
-+		assert(encrypted);
-+	}
-+
-+	assert(!!certchain =3D=3D params->expect_cert);
-+	assert(!!privkey =3D=3D params->expect_privkey);
-+
-+	if (certchain) {
-+		int count =3D 0;
-+
-+		l_certchain_walk_from_leaf(certchain, test_cert_count, &count);
-+		assert(count =3D=3D (params->expect_certchain ? 3 : 1));
-+
-+		if (params->expect_certchain)
-+			assert(l_certchain_verify(certchain, NULL, NULL));
-+	}
-+
-+	if (certchain)
-+		l_certchain_free(certchain);
-+
-+	if (privkey)
-+		l_key_free(privkey);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -409,6 +469,56 @@ int main(int argc, char *argv[])
- 				CERTDIR "cert-client-key-pkcs1-aes256.pem");
- 	}
- =
+> We may have to add a warning about everything being cast to the type of
+> the "x", I'm not sure how important of a problem this is.
+> ---
+>   ell/util.h | 20 ++++++++++++++++++++
+>   1 file changed, 20 insertions(+)
+> =
 
-+	l_test_add("detect-format/PEM PKCS#1 unencrypted private key",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client-key-pkcs1.pem",
-+						false, false, true, false));
-+	l_test_add("detect-format/PEM PKCS#1 encrypted private key",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client-key-pkcs1-des.pem",
-+						false, false, true, true));
-+	l_test_add("detect-format/PEM PKCS#8 unencrypted private key",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client-key-pkcs8.pem",
-+						false, false, true, false));
-+	l_test_add("detect-format/PEM PKCS#8 encrypted private key",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client-key-pkcs8-sha1-des.pem",
-+						false, false, true, true));
-+	l_test_add("detect-format/PEM X.509 certificate",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client.pem",
-+						true, false, false, false));
-+	l_test_add("detect-format/DER X.509 certificate",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-client.crt",
-+						true, false, false, false));
-+	l_test_add("detect-format/PEM combined",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-combined.pem",
-+						true, true, true, true));
-+	l_test_add("detect-format/DER PKCS#12 combined",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-nomac.p12",
-+						true, false, true, true));
-+
-+	l_test_add("pkcs#12/Combined RC2-based ciphers + SHA1",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-rc2-sha1.p12",
-+						true, true, true, true));
-+	l_test_add("pkcs#12/Combined DES-based ciphers + SHA256",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-des-sha256.p12",
-+						true, true, true, true));
-+	l_test_add("pkcs#12/Combined RC4-based ciphers + SHA384",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-rc4-sha384.p12",
-+						true, true, true, true));
-+	l_test_add("pkcs#12/Combined PKCS#5 ciphers + SHA512",
-+			test_load_file,
-+			TEST_LOAD_PARAMS("cert-entity-pkcs12-pkcs5-sha512.p12",
-+						true, true, true, true));
-+
- done:
- 	return l_test_run();
- }
--- =
 
-2.27.0
+Patches 1-4 and 7 applied thanks.
 
---===============0403060735930140534==--
+Regards,
+-Denis
+--===============0371751030695641650==--
 
