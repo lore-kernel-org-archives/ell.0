@@ -1,269 +1,375 @@
-Content-Type: multipart/mixed; boundary="===============1879195827537228522=="
+Content-Type: multipart/mixed; boundary="===============1528774914198829493=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 5/8] cert: Add l_cert_load_container_file
-Date: Thu, 07 Jan 2021 22:37:05 -0600
-Message-ID: <6386fded-e857-d1c4-0765-b8d41781fda7@gmail.com>
-In-Reply-To: <20210106195446.1428769-5-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 6/8] cert: Add PKCS#12 loading support
+Date: Thu, 07 Jan 2021 22:59:52 -0600
+Message-ID: <bde3ebff-fb44-b2f1-74b6-cdaac00d62f4@gmail.com>
+In-Reply-To: <20210106195446.1428769-6-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1879195827537228522==
+--===============1528774914198829493==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
-On 1/6/21 1:54 PM, Andrew Zaborowski wrote:
-> Add a function that takes a file path and detects what X.509 certificate
-> and/or private key format it uses and parses it accordingly.  This is to
-> make it easier for clients to support multiple file formats, including
-> raw X.509 certificates -- without this they would have to load the
-> contents of the file and call l_cert_new_from_der().
-> l_cert_load_container can also be used instead of
-> l_pem_load_certificate_chain() and l_pem_load_private_key().
-> =
+<snip>
 
-> This function can now load binary certificate files which are not PEM,
-> that's why it's placed in cert.c but a bunch of utilities in pem.c are
-> exposed in pem-private.h for this function.. It treats PEM files as
-> containers that can have both private keys and certificates at the same
-> time, openssl can parse such files and also produces such files in some
-> situations and they may have some good uses.
-> ---
->   ell/cert.c        | 184 ++++++++++++++++++++++++++++++++++++++++++++++
->   ell/cert.h        |   5 ++
->   ell/ell.sym       |   1 +
->   ell/pem-private.h |  18 +++++
->   ell/pem.c         |  34 +++------
->   5 files changed, 220 insertions(+), 22 deletions(-)
-> =
-
-> diff --git a/ell/cert.c b/ell/cert.c
-> index 8f0a4c2..b2bf568 100644
-> --- a/ell/cert.c
-> +++ b/ell/cert.c
-> @@ -30,6 +30,7 @@
->   #include "queue.h"
->   #include "asn1-private.h"
->   #include "cipher.h"
-> +#include "pem-private.h"
->   #include "cert.h"
->   #include "cert-private.h"
->   =
-
-> @@ -737,3 +738,186 @@ struct l_key *cert_key_from_pkcs1_rsa_private_key(c=
-onst uint8_t *der,
->   =
-
->   	return pkey;
->   }
+> +/* RFC5652 Section 8 */
+> +static uint8_t *cert_decrypt_pkcs7_encrypted_data(const uint8_t *data,
+> +						size_t data_len,
+> +						const char *password,
+> +						struct asn1_oid *out_oid,
+> +						size_t *out_len)
+> +{
+> +	const uint8_t *version;
+> +	size_t version_len;
+> +	const uint8_t *encrypted_info;
+> +	size_t encrypted_info_len;
+> +	const uint8_t *type;
+> +	size_t type_len;
+> +	const uint8_t *alg_id;
+> +	size_t alg_id_len;
+> +	const uint8_t *encrypted;
+> +	size_t encrypted_len;
+> +	uint8_t tag;
+> +	struct l_cipher *alg;
+> +	uint8_t *plaintext;
+> +	int i;
+> +	bool ok;
+> +	bool is_block;
 > +
-> +/*
-> + * Look at a file, try to detect which of the few X.509 certificate and/=
-or
-> + * private key container formats it uses and load any certificates in it=
- as
-> + * a certificate chain object, and load the first private key as an l_key
-> + * object.
-> + *
-> + * Currently supported are:
-> + *  PEM X.509 certificates
-> + *  PEM PKCS#8 encrypted and unenecrypted private keys
-> + *  PEM legacy PKCS#1 encrypted and unenecrypted private keys
+> +	if (!(version =3D asn1_der_find_elem(data, data_len, 0, &tag,
+> +						&version_len)) ||
+> +			tag !=3D ASN1_ID_INTEGER || version_len !=3D 1 ||
+> +			!L_IN_SET(version[0], 0, 2))
+> +		return NULL;
+> +
+> +	if (!(encrypted_info =3D asn1_der_find_elem(data, data_len, 1, &tag,
+> +							&encrypted_info_len)) ||
+> +			tag !=3D ASN1_ID_SEQUENCE)
+> +		return NULL;
+> +
+> +	if (!(type =3D asn1_der_find_elem(encrypted_info, encrypted_info_len, 0,
+> +					&tag, &type_len)) ||
+> +			tag !=3D ASN1_ID_OID ||
+> +			type_len > sizeof(out_oid->asn1))
+> +		return NULL;
+> +
+> +	if (!(alg_id =3D asn1_der_find_elem(encrypted_info, encrypted_info_len,=
+ 1,
+> +					&tag, &alg_id_len)) ||
+> +			tag !=3D ASN1_ID_SEQUENCE)
+> +		return NULL;
+> +
+> +	/* Not optional in our case, defined [0] IMPLICIT OCTET STRING */
+> +	if (!(encrypted =3D asn1_der_find_elem(encrypted_info, encrypted_info_l=
+en,
+> +						ASN1_CONTEXT_IMPLICIT(0),
+> +						&tag, &encrypted_len)) ||
+> +			tag !=3D ASN1_ID(ASN1_CLASS_CONTEXT, 0, 0) ||
+> +			encrypted_len < 8)
+> +		return NULL;
+> +
+> +	if (!(alg =3D cert_cipher_from_pkcs_alg_id(alg_id, alg_id_len, password,
+> +							&is_block)))
+> +		return NULL;
+> +
+> +	plaintext =3D l_malloc(encrypted_len);
+> +	ok =3D l_cipher_decrypt(alg, encrypted, plaintext, encrypted_len);
+> +	l_cipher_free(alg);
+> +
+> +	if (!ok)
+> +		return NULL;
+> +
 
-I fixed 'unenerypted' -> 'unencrypted' in these two lines
+is plaintext leaked here?
 
-> + *  Raw X.509 certificates (.cer, .der, .crt)
-> + *
-> + * The raw format contains exactly one certificate, PEM and PKCS#12 files
-> + * can contain any combination of certificates and private keys.
-> + *
-> + * Returns false on "unrecoverable" errors, and *out_certchain,
-> + * *out_privkey and *out_encrypted (if provided) are not modified.  Howe=
-ver
-> + * when true is returned, *out_certchain and *out_privkey (if provided) =
-may
-> + * be set to NULL when nothing could be loaded only due to missing passw=
-ord,
-> + * and *out_encrypted (if provided) will be set accordingly.  It will al=
-so
-> + * be set on success to indicate whether the password was used.
-> + * *out_certchain and/or *out_privkey will also be NULL if the container
-> + * was loaded but there were no certificates or private keys in it.
-> + */
-> +LIB_EXPORT bool l_cert_load_container_file(const char *filename,
+> +	if (is_block) {
+> +		bool ok =3D true;
+> +
+> +		/* Also validate the padding */
+> +		if (encrypted_len < plaintext[encrypted_len - 1] ||
+> +				plaintext[encrypted_len - 1] > 16)
+> +			return NULL;
+> +
+
+same question as above?
+
+> +		for (i =3D 1; i < plaintext[encrypted_len - 1]; i++)
+> +			if (plaintext[encrypted_len - 1 - i] !=3D
+> +					plaintext[encrypted_len - 1])
+> +				ok =3D false;
+> +
+> +		if (!ok) {
+> +			explicit_bzero(plaintext, encrypted_len);
+> +			l_free(plaintext);
+> +			return NULL;
+> +		}
+> +
+> +		encrypted_len -=3D plaintext[encrypted_len - 1];
+> +	}
+> +
+> +	if (out_oid) {
+> +		out_oid->asn1_len =3D type_len;
+> +		memcpy(out_oid->asn1, type, type_len);
+> +	}
+> +
+> +	*out_len =3D encrypted_len;
+> +	return plaintext;
+> +}
+> +
+
+<snip>
+
+> +static bool cert_parse_pkcs12_pfx(const uint8_t *ptr, size_t len,
 > +					const char *password,
 > +					struct l_certchain **out_certchain,
-> +					struct l_key **out_privkey,
-> +					bool *out_encrypted)
+> +					struct l_key **out_privkey)
 > +{
-> +	struct pem_file_info file;
-> +	const char *ptr;
-> +	size_t len;
-> +	bool error =3D true;
-> +	bool done =3D false;
-> +	struct l_certchain *certchain =3D NULL;
-> +	struct l_key *privkey =3D NULL;
-> +	bool encrypted =3D false;
+> +	const uint8_t *version;
+> +	size_t version_len;
+> +	const uint8_t *auth_safe;
+> +	size_t auth_safe_len;
+> +	const uint8_t *auth_safe_seq;
+> +	size_t auth_safe_seq_len;
+> +	const uint8_t *mac_data;
+> +	size_t mac_data_len;
+> +	const uint8_t *mac;
+> +	size_t mac_len;
+> +	const uint8_t *mac_salt;
+> +	size_t mac_salt_len;
+> +	const uint8_t *iterations_data;
+> +	size_t iterations_len;
+> +	unsigned int iterations;
+> +	const uint8_t *digest_alg;
+> +	size_t digest_alg_len;
+> +	const uint8_t *digest;
+> +	size_t digest_len;
+> +	const uint8_t *alg_id;
+> +	size_t alg_id_len;
+> +	const struct cert_pkcs12_hash *mac_hash;
+> +	L_AUTO_FREE_VAR(uint8_t *, key) =3D NULL;
+> +	struct l_checksum *hmac;
+> +	uint8_t hmac_val[64];
+> +	uint8_t tag;
+> +	unsigned int i;
+> +	bool ok;
+
+This function is unusually long.  It makes me wonder if breaking it up into =
+
+multiple pieces would make it more readable...?
+
 > +
-> +	if (unlikely(!filename))
+> +	/* RFC7292 Section 4 */
+> +	if (!(version =3D asn1_der_find_elem(ptr, len, 0, &tag, &version_len)) =
+||
+> +			tag !=3D ASN1_ID_INTEGER)
 > +		return false;
 > +
-> +	if (pem_file_open(&file, filename) < 0)
+> +	if (version_len !=3D 1 || version[0] !=3D 3)
 > +		return false;
 > +
-> +	if (file.st.st_size < 1)
-> +		goto close;
-> +
-> +	/* See if we have a DER sequence tag at the start */
-> +	if (file.data[0] =3D=3D ASN1_ID_SEQUENCE) {
-> +		const uint8_t *seq_data;
-> +		const uint8_t *elem_data;
-> +		size_t elem_len;
-> +		uint8_t tag;
-> +
-> +		if (!(seq_data =3D asn1_der_find_elem(file.data, file.st.st_size,
-> +							0, &tag, &len)))
-> +			goto not_der_after_all;
-> +
-> +		/*
-> +		 * See if the first sub-element is another sequence, then, out
-> +		 * of the formats that we currently support this can only be a
-> +		 * raw certificate.  If integer, it's going to be PKCS#12.  If
-> +		 * we wish to add any more formats we'll probably need to start
-> +		 * guessing from the filename suffix.
-> +		 */
-> +		if (!(elem_data =3D asn1_der_find_elem(seq_data, len,
-> +							0, &tag, &elem_len)))
-> +			goto not_der_after_all;
-> +
-> +		if (tag =3D=3D ASN1_ID_SEQUENCE) {
-> +			if (out_certchain) {
-> +				struct l_cert *cert;
-> +
-> +				if (!(cert =3D l_cert_new_from_der(file.data,
-> +							file.st.st_size)))
-> +					goto close;
-> +
-> +				error =3D false;
-> +				certchain =3D certchain_new_from_leaf(cert);
-> +			}
-> +
-> +			goto close;
-> +		}
-> +	}
-> +
-> +not_der_after_all:
 > +	/*
-> +	 * RFC 7486 allows whitespace and possibly other data before the
-> +	 * PEM "encapsulation boundary" so rather than check if the start
-> +	 * of the data looks like PEM, we fall back to this format if the
-> +	 * data didn't look like anything else we knew about.
+> +	 * Since we only support the password-based integrity mode,  the
+> +	 * authSafe must be of PKCS#7 type "data" and not "signedData".
 > +	 */
-> +	ptr =3D (const char *) file.data;
-> +	len =3D file.st.st_size;
-> +	error =3D false;
-> +	while (!done && !error && len) {
-> +		uint8_t *der;
-> +		size_t der_len;
-> +		char *type_label;
-> +		char *headers;
-> +		const char *endp;
-> +
-> +		if (!(der =3D pem_load_buffer(ptr, len, &type_label, &der_len,
-> +						&headers, &endp)))
-> +			break;
-> +
-> +		len -=3D endp - ptr;
-> +		ptr =3D endp;
-> +
-> +		if (out_certchain && L_IN_STRSET(type_label, "CERTIFICATE")) {
-> +			struct l_cert *cert;
-> +
-> +			if (!(cert =3D l_cert_new_from_der(der, der_len))) {
-> +				error =3D true;
-> +				goto next;
-> +			}
-> +
-> +			if (!certchain)
-> +				certchain =3D certchain_new_from_leaf(cert);
-> +			else
-> +				certchain_link_issuer(certchain, cert);
-> +
-> +			goto next;
-> +		}
-> +
-> +		/* Only use the first private key found */
-> +		if (out_privkey && !privkey && L_IN_STRSET(type_label,
-> +							"PRIVATE KEY",
-> +							"ENCRYPTED PRIVATE KEY",
-> +							"RSA PRIVATE KEY")) {
-> +			privkey =3D pem_load_private_key(der, der_len, type_label,
-> +							password, headers,
-> +							&encrypted);
-
-Remind me again why pem_load_private_key frees all the input data?  This ma=
-kes =
-
-things really asymmetrical in this function.  The logic seems fine, but I f=
-ound =
-
-it hard to follow.  Not sure if this is worth fixing though...
-
-> +			if (!privkey) {
-> +				if (certchain) {
-> +					l_certchain_free(certchain);
-> +					certchain =3D NULL;
-> +				}
-> +
-> +				if (password)
-> +					error =3D true;
-> +				else
-> +					error =3D !encrypted || !out_encrypted;
-> +
-> +				done =3D true;
-> +			}
-> +
-> +			continue;
-> +		}
-> +
-> +next:
-> +		explicit_bzero(der, der_len);
-> +		l_free(der);
-> +		l_free(type_label);
-> +		l_free(headers);
-> +	}
-> +
-> +close:
-> +	pem_file_close(&file);
-> +
-> +	if (error) {
-> +		if (certchain)
-> +			l_certchain_free(certchain);
-> +
-> +		if (privkey)
-> +			l_key_free(privkey);
-> +
+> +	if (!(auth_safe =3D cert_unpack_pkcs7_content_info(ptr, len, 1,
+> +							&pkcs7_data_oid, NULL,
+> +							&tag,
+> +							&auth_safe_len)) ||
+> +			tag !=3D ASN1_ID_OCTET_STRING)
 > +		return false;
-> +	}
 > +
-> +	if (out_certchain)
-> +		*out_certchain =3D certchain;
+> +	/*
+> +	 * openssl can generate PFX structures without macData not signed
+> +	 * with a public key so handle this case, otherwise the macData
+> +	 * would not be optional.
+> +	 */
+> +	if (auth_safe + auth_safe_len =3D=3D ptr + len)
+> +		goto integrity_check_done;
 > +
-> +	if (out_privkey)
-> +		*out_privkey =3D privkey;
+> +	if (!(mac_data =3D asn1_der_find_elem(ptr, len, 2, &tag,
+> +						&mac_data_len)) ||
+> +			tag !=3D ASN1_ID_SEQUENCE)
+> +		return false;
 > +
-> +	if (out_encrypted)
-> +		*out_encrypted =3D encrypted;
+> +	if (!(mac =3D asn1_der_find_elem(mac_data, mac_data_len, 0, &tag,
+> +					&mac_len)) ||
+> +			tag !=3D ASN1_ID_SEQUENCE)
+> +		return false;
 > +
-> +	return true;
-> +}
+> +	if (!(mac_salt =3D asn1_der_find_elem(mac_data, mac_data_len, 1, &tag,
+> +						&mac_salt_len)) ||
+> +			tag !=3D ASN1_ID_OCTET_STRING || mac_salt_len > 1024)
+> +		return false;
+> +
+> +	if (!(iterations_data =3D asn1_der_find_elem(mac_data, mac_data_len, 2,
+> +							&tag,
+> +							&iterations_len)) ||
+> +			tag !=3D ASN1_ID_INTEGER || iterations_len > 4)
+> +		return false;
+> +
+> +	for (iterations =3D 0; iterations_len; iterations_len--)
+> +		iterations =3D (iterations << 8) | *iterations_data++;
+> +
+> +	if (iterations < 1 || iterations > 8192)
+> +		return false;
+> +
+> +	/* RFC2315 Section 9.4 */
+> +	if (!(digest_alg =3D asn1_der_find_elem(mac, mac_len, 0, &tag,
+> +						&digest_alg_len)) ||
+> +			tag !=3D ASN1_ID_SEQUENCE)
+> +		return false;
+> +
+> +	if (!(digest =3D asn1_der_find_elem(mac, mac_len, 1, &tag,
+> +						&digest_len)) ||
+> +			tag !=3D ASN1_ID_OCTET_STRING)
+> +		return false;
+> +
+> +	if (!(alg_id =3D asn1_der_find_elem(digest_alg, digest_alg_len,
+> +						0, &tag, &alg_id_len)) ||
+> +			tag !=3D ASN1_ID_OID)
+> +		return false;
+> +
+> +	/* This is going to be used for both the MAC and its key derivation */
+> +	for (i =3D 0; i < L_ARRAY_SIZE(pkcs12_mac_algs); i++)
+> +		if (asn1_oid_eq(&pkcs12_mac_algs[i].oid, alg_id_len, alg_id)) {
+> +			mac_hash =3D &pkcs12_mac_algs[i];
+> +			break;
+> +		}
+> +
+> +	if (i =3D=3D L_ARRAY_SIZE(pkcs12_mac_algs) || digest_len !=3D mac_hash-=
+>u)
+> +		return false;
+> +
+> +	if (!(key =3D cert_pkcs12_pbkdf(password, mac_hash,
+> +					mac_salt, mac_salt_len,
+> +					iterations, 3, mac_hash->u)))
+> +		return false;
+> +
+> +	hmac =3D l_checksum_new_hmac(mac_hash->alg, key, mac_hash->u);
+> +	explicit_bzero(key, mac_hash->u);
+> +
+> +	if (!hmac)
+> +		return false;
+> +
+> +	ok =3D l_checksum_update(hmac, auth_safe, auth_safe_len) &&
+> +		l_checksum_get_digest(hmac, hmac_val, mac_hash->len) > 0;
+> +	l_checksum_free(hmac);
+> +
+> +	if (!ok)
+> +		return false;
+> +
+> +	/*
+> +	 * SHA-512/224 and SHA-512/256 are not supported.  We can truncate the
+> +	 * output for key derivation but we can't do this inside the HMAC
+> +	 * algorithms based on these hashes.  We skip the MAC verification
+> +	 * if one of these hashes is used (identified by .u !=3D .len)
+> +	 */
+> +	if (mac_hash->u !=3D mac_hash->len)
+> +		goto integrity_check_done;
+> +
+> +	if (l_secure_memcmp(hmac_val, digest, digest_len))
+> +		return false;
+> +
+> +integrity_check_done:
+> +	if (!(auth_safe_seq =3D asn1_der_find_elem(auth_safe, auth_safe_len, 0,
+> +						&tag, &auth_safe_seq_len)) ||
+> +			tag !=3D ASN1_ID_SEQUENCE ||
+> +			auth_safe + auth_safe_len !=3D
+> +			auth_safe_seq + auth_safe_seq_len)
+> +		return false;
+> +
+> +	i =3D 0;
+> +	while (1) {
+> +		struct asn1_oid data_oid;
+> +		const uint8_t *data;
+> +		size_t data_len;
+> +
+> +		if (!(data =3D cert_unpack_pkcs7_content_info(auth_safe_seq,
+> +							auth_safe_seq_len, i++,
+> +							NULL, &data_oid, &tag,
+> +							&data_len)))
+> +			return false;
+> +
+> +		if (asn1_oid_eq(&pkcs7_encrypted_data_oid,
+> +					data_oid.asn1_len, data_oid.asn1)) {
+> +			uint8_t *plaintext;
+> +			size_t plaintext_len;
+> +			struct asn1_oid oid;
+> +
+> +			if (tag !=3D ASN1_ID_SEQUENCE)
+> +				return false;
+> +
+> +			/*
+> +			 * This is same as PKCS#7 encryptedData but the ciphers
+> +			 * used are from PKCS#12 (broken but still the default
+> +			 * everywhere) and PKCS#5 (recommended).
+> +			 */
+> +			plaintext =3D cert_decrypt_pkcs7_encrypted_data(data,
+> +								data_len,
+> +								password, &oid,
+> +								&plaintext_len);
+> +			if (!plaintext)
+> +				return false;
+> +
+> +			/*
+> +			 * Since we only support PKCS#7 data and encryptedData
+> +			 * types, and there's no point re-encrypting
+> +			 * encryptedData, the plaintext must be a PKCS#7
+> +			 * "data".
+> +			 */
+> +			ok =3D asn1_oid_eq(&pkcs7_data_oid,
+> +						oid.asn1_len, oid.asn1) &&
+> +				cert_parse_pkcs12_safe_contents(plaintext,
+> +								plaintext_len,
+> +								password,
+> +								out_certchain,
+> +								out_privkey);
+> +			explicit_bzero(plaintext, plaintext_len);
+> +			l_free(plaintext);
+> +
+> +			if (!ok)
+> +				return false;
+> +		} else if (asn1_oid_eq(&pkcs7_data_oid,
+> +					data_oid.asn1_len, data_oid.asn1)) {
+> +			if (tag !=3D ASN1_ID_OCTET_STRING)
+> +				return false;
+> +
+> +			if (!cert_parse_pkcs12_safe_contents(data, data_len,
+> +								password,
+> +								out_certchain,
+> +								out_privkey))
 
-Applied, thanks.
+While this function is not public API, it still feels like side-effecting t=
+he =
+
+out parameters here is something that makes the logic harder to follow...  =
+Are =
+
+you sure you don't want to clean these up on failure?
+
+> +				return false;
+> +		}
+> +		/* envelopedData support not needed */
+> +
+> +		if (data + data_len =3D=3D auth_safe_seq + auth_safe_seq_len)
+> +			return true;
+> +	}
+> +}
+> +
+>   /*
+>    * Look at a file, try to detect which of the few X.509 certificate and=
+/or
+>    * private key container formats it uses and load any certificates in i=
+t as
+
+<snip>
 
 Regards,
 -Denis
---===============1879195827537228522==--
+--===============1528774914198829493==--
 
