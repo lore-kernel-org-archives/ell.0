@@ -1,593 +1,576 @@
-Content-Type: multipart/mixed; boundary="===============4457961506061317766=="
+Content-Type: multipart/mixed; boundary="===============7526167064024520818=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/3] buf: Add a generic extensible buffer struct
-Date: Fri, 08 Jan 2021 02:13:22 +0100
-Message-ID: <20210108011324.1551320-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/3] genl: Use l_buf for l_genl_msg building
+Date: Fri, 08 Jan 2021 02:13:23 +0100
+Message-ID: <20210108011324.1551320-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20210108011324.1551320-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4457961506061317766==
+--===============7526167064024520818==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add a generic buffer class that can extend to the left and to the right
-as data is appended or prepended.  Nested buffers can also be added.
-Building the complicated structures of nested genl attributes and also
-various structures like 802.11 IEs passed in the contents of those
-attributes is the motivation for this.
+Replace l_genl_msg.data with an l_buf and update all of the users so
+that genl.c doesn't need to do the size checks and reallocs.  The
+function signatures are not changed except for l_genl_msg_to_data()
+being replaced with l_genl_msg_get_buf().  Two new functions are added.
 
-l_buf_new() and l_buf_append_new() take the amount of buffer space and
-the number of nested buffers to pre-allocate but the user can go over
-these values and the buffers will grow.  While the code looks a little
-complicated most operations are actually simple when the buffers don't
-need to grow.
+One little annoyance with the new code is that the order of attributes
+may not be preserved as with the old code.
 
-I considered these few features, all of which would be nice to have
-for l_genl_msg building for example, but, some of which are mutually
-exclusive without blowing up the size of struct l_buf, the complexity
-or the number of mallocs:
-
-1. nested l_bufs can be added *at the head*, in addition to at the
-   tail, of the parent l_buf.  (similar to how static data can be
-   prepended or appended to the current l_buf)
-
-2. multiple nested buffers of one parent can exist at the same time
-   and be written into or have their own children added in random
-   order.
-
-3. l_buf contains enough information to detect when the initial
-   @nested_cnt iovecs are exhausted, in l_buf_append_new().
-
-4. on top of 3. the iov array automatically extends when the initial
-   @nested_cnt iovecs are exhausted, in l_buf_append_new(), rather
-   than return NULL.
-   When the iov array extends parent/children nested l_bufs don't
-   become invalid.
-
-5. no extra "finalize" call is required after all data is written
-   to all nested buffers and no tree structure needs to be flattened,
-   the iov array is ready to use in a writev() at any time.
-
-6. on top of 5. no l_buf_free() is needed for nested buffers.
-   The number of l_buf_free calls matches the number of l_buf_new
-   calls only.
-
-This version sacrifices 1. and 2. for 3., 4., 5. and 6.
+It would have been possible to get rid of l_genl_msg.nests[] but the
+code would be slightly uglier.
 ---
- Makefile.am |   6 +-
- ell/buf.c   | 192 ++++++++++++++++++++++++++++++++++++++
- ell/buf.h   | 258 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/ell.h   |   1 +
- ell/ell.sym |   5 +
- 5 files changed, 460 insertions(+), 2 deletions(-)
- create mode 100644 ell/buf.c
- create mode 100644 ell/buf.h
+ ell/ell.sym |   4 +-
+ ell/genl.c  | 218 +++++++++++++++++++++++++++-------------------------
+ ell/genl.h  |  12 ++-
+ 3 files changed, 124 insertions(+), 110 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index 2f9a4ce..93bbbf2 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -58,7 +58,8 @@ pkginclude_HEADERS =3D ell/ell.h \
- 			ell/gpio.h \
- 			ell/path.h \
- 			ell/icmp6.h \
--			ell/acd.h
-+			ell/acd.h \
-+			ell/buf.h
- =
-
- lib_LTLIBRARIES =3D ell/libell.la
- =
-
-@@ -141,7 +142,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/path.c \
- 			ell/icmp6.c \
- 			ell/icmp6-private.h \
--			ell/acd.c
-+			ell/acd.c \
-+			ell/buf.c
- =
-
- ell_libell_la_LDFLAGS =3D -Wl,--no-undefined \
- 			-Wl,--version-script=3D$(top_srcdir)/ell/ell.sym \
-diff --git a/ell/buf.c b/ell/buf.c
-new file mode 100644
-index 0000000..8900656
---- /dev/null
-+++ b/ell/buf.c
-@@ -0,0 +1,192 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2021  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <errno.h>
-+
-+#include "util.h"
-+#include "private.h"
-+#include "buf.h"
-+
-+LIB_EXPORT struct l_buf *l_buf_new(size_t headroom, size_t tailroom,
-+					unsigned int nested_cnt)
-+{
-+	struct l_buf *buf;
-+	unsigned int iov_cnt =3D 1 + nested_cnt;
-+	struct iovec *alloced;
-+
-+	buf =3D l_malloc(sizeof(struct l_buf) +
-+				iov_cnt * 2 * sizeof(struct iovec) +
-+				headroom + tailroom);
-+	buf->parent =3D NULL;
-+	buf->child =3D NULL;
-+	/* Point @used to the first byte after the end of the struct */
-+	buf->used =3D buf->iovecs;
-+	buf->used_cnt =3D 1;
-+	/* Point @alloced to the first byte after the end of @used */
-+	alloced =3D buf->used + iov_cnt;
-+	buf->alloced_cnt =3D iov_cnt;
-+	/* Point @alloced[0].iov_base to first byte after the end of @alloced */
-+	alloced->iov_base =3D alloced + iov_cnt;
-+	alloced->iov_len =3D headroom + tailroom;
-+
-+	buf->used->iov_base =3D alloced->iov_base + headroom;
-+	buf->used->iov_len =3D 0;
-+
-+	return buf;
-+}
-+
-+LIB_EXPORT bool l_buf_append_init(struct l_buf *buf, struct l_buf *parent,
-+					size_t headroom, size_t tailroom)
-+{
-+	struct l_buf *base;
-+
-+	if (unlikely(!buf || !parent))
-+		return false;
-+
-+	for (base =3D parent; base->parent; base =3D base->parent);
-+
-+	if (unlikely(base->used_cnt =3D=3D base->alloced_cnt)) {
-+		struct iovec *old_used =3D base->used;
-+		struct l_buf *i;
-+
-+		/* Allocate a bigger buffer for the used+allocated array */
-+		base->alloced_cnt *=3D 2;
-+
-+		if (old_used =3D=3D base->iovecs) {
-+			struct iovec *old_alloced =3D old_used + base->used_cnt;
-+
-+			/* Assign the now uneeded space to the first iovec */
-+			if (old_alloced->iov_base =3D=3D
-+					old_alloced + base->used_cnt) {
-+				old_alloced->iov_base =3D old_used;
-+				old_alloced->iov_len +=3D base->used_cnt * 2 *
-+                                                sizeof(struct iovec);
-+			}
-+
-+			base->used =3D l_malloc(base->alloced_cnt * 2 *
-+						sizeof(struct iovec));
-+			memcpy(base->used, old_used,
-+				base->used_cnt * sizeof(struct iovec));
-+			memcpy(base->used + base->alloced_cnt, old_alloced,
-+				base->used_cnt * sizeof(struct iovec));
-+		} else {
-+			base->used =3D l_realloc(base->used, base->alloced_cnt *
-+						2 * sizeof(struct iovec));
-+			memcpy(base->used + base->alloced_cnt,
-+				base->used + base->used_cnt,
-+				base->used_cnt * sizeof(struct iovec));
-+		}
-+
-+		/* Update all intermediate l_bufs */
-+		for (i =3D parent; i !=3D base; i =3D i->parent) {
-+			i->used =3D base->used + (i->used - old_used);
-+			i->alloced_cnt =3D base->alloced_cnt;
-+		}
-+	}
-+
-+	buf->parent =3D parent;
-+	buf->child =3D NULL;
-+	buf->used =3D base->used + (base->used_cnt++);
-+	buf->alloced_cnt =3D base->alloced_cnt;
-+	return true;
-+}
-+
-+LIB_EXPORT void l_buf_free(struct l_buf *buf)
-+{
-+	const void *static_iov_base;
-+	const struct iovec *used;
-+	const struct iovec *alloced;
-+
-+	if (unlikely(!buf || buf->parent))
-+		return;
-+
-+	used =3D buf->used;
-+	alloced =3D used + buf->alloced_cnt;
-+
-+	if (used =3D=3D buf->iovecs)
-+		static_iov_base =3D alloced + buf->alloced_cnt;
-+	else
-+		static_iov_base =3D buf->iovecs;
-+
-+	for (; buf->used_cnt; buf->used_cnt--, used++, alloced++) {
-+		explicit_bzero(used->iov_base, used->iov_len);
-+
-+		if (alloced->iov_base !=3D static_iov_base)
-+			l_free(alloced->iov_base);
-+	}
-+
-+	if (buf->used !=3D buf->iovecs)
-+		l_free(buf->used);
-+
-+	do {
-+		struct l_buf *child =3D buf->child;
-+
-+		l_free(buf);
-+		buf =3D child;
-+	} while (buf);
-+}
-+
-+LIB_EXPORT void l_buf_extend(struct l_buf *buf, size_t bytes, bool at_head)
-+{
-+	struct iovec *cur =3D buf->used;
-+	struct iovec *cur_alloced =3D cur + buf->alloced_cnt;
-+	size_t headroom =3D cur->iov_base - cur_alloced->iov_base;
-+	const void *static_iov_base;
-+
-+	if (!buf->parent) {
-+		if (cur =3D=3D buf->iovecs)
-+			static_iov_base =3D cur_alloced + buf->alloced_cnt;
-+		else
-+			static_iov_base =3D buf->iovecs;
-+	} else
-+		static_iov_base =3D NULL;
-+
-+	cur_alloced->iov_len +=3D bytes;
-+
-+	/* Use realloc only if it can save us the memcpy/memmove */
-+	if (cur_alloced->iov_base !=3D static_iov_base && !at_head &&
-+			cur->iov_len) {
-+		cur_alloced->iov_base =3D
-+			l_realloc(cur_alloced->iov_base, cur_alloced->iov_len);
-+		cur->iov_base =3D cur_alloced->iov_base + headroom;
-+	} else {
-+		void *old_buf =3D cur_alloced->iov_base;
-+
-+		cur_alloced->iov_base =3D l_malloc(cur_alloced->iov_len);
-+		cur->iov_base =3D cur_alloced->iov_base + headroom;
-+
-+		if (at_head)
-+			cur->iov_base +=3D bytes;
-+
-+		if (cur->iov_len) {
-+			memcpy(cur->iov_base, old_buf + headroom, cur->iov_len);
-+			explicit_bzero(old_buf + headroom, cur->iov_len);
-+		}
-+
-+		if (old_buf !=3D static_iov_base)
-+			l_free(old_buf);
-+	}
-+}
-diff --git a/ell/buf.h b/ell/buf.h
-new file mode 100644
-index 0000000..a3d64d3
---- /dev/null
-+++ b/ell/buf.h
-@@ -0,0 +1,258 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2021  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifndef __ELL_BUF_H
-+#define __ELL_BUF_H
-+
-+#include <sys/uio.h>
-+#include <stdint.h>
-+#include <stddef.h>
-+
-+#ifdef __cplusplus
-+extern "C" {
-+#endif
-+
-+/*
-+ * At the low level this stores up to @alloced_cnt contiguous buffers or
-+ * segments.  Within each segment there's a "used" part of the segment
-+ * identified by the start pointer and the length.  There's also
-+ * differentation between base l_bufs, that own the allocated memory,
-+ * and nested l_bufs that point to their parent l_buf's segments.
-+ *
-+ * In the base l_buf, the @iovecs array contains 2 * @alloced_cnt iovecs.
-+ * The last @alloced_cnt iovecs each point at the entirety of the
-+ * corresponding segment's allocated memory while the first @alloced_cnt
-+ * iovecs point at the "used" part of the corresponding segment.  Only
-+ * segments from 0 to (@used_cnt - 1) have memory allocated.
-+ *
-+ * @used[0] is the "used" iovec for the "current" segment, i.e. anything
-+ * between @used->iov_base and @used->iov_base + @used->iov_len.
-+ * @used + @alloced_cnt points at the entirety of the "current" segment.
-+ * Anything before @used->iov_base (and after @used[alloced_cnt].iov_base)
-+ * is the headroom and anything after @used->iov_base + @used->iov_len
-+ * (up to @used[alloced_cnt].iov_base + @used[alloced_cnt].iov_len) is
-+ * the tailroom.  Initally the "used" part is empty, i.e. @used->iov_base
-+ * points somewhere inside the allocated segment and @used->iov_len is 0.
-+ * l_buf_prepend() is then used to expand it into the headroom and
-+ * l_buf_append() to expand it into the tailroom, reducing the available
-+ * room.  The headroom and tailroom of the allocated segments, and the
-+ * @iov_base and @iov_len of the not-yet-allocated segments have
-+ * uninitialized values.
-+ *
-+ * There's no way to change which segment is "current".  The segments
-+ * after "current" are accessed by creating a nested l_buf using
-+ * l_buf_append_init() and l_buf_append_new().  Its "current" segment is
-+ * going to be different.  Segments are allocated their memory when they
-+ * become the "current" segment of an l_buf.  That memory is not freed
-+ * until the base l_buf is freed though.  Nested l_bufs can't be freed
-+ * using l_buf_free, they're also automatically freed with the base l_buf.
-+ * A nested l_buf and all its childred l_bufs also become invalid when
-+ * a new call to l_buf_append_new() is made for the same parent l_buf or
-+ * its ancestor.
-+ */
-+struct l_buf {
-+	struct {
-+		struct l_buf *parent;
-+		struct l_buf *child;
-+		struct iovec *used;
-+		unsigned int alloced_cnt;
-+	};
-+	unsigned int used_cnt;
-+	struct iovec iovecs[0];
-+};
-+
-+struct l_buf *l_buf_new(size_t headroom, size_t tailroom,
-+			unsigned int nested_cnt);
-+bool l_buf_append_init(struct l_buf *buf, struct l_buf *parent,
-+			size_t headroom, size_t tailroom);
-+
-+static inline struct l_buf *l_buf_append_new(struct l_buf *parent,
-+						size_t headroom,
-+						size_t tailroom)
-+{
-+	struct l_buf *ref_parent =3D parent;
-+	struct l_buf *old_child;
-+
-+	if (unlikely(!parent))
-+		return NULL;
-+
-+	/*
-+	 * Find the first ancestor referenced by its .parent->child, i.e.
-+	 * one that was allocated dynamically by l_buf_append_new().
-+	 * That ancestor is going to hold the reference to the new l_buf
-+	 * so that it can be automatically re-used and freed later.  Don't
-+	 * link the new l_buf to a parent that is not part of the singly
-+	 * linked list formed by the .child pointers, otherwise it'd leak.
-+	 */
-+	while (ref_parent->parent && ref_parent->parent->child !=3D ref_parent)
-+		ref_parent =3D ref_parent->parent;
-+
-+	if (ref_parent->child)
-+		/* Save previous child(ren) l_buf(s) for re-use */
-+		old_child =3D ref_parent->child->child;
-+	else {
-+		ref_parent->child =3D l_malloc(offsetof(struct l_buf, used_cnt));
-+		old_child =3D NULL;
-+	}
-+
-+	/* Cannot fail when parent and parent->child are non-NULL */
-+	l_buf_append_init(ref_parent->child, parent, headroom, tailroom);
-+
-+	ref_parent->child->child =3D old_child;
-+	return parent->child;
-+}
-+
-+void l_buf_free(struct l_buf *buf);
-+void l_buf_extend(struct l_buf *buf, size_t bytes, bool at_head);
-+
-+static inline uint8_t *l_buf_get_headroom(struct l_buf *buf, size_t bytes)
-+{
-+	struct iovec *cur =3D buf->used;
-+	struct iovec *cur_alloced =3D cur + buf->alloced_cnt;
-+
-+	if (cur->iov_base - bytes < cur_alloced->iov_base)
-+		l_buf_extend(buf, cur_alloced->iov_base + bytes - cur->iov_base,
-+				true);
-+
-+	cur->iov_base -=3D bytes;
-+	cur->iov_len +=3D bytes;
-+	return cur->iov_base;
-+}
-+
-+static inline uint8_t *l_buf_get_tailroom(struct l_buf *buf, size_t bytes)
-+{
-+	struct iovec *cur =3D buf->used;
-+	struct iovec *cur_alloced =3D cur + buf->alloced_cnt;
-+	void *end =3D cur->iov_base + cur->iov_len;
-+
-+	if (end + bytes > cur_alloced->iov_base + cur_alloced->iov_len) {
-+		l_buf_extend(buf, end + bytes -
-+				cur_alloced->iov_base - cur_alloced->iov_len,
-+				false);
-+		end =3D cur->iov_base + cur->iov_len;
-+	}
-+
-+	cur->iov_len +=3D bytes;
-+	return end;
-+}
-+
-+static inline void l_buf_prepend(struct l_buf *buf, const void *data,
-+					size_t len)
-+{
-+	if (likely(len))
-+		memcpy(l_buf_get_headroom(buf, len), data, len);
-+}
-+
-+static inline void l_buf_append(struct l_buf *buf, const void *data, size_=
-t len)
-+{
-+	if (likely(len))
-+		memcpy(l_buf_get_tailroom(buf, len), data, len);
-+}
-+
-+static inline void l_buf_prependv(struct l_buf *buf, const struct iovec *i=
-ov,
-+				unsigned int iov_cnt)
-+{
-+	while (iov_cnt) {
-+		iov_cnt--;
-+		l_buf_prepend(buf, iov[iov_cnt].iov_base, iov[iov_cnt].iov_len);
-+	}
-+}
-+
-+static inline void l_buf_appendv(struct l_buf *buf, const struct iovec *io=
-v,
-+				unsigned int iov_cnt)
-+{
-+	while (iov_cnt) {
-+		iov_cnt--;
-+		l_buf_append(buf, iov->iov_base, iov->iov_len);
-+		iov++;
-+	}
-+}
-+
-+#define l_buf_prepends(buf, in) l_buf_prepend((buf), &(in), sizeof(in))
-+#define l_buf_appends(buf, in) l_buf_append((buf), &(in), sizeof(in))
-+
-+static inline void l_buf_pad(struct l_buf *buf, uint8_t value, size_t len)
-+{
-+	if (likely(len))
-+		memset(l_buf_get_tailroom(buf, len), value, len);
-+}
-+
-+static inline size_t l_buf_get_len(const struct l_buf *buf)
-+{
-+	const struct l_buf *base;
-+	unsigned int i;
-+	size_t len =3D 0;
-+
-+	if (unlikely(!buf))
-+		return 0;
-+
-+	for (base =3D buf; base->parent; base =3D base->parent);
-+
-+	for (i =3D buf->used - base->used; i < base->used_cnt; i++)
-+		len +=3D base->used[i].iov_len;
-+
-+	return len;
-+}
-+
-+static inline bool l_buf_put_headroom(struct l_buf *buf, size_t bytes)
-+{
-+	if (buf->used->iov_len < bytes)
-+		return false;
-+
-+	buf->used->iov_base +=3D bytes;
-+	buf->used->iov_len -=3D bytes;
-+	return true;
-+}
-+
-+static inline bool l_buf_put_tailroom(struct l_buf *buf, size_t bytes)
-+{
-+	if (buf->used->iov_len < bytes)
-+		return false;
-+
-+	buf->used->iov_len -=3D bytes;
-+	return true;
-+}
-+
-+static inline uint8_t *l_buf_get_data(const struct l_buf *buf, size_t *out=
-_len)
-+{
-+	size_t len =3D l_buf_get_len(buf);
-+	uint8_t *data =3D l_malloc(len);
-+	uint8_t *ptr =3D data;
-+	int i;
-+
-+	if (out_len)
-+		*out_len =3D len;
-+
-+	for (i =3D 0; len; i++) {
-+		memcpy(ptr, buf->used[i].iov_base, buf->used[i].iov_len);
-+		ptr +=3D buf->used[i].iov_len;
-+		len -=3D buf->used[i].iov_len;
-+	}
-+
-+	return data;
-+}
-+
-+#ifdef __cplusplus
-+}
-+#endif
-+
-+#endif /* __ELL_BUF_H */
-diff --git a/ell/ell.h b/ell/ell.h
-index 22fddf7..ab8f0f0 100644
---- a/ell/ell.h
-+++ b/ell/ell.h
-@@ -64,3 +64,4 @@
- #include <ell/gpio.h>
- #include <ell/path.h>
- #include <ell/acd.h>
-+#include <ell/buf.h>
 diff --git a/ell/ell.sym b/ell/ell.sym
-index aa0c046..8372e5f 100644
+index 8372e5f..ee02b7a 100644
 --- a/ell/ell.sym
 +++ b/ell/ell.sym
-@@ -664,6 +664,11 @@ global:
- 	l_acd_set_debug;
- 	l_acd_set_skip_probes;
- 	l_acd_set_defend_policy;
-+	/* buf */
-+	l_buf_new;
-+	l_buf_append_init;
-+	l_buf_free;
-+	l_buf_extend;
- local:
- 	*;
+@@ -297,8 +297,9 @@ global:
+ 	l_genl_request_family;
+ 	l_genl_msg_new;
+ 	l_genl_msg_new_sized;
++	l_genl_msg_new_bufs;
+ 	l_genl_msg_new_from_data;
+-	l_genl_msg_to_data;
++	l_genl_msg_get_buf;
+ 	l_genl_msg_ref;
+ 	l_genl_msg_unref;
+ 	l_genl_msg_get_command;
+@@ -307,6 +308,7 @@ global:
+ 	l_genl_msg_get_extended_error;
+ 	l_genl_msg_append_attr;
+ 	l_genl_msg_append_attrv;
++	l_genl_msg_append_attr_buf;
+ 	l_genl_msg_enter_nested;
+ 	l_genl_msg_leave_nested;
+ 	l_genl_attr_init;
+diff --git a/ell/genl.c b/ell/genl.c
+index a4f7252..7e6f2f1 100644
+--- a/ell/genl.c
++++ b/ell/genl.c
+@@ -34,6 +34,7 @@
+ #include "io.h"
+ #include "netlink-private.h"
+ #include "genl.h"
++#include "buf.h"
+ #include "private.h"
+ =
+
+ #define MAX_NESTING_LEVEL 4
+@@ -43,7 +44,7 @@
+ =
+
+ struct nest_info {
+ 	uint16_t type;
+-	uint16_t offset;
++	struct l_buf *parent_buf;
  };
+ =
+
+ struct unicast_watch {
+@@ -104,11 +105,13 @@ struct l_genl_msg {
+ 	char *error_msg;
+ 	uint8_t cmd;
+ 	uint8_t version;
+-	void *data;
+ 	uint32_t size;
+-	uint32_t len;
++	struct l_buf *buf;
++	struct l_buf *cur_buf;
+ 	struct nest_info nests[MAX_NESTING_LEVEL];
+ 	uint8_t nesting_level;
++	uint16_t attr_type;
++	struct l_buf *attr_buf;
+ };
+ =
+
+ struct genl_request {
+@@ -740,7 +743,8 @@ static bool match_request_hid(const void *a, const void=
+ *b)
+ #define NLA_DATA(nla)		((void*)(((char*)(nla)) + NLA_LENGTH(0)))
+ #define NLA_PAYLOAD(nla)	((int)((nla)->nla_len) - NLA_LENGTH(0))
+ =
+
+-static struct l_genl_msg *msg_alloc(uint8_t cmd, uint8_t version, uint32_t=
+ size)
++static struct l_genl_msg *msg_alloc(uint8_t cmd, uint8_t version, uint32_t=
+ size,
++					uint32_t n_bufs)
+ {
+ 	struct l_genl_msg *msg;
+ =
+
+@@ -749,35 +753,15 @@ static struct l_genl_msg *msg_alloc(uint8_t cmd, uint=
+8_t version, uint32_t size)
+ 	msg->cmd =3D cmd;
+ 	msg->version =3D version;
+ =
+
+-	msg->len =3D NLMSG_HDRLEN + GENL_HDRLEN;
+-	msg->size =3D msg->len + NLMSG_ALIGN(size);
+-
+-	msg->data =3D l_realloc(NULL, msg->size);
+-	memset(msg->data, 0, msg->size);
++	msg->size =3D NLMSG_ALIGN(size);
++	msg->buf =3D l_buf_new(NLMSG_HDRLEN + GENL_HDRLEN, msg->size, n_bufs);
++	msg->cur_buf =3D msg->buf;
+ 	msg->nesting_level =3D 0;
++	msg->attr_buf =3D NULL;
+ =
+
+ 	return l_genl_msg_ref(msg);
+ }
+ =
+
+-static bool msg_grow(struct l_genl_msg *msg, uint32_t needed)
+-{
+-	uint32_t grow_by;
+-
+-	if (msg->size >=3D msg->len + needed)
+-		return true;
+-
+-	grow_by =3D msg->len + needed - msg->size;
+-
+-	if (grow_by < 32)
+-		grow_by =3D 128;
+-
+-	msg->data =3D l_realloc(msg->data, msg->size + grow_by);
+-	memset(msg->data + msg->size, 0, grow_by);
+-	msg->size +=3D grow_by;
+-
+-	return true;
+-}
+-
+ static struct l_genl_msg *msg_create(const struct nlmsghdr *nlmsg)
+ {
+ 	struct l_genl_msg *msg;
+@@ -828,13 +812,13 @@ static struct l_genl_msg *msg_create(const struct nlm=
+sghdr *nlmsg)
+ 		}
+ 	}
+ =
+
+-	msg->data =3D l_memdup(nlmsg, nlmsg->nlmsg_len);
+-
+-	msg->len =3D nlmsg->nlmsg_len;
++	msg->buf =3D l_buf_new(0, nlmsg->nlmsg_len, 0);
+ 	msg->size =3D nlmsg->nlmsg_len;
+ =
+
+-	if (msg->len >=3D GENL_HDRLEN) {
+-		struct genlmsghdr *genlmsg =3D msg->data + NLMSG_HDRLEN;
++	l_buf_append(msg->buf, nlmsg, nlmsg->nlmsg_len);
++
++	if (msg->size >=3D GENL_HDRLEN) {
++		struct genlmsghdr *genlmsg =3D msg->buf->used->iov_base + NLMSG_HDRLEN;
+ =
+
+ 		msg->cmd =3D genlmsg->cmd;
+ 		msg->version =3D genlmsg->version;
+@@ -844,30 +828,25 @@ done:
+ 	return l_genl_msg_ref(msg);
+ }
+ =
+
+-static const void *msg_as_bytes(struct l_genl_msg *msg, uint16_t type,
+-				uint16_t flags, uint32_t seq, uint32_t pid,
+-				size_t *out_size)
++static void genl_msg_write_header(struct l_genl_msg *msg, uint16_t type,
++					uint16_t flags, uint32_t seq,
++					uint32_t pid)
+ {
+-	struct nlmsghdr *nlmsg;
+-	struct genlmsghdr *genlmsg;
+-
+-	nlmsg =3D msg->data;
+-
+-	nlmsg->nlmsg_len =3D msg->len;
+-	nlmsg->nlmsg_type =3D type;
+-	nlmsg->nlmsg_flags =3D flags;
+-	nlmsg->nlmsg_seq =3D seq;
+-	nlmsg->nlmsg_pid =3D pid;
+-
+-	genlmsg =3D msg->data + NLMSG_HDRLEN;
+-
+-	genlmsg->cmd =3D msg->cmd;
+-	genlmsg->version =3D msg->version;
++	struct nlmsghdr nlmsg =3D {
++		.nlmsg_len =3D l_buf_get_len(msg->buf) +
++			NLMSG_HDRLEN + GENL_HDRLEN,
++		.nlmsg_type =3D type,
++		.nlmsg_flags =3D flags,
++		.nlmsg_seq =3D seq,
++		.nlmsg_pid =3D pid,
++	};
++	struct genlmsghdr genlmsg =3D {
++		.cmd =3D msg->cmd,
++		.version =3D msg->version,
++	};
+ =
+
+-	if (out_size)
+-		*out_size =3D msg->len;
+-
+-	return msg->data;
++	l_buf_prepend(msg->buf, &genlmsg, GENL_HDRLEN);
++	l_buf_prepend(msg->buf, &nlmsg, NLMSG_HDRLEN);
+ }
+ =
+
+ static void write_watch_destroy(void *user_data)
+@@ -881,25 +860,29 @@ static bool can_write_data(struct l_io *io, void *use=
+r_data)
+ {
+ 	struct l_genl *genl =3D user_data;
+ 	struct genl_request *request;
+-	const void *data;
+-	size_t size;
+ 	ssize_t bytes_written;
++	unsigned int i;
+ =
+
+ 	request =3D l_queue_pop_head(genl->request_queue);
+ 	if (!request)
+ 		return false;
+ =
+
+ 	request->seq =3D get_next_id(&genl->next_seq);
+-	data =3D msg_as_bytes(request->msg, request->type, request->flags,
+-				request->seq, genl->pid, &size);
++	genl_msg_write_header(request->msg, request->type, request->flags,
++				request->seq, genl->pid);
+ =
+
+-	bytes_written =3D send(genl->fd, data, size, 0);
++	bytes_written =3D writev(genl->fd, request->msg->buf->used,
++				request->msg->buf->used_cnt);
+ 	if (bytes_written < 0) {
++		l_buf_put_headroom(request->msg->buf,
++					GENL_HDRLEN + NLMSG_HDRLEN);
+ 		l_queue_push_head(genl->request_queue, request);
+ 		return false;
+ 	}
+ =
+
+-	l_util_hexdump(false, request->msg->data, bytes_written,
++	for (i =3D 0; i < request->msg->buf->used_cnt; i++)
++		l_util_hexdump(false, request->msg->buf->used[i].iov_base,
++				request->msg->buf->used[i].iov_len,
+ 				genl->debug_callback, genl->debug_data);
+ =
+
+ 	l_queue_push_tail(genl->pending_list, request);
+@@ -1567,7 +1550,12 @@ LIB_EXPORT struct l_genl_msg *l_genl_msg_new(uint8_t=
+ cmd)
+ =
+
+ LIB_EXPORT struct l_genl_msg *l_genl_msg_new_sized(uint8_t cmd, uint32_t s=
+ize)
+ {
+-	return msg_alloc(cmd, 0x00, size);
++	return msg_alloc(cmd, 0x00, size, 16);
++}
++
++LIB_EXPORT struct l_genl_msg *l_genl_msg_new_bufs(uint8_t cmd, uint32_t n_=
+bufs)
++{
++	return msg_alloc(cmd, 0x00, 256, n_bufs);
+ }
+ =
+
+ LIB_EXPORT struct l_genl_msg *l_genl_msg_new_from_data(const void *data,
+@@ -1584,12 +1572,15 @@ LIB_EXPORT struct l_genl_msg *l_genl_msg_new_from_d=
+ata(const void *data,
+ 	return msg_create(nlmsg);
+ }
+ =
+
+-LIB_EXPORT const void *l_genl_msg_to_data(struct l_genl_msg *msg, uint16_t=
+ type,
+-						uint16_t flags, uint32_t seq,
+-						uint32_t pid,
+-						size_t *out_size)
++LIB_EXPORT const struct l_buf *l_genl_msg_get_buf(struct l_genl_msg *msg,
++							uint16_t type,
++							uint16_t flags,
++							uint32_t seq,
++							uint32_t pid)
+ {
+-	return msg_as_bytes(msg, type, flags, seq, pid, out_size);
++	genl_msg_write_header(msg, type, flags, seq, pid);
++
++	return msg->buf;
+ }
+ =
+
+ LIB_EXPORT struct l_genl_msg *l_genl_msg_ref(struct l_genl_msg *msg)
+@@ -1611,7 +1602,7 @@ LIB_EXPORT void l_genl_msg_unref(struct l_genl_msg *m=
+sg)
+ 		return;
+ =
+
+ 	l_free(msg->error_msg);
+-	l_free(msg->data);
++	l_buf_free(msg->buf);
+ 	l_free(msg);
+ }
+ =
+
+@@ -1650,23 +1641,17 @@ LIB_EXPORT const char *l_genl_msg_get_extended_erro=
+r(struct l_genl_msg *msg)
+ LIB_EXPORT bool l_genl_msg_append_attr(struct l_genl_msg *msg, uint16_t ty=
+pe,
+ 						uint16_t len, const void *data)
+ {
+-	struct nlattr *nla;
++	struct nlattr nla =3D {
++		.nla_len =3D NLA_HDRLEN + len,
++		.nla_type =3D type,
++	};
+ =
+
+ 	if (unlikely(!msg))
+ 		return false;
+ =
+
+-	if (!msg_grow(msg, NLA_HDRLEN + NLA_ALIGN(len)))
+-		return false;
+-
+-	nla =3D msg->data + msg->len;
+-	nla->nla_len =3D NLA_HDRLEN + len;
+-	nla->nla_type =3D type;
+-
+-	if (len)
+-		memcpy(msg->data + msg->len + NLA_HDRLEN, data, len);
+-
+-	msg->len +=3D NLA_HDRLEN + NLA_ALIGN(len);
+-
++	l_buf_append(msg->cur_buf, &nla, NLA_HDRLEN);
++	l_buf_append(msg->cur_buf, data, len);
++	l_buf_pad(msg->cur_buf, 0, NLA_ALIGN(len) - len);
+ 	return true;
+ }
+ =
+
+@@ -1674,7 +1659,7 @@ LIB_EXPORT bool l_genl_msg_append_attrv(struct l_genl=
+_msg *msg, uint16_t type,
+ 					const struct iovec *iov,
+ 					size_t iov_len)
+ {
+-	struct nlattr *nla;
++	struct nlattr nla =3D { .nla_type =3D type };
+ 	size_t len =3D 0;
+ 	unsigned int i;
+ =
+
+@@ -1684,23 +1669,26 @@ LIB_EXPORT bool l_genl_msg_append_attrv(struct l_ge=
+nl_msg *msg, uint16_t type,
+ 	for (i =3D 0; i < iov_len; i++)
+ 		len +=3D iov[i].iov_len;
+ =
+
+-	if (!msg_grow(msg, NLA_HDRLEN + NLA_ALIGN(len)))
+-		return false;
++	nla.nla_len =3D NLA_HDRLEN + len;
+ =
+
+-	nla =3D msg->data + msg->len;
+-	nla->nla_len =3D NLA_HDRLEN + len;
+-	nla->nla_type =3D type;
++	l_buf_append(msg->cur_buf, &nla, NLA_HDRLEN);
++	l_buf_appendv(msg->cur_buf, iov, iov_len);
++	l_buf_pad(msg->cur_buf, 0, NLA_ALIGN(len) - len);
++	return true;
++}
+ =
+
+-	msg->len +=3D NLA_HDRLEN;
++static void genl_msg_write_attr_header(struct l_genl_msg *msg)
++{
++	struct nlattr nla =3D {};
+ =
+
+-	for (i =3D 0; i < iov_len; i++, iov++) {
+-		memcpy(msg->data + msg->len, iov->iov_base, iov->iov_len);
+-		msg->len +=3D iov->iov_len;
+-	}
++	if (!msg->attr_buf)
++		return;
+ =
+
+-	msg->len +=3D NLA_ALIGN(len) - len;
++	nla.nla_type =3D msg->attr_type;
++	nla.nla_len =3D l_buf_get_len(msg->attr_buf) + NLA_HDRLEN;
++	l_buf_prepend(msg->attr_buf, &nla, NLA_HDRLEN);
+ =
+
+-	return true;
++	msg->attr_buf =3D NULL;
+ }
+ =
+
+ LIB_EXPORT bool l_genl_msg_enter_nested(struct l_genl_msg *msg, uint16_t t=
+ype)
+@@ -1711,21 +1699,19 @@ LIB_EXPORT bool l_genl_msg_enter_nested(struct l_ge=
+nl_msg *msg, uint16_t type)
+ 	if (unlikely(msg->nesting_level =3D=3D MAX_NESTING_LEVEL))
+ 		return false;
+ =
+
+-	if (!msg_grow(msg, NLA_HDRLEN))
+-		return false;
+-
+ 	msg->nests[msg->nesting_level].type =3D type | NLA_F_NESTED;
+-	msg->nests[msg->nesting_level].offset =3D msg->len;
++	msg->nests[msg->nesting_level].parent_buf =3D msg->cur_buf;
+ 	msg->nesting_level +=3D 1;
+ =
+
+-	msg->len +=3D NLA_HDRLEN;
++	genl_msg_write_attr_header(msg);
++	msg->cur_buf =3D l_buf_append_new(msg->cur_buf, NLA_HDRLEN, msg->size);
+ =
+
+ 	return true;
+ }
+ =
+
+ LIB_EXPORT bool l_genl_msg_leave_nested(struct l_genl_msg *msg)
+ {
+-	struct nlattr *nla;
++	struct nlattr nla =3D {};
+ =
+
+ 	if (unlikely(!msg))
+ 		return false;
+@@ -1733,15 +1719,33 @@ LIB_EXPORT bool l_genl_msg_leave_nested(struct l_ge=
+nl_msg *msg)
+ 	if (unlikely(msg->nesting_level =3D=3D 0))
+ 		return false;
+ =
+
+-	nla =3D msg->data + msg->nests[msg->nesting_level - 1].offset;
+-	nla->nla_type =3D msg->nests[msg->nesting_level - 1].type;
+-	nla->nla_len =3D msg->len - msg->nests[msg->nesting_level - 1].offset;
++	genl_msg_write_attr_header(msg);
+ =
+
++	nla.nla_type =3D msg->nests[msg->nesting_level - 1].type;
++	nla.nla_len =3D l_buf_get_len(msg->cur_buf) + NLA_HDRLEN;
++	l_buf_prepend(msg->cur_buf, &nla, NLA_HDRLEN);
++
++	msg->cur_buf =3D msg->nests[msg->nesting_level - 1].parent_buf;
+ 	msg->nesting_level -=3D 1;
+ =
+
+ 	return true;
+ }
+ =
+
++LIB_EXPORT struct l_buf *l_genl_msg_append_attr_buf(struct l_genl_msg *msg,
++							uint16_t type,
++							size_t headroom,
++							size_t tailroom)
++{
++	if (unlikely(!msg))
++		return NULL;
++
++	genl_msg_write_attr_header(msg);
++	msg->attr_buf =3D l_buf_append_new(msg->cur_buf, headroom + NLA_HDRLEN,
++						tailroom);
++
++	return msg->attr_buf;
++}
++
+ LIB_EXPORT bool l_genl_attr_init(struct l_genl_attr *attr,
+ 						struct l_genl_msg *msg)
+ {
+@@ -1751,11 +1755,11 @@ LIB_EXPORT bool l_genl_attr_init(struct l_genl_attr=
+ *attr,
+ 	if (unlikely(!attr) || unlikely(!msg))
+ 		return false;
+ =
+
+-	if (!msg->data || msg->len < NLMSG_HDRLEN + GENL_HDRLEN)
++	if (msg->buf->used->iov_len < NLMSG_HDRLEN + GENL_HDRLEN)
+ 		return false;
+ =
+
+-	nla =3D msg->data + NLMSG_HDRLEN + GENL_HDRLEN;
+-	len =3D msg->len - NLMSG_HDRLEN - GENL_HDRLEN;
++	nla =3D msg->buf->used->iov_base + NLMSG_HDRLEN + GENL_HDRLEN;
++	len =3D msg->buf->used->iov_len - NLMSG_HDRLEN - GENL_HDRLEN;
+ =
+
+ 	if (!NLA_OK(nla, len))
+ 		return false;
+@@ -1898,6 +1902,8 @@ static unsigned int send_common(struct l_genl_family =
+*family, uint16_t flags,
+ 	if (!genl)
+ 		return 0;
+ =
+
++	genl_msg_write_attr_header(msg);
++
+ 	request =3D l_new(struct genl_request, 1);
+ 	request->type =3D family->id;
+ 	request->flags =3D NLM_F_REQUEST | flags;
+diff --git a/ell/genl.h b/ell/genl.h
+index 7550bf8..14e8b36 100644
+--- a/ell/genl.h
++++ b/ell/genl.h
+@@ -37,6 +37,7 @@ struct l_genl;
+ struct l_genl_family_info;
+ struct l_genl_family;
+ struct l_genl_msg;
++struct l_buf;
+ =
+
+ typedef void (*l_genl_destroy_func_t)(void *user_data);
+ typedef void (*l_genl_debug_func_t)(const char *str, void *user_data);
+@@ -85,11 +86,12 @@ struct l_genl_attr {
+ =
+
+ struct l_genl_msg* l_genl_msg_new(uint8_t cmd);
+ struct l_genl_msg *l_genl_msg_new_sized(uint8_t cmd, uint32_t size);
++struct l_genl_msg *l_genl_msg_new_bufs(uint8_t cmd, uint32_t n_bufs);
+ struct l_genl_msg *l_genl_msg_new_from_data(const void *data, size_t size);
+ =
+
+-const void *l_genl_msg_to_data(struct l_genl_msg *msg, uint16_t type,
+-				uint16_t flags, uint32_t seq, uint32_t pid,
+-				size_t *out_size);
++const struct l_buf *l_genl_msg_get_buf(struct l_genl_msg *msg,
++					uint16_t type, uint16_t flags,
++					uint32_t seq, uint32_t pid);
+ =
+
+ struct l_genl_msg *l_genl_msg_ref(struct l_genl_msg *msg);
+ void l_genl_msg_unref(struct l_genl_msg *msg);
+@@ -103,6 +105,10 @@ bool l_genl_msg_append_attr(struct l_genl_msg *msg, ui=
+nt16_t type,
+ 					uint16_t len, const void *data);
+ bool l_genl_msg_append_attrv(struct l_genl_msg *msg, uint16_t type,
+ 				const struct iovec *iov, size_t iov_len);
++struct l_buf *l_genl_msg_append_attr_buf(struct l_genl_msg *msg,
++						uint16_t type,
++						size_t headroom,
++						size_t tailroom);
+ bool l_genl_msg_enter_nested(struct l_genl_msg *msg, uint16_t type);
+ bool l_genl_msg_leave_nested(struct l_genl_msg *msg);
+ =
+
 -- =
 
 2.27.0
 
---===============4457961506061317766==--
+--===============7526167064024520818==--
 
