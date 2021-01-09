@@ -1,45 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============8091833868032033123=="
+Content-Type: multipart/mixed; boundary="===============0434997400216880871=="
 MIME-Version: 1.0
-From: Shawn Nock <shawn@monadnock.ca>
-Subject: Re: REQ: revert e129cb4cd2270f308c1564e75859672643dd902b (plugin:
- Remove completely)
-Date: Fri, 08 Jan 2021 16:34:01 -0500
-Message-ID: <011a6e63-ea03-4800-8888-f23fc2b93f55@www.fastmail.com>
-In-Reply-To: <1170cf9a-21eb-66b0-20a5-e4fa17cea3a9@gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 5/8] cert: Add l_cert_load_container_file
+Date: Sat, 09 Jan 2021 01:51:03 +0100
+Message-ID: <CAOq732+A=Dycd6uzhLpcYWA9ZatwSSh7PodmZ8xz0Jmm0xKzfg@mail.gmail.com>
+In-Reply-To: <6386fded-e857-d1c4-0765-b8d41781fda7@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8091833868032033123==
+--===============0434997400216880871==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, 8 Jan 2021, at 15:42, Denis Kenzior wrote:
-> We have been wanting to make this particular change for a while.  The cat=
-alyst =
+On Fri, 8 Jan 2021 at 05:37, Denis Kenzior <denkenz@gmail.com> wrote:
+>
+> Hi Andrew,
+>
+> On 1/6/21 1:54 PM, Andrew Zaborowski wrote:
+> > + * Currently supported are:
+> > + *  PEM X.509 certificates
+> > + *  PEM PKCS#8 encrypted and unenecrypted private keys
+> > + *  PEM legacy PKCS#1 encrypted and unenecrypted private keys
+>
+> I fixed 'unenerypted' -> 'unencrypted' in these two lines
+>
+> > +                     privkey =3D pem_load_private_key(der, der_len, ty=
+pe_label,
+> > +                                                     password, headers,
+> > +                                                     &encrypted);
+>
+> Remind me again why pem_load_private_key frees all the input data?
 
-> for the decision were reports of build issues on certain linkers with iwd=
-/ell. =
+Within pem.c this avoided some duplication in the callers, but...
 
-> Since we were about to make a release, instead of adding hot-fixes, which=
- were =
+> This makes
+> things really asymmetrical in this function.
 
-> objected to by some developers, we decided to take the whole thing out.  =
-This =
+It does, let me know if you prefer it fixed.
 
-> was done after consulting with all known users of ell on IRC.
-
-I was hoping for a revert on the grounds that it may have been a minor hous=
-ekeeping sort of change, but this sounds like sufficient cause.
-
-I've been getting my news here, but I'll make a note to lurk in #ell.
-
-Thanks,
-S
-
--- =
-
-Shawn Nock <shawn@monadnock.ca>
-Monadnock Systems Ltd.
---===============8091833868032033123==--
+Best regards
+--===============0434997400216880871==--
 
