@@ -1,70 +1,96 @@
-Content-Type: multipart/mixed; boundary="===============3373714004185332089=="
+Content-Type: multipart/mixed; boundary="===============0786165334828308567=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dbus: explicitly handle messages with NULL interface
-Date: Wed, 20 Jan 2021 11:16:38 -0600
-Message-ID: <8ac4a903-85a7-bdca-023b-b6d524f79a67@gmail.com>
-In-Reply-To: <20210119232646.430146-1-prestwoj@gmail.com>
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH 1/3] buf: Add a generic extensible buffer struct
+Date: Thu, 21 Jan 2021 17:34:24 -0800
+Message-ID: <7180e754-1654-b3ea-5c79-60d68c8a14e@linux.intel.com>
+In-Reply-To: <CAOq732KczBp-CW0x84EK9tGDj1PuCHXU46YBGqby5wdQNZoWFQ@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3373714004185332089==
+--===============0786165334828308567==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+On Thu, 14 Jan 2021, Andrew Zaborowski wrote:
 
-On 1/19/21 5:26 PM, James Prestwood wrote:
-> It was assumed that the DBus daemon would filter messages with
-> no interfaces set, but some daemons do not (dbus-broker). This
-> leads to the potential for a crash if the method call has no
-> interface set. A crash can be seen in IWD with a few lines of
-> python:
-> =
+> Hi Mat, thanks for reviewing this.
+>
+> On Wed, 13 Jan 2021 at 02:00, Mat Martineau
+> <mathew.j.martineau@linux.intel.com> wrote:
+>> On Fri, 8 Jan 2021, Andrew Zaborowski wrote:
+>>> +struct l_buf {
+>>> +     struct {
+>>> +             struct l_buf *parent;
+>>> +             struct l_buf *child;
+>>> +             struct iovec *used;
+>>> +             unsigned int alloced_cnt;
+>>> +     };
+>>> +     unsigned int used_cnt;
+>>> +     struct iovec iovecs[0];
+>>> +};
+>>
+>> I was expecting to see an opaque structure for l_buf here in the header -
+>> that seems more typical for ELL!
+>
+> Right, most real "classes" in ell are opaque in this sense.  I felt
+> that the low level nature of this utility and the fact that it
+> replaces basic (c builtin) mechanisms guarantees it being just a
+> struct, like the skbufs in the kernel.
+>
+> I don't know how much effect inlining functions really has, even in
+> hot paths.  The other
+> feature here that uses the struct definition is that we allow the
+> nested l_bufs to be allocated on stack.  For example:
+>
+> struct l_buf *attr_buf =3D l_genl_msg_append_attr_buf(msg,
+> NL80211_ATTR_IE, 100, 100);
+>
+> if (is_rsn) {
+>  struct ie_rsn_info rsn =3D { ... };
+>  struct l_buf rsn_buf; /* On stack */
+>
+>  l_buf_append_init(&rsn_buf, attr_buf, 50, 50);
+>  ie_build_rnse(&rsn_buf, &rsn);
+>  /* This is made up.  We can have ie_build_rsne allocate rsn_buf
+> internally.  It could also append directly to attr_buf but in that
+> case it can't *prepend* data and has to build it sequentially. */
+> }
+>
+> /* This is equivalent: */
+> if (is_rsn) {
+>   struct ie_rsn_info rsn =3D { ... };
+>  struct l_buf *rsn_buf =3D l_buf_append_new(attr_buf, 50, 50);
+>  /* Here allocated dynamically, although on the next
+> l_buf_append_new() call for attr_buf, we'd be re-using the same memory
+> and same pointer (as documented the old one becomes invalid) so it's
+> not a big difference */
+>
+>  ie_build_rnse(rsn_buf, &rsn);
+> }
+>
+> We can do without this feature obviously.  I didn't bother with the
+> unit tests yet because this is just an RFC for now.
 
-> bus =3D dbus.SystemBus()
-> obj =3D bus.get_object("net.connman.iwd", "/")
-> print(obj.FooBar())
-> =
+Thanks for the additional background, and for letting me know it's still =
 
-> The above isn't necissarily a 'valid' way of doing things, but
-> it does result in a crash which traces back to ELL. The actual
-> method call (FooBar in this case) is arbitrary and could be
-> anything.
-> =
+RFC-stage.
 
-> ++++++++ backtrace ++++++++
-> 0  0x7f532cda6a70 in /lib64/libc.so.6
-> 1  0x47c4d2 in _dbus_object_tree_dispatch() at ell/dbus-service.c:1755
-> 2  0x473f23 in message_read_handler() at ell/dbus.c:284
-> 3  0x46be0c in io_callback() at ell/io.c:118
-> 4  0x46b12d in l_main_iterate() at ell/main.c:471 (discriminator 2)
-> 5  0x46b1dc in l_main_run() at ell/main.c:520
-> 6  0x46b3ec in l_main_run_with_signal() at ell/main.c:648
-> 7  0x403ea9 in main() at src/main.c:490
-> 8  0x7f532cd91042 in /lib64/libc.so.6
-> +++++++++++++++++++++++++++
-> =
+I think what it comes down to for me is that exposing the struct internals =
 
-> The DBus spec does mention the possibility of the interface field
-> being empty. It does not recommend doing this, but does not
-> explicitly forbid it. Handling of this case is left up to the
-> implementation.
-> =
+locks those in as part of the "public API" that would be harder to change =
 
-> The fix is simple: check that the message has an interface set and
-> if not return an error.
-> ---
->   ell/dbus-service.c | 10 ++++++++++
->   1 file changed, 10 insertions(+)
-> =
+in the future, and that it's less clear how to best use l_buf.
 
+While I lean toward the opaque struct instead of allowing on-stack use, I =
 
-Applied, thanks.
+don't know if I convinced you or Denis to lean the same way :)
 
-Regards,
--Denis
+Thanks for the patches, I think it's a useful feature for ELL.
 
---===============3373714004185332089==--
+--
+Mat Martineau
+Intel
+--===============0786165334828308567==--
 
