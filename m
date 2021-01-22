@@ -1,53 +1,85 @@
-Content-Type: multipart/mixed; boundary="===============0430735417050155169=="
+Content-Type: multipart/mixed; boundary="===============0669467858536718577=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH 1/3] buf: Add a generic extensible buffer struct
-Date: Thu, 21 Jan 2021 20:44:53 -0600
-Message-ID: <dcddb89c-de46-2870-cb3f-ee647e8e3d5f@gmail.com>
-In-Reply-To: <7180e754-1654-b3ea-5c79-60d68c8a14e@linux.intel.com>
+Date: Thu, 21 Jan 2021 23:43:31 -0600
+Message-ID: <155e2614-69f0-8a00-e4f5-aeeef42c0f80@gmail.com>
+In-Reply-To: <CAOq732KczBp-CW0x84EK9tGDj1PuCHXU46YBGqby5wdQNZoWFQ@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0430735417050155169==
+--===============0669467858536718577==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+Hi Andrew,
 
-> Thanks for the additional background, and for letting me know it's still =
-RFC-stage.
+> Right, most real "classes" in ell are opaque in this sense.  I felt
+> that the low level nature of this utility and the fact that it
+> replaces basic (c builtin) mechanisms guarantees it being just a
+> struct, like the skbufs in the kernel.
+
+skbuf is a bit strange because it has public and private members.  And then=
+ some =
+
+things are expected to be done via the API and some via accessing members. =
+
+There are probably very good reasons for all that, but I'm not sure we want=
+ to =
+
+use that as a model in ell.
+
 > =
 
-> I think what it comes down to for me is that exposing the struct internal=
-s locks =
-
-> those in as part of the "public API" that would be harder to change in th=
-e =
-
-> future, and that it's less clear how to best use l_buf.
+> I don't know how much effect inlining functions really has, even in
+> hot paths.  The other
+> feature here that uses the struct definition is that we allow the
+> nested l_bufs to be allocated on stack.  For example:
 > =
 
+> struct l_buf *attr_buf =3D l_genl_msg_append_attr_buf(msg,
+> NL80211_ATTR_IE, 100, 100);
+> =
 
-I pretty much concur here, I don't like this part either.  I'm not quite su=
-re =
+> if (is_rsn) {
+>    struct ie_rsn_info rsn =3D { ... };
+>    struct l_buf rsn_buf; /* On stack */
+> =
 
-whether we should even support buffers allocated on the stack.  That seems =
-weird =
+>    l_buf_append_init(&rsn_buf, attr_buf, 50, 50);
+>    ie_build_rnse(&rsn_buf, &rsn);
 
-to me due to memory ownership issues and things potentially going out of sc=
-ope. =
+So, are you focusing on the ATTR_IE building as one of the use cases for th=
+is? =
 
-Something that is on the heap and reference counted would seem to be a safe=
-r =
+With ATTR_IE we generally build the RSN and other IEs well before the genl =
 
-approach.
+message exists though?  So by the time we can call  l_genl_msg_append_attr_=
+buf, =
 
-But I'm still trying to organize my thoughts on this RFC, so I don't have =
+the IE is already inside the handshake object or in a scratch buffer and we=
+ have =
 
-anything I can express eloquently.
+to memcpy it anyway.
+
+I guess you have some of that in ap.c.  But then, RSNE is typically like 40 =
+
+bytes, so not sure this is worth it to try and optimize a memcpy for it?
+
+>    /* This is made up.  We can have ie_build_rsne allocate rsn_buf
+> internally.  It could also append directly to attr_buf but in that
+> case it can't *prepend* data and has to build it sequentially. */
+> }
+
+Do you have a use case in mind for prepending?
+
+It might be nice to take some part of ap.c or p2p.c from iwd and try conver=
+ting =
+
+it so we can see how things would look like on a concrete example.
 
 Regards,
 -Denis
---===============0430735417050155169==--
+--===============0669467858536718577==--
 
