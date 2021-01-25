@@ -1,52 +1,78 @@
-Content-Type: multipart/mixed; boundary="===============1695929801767563450=="
+Content-Type: multipart/mixed; boundary="===============6868511449719469939=="
 MIME-Version: 1.0
-From: Gix, Brian <brian.gix@intel.com>
-Subject: Re: [PATCH v2] cert: Fix warning of possible uninitialized var
-Date: Mon, 25 Jan 2021 17:40:27 +0000
-Message-ID: <56983e54ba628ae3cbf051e53737ba054ac7781b.camel@intel.com>
-In-Reply-To: <a4a76a10-fc28-92c4-2373-46579a7cc468@gmail.com>
+From: Inga Stotland <inga.stotland@intel.com>
+Subject: [PATCH] main: Add handler for SIGSEGV signal
+Date: Mon, 25 Jan 2021 14:31:55 -0800
+Message-ID: <20210125223155.10508-1-inga.stotland@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1695929801767563450==
+--===============6868511449719469939==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Sorry Denis....   In a conf call with Marcel, he suggested the patch in v3 =
-just sent...
+When an ell main loop based process is spun off as a child
+and the parent process dies due to a segfault, the child process
+is still left running and needs to detect the segfault condition.
+To address this need, add watch and signal handler for SIGSEGV.
+---
+ ell/main.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
+diff --git a/ell/main.c b/ell/main.c
+index a479b74..712cfb7 100644
+--- a/ell/main.c
++++ b/ell/main.c
+@@ -619,6 +619,14 @@ static void sigterm_handler(void *user_data)
+ 		data->callback(SIGTERM, data->user_data);
+ }
+ =
 
-Also, if possible, we would like to get a 0.37 version of ELL labeled, sinc=
-e this will be the first working
-version for us since 0.35, and I need to account for the file name change o=
-f pkcs5 --> cert-crypto
++static void sigsegv_handler(void *user_data)
++{
++	struct signal_data *data =3D user_data;
++
++	if (data->callback)
++		data->callback(SIGSEGV, data->user_data);
++}
++
+ /**
+  * l_main_run_with_signal:
+  *
+@@ -633,6 +641,7 @@ LIB_EXPORT int l_main_run_with_signal(l_main_signal_cb_=
+t callback,
+ 	struct signal_data *data;
+ 	struct l_signal *sigint;
+ 	struct l_signal *sigterm;
++	struct l_signal *sigsegv;
+ 	int result;
+ =
 
+ 	data =3D l_new(struct signal_data, 1);
+@@ -642,11 +651,13 @@ LIB_EXPORT int l_main_run_with_signal(l_main_signal_c=
+b_t callback,
+ =
 
-On Mon, 2021-01-25 at 10:34 -0600, Denis Kenzior wrote:
-> Hi Brian,
-> =
+ 	sigint =3D l_signal_create(SIGINT, sigint_handler, data, NULL);
+ 	sigterm =3D l_signal_create(SIGTERM, sigterm_handler, data, NULL);
++	sigsegv =3D l_signal_create(SIGSEGV, sigsegv_handler, data, NULL);
+ =
 
-> On 1/18/21 12:20 PM, Brian Gix wrote:
-> > ell/cert-crypto.c: In function =E2=80=98cert_pkcs12_pbkdf=E2=80=99:
-> > ell/cert-crypto.c:244:3: error: =E2=80=98bmpstring=E2=80=99 may be used=
- uninitialized in this function [-Werror=3Dmaybe-
-> > uninitialized]
-> >    244 |   explicit_bzero(bmpstring, passwd_len);
-> >        |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-> > ---
-> >   ell/cert-crypto.c | 10 ++++++----
-> >   1 file changed, 6 insertions(+), 4 deletions(-)
-> > =
+ 	result =3D l_main_run();
+ =
 
-> =
+ 	l_signal_remove(sigint);
+ 	l_signal_remove(sigterm);
++	l_signal_remove(sigsegv);
+ =
 
-> Applied, thanks.
-> =
+ 	l_free(data);
+ =
 
-> Regards,
-> -Denis
->=20
+-- =
 
---===============1695929801767563450==--
+2.26.2
+
+--===============6868511449719469939==--
 
