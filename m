@@ -1,58 +1,58 @@
-Content-Type: multipart/mixed; boundary="===============3928956921850438124=="
+Content-Type: multipart/mixed; boundary="===============0644594710436934812=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel@holtmann.org>
-Subject: Re: [PATCH] main: Add handler for SIGSEGV signal
-Date: Tue, 26 Jan 2021 10:02:03 +0100
-Message-ID: <B16AD30C-C72C-4E20-A1D5-9BDC126598E1@holtmann.org>
-In-Reply-To: <20210125223155.10508-1-inga.stotland@intel.com>
+From: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH] dhcp-util: fix GCC 10 warning
+Date: Tue, 26 Jan 2021 13:20:05 -0800
+Message-ID: <20210126212005.885653-1-prestwoj@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3928956921850438124==
+--===============0644594710436934812==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Inga,
+LEN_CHECK was being fed a hardcoded '1' which was being
+treated as an int. This led GCC 10.2.1 to emit a warning about
+comparison between signed/unsigned integers because the
+builder->max member is unsigned:
 
-> When an ell main loop based process is spun off as a child
-> and the parent process dies due to a segfault, the child process
-> is still left running and needs to detect the segfault condition.
-> To address this need, add watch and signal handler for SIGSEGV.
-> ---
-> ell/main.c | 11 +++++++++++
-> 1 file changed, 11 insertions(+)
-> =
+ell/dhcp-util.c: In function =E2=80=98_dhcp_message_builder_append=E2=80=99:
+ell/dhcp-util.c:55:49: error: comparison of integer expressions of different
+		signedness: =E2=80=98int=E2=80=99 and =E2=80=98unsigned int=E2=80=99 [-We=
+rror=3Dsign-compare]
+   55 |  if ((builder)->pos - (builder)->start + (next) > (builder)->max) \
+      |                                                 ^
+ell/dhcp-util.c:65:3: note: in expansion of macro =E2=80=98LEN_CHECK=E2=80=
+=99
+   65 |   LEN_CHECK(builder, 1);
+      |   ^~~~~~~~~
+cc1: all warnings being treated as errors
 
-> diff --git a/ell/main.c b/ell/main.c
-> index a479b74..712cfb7 100644
-> --- a/ell/main.c
-> +++ b/ell/main.c
-> @@ -619,6 +619,14 @@ static void sigterm_handler(void *user_data)
-> 		data->callback(SIGTERM, data->user_data);
-> }
-> =
+To fix this explicitly use '1U' so the compiler treats it
+as unsigned.
+---
+ ell/dhcp-util.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> +static void sigsegv_handler(void *user_data)
-> +{
-> +	struct signal_data *data =3D user_data;
-> +
-> +	if (data->callback)
-> +		data->callback(SIGSEGV, data->user_data);
-> +}
-> +
+diff --git a/ell/dhcp-util.c b/ell/dhcp-util.c
+index 7809e52..af09856 100644
+--- a/ell/dhcp-util.c
++++ b/ell/dhcp-util.c
+@@ -62,7 +62,7 @@ bool _dhcp_message_builder_append(struct dhcp_message_bui=
+lder *builder,
+ 	switch (code) {
+ 	case DHCP_OPTION_PAD:
+ 	case DHCP_OPTION_END:
+-		LEN_CHECK(builder, 1);
++		LEN_CHECK(builder, 1U);
+ =
 
-actually this is not enough. I never included SIGSEGV here for the simple r=
-eason since you have to do a lot of work when that signal happens.
+ 		builder->pos[0] =3D code;
+ 		builder->pos +=3D 1;
+-- =
 
-What we need to do is to add proper child spawning handling that does all t=
-he nasty signal handling for you. Otherwise you are just about to create zo=
-mbies. For now if you need child handling, then add your own signal handler=
- instead trying to overload l_main_run_with_signal with it.
+2.26.2
 
-Regards
-
-Marcel
-
---===============3928956921850438124==--
+--===============0644594710436934812==--
 
