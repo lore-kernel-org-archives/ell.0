@@ -1,76 +1,49 @@
-Content-Type: multipart/mixed; boundary="===============5559770914599243830=="
+Content-Type: multipart/mixed; boundary="===============5285243375333417697=="
 MIME-Version: 1.0
-From: Gix, Brian <brian.gix@intel.com>
-Subject: Re: [PATCH] dhcp-util: Fix warning on signed pointer systems
-Date: Wed, 27 Jan 2021 19:06:02 +0000
-Message-ID: <a07ad8bfb0211776529e55e07657e069e118d644.camel@intel.com>
-In-Reply-To: <b8316add-a72a-3c38-a424-06b80c36a739@gmail.com>
+From: Tedd Ho-Jeong An <hj.tedd.an@gmail.com>
+Subject: [PATCH] config: Stop config if it cannot find the required program
+Date: Thu, 04 Feb 2021 00:21:45 -0500
+Message-ID: <20210204052145.186165-1-hj.tedd.an@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5559770914599243830==
+--===============5285243375333417697==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, 2021-01-27 at 12:22 -0600, Denis Kenzior wrote:
-> Hi Brian,
-> =
+From: Tedd Ho-Jeong An <tedd.an@intel.com>
 
-> On 1/27/21 11:09 AM, Brian Gix wrote:
-> > Some systems treat pointers as signed values, causing the following
-> > error:
-> =
+This patch stops the config and displays an error message if the
+config cannot find the required program like xxd or openssl when
+the maintainer mode is enabled.
+---
+ configure.ac | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-> That doesn't seem right.  The issue is that pointer arithmetic is a signe=
-d type =
+diff --git a/configure.ac b/configure.ac
+index 9924aac..a815f6f 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -126,7 +126,13 @@ AM_CONDITIONAL(GLIB, test "${enable_glib}" =3D "yes")
+ =
 
-> and the macro assumes that next is unsigned, so the temporary resulting i=
-n the =
+ if (test "$USE_MAINTAINER_MODE" =3D "yes"); then
+ 	AC_CHECK_PROG(have_openssl, [openssl], [yes], [no])
++	if (test "${have_openssl}" !=3D "yes"); then
++		AC_MSG_ERROR(openssl is required)
++	fi
+ 	AC_CHECK_PROG(have_xxd, [xxd], [yes], [no])
++	if (test "${have_xxd}" !=3D "yes"); then
++		AC_MSG_ERROR(xxd is required)
++	fi
+ fi
+ =
 
-> operation left of '>' gets promoted to unsigned type.  This breaks if a s=
-igned =
+ AM_CONDITIONAL(DBUS_TESTS, test "${little_endian}" =3D "yes")
+-- =
 
-> type is passed in as 'next' argument of the macro.  In theory this should =
+2.29.2
 
-> already be fixed by 3d096702811d ("dhcp-util: fix GCC 10 warning").
-
-Yes, I can confirm that James' commit 3d096702811d fixes this problem =
-
-on 32 bit Fedora-30 runnint GCC version 9.3.1
-
-Sorry for the redundent fix.
-
-> =
-
-> There may be systems that have ptrdiff_t be a non-standard type, so a rea=
-lly =
-
-> paranoid fix would be an explicit cast, as you have it here...
-> =
-
-> > ell/dhcp-util.c: In function =E2=80=98_dhcp_message_builder_append=E2=
-=80=99:
-> > ell/dhcp-util.c:55:49: error: comparison of integer expressions of diff=
-erent signedness: =E2=80=98int=E2=80=99 and
-> > =E2=80=98unsigned int=E2=80=99 [-Werror=3Dsign-compare]
-> >     55 |  if ((builder)->pos - (builder)->start + (next) > (builder)->m=
-ax) \
-> >        |                                                 ^
-> > ell/dhcp-util.c:65:3: note: in expansion of macro =E2=80=98LEN_CHECK=E2=
-=80=99
-> >     65 |   LEN_CHECK(builder, 1);
-> >        |   ^~~~~~~~~
-> > ---
-> >   ell/dhcp-util.c | 3 ++-
-> >   1 file changed, 2 insertions(+), 1 deletion(-)
-> > =
-
-> =
-
-> Regards,
-> -Denis
->=20
-
---===============5559770914599243830==--
+--===============5285243375333417697==--
 
