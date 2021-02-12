@@ -1,33 +1,64 @@
-Content-Type: multipart/mixed; boundary="===============5826196949659548480=="
+Content-Type: multipart/mixed; boundary="===============6363641134217954967=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/3] util: Add a constant time version of l_memeq
-Date: Wed, 10 Feb 2021 17:47:22 -0600
-Message-ID: <1b81333b-0935-35e8-b9c2-651ff28a2953@gmail.com>
-In-Reply-To: <20210210233659.270554-1-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH] tls: Refactor compression method ID check
+Date: Fri, 12 Feb 2021 01:22:32 +0100
+Message-ID: <20210212002232.300086-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5826196949659548480==
+--===============6363641134217954967==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+When validating the Client Hello message we look up the compression
+method IDs passed by the client in our look-up table.  After this is
+done check that at least one ID was found in the table, rather than
+use memchr() before that lookup to make sure it contains the only ID
+that we support.  This should be less confusing to static analysis.
+---
+ ell/tls.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-On 2/10/21 5:36 PM, Andrew Zaborowski wrote:
-> ---
->   ell/ell.sym |  1 +
->   ell/util.c  | 12 ++++++++++++
->   ell/util.h  |  1 +
->   3 files changed, 14 insertions(+)
-> =
+diff --git a/ell/tls.c b/ell/tls.c
+index 827c128..c65fd0d 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -1719,12 +1719,6 @@ static void tls_handle_client_hello(struct l_tls *tl=
+s,
+ 	/* Select a compression method */
+ =
 
+ 	/* CompressionMethod.null must be present in the vector */
+-	if (!memchr(compression_methods, 0, compression_methods_size)) {
+-		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
+-				"No common compression methods");
+-		goto cleanup;
+-	}
+-
+ 	while (compression_methods_size) {
+ 		tls->pending.compression_method =3D
+ 			tls_find_compression_method(*compression_methods);
+@@ -1736,6 +1730,12 @@ static void tls_handle_client_hello(struct l_tls *tl=
+s,
+ 		compression_methods_size--;
+ 	}
+ =
 
-All applied, thanks.
++	if (!compression_methods_size) {
++		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
++				"No common compression methods");
++		goto cleanup;
++	}
++
+ 	TLS_DEBUG("Negotiated %s", tls->pending.compression_method->name);
+ =
 
-Regards,
--Denis
+ 	if (!tls_send_server_hello(tls, extensions_offered))
+-- =
 
---===============5826196949659548480==--
+2.27.0
+
+--===============6363641134217954967==--
 
