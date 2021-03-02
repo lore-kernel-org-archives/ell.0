@@ -1,54 +1,44 @@
-Content-Type: multipart/mixed; boundary="===============5159929780214136127=="
+Content-Type: multipart/mixed; boundary="===============3570847317642431047=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH] netlink: Allow command handler to use l_netlink_cancel
-Date: Tue, 02 Mar 2021 22:36:17 +0100
-Message-ID: <CAOq732KUpYrSaSpOfHnUYJ+gf-QccFmi4_jqxDOayJBYntNrBQ@mail.gmail.com>
-In-Reply-To: <CAOq732Ja+nFiHSSngd7B27Xt+7vx=CpS4fpMtUrsaaaX-brVEQ@mail.gmail.com>
+Subject: [PATCH] queue: Be more specific in l_queue_insert comment
+Date: Tue, 02 Mar 2021 22:54:53 +0100
+Message-ID: <20210302215453.777869-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5159929780214136127==
+--===============3570847317642431047==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Specify that entries for which the compare function returns a 0 come
+before the new entry.
+---
+ ell/queue.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-On Tue, 2 Mar 2021 at 16:34, Andrew Zaborowski
-<andrew.zaborowski@intel.com> wrote:
-> On Tue, 2 Mar 2021 at 16:10, Denis Kenzior <denkenz@gmail.com> wrote:
-> > >   done:
-> > > -     l_hashmap_remove(netlink->command_lookup, L_UINT_TO_PTR(command=
-->id));
-> > > -
-> > > -     destroy_command(command);
-> > > +     if (l_hashmap_remove(netlink->command_lookup, L_UINT_TO_PTR(id)=
-))
-> > > +             destroy_command(command);
-> >
-> > Would it not be better to simply remove the command from the command_lo=
-okup
-> > hashmap prior to dispatch, and have l_netlink_cancel simply fail?
->
-> Yes, that would work.
+diff --git a/ell/queue.c b/ell/queue.c
+index 86c52ed..3ef892a 100644
+--- a/ell/queue.c
++++ b/ell/queue.c
+@@ -271,8 +271,9 @@ LIB_EXPORT void *l_queue_peek_tail(struct l_queue *queu=
+e)
+  * @user_data: user data given to compare function
+  *
+  * Inserts @data pointer at a position in the queue determined by the
+- * compare @function.  @function should return > 0 if the @data (first
+- * parameter) should be inserted after the current entry (second parameter=
+).
++ * compare @function.  @function should return >=3D 0 if the @data (first
++ * parameter) should be inserted after the current entry (second parameter)
++ * and should return < 0 if before it.
+  *
+  * Returns: #true when data has been added and #false in case of failure
+  **/
+-- =
 
-On a second thought, I think it's better the other way.  The
-l_netlink_cancel() call can be used as a request to forget the
-callbacks.  The user may be tearing down the object they passed as
-user_data for example.  IIRC we did take that use case into
-consideration in some of the other APIs, what do you think?
+2.27.0
 
->
-> >
-> > I do wonder why you'd cancel the command from the handler?
->
-> In the IWD AP case I want to cancel a dump command which I think is
-> already handled correctly, but if the API can be made more robust then
-> I think it's an improvement.  There can be complicated code paths
-> where you destroy an object that owns the netlink command as a result
-> of the command response.
->
-> Best regards
---===============5159929780214136127==--
+--===============3570847317642431047==--
 
