@@ -1,50 +1,64 @@
-Content-Type: multipart/mixed; boundary="===============3692730828306929653=="
+Content-Type: multipart/mixed; boundary="===============8497788146577861236=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] queue: Fix an l_queue_insert corner case
-Date: Mon, 01 Mar 2021 23:57:46 +0100
-Message-ID: <20210301225746.742230-1-andrew.zaborowski@intel.com>
+Subject: [PATCH] netlink: Allow command handler to use l_netlink_cancel
+Date: Tue, 02 Mar 2021 12:14:31 +0100
+Message-ID: <20210302111431.755441-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3692730828306929653==
+--===============8497788146577861236==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The comment doc for the function says:
-
- * Inserts @data pointer at a position in the queue determined by the
- * compare @function.  @function should return > 0 if the @data (first
- * parameter) should be inserted after the current entry (second parameter).
-
-however the function would insert @data after entries for which
-@function returned a >=3D 0 value.  Change the check to > 0 to align with
-the docs.
 ---
- ell/queue.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ ell/netlink.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/ell/queue.c b/ell/queue.c
-index 86c52ed..b28eecf 100644
---- a/ell/queue.c
-+++ b/ell/queue.c
-@@ -299,7 +299,7 @@ LIB_EXPORT bool l_queue_insert(struct l_queue *queue, v=
-oid *data,
- 	for (prev =3D NULL, cur =3D queue->head; cur; prev =3D cur, cur =3D cur->=
-next) {
- 		cmp =3D function(entry->data, cur->data, user_data);
+diff --git a/ell/netlink.c b/ell/netlink.c
+index 33d0e5b..4664762 100644
+--- a/ell/netlink.c
++++ b/ell/netlink.c
+@@ -162,12 +162,15 @@ static void process_message(struct l_netlink *netlink=
+, struct nlmsghdr *nlmsg)
+ {
+ 	const void *data =3D nlmsg;
+ 	struct command *command;
++	uint32_t id;
  =
 
--		if (cmp >=3D 0)
-+		if (cmp > 0)
- 			continue;
+ 	command =3D l_hashmap_remove(netlink->command_pending,
+ 					L_UINT_TO_PTR(nlmsg->nlmsg_seq));
+ 	if (!command)
+ 		return;
  =
 
- 		if (prev =3D=3D NULL) {
++	id =3D command->id;
++
+ 	if (!command->handler)
+ 		goto done;
+ =
+
+@@ -189,9 +192,8 @@ static void process_message(struct l_netlink *netlink, =
+struct nlmsghdr *nlmsg)
+ 	}
+ =
+
+ done:
+-	l_hashmap_remove(netlink->command_lookup, L_UINT_TO_PTR(command->id));
+-
+-	destroy_command(command);
++	if (l_hashmap_remove(netlink->command_lookup, L_UINT_TO_PTR(id)))
++		destroy_command(command);
+ }
+ =
+
+ static void process_multi(struct l_netlink *netlink, struct nlmsghdr *nlms=
+g)
 -- =
 
 2.27.0
 
---===============3692730828306929653==--
+--===============8497788146577861236==--
 
