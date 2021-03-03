@@ -1,53 +1,52 @@
-Content-Type: multipart/mixed; boundary="===============6498800014134062511=="
+Content-Type: multipart/mixed; boundary="===============2755015927878326444=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
 Subject: Re: [PATCH] netlink: Allow command handler to use l_netlink_cancel
-Date: Tue, 02 Mar 2021 18:03:11 -0600
-Message-ID: <fd75120e-5ce2-cef5-8b01-da92d456678f@gmail.com>
-In-Reply-To: <CAOq732KUpYrSaSpOfHnUYJ+gf-QccFmi4_jqxDOayJBYntNrBQ@mail.gmail.com>
+Date: Tue, 02 Mar 2021 18:18:35 -0600
+Message-ID: <2c751c0a-e44e-81ae-64e8-29062ef3f52f@gmail.com>
+In-Reply-To: <CAOq732+BnL-cS8zGz2890wVe2uHMegi0gDxvCTK2CYTRmrQ4xw@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6498800014134062511==
+--===============2755015927878326444==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
->>> Would it not be better to simply remove the command from the command_lo=
-okup
->>> hashmap prior to dispatch, and have l_netlink_cancel simply fail?
->>
->> Yes, that would work.
+>> Are you trying to stop callbacks mid-dump or ?
 > =
 
-> On a second thought, I think it's better the other way.  The
-> l_netlink_cancel() call can be used as a request to forget the
-> callbacks.  The user may be tearing down the object they passed as
-> user_data for example.  IIRC we did take that use case into
-> consideration in some of the other APIs, what do you think?
+> Yes, in the dump case the use case is pretty obvious -- once you've
+> received the fragment you were interested in (in my case, I dump IPv4
+> addresses and I'm interested in one specific ifindex), if you can
+> cancel the command you don't have to keep a flag that tells you to
+> ignore further callbacks.  And if you need to destroy the object (e.g.
+> stop the AP) based on the data you received, you're also free to do
+> this.
 
-Which other way?  Ahhh, I think I get it... You want to unset the destroy =
+Ok, gotcha.  I have to ponder whether using l_foo_cancel is a good idea for =
 
-callback or prevent it from being called subsequently when inside the handl=
-er by =
+this, or a more explicit API should be used.  Also, we'd have to make this =
 
-issuing l_netlink_cancel?
+behavior consistent everywhere.
 
-I actually don't think any ell APIs work this way.  l_dbus for example simp=
-ly =
+> =
 
-removes the pending request prior to dispatch (which is what I suggested =
+> In the non-dump case I see the utility of this change mainly in the
+> situation where, within the callback, you decide you want to tear-down
+> the object (e.g. stop the AP), like I said already.  If you're not
+> allowed to cancel the command at that point, you basically need
+> reference counting so that you can avoid crashing in your destroy
+> handler.  And in that case I'd say we should have at least a warning
+> about this limitation somewhere.
 
-earlier).  Hence l_dbus_cancel wouldn't work on it inside the l_dbus_send c=
-allback.
+You might be the first one to need this actually.  There's always the =
 
-Even APIs that use the watchlist pattern don't do it this way.  You may be =
-
-thinking of the scan API inside iwd, which did it for a different reason.
+l_idle_oneshot get-out-of-jail card ;)
 
 Regards,
 -Denis
---===============6498800014134062511==--
+--===============2755015927878326444==--
 
