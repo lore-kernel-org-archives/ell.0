@@ -1,21 +1,19 @@
-Content-Type: multipart/mixed; boundary="===============4200185162053974148=="
+Content-Type: multipart/mixed; boundary="===============5378965179717125613=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: =?unknown-8bit?q?=C3=89rico?= Nogueira <ericonr@disroot.org>
 Subject: Re: [PATCH 1/2] dhcp-server: Stricter start_ip/end_ip checks
-Date: Wed, 03 Mar 2021 15:57:55 -0600
-Message-ID: <ffc28b13-31d0-64de-4e96-eeecae56efbc@gmail.com>
+Date: Wed, 03 Mar 2021 20:47:24 -0300
+Message-ID: <0fd4ffee-4b69-ecdd-bb5c-845598efc9ff@disroot.org>
 In-Reply-To: <20210303213536.808395-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4200185162053974148==
+--===============5378965179717125613==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
-
-On 3/3/21 3:35 PM, Andrew Zaborowski wrote:
+Em 03/03/2021 18:35, Andrew Zaborowski escreveu:
 > Add basic checks that start_ip/end_ip are in the subnet defined by
 > server->address and server->netmask.  Exclude server->address from
 > allowed client addresses since we don't prohibit a start_ip/end_ip
@@ -28,11 +26,83 @@ On 3/3/21 3:35 PM, Andrew Zaborowski wrote:
 >   1 file changed, 30 insertions(+), 4 deletions(-)
 > =
 
+> diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+> index 3bc1eac..68b6f13 100644
+> --- a/ell/dhcp-server.c
+> +++ b/ell/dhcp-server.c
+> @@ -323,7 +323,10 @@ static bool check_requested_ip(struct l_dhcp_server =
+*server,
+>   	if (ntohl(requested_nip) < server->start_ip)
+>   		return false;
+>   =
 
-Both applied, thanks.
+> -	if (htonl(requested_nip) > server->end_ip)
+> +	if (ntohl(requested_nip) > server->end_ip)
 
-Regards,
--Denis
+The commit message didn't mention anything about fixing wrong htonl =
 
---===============4200185162053974148==--
+usage, so is this change correct?
+
+> +		return false;
+> +
+> +	if (requested_nip =3D=3D server->address)
+>   		return false;
+>   =
+
+>   	lease =3D find_lease_by_ip(server->lease_list, requested_nip);
+> @@ -361,6 +364,9 @@ static uint32_t find_free_or_expired_ip(struct l_dhcp=
+_server *server,
+>   		if ((ip_addr & 0xff) =3D=3D 0xff)
+>   			continue;
+>   =
+
+> +		if (ip_nl =3D=3D server->address)
+> +			continue;
+> +
+>   		/*
+>   		 * Search both active and expired leases. If this exausts all
+>   		 * IP's in the range pop the expired list (oldest expired lease)
+> @@ -778,13 +784,33 @@ LIB_EXPORT bool l_dhcp_server_start(struct l_dhcp_s=
+erver *server)
+>   =
+
+>   	/*
+>   	 * Assign a default ip range if not already. This will default to
+> -	 * server->address + 1 ... 254
+> +	 * server->address + 1 ... subnet end address - 1
+>   	 */
+>   	if (!server->start_ip) {
+> -		server->start_ip =3D L_BE32_TO_CPU(server->address) + 1;
+> -		server->end_ip =3D (server->start_ip & 0xffffff00) | 0xfe;
+> +		server->start_ip =3D ntohl(server->address) + 1;
+> +		server->end_ip =3D ntohl(server->address) |
+> +			(~ntohl(server->netmask));
+> +	} else {
+> +		if ((server->start_ip ^ ntohl(server->address)) &
+> +				ntohl(server->netmask))
+> +			return false;
+> +
+> +		if ((server->end_ip ^ ntohl(server->address)) &
+> +				ntohl(server->netmask))
+> +			return false;
+>   	}
+>   =
+
+> +	/*
+> +	 * We skip over IPs ending in 0 or 255 when selecting a free address
+> +	 * later on but make sure end_ip is not 0xffffffff so we can use
+> +	 * "<=3D server->end_ip" safely in the loop condition.
+> +	 */
+> +	if ((server->end_ip & 0xff) =3D=3D 255)
+> +		server->end_ip--;
+> +
+> +	if (server->start_ip > server->end_ip)
+> +		return false;
+> +
+>   	if (!server->ifname) {
+>   		server->ifname =3D l_net_get_name(server->ifindex);
+>   =
+
+>=20
+--===============5378965179717125613==--
 
