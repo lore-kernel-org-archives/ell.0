@@ -1,76 +1,129 @@
-Content-Type: multipart/mixed; boundary="===============2879955583967866835=="
+Content-Type: multipart/mixed; boundary="===============0433904143316664428=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] util: Add L_AUTO_FREE_OBJ and l_steal_ptr macros
-Date: Thu, 04 Mar 2021 22:53:58 +0100
-Message-ID: <20210304215358.838251-1-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] util: Add L_AUTO_FREE_OBJ and l_steal_ptr macros
+Date: Fri, 05 Mar 2021 15:02:11 -0600
+Message-ID: <eb8f0f31-a7c5-3e35-b3f4-c26ad2a18ba6@gmail.com>
+In-Reply-To: <20210304215358.838251-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2879955583967866835==
+--===============0433904143316664428==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-L_AUTO_FREE_OBJ can be used for ell object types that define a
-destructor named l_<type>_free such as l_settings_free().  The "FREE" in
-the name hopefully is enough to communicate this.
+Hi Andrew,
 
-Some of our classes use l_<type>_destroy and similar names and some of
-those functions, like l_queue_destroy, take additional parameters so for
-those classes if a similar "AUTO" macros is wanted, it may be better
-defined directly in that class's header.
+On 3/4/21 3:53 PM, Andrew Zaborowski wrote:
+> L_AUTO_FREE_OBJ can be used for ell object types that define a
+> destructor named l_<type>_free such as l_settings_free().  The "FREE" in
+> the name hopefully is enough to communicate this.
+> =
 
-l_steal_ptr is similar to g_steal_pointer except for being a macro.
-Both macros can be used like in this example:
+> Some of our classes use l_<type>_destroy and similar names and some of
+> those functions, like l_queue_destroy, take additional parameters so for
+> those classes if a similar "AUTO" macros is wanted, it may be better
+> defined directly in that class's header.
+> =
 
-struct l_settings *load_settings(const char *path)
-{
-	L_AUTO_FREE_OBJ(l_settings, s) =3D l_settings_new();
 
-	if (!l_settings_load_from_file(s, path))
-		return NULL;
+I'd rather have the caller provide the destructor method itself rather than=
+ the =
 
-	return l_steal_ptr(s);
-}
----
-This is an RFC.  L_AUTO_FREE_OBJ is based on James's idea.
+class.  That becomes a bit more generic as well.
 
- ell/util.h | 8 ++++++++
- 1 file changed, 8 insertions(+)
+> l_steal_ptr is similar to g_steal_pointer except for being a macro.
+> Both macros can be used like in this example:
+> =
 
-diff --git a/ell/util.h b/ell/util.h
-index b112878..94a4178 100644
---- a/ell/util.h
-+++ b/ell/util.h
-@@ -235,6 +235,11 @@ static inline void l_put_be64(uint64_t val, void *ptr)
- #define L_AUTO_FREE_VAR(vartype,varname) \
- 	vartype varname __attribute__((cleanup(auto_free)))
- =
 
-+#define L_AUTO_FREE_OBJ(l_type,varname) \
-+	void varname ## _auto_free(void *_ptr)		\
-+		{ l_type ## _free(*(void **) _ptr); }	\
-+	L_AUTO_CLEANUP_VAR(struct l_type *, varname, varname ## _auto_free)
-+
- #define L_ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
- =
+No objections from me
 
- void *l_malloc(size_t size) __attribute__ ((warn_unused_result, malloc));
-@@ -276,6 +281,9 @@ static inline size_t minsize(size_t a, size_t b)
- 		__p;				\
- 	}))
- =
+> struct l_settings *load_settings(const char *path)
+> {
+> 	L_AUTO_FREE_OBJ(l_settings, s) =3D l_settings_new();
+> =
 
-+#define l_steal_ptr(ptr)	\
-+	(__extension__ ({ typeof(ptr) *_tmp =3D (ptr); (ptr) =3D NULL; _tmp; }))
-+
- char *l_strdup(const char *str);
- char *l_strndup(const char *str, size_t max);
- char *l_strdup_printf(const char *format, ...)
--- =
+> 	if (!l_settings_load_from_file(s, path))
+> 		return NULL;
+> =
 
-2.27.0
+> 	return l_steal_ptr(s);
+> }
+> ---
+> This is an RFC.  L_AUTO_FREE_OBJ is based on James's idea.
+> =
 
---===============2879955583967866835==--
+>   ell/util.h | 8 ++++++++
+>   1 file changed, 8 insertions(+)
+> =
+
+> diff --git a/ell/util.h b/ell/util.h
+> index b112878..94a4178 100644
+> --- a/ell/util.h
+> +++ b/ell/util.h
+> @@ -235,6 +235,11 @@ static inline void l_put_be64(uint64_t val, void *pt=
+r)
+>   #define L_AUTO_FREE_VAR(vartype,varname) \
+>   	vartype varname __attribute__((cleanup(auto_free)))
+>   =
+
+> +#define L_AUTO_FREE_OBJ(l_type,varname) \
+> +	void varname ## _auto_free(void *_ptr)		\
+> +		{ l_type ## _free(*(void **) _ptr); }	\
+> +	L_AUTO_CLEANUP_VAR(struct l_type *, varname, varname ## _auto_free)
+> +
+
+Nested functions... Very clever!
+
+I ran a few experiments by changing out the L_AUTO_FREE_VAR macro to use th=
+e =
+
+above pattern.  Something like:
+
+#define L_AUTO_FREE_VAR(vartype,varname) \
+void varname ## _auto_free(void *_ptr) \
+{ l_free(*(void **) _ptr); } \
+vartype varname __attribute__((cleanup(varname ## _auto_free)))
+
+The resulting iwd code was the same size as the original, which seems to =
+
+indicate that the nested function is always inlined.
+
+I also made some (somewhat primitive) experiments with writing several vers=
+ions =
+
+of a simple function, both using this cleanup pattern and code without any =
+GCC =
+
+extensions.  Both seemed to produce the same code after disassembly.
+
+Curious to see whether you or anyone else has different findings?
+
+Given the above and the fact that L_AUTO_CLEANUP_VAR was never really used =
+(it =
+
+is used in ell once), my vote would be to simply hijack that macro.  Then w=
+e can =
+
+write things like:
+
+L_AUTO_CLEANUP_VAR(struct l_settings *, settings, l_settings_free);
+
+Or perhaps something like:
+
+_cleanup(l_settings_free) struct l_settings *settings;
+
+if we can use a UNIQUE_NAME type macro magic inside.
+
+>   #define L_ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+>   =
+
+>   void *l_malloc(size_t size) __attribute__ ((warn_unused_result, malloc)=
+);
+
+Regards,
+-Denis
+--===============0433904143316664428==--
 
