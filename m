@@ -1,46 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============5730716278506593996=="
+Content-Type: multipart/mixed; boundary="===============8884157632488663095=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] pem: Write encrypted flag in load_container with .crt
- format
-Date: Wed, 10 Mar 2021 18:52:35 -0600
-Message-ID: <54fd1219-c24a-ec55-1b5a-e595cf78768e@gmail.com>
-In-Reply-To: <20210310232257.955127-1-andrew.zaborowski@intel.com>
+From: Ossama Othman <ossama.othman@gmail.com>
+Subject: [PATCH] genl: Return false, not NULL, for boolean return.
+Date: Fri, 12 Mar 2021 11:04:16 -0800
+Message-ID: <20210312190416.183218-1-ossama.othman@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5730716278506593996==
+--===============8884157632488663095==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+From: Ossama Othman <ossama.othman@gmail.com>
 
-On 3/10/21 5:22 PM, Andrew Zaborowski wrote:
-> Make sure a value is written to *out_encrypted whenever
-> l_cert_load_container_file() returns success.  Specifically we were
-> forgetting to do this with raw DER-encoded certificates.  Fixes the
-> following valgrind warning (sometimes test failure) in test-pem:
-> =
+The return type of the l_genl_request_family() function is bool, not a
+pointer.  Return false instead of NULL to match the return type.
+---
+ ell/genl.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-> =3D=3D1142=3D=3D Conditional jump or move depends on uninitialised value(=
-s)
-> =3D=3D1142=3D=3D    at 0x10B427: test_load_file (test-pem.c:369)
-> =3D=3D1142=3D=3D    by 0x10CF53: l_test_run (test.c:83)
-> =3D=3D1142=3D=3D    by 0x10BC19: main (test-pem.c:523)
-> =3D=3D1142=3D=3D
-> test-pem: unit/test-pem.c:369: test_load_file: Assertion `encrypted =3D=
-=3D params->expect_encrypted' failed.
-> ---
->   ell/cert.c | 3 +++
->   1 file changed, 3 insertions(+)
-> =
+diff --git a/ell/genl.c b/ell/genl.c
+index 7e3f800..97457cf 100644
+--- a/ell/genl.c
++++ b/ell/genl.c
+@@ -1538,11 +1538,11 @@ LIB_EXPORT bool l_genl_request_family(struct l_genl=
+ *genl, const char *name,
+ 	struct family_request *req;
+ =
 
+ 	if (unlikely(!genl) || unlikely(!name))
+-		return NULL;
++		return false;
+ =
 
-Applied, thanks.
+ 	len =3D strlen(name);
+ 	if (unlikely(strlen(name) >=3D GENL_NAMSIZ))
+-		return NULL;
++		return false;
+ =
 
-Regards,
--Denis
+ 	req =3D l_new(struct family_request, 1);
+ 	req->appeared_func =3D appeared_func;
+-- =
 
---===============5730716278506593996==--
+2.25.1
+
+--===============8884157632488663095==--
 
