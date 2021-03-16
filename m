@@ -1,38 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============7574951113555851506=="
+Content-Type: multipart/mixed; boundary="===============1883586457413739201=="
 MIME-Version: 1.0
-From: Inga Stotland <inga.stotland@intel.com>
-Subject: [PATCH] tester: Add missing include for useful.h
-Date: Tue, 16 Mar 2021 14:02:57 -0700
-Message-ID: <20210316210257.118138-1-inga.stotland@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] tester: Add missing include for useful.h
+Date: Tue, 16 Mar 2021 16:45:27 -0500
+Message-ID: <ae711143-f901-187f-95ae-7a6f18096af7@gmail.com>
+In-Reply-To: <20210316210257.118138-1-inga.stotland@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7574951113555851506==
+--===============1883586457413739201==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/tester.c | 1 +
- 1 file changed, 1 insertion(+)
+Hi Inga,
 
-diff --git a/ell/tester.c b/ell/tester.c
-index 5c5386e..ebebc1d 100644
---- a/ell/tester.c
-+++ b/ell/tester.c
-@@ -35,6 +35,7 @@
- =
+On 3/16/21 4:02 PM, Inga Stotland wrote:
+> ---
+>   ell/tester.c | 1 +
+>   1 file changed, 1 insertion(+)
+> =
 
- #include "log.h"
- #include "private.h"
-+#include "useful.h"
- #include "tester.h"
- =
 
- /**
--- =
+Ah darn, I forgot to actually amend before pushing.  Sorry about that.
 
-2.26.2
+Applied, thanks.
 
---===============7574951113555851506==--
+Regards,
+-Denis
+--===============1883586457413739201==--
 
