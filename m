@@ -1,41 +1,31 @@
-Content-Type: multipart/mixed; boundary="===============6884295656315843857=="
+Content-Type: multipart/mixed; boundary="===============9019156725437051113=="
 MIME-Version: 1.0
-From: Inga Stotland <inga.stotland@intel.com>
-Subject: [PATCH] build: Fix exported symbols (tester)
-Date: Tue, 06 Apr 2021 15:53:33 -0700
-Message-ID: <20210406225333.250597-1-inga.stotland@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] build: Fix exported symbols (tester)
+Date: Wed, 07 Apr 2021 17:17:05 -0500
+Message-ID: <5dc56d90-11ab-da47-b35d-b72fa48a89e3@gmail.com>
+In-Reply-To: <20210406225333.250597-1-inga.stotland@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6884295656315843857==
+--===============9019156725437051113==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/ell.sym | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Hi Inga,
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 606513c..229a2a6 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -670,9 +670,9 @@ global:
- 	l_tester_destroy;
- 	l_tester_start;
- 	l_tester_summarize;
--	l_tester_test_add;
--	l_tester_test_add_full;
--	l_tester_test_get_stage;
-+	l_tester_add;
-+	l_tester_add_full;
-+	l_tester_get_stage;
- 	l_tester_get_data;
- 	l_tester_pre_setup_complete;
- 	l_tester_pre_setup_failed;
--- =
+On 4/6/21 5:53 PM, Inga Stotland wrote:
+> ---
+>   ell/ell.sym | 6 +++---
+>   1 file changed, 3 insertions(+), 3 deletions(-)
+> =
 
-2.26.3
 
---===============6884295656315843857==--
+Applied, thanks.
+
+Regards,
+-Denis
+
+--===============9019156725437051113==--
 
