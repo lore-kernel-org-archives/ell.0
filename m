@@ -1,117 +1,57 @@
-Content-Type: multipart/mixed; boundary="===============1621667249341686293=="
+Content-Type: multipart/mixed; boundary="===============1756293740560867595=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dbus: emit DBus.Introspectable for real objects only
-Date: Mon, 19 Apr 2021 11:22:50 -0500
-Message-ID: <9454b109-e29d-766b-35a0-8540a8c53fdd@gmail.com>
-In-Reply-To: <20210419071119.117008-1-ar@cs.msu.ru>
+From: Inga Stotland <inga.stotland@intel.com>
+Subject: [PATCH] tester: Remove timeout if pre-setup failed
+Date: Fri, 23 Apr 2021 11:26:56 -0700
+Message-ID: <20210423182656.97424-1-inga.stotland@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1621667249341686293==
+--===============1756293740560867595==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Arseny,
+If test pre setup stage fails, remove test run timeout.
+Also, fix a stray call to free(): should be l_free().
+---
+ ell/tester.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-On 4/19/21 2:11 AM, Arseny Maslennikov wrote:
-> From: Arseny Maslennikov <arseny@altlinux.org>
-> =
+diff --git a/ell/tester.c b/ell/tester.c
+index 54fbb4b..7625b93 100644
+--- a/ell/tester.c
++++ b/ell/tester.c
+@@ -279,6 +279,9 @@ LIB_EXPORT void l_tester_pre_setup_failed(struct l_test=
+er *tester)
+ =
 
-> In a similar vein to GDBus, we now explicitly declare
-> org.freedesktop.DBus.Introspectable in the introspection output for
-> registered objects only, not for every node. This removes clutter from
-> introspection trees.
-> =
+ 	print_progress(test->name, COLOR_RED, "pre setup failed");
+ =
 
-> For example, if a service exports the following object paths on the bus:
-> * /org/freedesktop/LogControl1
-> * /org/bluez
-> * /org/bluez/hci0
-> then /org is now described in the introspection output as a node
-> containing two subnodes "bluez" and "freedesktop" and no interface
-> elements.
-> Inspection tools like d-feet only list the objects themselves, while
-> before this change they would uselessly list:
-> * /
-> * /org
-> * /org/bluez
-> * /org/bluez/hci0
-> * /org/freedesktop
-> * /org/freedesktop/LogControl1
-> =
++	l_timeout_remove(test->run_timer);
++	test->run_timer =3D NULL;
++
+ 	l_idle_oneshot(done_callback, tester, NULL);
+ }
+ =
 
-> We still conform to the spec by responding to
-> org.freedesktop.DBus.Introspectable.Introspect calls on every node =E2=80=
-=94 we
-> just don't advertise the interface in the xml response.
-> ---
->   ell/dbus-service.c | 16 ++++++++++++++--
->   1 file changed, 14 insertions(+), 2 deletions(-)
-> =
+@@ -501,7 +504,7 @@ static void wait_callback(struct l_timeout *timer, void=
+ *user_data)
+ =
 
+ 	wait->func(wait->user_data);
+ =
 
-For some reason this patch came through base64 encoded and with <CR><LF> en=
-dings =
+-	free(wait);
++	l_free(wait);
+ =
 
-in the payload.  This confused git am and I had to do some post-processing =
-to =
+ 	l_timeout_remove(timer);
+ }
+-- =
 
-fix it up.  Not sure why this occurred..?
+2.26.3
 
-> diff --git a/ell/dbus-service.c b/ell/dbus-service.c
-> index 84fca3a..94afc14 100644
-> --- a/ell/dbus-service.c
-> +++ b/ell/dbus-service.c
-> @@ -1709,16 +1709,28 @@ void _dbus_object_tree_introspect(struct _dbus_ob=
-ject_tree *tree,
->   {
->   	struct object_node *node;
->   	struct child_node *child;
-> +	bool path_is_object =3D true;
->   =
-
->   	node =3D l_hashmap_lookup(tree->objects, path);
-> -	if (!node)
-> +	if (!node) {
-> +		path_is_object =3D false;
->   		node =3D _dbus_object_tree_lookup(tree, path);
-> +	}
->   =
-
->   	l_string_append(buf, XML_HEAD);
->   	l_string_append(buf, "<node>\n");
->   =
-
->   	if (node) {
-> -		l_string_append(buf, static_introspectable);
-> +		/* We emit org.freedesktop.DBus.Introspectable only in case the
-
-Nit: multiline comments should follow doc/coding-style.txt item M2.  I fixe=
-d =
-
-this up for you.
-
-> +		 * object node corresponds to a registered object, i. e.
-> +		 * exposes anything other than:
-> +		 * - org.freedesktop.DBus.Introspectable
-> +		 * - org.freedesktop.DBus.Peer
-> +		 * - org.freedesktop.DBus.Properties
-> +		 */
-> +		if (path_is_object)
-> +			l_string_append(buf, static_introspectable);
-> +
->   		l_queue_foreach(node->instances,
->   					generate_interface_instance, buf);
->   =
-
-> =
-
-
-Applied, thanks.
-
-Regards,
--Denis
---===============1621667249341686293==--
+--===============1756293740560867595==--
 
