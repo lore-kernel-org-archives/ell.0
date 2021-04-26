@@ -1,96 +1,49 @@
-Content-Type: multipart/mixed; boundary="===============7419197094344859077=="
+Content-Type: multipart/mixed; boundary="===============9128746890179648476=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 1/2] settings: Add l_settings_add_group
-Date: Mon, 26 Apr 2021 18:06:21 +0200
-Message-ID: <20210426160622.761540-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/2] util: Add l_steal_ptr
+Date: Mon, 26 Apr 2021 18:06:22 +0200
+Message-ID: <20210426160622.761540-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20210426160622.761540-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7419197094344859077==
+--===============9128746890179648476==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-l_settings_add_group creates a group in the l_settings object without
-adding any key/value pairs to it.
----
- ell/ell.sym    |  1 +
- ell/settings.c | 28 ++++++++++++++++++++++++++++
- ell/settings.h |  2 ++
- 3 files changed, 31 insertions(+)
+Add the l_steal_ptr macro, similar to g_steal_pointer except for being a
+macro and taking the variable name as a parameter, rather than a
+pointer to that variable.  From g_steal_pointer(pp) documentation:
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 229a2a6..5568ac2 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -443,6 +443,7 @@ global:
- 	l_settings_set_debug;
- 	l_settings_get_groups;
- 	l_settings_has_group;
-+	l_settings_add_group;
- 	l_settings_get_keys;
- 	l_settings_has_key;
- 	l_settings_get_value;
-diff --git a/ell/settings.c b/ell/settings.c
-index 8db0942..3d3728c 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -866,6 +866,34 @@ static bool validate_group_name(const char *group_name)
- 	return true;
+> Sets `pp` to `NULL`, returning the value that was there before.
+>
+> Conceptually, this transfers the ownership of the pointer from the
+> referenced variable to the "caller" of the macro (ie: "steals" the
+> reference).
+---
+ ell/util.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/ell/util.h b/ell/util.h
+index 9400657..bdf6935 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -245,6 +245,9 @@ static inline void auto_free(void *a)
+ 	l_free(*p);
  }
  =
 
-+LIB_EXPORT bool l_settings_add_group(struct l_settings *settings,
-+					const char *group_name)
-+{
-+	struct group_data *group;
++#define l_steal_ptr(ptr) \
++	(__extension__ ({ typeof(ptr) _tmp =3D (ptr); (ptr) =3D NULL; _tmp; }))
 +
-+	if (unlikely(!settings || !group_name))
-+		return false;
-+
-+	if (!validate_group_name(group_name)) {
-+		l_util_debug(settings->debug_handler, settings->debug_data,
-+				"Invalid group name %s", group_name);
-+		return false;
-+	}
-+
-+	group =3D l_queue_find(settings->groups, group_match, group_name);
-+	if (group) {
-+		l_util_debug(settings->debug_handler, settings->debug_data,
-+				"Group %s exists", group_name);
-+		return true;
-+	}
-+
-+	group =3D l_new(struct group_data, 1);
-+	group->name =3D l_strdup(group_name);
-+	group->settings =3D l_queue_new();
-+	l_queue_push_tail(settings->groups, group);
-+	return true;
-+}
-+
- static bool validate_key(const char *key)
- {
- 	int i;
-diff --git a/ell/settings.h b/ell/settings.h
-index f95ed9b..be92d29 100644
---- a/ell/settings.h
-+++ b/ell/settings.h
-@@ -54,6 +54,8 @@ char **l_settings_get_groups(const struct l_settings *set=
-tings);
- char **l_settings_get_keys(const struct l_settings *settings,
- 							const char *group_name);
- =
-
-+bool l_settings_add_group(struct l_settings *settings, const char *group_n=
-ame);
-+
- bool l_settings_has_group(const struct l_settings *settings,
- 							const char *group_name);
- bool l_settings_has_key(const struct l_settings *settings,
+ /**
+  * l_new:
+  * @type: type of structure
 -- =
 
 2.27.0
 
---===============7419197094344859077==--
+--===============9128746890179648476==--
 
