@@ -1,61 +1,62 @@
-Content-Type: multipart/mixed; boundary="===============0870142512921851919=="
+Content-Type: multipart/mixed; boundary="===============3895857196765925881=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] rtnl: Add l_rtnl_address_dup
-Date: Sat, 29 May 2021 02:03:19 +0200
-Message-ID: <20210529000319.2897056-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 1/4] dhcp-server: Fix lease expiry time calculation
+Date: Tue, 01 Jun 2021 04:03:43 +0200
+Message-ID: <20210601020346.35502-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0870142512921851919==
+--===============3895857196765925881==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Returns a new l_rtnl_address that is a copy of the one passed in
-parameter.
+We were comparing the l_time_now() (usecs) with lease->lifetime (secs)
+and then converting the result from usecs to secs, so the "diff" and the
+"to_sec" operations should be switched around.  While there also replace
+the "diff" operation so that if lease->lifetime is already in the past
+(e.g. because processing took to long), we schedule the timeout in 0
+seconds instead of the absolute value of the difference.
+
+Since we're using uint32_t for the timestamps, use the overflow-safe(r)
+comparison.
 ---
- ell/rtnl.c | 6 ++++++
- ell/rtnl.h | 1 +
- 2 files changed, 7 insertions(+)
+ ell/dhcp-server.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/ell/rtnl.c b/ell/rtnl.c
-index e2996a6..2f26f6f 100644
---- a/ell/rtnl.c
-+++ b/ell/rtnl.c
-@@ -146,6 +146,12 @@ LIB_EXPORT struct l_rtnl_address *l_rtnl_address_new(c=
-onst char *ip,
- 	return addr;
- }
- =
-
-+LIB_EXPORT struct l_rtnl_address *l_rtnl_address_dup(
-+					const struct l_rtnl_address *orig)
-+{
-+	return l_memdup(orig, sizeof(struct l_rtnl_address));
-+}
-+
- LIB_EXPORT void l_rtnl_address_free(struct l_rtnl_address *addr)
+diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+index d390856..9e39fe6 100644
+--- a/ell/dhcp-server.c
++++ b/ell/dhcp-server.c
+@@ -192,6 +192,7 @@ static void set_next_expire_timer(struct l_dhcp_server =
+*server,
  {
- 	l_free(addr);
-diff --git a/ell/rtnl.h b/ell/rtnl.h
-index 2735dd2..036db0a 100644
---- a/ell/rtnl.h
-+++ b/ell/rtnl.h
-@@ -34,6 +34,7 @@ struct l_rtnl_address;
- struct l_rtnl_route;
+ 	struct l_dhcp_lease *next;
+ 	unsigned int next_timeout;
++	uint32_t now;
  =
 
- struct l_rtnl_address *l_rtnl_address_new(const char *ip, uint8_t prefix_l=
-en);
-+struct l_rtnl_address *l_rtnl_address_dup(const struct l_rtnl_address *ori=
-g);
- void l_rtnl_address_free(struct l_rtnl_address *addr);
- bool l_rtnl_address_get_address(const struct l_rtnl_address *addr,
- 				char *out_buf);
+ 	/*
+ 	 * If this is an expiring lease put it into the expired queue, removing
+@@ -213,8 +214,9 @@ static void set_next_expire_timer(struct l_dhcp_server =
+*server,
+ 		return;
+ 	}
+ =
+
+-	next_timeout =3D l_time_to_secs(l_time_diff(l_time_now(),
+-							next->lifetime));
++	now =3D l_time_to_secs(l_time_now());
++	next_timeout =3D (int32_t) (next->lifetime - now) > 0 ?
++		next->lifetime - now : 0;
+ =
+
+ 	if (server->next_expire)
+ 		l_timeout_modify(server->next_expire, next_timeout);
 -- =
 
-2.27.0
+2.30.2
 
---===============0870142512921851919==--
+--===============3895857196765925881==--
 
