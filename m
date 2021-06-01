@@ -1,35 +1,36 @@
-Content-Type: multipart/mixed; boundary="===============5548280507787228044=="
+Content-Type: multipart/mixed; boundary="===============5085471626962306266=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 2/4] dhcp-server: Expire the lease from the right list
-Date: Tue, 01 Jun 2021 09:44:34 -0500
-Message-ID: <ee914f53-24db-b06e-a648-9aadb4a27c53@gmail.com>
-In-Reply-To: <20210601020346.35502-2-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH] rtnl: Add l_rtnl_address_dup
+Date: Tue, 01 Jun 2021 09:48:36 -0500
+Message-ID: <eec98c9f-f141-0c0c-5cf0-2c8b0f0540d7@gmail.com>
+In-Reply-To: <20210529000319.2897056-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5548280507787228044==
+--===============5085471626962306266==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
-On 5/31/21 9:03 PM, Andrew Zaborowski wrote:
-> We were trying to expire the oldest lease from server->expired_list but
-> we should be expiring the oldest lease in server->lease_list.  We were
-> never adding any new entries to server->expired_list and it would be
-> always empty.
+On 5/28/21 7:03 PM, Andrew Zaborowski wrote:
+> Returns a new l_rtnl_address that is a copy of the one passed in
+> parameter.
 > ---
->   ell/dhcp-server.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
+>   ell/rtnl.c | 6 ++++++
+>   ell/rtnl.h | 1 +
+>   2 files changed, 7 insertions(+)
 > =
 
 
-Patch 2-4 applied, thanks.
+I named this l_rtnl_address_clone to be consistent with some other APIs we =
+have =
+
+and added ell.sym entry.  Applied, thanks.
 
 Regards,
 -Denis
-
---===============5548280507787228044==--
+--===============5085471626962306266==--
 
