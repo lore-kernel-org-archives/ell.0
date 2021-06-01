@@ -1,44 +1,51 @@
-Content-Type: multipart/mixed; boundary="===============5110376520864359697=="
+Content-Type: multipart/mixed; boundary="===============2894367202929582652=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/4] dhcp-server: Expire the lease from the right list
-Date: Tue, 01 Jun 2021 04:03:44 +0200
-Message-ID: <20210601020346.35502-2-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/4] dhcp-server: Don't check if lease expired in lease_release
+Date: Tue, 01 Jun 2021 04:03:45 +0200
+Message-ID: <20210601020346.35502-3-andrew.zaborowski@intel.com>
 In-Reply-To: <20210601020346.35502-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5110376520864359697==
+--===============2894367202929582652==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-We were trying to expire the oldest lease from server->expired_list but
-we should be expiring the oldest lease in server->lease_list.  We were
-never adding any new entries to server->expired_list and it would be
-always empty.
+When lease_release() is called by listener_event(), the lease must have
+been found in server->lease_list meaning that its expiry timeout hasn't
+happened yet.  Even if lease->lifetime happens to have just expired, we
+probably want to emit the LEASE_EXPIRED notification immediately and
+move the lease from least_list and expired_list, rather than wait for
+the timeout.
 ---
- ell/dhcp-server.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ ell/dhcp-server.c | 8 --------
+ 1 file changed, 8 deletions(-)
 
 diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index 9e39fe6..9226ba4 100644
+index 9226ba4..217844b 100644
 --- a/ell/dhcp-server.c
 +++ b/ell/dhcp-server.c
-@@ -229,7 +229,7 @@ static void set_next_expire_timer(struct l_dhcp_server =
-*server,
- static void lease_expired_cb(struct l_timeout *timeout, void *user_data)
+@@ -287,14 +287,6 @@ static struct l_dhcp_lease *add_lease(struct l_dhcp_se=
+rver *server,
+ static void lease_release(struct l_dhcp_server *server,
+ 			struct l_dhcp_lease *lease)
  {
- 	struct l_dhcp_server *server =3D user_data;
--	struct l_dhcp_lease *lease =3D l_queue_peek_tail(server->expired_list);
-+	struct l_dhcp_lease *lease =3D l_queue_peek_tail(server->lease_list);
- =
-
+-	/*
+-	 * If the client released the lease after the server timeout expired
+-	 * there is nothing to do. Otherwise the client is releasing the
+-	 * lease early which may require re-setting the lease expire timer
+-	 */
+-	if (is_expired_lease(lease))
+-		return;
+-
  	if (server->event_handler)
  		server->event_handler(server, L_DHCP_SERVER_EVENT_LEASE_EXPIRED,
+ 					server->user_data, lease);
 -- =
 
 2.30.2
 
---===============5110376520864359697==--
+--===============2894367202929582652==--
 
