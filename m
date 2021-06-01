@@ -1,71 +1,75 @@
-Content-Type: multipart/mixed; boundary="===============6635926830986614018=="
+Content-Type: multipart/mixed; boundary="===============0971947825038223811=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 4/4] dhcp-server: Validate the offering state when handling
- message
-Date: Tue, 01 Jun 2021 04:03:46 +0200
-Message-ID: <20210601020346.35502-4-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/4] dhcp-server: Fix lease expiry time calculation
+Date: Tue, 01 Jun 2021 09:38:39 -0500
+Message-ID: <183b5df6-d81c-392c-c106-68f82ec2912a@gmail.com>
 In-Reply-To: <20210601020346.35502-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6635926830986614018==
+--===============0971947825038223811==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Make extra sure we don't call remove_lease() on a lease that is not in
-the "offering" state because that would remove the lease without
-respecting the lease_list/expire_lease semantics or emitting the
-LEASE_EXPIRED event.  Similarly make sure we don't call lease_expire()
-on a lease that is in the "offering" state because that would move it
-directly to expire_lease, emit a false LEASE_EXPIRED event and update
-the expiry timeout wrongly.
----
-I wonder if instead we should insert the leases being offered into
-server->lease_list same as the active leases (i.e. according to their
-leas->lifetime), and call set_next_expire_timer() so that their lifetimes
-are tracked and so that they're also expired.  We'd only need to check
-the lease->offered flag before emitting the LEASE_EXPIRED events.
+Hi Andrew,
 
-As it is now, I think a lease that is offered never times out if the
-client never replies to the offer, the 5-minute lifetime is ignored.
+On 5/31/21 9:03 PM, Andrew Zaborowski wrote:
+> We were comparing the l_time_now() (usecs) with lease->lifetime (secs)
+> and then converting the result from usecs to secs, so the "diff" and the
+> "to_sec" operations should be switched around.  While there also replace
+> the "diff" operation so that if lease->lifetime is already in the past
+> (e.g. because processing took to long), we schedule the timeout in 0
+> seconds instead of the absolute value of the difference.
+> =
 
- ell/dhcp-server.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+> Since we're using uint32_t for the timestamps, use the overflow-safe(r)
+> comparison.
+> ---
+>   ell/dhcp-server.c | 6 ++++--
+>   1 file changed, 4 insertions(+), 2 deletions(-)
+> =
 
-diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index 217844b..f4d08d6 100644
---- a/ell/dhcp-server.c
-+++ b/ell/dhcp-server.c
-@@ -646,7 +646,8 @@ static void listener_event(const void *data, size_t len=
-, void *user_data)
- 	case DHCP_MESSAGE_TYPE_DECLINE:
- 		SERVER_DEBUG("Received DECLINE");
- =
+> diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+> index d390856..9e39fe6 100644
+> --- a/ell/dhcp-server.c
+> +++ b/ell/dhcp-server.c
+> @@ -192,6 +192,7 @@ static void set_next_expire_timer(struct l_dhcp_serve=
+r *server,
+>   {
+>   	struct l_dhcp_lease *next;
+>   	unsigned int next_timeout;
+> +	uint32_t now;
+>   =
 
--		if (!server_id_opt || !requested_ip_opt || !lease)
-+		if (!server_id_opt || !requested_ip_opt || !lease ||
-+				!lease->offering)
- 			break;
- =
+>   	/*
+>   	 * If this is an expiring lease put it into the expired queue, removing
+> @@ -213,8 +214,9 @@ static void set_next_expire_timer(struct l_dhcp_serve=
+r *server,
+>   		return;
+>   	}
+>   =
 
- 		if (requested_ip_opt =3D=3D lease->address)
-@@ -656,7 +657,7 @@ static void listener_event(const void *data, size_t len=
-, void *user_data)
- 	case DHCP_MESSAGE_TYPE_RELEASE:
- 		SERVER_DEBUG("Received RELEASE");
- =
+> -	next_timeout =3D l_time_to_secs(l_time_diff(l_time_now(),
+> -							next->lifetime));
+> +	now =3D l_time_to_secs(l_time_now());
+> +	next_timeout =3D (int32_t) (next->lifetime - now) > 0 ?
+> +		next->lifetime - now : 0;
 
--		if (!server_id_opt || !lease)
-+		if (!server_id_opt || !lease || lease->offering)
- 			break;
- =
+0 is not a valid timeout value, it is used to rearm the timer.  So this cas=
+e =
 
- 		if (message->ciaddr =3D=3D lease->address)
--- =
+probably needs a different approach.
 
-2.30.2
+>   =
 
---===============6635926830986614018==--
+>   	if (server->next_expire)
+>   		l_timeout_modify(server->next_expire, next_timeout);
+> =
+
+
+Regards,
+-Denis
+--===============0971947825038223811==--
 
