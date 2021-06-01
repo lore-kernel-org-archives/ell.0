@@ -1,36 +1,79 @@
-Content-Type: multipart/mixed; boundary="===============5085471626962306266=="
+Content-Type: multipart/mixed; boundary="===============6682437415982205167=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] rtnl: Add l_rtnl_address_dup
-Date: Tue, 01 Jun 2021 09:48:36 -0500
-Message-ID: <eec98c9f-f141-0c0c-5cf0-2c8b0f0540d7@gmail.com>
-In-Reply-To: <20210529000319.2897056-1-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH] dhcp-server: Fix lease expiry time calculation
+Date: Wed, 02 Jun 2021 01:53:32 +0200
+Message-ID: <20210601235332.95056-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5085471626962306266==
+--===============6682437415982205167==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+We were comparing the l_time_now() (usecs) to lease->lifetime (secs)
+and then converting the result from usecs to secs, so the "diff" and the
+"to_secs" operations need to be switched around.  While there, use the
+opportunity to replace the "diff" operation so that if lease->lifetime is
+already in the past (e.g. because processing took to long), we schedule
+the timeout in 1 millisec instead of the absolute value of the difference.
 
-On 5/28/21 7:03 PM, Andrew Zaborowski wrote:
-> Returns a new l_rtnl_address that is a copy of the one passed in
-> parameter.
-> ---
->   ell/rtnl.c | 6 ++++++
->   ell/rtnl.h | 1 +
->   2 files changed, 7 insertions(+)
-> =
+Since we're using uint32_t for the timestamps, use the overflow-safe(r)
+comparisons in set_next_expire_timer and in is_expired_lease.
+---
+ ell/dhcp-server.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
+diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+index ebd4438..38193a2 100644
+--- a/ell/dhcp-server.c
++++ b/ell/dhcp-server.c
+@@ -104,7 +104,7 @@ struct l_dhcp_server {
+ =
 
-I named this l_rtnl_address_clone to be consistent with some other APIs we =
-have =
+ static bool is_expired_lease(struct l_dhcp_lease *lease)
+ {
+-	if (lease->lifetime < l_time_to_secs(l_time_now()))
++	if ((int32_t) (lease->lifetime - l_time_to_secs(l_time_now())) < 0)
+ 		return true;
+ =
 
-and added ell.sym entry.  Applied, thanks.
+ 	return false;
+@@ -191,7 +191,8 @@ static void set_next_expire_timer(struct l_dhcp_server =
+*server,
+ 					struct l_dhcp_lease *expired)
+ {
+ 	struct l_dhcp_lease *next;
+-	unsigned int next_timeout;
++	unsigned long next_timeout;
++	uint32_t now;
+ =
 
-Regards,
--Denis
---===============5085471626962306266==--
+ 	/*
+ 	 * If this is an expiring lease put it into the expired queue, removing
+@@ -214,11 +215,12 @@ static void set_next_expire_timer(struct l_dhcp_serve=
+r *server,
+ 		return;
+ 	}
+ =
+
+-	next_timeout =3D l_time_to_secs(l_time_diff(l_time_now(),
+-							next->lifetime));
++	now =3D l_time_to_secs(l_time_now());
++	next_timeout =3D (int32_t) (next->lifetime - now) > 0 ?
++		(next->lifetime - now) * 1000L : 1;
+ =
+
+ 	if (server->next_expire)
+-		l_timeout_modify(server->next_expire, next_timeout);
++		l_timeout_modify_ms(server->next_expire, next_timeout);
+ 	else
+ 		server->next_expire =3D l_timeout_create(server->lease_seconds,
+ 							lease_expired_cb,
+-- =
+
+2.30.2
+
+--===============6682437415982205167==--
 
