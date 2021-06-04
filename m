@@ -1,49 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============1343416749058547947=="
+Content-Type: multipart/mixed; boundary="===============4888754909781062284=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] dhcp: Fix address endianness in l2_send
-Date: Fri, 04 Jun 2021 03:22:14 +0200
-Message-ID: <20210604012214.162251-1-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 2/2] avoid using inet_aton()
+Date: Fri, 04 Jun 2021 10:41:38 -0500
+Message-ID: <231f352b-41c5-d989-0a6d-cd13ecfd423f@gmail.com>
+In-Reply-To: <febf75f8dd0a4a97e4d650a8655752aef0aa685e.1622713571.git.davide.caratti@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1343416749058547947==
+--===============4888754909781062284==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-dhcp_set_ip_udp_headers was unnecessarily trying to convert saddr and
-daddr from host byte order to network order, the addresses are already
-passsed in network byte order by the current 2 callers.  This wasn't
-breaking normal dhcp but could break P2P where the DHCP OFFER and ACK
-source address is used by the client:
+Hi Davide,
 
-DHCPOFFER of 192.168.1.2 from 1.1.168.192
----
- ell/dhcp-transport.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+On 6/3/21 4:50 AM, Davide Caratti wrote:
+> use inet_pton(AF_INET,...), like it's done elsewhere for IPv6.
+> =
 
-diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
-index c42bf45..68108e2 100644
---- a/ell/dhcp-transport.c
-+++ b/ell/dhcp-transport.c
-@@ -169,8 +169,8 @@ static void dhcp_set_ip_udp_headers(struct iphdr *ip, s=
-truct udphdr *udp,
- 	ip->tot_len =3D L_CPU_TO_BE16(len + sizeof(*ip) + sizeof(*udp));
- =
+> Signed-off-by: Davide Caratti <davide.caratti@gmail.com>
 
- 	ip->protocol =3D IPPROTO_UDP;
--	ip->saddr =3D L_CPU_TO_BE32(saddr);
--	ip->daddr =3D L_CPU_TO_BE32(daddr);
-+	ip->saddr =3D saddr;
-+	ip->daddr =3D daddr;
- =
+We do not use Signed-off-by here, so I dropped this.
 
- 	udp->source =3D L_CPU_TO_BE16(sport);
- 	udp->dest =3D L_CPU_TO_BE16(dport);
--- =
+> ---
+>   ell/dhcp-server.c | 14 +++++++-------
+>   1 file changed, 7 insertions(+), 7 deletions(-)
+> =
 
-2.30.2
 
---===============1343416749058547947==--
+Applied, thanks.
+
+Regards,
+-Denis
+--===============4888754909781062284==--
 
