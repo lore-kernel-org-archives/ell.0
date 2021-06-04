@@ -1,89 +1,77 @@
-Content-Type: multipart/mixed; boundary="===============4900042046443780413=="
+Content-Type: multipart/mixed; boundary="===============3380967345512215545=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dhcp-server: Fix lease expiry time calculation
-Date: Fri, 04 Jun 2021 13:48:41 -0500
-Message-ID: <89f90fa8-10b1-d1e8-17fb-7103bbf1b8d8@gmail.com>
-In-Reply-To: <CAOq732L3vCwm-OGKd4gYs+ne1MDcLc3U_qU7hepb_EUc982Sgg@mail.gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/2] dhcp-server: Fix lease expiry time calculation
+Date: Sat, 05 Jun 2021 00:19:06 +0200
+Message-ID: <20210604221907.202641-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4900042046443780413==
+--===============3380967345512215545==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+We were comparing the l_time_now() (usecs) to lease->lifetime (secs)
+and then converting the result from usecs to secs, so the "diff" and the
+"to_secs" operations need to be switched around.  While there, use the
+opportunity to replace the "diff" operation so that if lease->lifetime is
+already in the past (e.g. because processing took to long), we schedule
+the timeout in 1 millisec instead of the absolute value of the difference.
+---
+ ell/dhcp-server.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
 
-> It's the "commit early, commit often" kind of question, we have a
-> completely broken lease expiry here so the main goal was to make it
-> even work and then while I was changing that line... it felt wrong to
-> not make such a simple improvement, and then edited this line for
-> consistency with that line but without delving into the reasons this
-> uses uint32_t.
+diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+index 50855fe..3d6a6a8 100644
+--- a/ell/dhcp-server.c
++++ b/ell/dhcp-server.c
+@@ -191,7 +191,6 @@ static void set_next_expire_timer(struct l_dhcp_server =
+*server,
+ 					struct l_dhcp_lease *expired)
+ {
+ 	struct l_dhcp_lease *next;
+-	unsigned int next_timeout;
+ =
 
-I agree, but it feels like in this case you're trading something completely =
+ 	/*
+ 	 * If this is an expiring lease put it into the expired queue, removing
+@@ -214,15 +213,20 @@ static void set_next_expire_timer(struct l_dhcp_serve=
+r *server,
+ 		return;
+ 	}
+ =
 
-broken for something not-quite-completely-broken and it isn't much of an =
+-	next_timeout =3D l_time_to_secs(l_time_diff(l_time_now(),
+-							next->lifetime));
+-
+-	if (server->next_expire)
+-		l_timeout_modify(server->next_expire, next_timeout);
+-	else
+-		server->next_expire =3D l_timeout_create(server->lease_seconds,
+-							lease_expired_cb,
+-							server, NULL);
++	if (server->next_expire) {
++		uint32_t now =3D l_time_to_secs(l_time_now());
++
++		if (l_time_after(next->lifetime, now)) {
++			unsigned int next_timeout =3D next->lifetime - now;
++
++			l_timeout_modify(server->next_expire, next_timeout);
++		} else
++			l_timeout_modify_ms(server->next_expire, 1);
++	} else
++		server->next_expire =3D l_timeout_create(
++						server->lease_seconds,
++						lease_expired_cb,
++						server, NULL);
+ }
+ =
 
-improvement.  You touch it, you own it ;)
+ static void lease_expired_cb(struct l_timeout *timeout, void *user_data)
+-- =
 
-> =
+2.30.2
 
->>
->>>
->>>>    And with these changes I'm not sure
->>>> there's any point to store lease->lifetime in seconds.  I suspect this=
- was done
->>>> originally to use 'second' versions of l_timeout_*.
->>>
->>> Right, we could just convert it to the time.h format, uint64_t
->>> microseconds, but it would break the API.
->>>
->>
->> What API?
-> =
-
-> l_dhcp_lease_get_lifetime, though I guess you could just add a second
-> getter for the full resolution value.
-
-The lease lifetime seems to be getting abused anyway.  In DHCP client case =
-it is =
-
-just the plain lifetime value sent by the gateway, in the server case it se=
-ems =
-
-to be an absolute time.  So I suspect we need to keep storing it in seconds=
-, but =
-
-either change the timeout logic or keep additional info about the absolute =
-
-timeout, preferably in l_time* compatible units.
-
->> I suspect you need a sanity check regardless if the l_time_to_msec conve=
-rsion
->> results in something > UINT_MAX since the result is just truncated and t=
-hat is
->> likely not what you want anyway.
-> =
-
-> I guess the behaviour (if we want to worry about it) should be that if
-> the expiry time is too far out into the future then we set the longest
-> timeout we can with the current API, and then in lease_expired_cb() we
-
-Yep, that would be ideal.  Really, this should never-ever happen since our =
-
-lifetimes are quite short.
-
-> just reschedule the timeout if the lease has not expired, possibly
-> this is what you mean too.
-> =
-
-
-Yep, that's what I had in mind.
-
-Regards,
--Denis
-
---===============4900042046443780413==--
+--===============3380967345512215545==--
 
