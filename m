@@ -1,203 +1,200 @@
-Content-Type: multipart/mixed; boundary="===============2433000358561473122=="
+Content-Type: multipart/mixed; boundary="===============8718138847750132301=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/2] dhcp: Track lease lifetime and bind time separately
-Date: Sat, 05 Jun 2021 00:19:07 +0200
-Message-ID: <20210604221907.202641-2-andrew.zaborowski@intel.com>
-In-Reply-To: <20210604221907.202641-1-andrew.zaborowski@intel.com>
+From: d. caratti <davide.caratti@gmail.com>
+Subject: Re: [PATCH 1/2] avoid using inet_ntoa()
+Date: Mon, 07 Jun 2021 19:00:52 +0200
+Message-ID: <CAJ6EMK04dtBF3JmHNmmBgin1cjLZXSGQc71M3sBLSyLS03ib+w@mail.gmail.com>
+In-Reply-To: <2582f783-6333-86a5-32e3-fe6c0deb4e37@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============2433000358561473122==
+--===============8718138847750132301==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-dhcp-server has been confusing lease->lifetime with the expiry time and
-also reducing the expiry timestamp resolution and maximum to 32-bit
-second count.  To fix both problems, add microsecond-resultion 64-bit
-l_dhcp_lease::bound_time (compatible with ell/time.h utils) and use
-l_dhcp_lease::lifetime exclusively for the life time in seconds.  Both
-fields have the same usage between client and server now.  A public
-getter for the bound time isn't added for now for lack of evidence that
-it's going to be useful.
----
- ell/dhcp-private.h |  1 +
- ell/dhcp-server.c  | 45 +++++++++++++++++++++++++++++----------------
- ell/dhcp.c         |  2 ++
- 3 files changed, 32 insertions(+), 16 deletions(-)
+hello Denis, thanks for reviewing!
 
-diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
-index 204e54e..c422322 100644
---- a/ell/dhcp-private.h
-+++ b/ell/dhcp-private.h
-@@ -158,6 +158,7 @@ struct l_dhcp_lease {
- 	uint32_t lifetime;
- 	uint32_t t1;
- 	uint32_t t2;
-+	uint64_t bound_time;
- 	uint32_t router;
- 	uint32_t *dns;
- 	char *domain_name;
-diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index 3d6a6a8..4c31834 100644
---- a/ell/dhcp-server.c
-+++ b/ell/dhcp-server.c
-@@ -30,6 +30,7 @@
- #include <arpa/inet.h>
- #include <time.h>
- #include <errno.h>
-+#include <limits.h>
- =
+Il giorno ven 4 giu 2021 alle ore 18:01 Denis Kenzior <denkenz@gmail.com>
+ha scritto:
 
- #include "private.h"
- #include "time.h"
-@@ -102,12 +103,14 @@ struct l_dhcp_server {
- 	l_util_debug(server->debug_handler, server->debug_data,		\
- 			"%s:%i " fmt, __func__, __LINE__, ## args)
- =
+> Hi Davide,
+>
 
--static bool is_expired_lease(struct l_dhcp_lease *lease)
-+static uint64_t get_lease_expiry_time(const struct l_dhcp_lease *lease)
- {
--	if (lease->lifetime < l_time_to_secs(l_time_now()))
--		return true;
-+	return lease->bound_time + lease->lifetime * L_USEC_PER_SEC;
-+}
- =
+[...]
 
--	return false;
-+static bool is_expired_lease(const struct l_dhcp_lease *lease)
-+{
-+	return !l_time_after(get_lease_expiry_time(lease), l_time_now());
- }
- =
 
- static bool match_lease_mac(const void *data, const void *user_data)
-@@ -169,11 +172,12 @@ static int get_lease(struct l_dhcp_server *server, ui=
-nt32_t yiaddr,
- 	return 0;
- }
- =
+> Strictly speaking the examples/ change should be in its own patch.  See
+> HACKING.
+>
 
--static int compare_lifetime_or_offering(const void *a, const void *b,
-+static int compare_expiry_or_offering(const void *a, const void *b,
- 					void *user_data)
- {
- 	const struct l_dhcp_lease *lease1 =3D a;
- 	const struct l_dhcp_lease *lease2 =3D b;
-+	int64_t diff;
- =
+I should have read it, as well as the coding style rules, before submitting
+_ sorry for not doing that.
+I will address coding style and remove SOB line in the v2.
 
- 	/*
- 	 * Ensures offered but not active leases stay at the head of the queue.
-@@ -182,7 +186,9 @@ static int compare_lifetime_or_offering(const void *a, =
-const void *b,
- 	if (lease1->offering)
- 		return 1;
- =
+[...]
 
--	return lease2->lifetime - lease1->lifetime;
-+	diff =3D (int64_t) lease2->bound_time - lease1->bound_time +
-+		((int64_t) lease2->lifetime - lease1->lifetime) * L_USEC_PER_SEC;
-+	return diff >=3D 0 ? diff > 0 ? 1 : 0 : -1;
- }
- =
+> @@ -911,9 +923,10 @@ static void dhcp_client_rx_message(const void *data,
+> size_t len, void *userdata)
+> >               ia.s_addr =3D client->lease->address;
+> >
+> >               /* For unit testing we don't want this to be a fatal error
+> */
+> > -             if (!l_acd_start(client->acd, inet_ntoa(ia))) {
+> > +             if (!inet_ntop(AF_INET, &ia, buf, INET_ADDRSTRLEN) ||
+> > +                 !l_acd_start(client->acd, buf)) {
+> >                       CLIENT_DEBUG("Failed to start ACD on %s,
+> continuing",
+> > -                                             inet_ntoa(ia));
+> > +                                  IP_STR(ia.s_addr));
+>
+> Not sure introducing IP_STR macro just for this is worth it, but ok...
+>
 
- static void lease_expired_cb(struct l_timeout *timeout, void *user_data);
-@@ -214,14 +220,16 @@ static void set_next_expire_timer(struct l_dhcp_serve=
-r *server,
- 	}
- =
+that might be useful for other future CLIENT_DEBUG() users.
 
- 	if (server->next_expire) {
--		uint32_t now =3D l_time_to_secs(l_time_now());
-+		uint64_t expiry =3D get_lease_expiry_time(next);
-+		uint64_t now =3D l_time_now();
-+		uint64_t next_timeout =3D l_time_after(expiry, now) ?
-+			expiry - now : 0;
-+		uint64_t next_timeout_ms =3D l_time_to_msecs(next_timeout) ?: 1;
- =
+[...]
 
--		if (l_time_after(next->lifetime, now)) {
--			unsigned int next_timeout =3D next->lifetime - now;
-+		if (next_timeout_ms > ULONG_MAX)
-+			next_timeout_ms =3D ULONG_MAX;
- =
 
--			l_timeout_modify(server->next_expire, next_timeout);
--		} else
--			l_timeout_modify_ms(server->next_expire, 1);
-+		l_timeout_modify_ms(server->next_expire, next_timeout_ms);
- 	} else
- 		server->next_expire =3D l_timeout_create(
- 						server->lease_seconds,
-@@ -234,6 +242,11 @@ static void lease_expired_cb(struct l_timeout *timeout=
-, void *user_data)
- 	struct l_dhcp_server *server =3D user_data;
- 	struct l_dhcp_lease *lease =3D l_queue_peek_tail(server->lease_list);
- =
+> Looks like indentation problem here too.  Maybe you want to put the
+> inet_ntop
+> business outside of l_strdup_printf call to make things more readable?
+>
 
-+	if (!is_expired_lease(lease)) {
-+		set_next_expire_timer(server, NULL);
-+		return;
-+	}
-+
- 	if (server->event_handler)
- 		server->event_handler(server, L_DHCP_SERVER_EVENT_LEASE_EXPIRED,
- 					server->user_data, lease);
-@@ -258,24 +271,24 @@ static struct l_dhcp_lease *add_lease(struct l_dhcp_s=
-erver *server,
- 	lease->address =3D yiaddr;
- =
+yes, it seems to look better - I will also fix this.
+By the way, looking at the inet_ntop() documentation [1], I think that I
+can also avoid things like
 
- 	lease->offering =3D offering;
--	lease->lifetime =3D l_time_to_secs(l_time_now());
-+	lease->bound_time =3D l_time_now();
- =
+   inet_ntop(AF_INET, &ia, buf, INET_ADDRSTRLEN) ? : "(inv)";
 
- 	if (!offering) {
--		lease->lifetime +=3D server->lease_seconds;
-+		lease->lifetime =3D server->lease_seconds;
- =
+because the first argument is hardcoded to AF_INET and also we are sure
+that 'buf' is INET_ADDRSTRLEN long.
+Under these conditions, the return value of inet_ntop() should always be
+'buf'. Correct?
 
- 		/*
- 		 * Insert into queue by lifetime (skipping any offered leases
- 		 * at the head)
- 		 */
- 		l_queue_insert(server->lease_list, lease,
--					compare_lifetime_or_offering, NULL);
-+					compare_expiry_or_offering, NULL);
- 		/*
- 		 * This is a new (or renewed lease) so pass NULL for expired so
- 		 * the queue's are not modified, only the next_expired timer
- 		 */
- 		set_next_expire_timer(server, NULL);
- 	} else {
--		lease->lifetime +=3D OFFER_TIME;
-+		lease->lifetime =3D OFFER_TIME;
- 		/* Push offered leases to head, active leases after those */
- 		l_queue_push_head(server->lease_list, lease);
- 	}
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index a4afa95..fff1645 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -860,6 +860,8 @@ static void dhcp_client_rx_message(const void *data, si=
-ze_t len, void *userdata)
- =
+--
+davide
 
- 		dhcp_client_event_notify(client, r);
- =
+[1] https://man7.org/linux/man-pages/man3/inet_ntop.3.html
+RispondiInoltra
 
-+		client->lease->bound_time =3D l_time_now();
-+
- 		/*
- 		 * Start T1, once it expires we will start the T2 timer.  If
- 		 * we renew the lease, we will end up back here.
--- =
+--===============8718138847750132301==
+Content-Type: text/html
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="attachment.htm"
 
-2.30.2
+PGRpdiBkaXI9Imx0ciI+PGRpdiBjbGFzcz0iZ21haWwtYWRuIGdtYWlsLWFkcyIgc3R5bGU9ImJv
+cmRlci1sZWZ0Om5vbmU7cGFkZGluZzowcHg7ZGlzcGxheTpmbGV4O2ZvbnQtZmFtaWx5OlJvYm90
+byxSb2JvdG9EcmFmdCxIZWx2ZXRpY2EsQXJpYWwsc2Fucy1zZXJpZjtmb250LXNpemU6bWVkaXVt
+Ij48ZGl2IGNsYXNzPSJnbWFpbC1ncyIgc3R5bGU9Im1hcmdpbjowcHg7cGFkZGluZzowcHggMHB4
+IDIwcHg7d2lkdGg6OTEycHgiPjxkaXYgY2xhc3M9ImdtYWlsLSI+PGRpdiBpZD0iZ21haWwtOjFi
+aSIgY2xhc3M9ImdtYWlsLWlpIGdtYWlsLWd0IiBzdHlsZT0iZm9udC1zaXplOjAuODc1cmVtO2Rp
+cmVjdGlvbjpsdHI7bWFyZ2luOjhweCAwcHggMHB4O3BhZGRpbmc6MHB4Ij48ZGl2IGlkPSJnbWFp
+bC06MWJoIiBjbGFzcz0iZ21haWwtYTNzIGdtYWlsLWFpTCIgc3R5bGU9Im92ZXJmbG93OmhpZGRl
+bjtmb250LXZhcmlhbnQtbnVtZXJpYzpub3JtYWw7Zm9udC12YXJpYW50LWVhc3QtYXNpYW46bm9y
+bWFsO2ZvbnQtc3RyZXRjaDpub3JtYWw7Zm9udC1zaXplOnNtYWxsO2xpbmUtaGVpZ2h0OjEuNTtm
+b250LWZhbWlseTpBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZiI+PGRpdiBkaXI9Imx0ciI+PGRp
+dj5oZWxsbyBEZW5pcywgdGhhbmtzIGZvciByZXZpZXdpbmchPGJyPjxicj48L2Rpdj48ZGl2IGRp
+cj0ibHRyIj5JbCBnaW9ybm8gdmVuIDQgZ2l1IDIwMjEgYWxsZSBvcmUgMTg6MDEgRGVuaXMgS2Vu
+emlvciAmbHQ7PGEgaHJlZj0ibWFpbHRvOmRlbmtlbnpAZ21haWwuY29tIiB0YXJnZXQ9Il9ibGFu
+ayI+ZGVua2VuekBnbWFpbC5jb208L2E+Jmd0OyBoYSBzY3JpdHRvOjxicj48L2Rpdj48ZGl2IGNs
+YXNzPSJnbWFpbF9xdW90ZSI+PGJsb2NrcXVvdGUgY2xhc3M9ImdtYWlsX3F1b3RlIiBzdHlsZT0i
+bWFyZ2luOjBweCAwcHggMHB4IDAuOGV4O2JvcmRlci1sZWZ0OjFweCBzb2xpZCByZ2IoMjA0LDIw
+NCwyMDQpO3BhZGRpbmctbGVmdDoxZXgiPkhpIERhdmlkZSw8YnI+PC9ibG9ja3F1b3RlPjxkaXY+
+wqA8L2Rpdj48ZGl2PlsuLi5dPC9kaXY+PHNwYW4gY2xhc3M9ImdtYWlsLWltIiBzdHlsZT0iY29s
+b3I6cmdiKDgwLDAsODApIj48ZGl2PsKgPC9kaXY+PGJsb2NrcXVvdGUgY2xhc3M9ImdtYWlsX3F1
+b3RlIiBzdHlsZT0ibWFyZ2luOjBweCAwcHggMHB4IDAuOGV4O2JvcmRlci1sZWZ0OjFweCBzb2xp
+ZCByZ2IoMjA0LDIwNCwyMDQpO3BhZGRpbmctbGVmdDoxZXgiPlN0cmljdGx5IHNwZWFraW5nIHRo
+ZSBleGFtcGxlcy8gY2hhbmdlIHNob3VsZCBiZSBpbiBpdHMgb3duIHBhdGNoLsKgIFNlZSBIQUNL
+SU5HLjxicj48L2Jsb2NrcXVvdGU+PGRpdj48YnI+PC9kaXY+PC9zcGFuPjxkaXY+SSBzaG91bGQg
+aGF2ZSByZWFkIGl0LCBhcyB3ZWxsIGFzIHRoZSBjb2Rpbmcgc3R5bGUgcnVsZXMsIGJlZm9yZSBz
+dWJtaXR0aW5nIF8gc29ycnkgZm9yIG5vdCBkb2luZyB0aGF0Ljxicj5JIHdpbGwgYWRkcmVzcyBj
+b2Rpbmcgc3R5bGUgYW5kIHJlbW92ZSBTT0IgbGluZSBpbiB0aGUgdjIuPC9kaXY+PGRpdj48YnI+
+PC9kaXY+PGRpdj5bLi4uXTwvZGl2PjxzcGFuIGNsYXNzPSJnbWFpbC1pbSIgc3R5bGU9ImNvbG9y
+OnJnYig4MCwwLDgwKSI+PGRpdj48YnI+PC9kaXY+PGJsb2NrcXVvdGUgY2xhc3M9ImdtYWlsX3F1
+b3RlIiBzdHlsZT0ibWFyZ2luOjBweCAwcHggMHB4IDAuOGV4O2JvcmRlci1sZWZ0OjFweCBzb2xp
+ZCByZ2IoMjA0LDIwNCwyMDQpO3BhZGRpbmctbGVmdDoxZXgiPiZndDsgQEAgLTkxMSw5ICs5MjMs
+MTAgQEAgc3RhdGljIHZvaWQgZGhjcF9jbGllbnRfcnhfbWVzc2FnZShjb25zdCB2b2lkICpkYXRh
+LCBzaXplX3QgbGVuLCB2b2lkICp1c2VyZGF0YSk8YnI+Jmd0O8KgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgaWEuc19hZGRyID0gY2xpZW50LSZndDtsZWFzZS0mZ3Q7YWRkcmVzczs8YnI+Jmd0O8KgIMKg
+PGJyPiZndDvCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoC8qIEZvciB1bml0IHRlc3Rpbmcgd2UgZG9u
+JiMzOTt0IHdhbnQgdGhpcyB0byBiZSBhIGZhdGFsIGVycm9yICovPGJyPiZndDsgLcKgIMKgIMKg
+IMKgIMKgIMKgIMKgaWYgKCFsX2FjZF9zdGFydChjbGllbnQtJmd0O2FjZCwgaW5ldF9udG9hKGlh
+KSkpIHs8YnI+Jmd0OyArwqAgwqAgwqAgwqAgwqAgwqAgwqBpZiAoIWluZXRfbnRvcChBRl9JTkVU
+LCAmYW1wO2lhLCBidWYsIElORVRfQUREUlNUUkxFTikgfHw8YnI+Jmd0OyArwqAgwqAgwqAgwqAg
+wqAgwqAgwqAgwqAgwqAhbF9hY2Rfc3RhcnQoY2xpZW50LSZndDthY2QsIGJ1ZikpIHs8YnI+Jmd0
+O8KgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgQ0xJRU5UX0RFQlVHKCZxdW90O0Zh
+aWxlZCB0byBzdGFydCBBQ0Qgb24gJXMsIGNvbnRpbnVpbmcmcXVvdDssPGJyPiZndDsgLcKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgaW5ldF9udG9hKGlhKSk7PGJyPiZndDsgK8KgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIElQX1NUUihpYS5zX2FkZHIpKTs8YnI+PGJyPk5vdCBz
+dXJlIGludHJvZHVjaW5nIElQX1NUUiBtYWNybyBqdXN0IGZvciB0aGlzIGlzIHdvcnRoIGl0LCBi
+dXQgb2suLi48YnI+PC9ibG9ja3F1b3RlPjxkaXY+PGJyPjwvZGl2Pjwvc3Bhbj48ZGl2PnRoYXQg
+bWlnaHQgYmUgdXNlZnVsIGZvciBvdGhlciBmdXR1cmXCoENMSUVOVF9ERUJVRygpIHVzZXJzLjwv
+ZGl2PjxkaXY+PGJyPjwvZGl2PjxkaXY+Wy4uLl08L2Rpdj48c3BhbiBjbGFzcz0iZ21haWwtaW0i
+IHN0eWxlPSJjb2xvcjpyZ2IoODAsMCw4MCkiPjxkaXY+wqA8YnI+PC9kaXY+PGJsb2NrcXVvdGUg
+Y2xhc3M9ImdtYWlsX3F1b3RlIiBzdHlsZT0ibWFyZ2luOjBweCAwcHggMHB4IDAuOGV4O2JvcmRl
+ci1sZWZ0OjFweCBzb2xpZCByZ2IoMjA0LDIwNCwyMDQpO3BhZGRpbmctbGVmdDoxZXgiPkxvb2tz
+IGxpa2UgaW5kZW50YXRpb24gcHJvYmxlbSBoZXJlIHRvby7CoCBNYXliZSB5b3Ugd2FudCB0byBw
+dXQgdGhlIGluZXRfbnRvcDxicj5idXNpbmVzcyBvdXRzaWRlIG9mIGxfc3RyZHVwX3ByaW50ZiBj
+YWxsIHRvIG1ha2UgdGhpbmdzIG1vcmUgcmVhZGFibGU/PGJyPjwvYmxvY2txdW90ZT48ZGl2Pjxi
+cj48L2Rpdj48L3NwYW4+PGRpdj55ZXMsIGl0IHNlZW1zIHRvIGxvb2sgYmV0dGVyIC0gSSB3aWxs
+IGFsc28gZml4IHRoaXMuPC9kaXY+PGRpdj5CeSB0aGXCoHdheSwgbG9va2luZyBhdCB0aGUgaW5l
+dF9udG9wKCkgZG9jdW1lbnRhdGlvbiBbMV0sIEkgdGhpbmsgdGhhdCBJIGNhbiBhbHNvIGF2b2lk
+IHRoaW5ncyBsaWtlPGJyPjwvZGl2PjxkaXY+PGJyPsKgIMKgaW5ldF9udG9wKEFGX0lORVQsICZh
+bXA7aWEsIGJ1ZiwgSU5FVF9BRERSU1RSTEVOKSA/IDogJnF1b3Q7KGludikmcXVvdDs7PC9kaXY+
+PGRpdj48YnI+PC9kaXY+PGRpdj5iZWNhdXNlwqB0aGUgZmlyc3QgYXJndW1lbnQgaXMgaGFyZGNv
+ZGVkIHRvIEFGX0lORVQgYW5kIGFsc28gd2UgYXJlIHN1cmUgdGhhdCAmIzM5O2J1ZiYjMzk7IGlz
+IElORVRfQUREUlNUUkxFTiBsb25nLjwvZGl2PjxkaXY+VW5kZXIgdGhlc2UgY29uZGl0aW9ucywg
+dGhlIHJldHVybiB2YWx1ZcKgb2YgaW5ldF9udG9wKCkgc2hvdWxkIGFsd2F5cyBiZSAmIzM5O2J1
+ZiYjMzk7LiBDb3JyZWN0Pzxicj48YnI+LS08YnI+ZGF2aWRlPGJyPjxicj5bMV3CoDxhIGhyZWY9
+Imh0dHBzOi8vbWFuNy5vcmcvbGludXgvbWFuLXBhZ2VzL21hbjMvaW5ldF9udG9wLjMuaHRtbCIg
+dGFyZ2V0PSJfYmxhbmsiPmh0dHBzOi8vbWFuNy5vcmcvbGludXgvbWFuLXBhZ2VzL21hbjMvaW5l
+dF9udG9wLjMuaHRtbDwvYT48L2Rpdj48L2Rpdj48L2Rpdj48ZGl2IGNsYXNzPSJnbWFpbC15ajZx
+byI+PC9kaXY+PGRpdiBjbGFzcz0iZ21haWwtYWRMIj48L2Rpdj48L2Rpdj48ZGl2IGNsYXNzPSJn
+bWFpbC15ajZxbyI+PC9kaXY+PC9kaXY+PGRpdiBjbGFzcz0iZ21haWwtaGkiIHN0eWxlPSJib3Jk
+ZXItYm90dG9tLWxlZnQtcmFkaXVzOjFweDtib3JkZXItYm90dG9tLXJpZ2h0LXJhZGl1czoxcHg7
+cGFkZGluZzowcHg7d2lkdGg6YXV0bztiYWNrZ3JvdW5kOnJnYigyNDIsMjQyLDI0Mik7bWFyZ2lu
+OjBweCI+PC9kaXY+PC9kaXY+PC9kaXY+PGRpdiBjbGFzcz0iZ21haWwtYWp4IiBzdHlsZT0iY2xl
+YXI6Ym90aCI+PC9kaXY+PC9kaXY+PGRpdiBjbGFzcz0iZ21haWwtZ0EgZ21haWwtZ3QgZ21haWwt
+YWNWIiBzdHlsZT0iZm9udC1zaXplOjAuODc1cmVtO3BhZGRpbmc6MHB4O3dpZHRoOmF1dG87Ym9y
+ZGVyLWJvdHRvbS1sZWZ0LXJhZGl1czowcHg7Ym9yZGVyLWJvdHRvbS1yaWdodC1yYWRpdXM6MHB4
+O2JvcmRlci10b3A6bm9uZTttYXJnaW46MHB4O2JhY2tncm91bmQtaW1hZ2U6aW5pdGlhbDtiYWNr
+Z3JvdW5kLXBvc2l0aW9uOmluaXRpYWw7YmFja2dyb3VuZC1zaXplOmluaXRpYWw7YmFja2dyb3Vu
+ZC1yZXBlYXQ6aW5pdGlhbDtiYWNrZ3JvdW5kLW9yaWdpbjppbml0aWFsO2JhY2tncm91bmQtY2xp
+cDppbml0aWFsO2ZvbnQtZmFtaWx5OlJvYm90byxSb2JvdG9EcmFmdCxIZWx2ZXRpY2EsQXJpYWws
+c2Fucy1zZXJpZiI+PGRpdiBjbGFzcz0iZ21haWwtZ0IgZ21haWwteHUiIHN0eWxlPSJib3JkZXIt
+dG9wOjBweDtwYWRkaW5nOjBweCI+PGRpdiBjbGFzcz0iZ21haWwtaXAgZ21haWwtaXEiIHN0eWxl
+PSJjbGVhcjpib3RoO21hcmdpbjowcHg7cGFkZGluZzoxNnB4IDBweDtib3JkZXItdG9wOm5vbmUi
+PjxkaXYgaWQ9ImdtYWlsLToxYmQiPjx0YWJsZSBjbGFzcz0iZ21haWwtY2YgZ21haWwtd1MiIHN0
+eWxlPSJib3JkZXItY29sbGFwc2U6Y29sbGFwc2UiPjx0Ym9keT48dHI+PHRkIGNsYXNzPSJnbWFp
+bC1hbXEiIHN0eWxlPSJwYWRkaW5nOjBweCAxNnB4O3ZlcnRpY2FsLWFsaWduOnRvcDt3aWR0aDo0
+NHB4Ij48aW1nIGlkPSJnbWFpbC06b2pfNTciIG5hbWU9IjpvaiIgc3JjPSJodHRwczovL2xoMy5n
+b29nbGV1c2VyY29udGVudC5jb20vYS0vQU9oMTRHalNiYVVZWmMzTmNVU3Rrbk1scXdRczNnNjRB
+MS1QYWVncHlhNzc9czQwIiBjbGFzcz0iZ21haWwtYWpuIGdtYWlsLWJvZlBnZSIgc3R5bGU9ImRp
+c3BsYXk6IGJsb2NrOyB3aWR0aDogNDBweDsgaGVpZ2h0OiA0MHB4OyBib3JkZXItcmFkaXVzOiA1
+MCU7Ij48L3RkPjx0ZCBjbGFzcz0iZ21haWwtYW1yIiBzdHlsZT0icGFkZGluZzowcHg7d2lkdGg6
+OTEycHgiPjxkaXYgY2xhc3M9ImdtYWlsLW5yIGdtYWlsLXdSIiBzdHlsZT0iYm94LXNpemluZzpi
+b3JkZXItYm94O2JvcmRlci1yYWRpdXM6MXB4O3BhZGRpbmc6MHB4O2JvcmRlcjpub25lO21hcmdp
+bjowcHgiPjxkaXYgY2xhc3M9ImdtYWlsLWFtbiIgc3R5bGU9ImNvbG9yOmluaGVyaXQ7aGVpZ2h0
+OmF1dG87cGFkZGluZzowcHg7ZGlzcGxheTpmbGV4O2xpbmUtaGVpZ2h0OjIwcHgiPjxzcGFuIGlk
+PSJnbWFpbC06MWFwIiB0YWJpbmRleD0iMCIgY2xhc3M9ImdtYWlsLWFtcyBnbWFpbC1ia0giIHN0
+eWxlPSJib3JkZXI6bm9uZTtkaXNwbGF5OmlubGluZS1mbGV4O2ZvbnQtZmFtaWx5OiZxdW90O0dv
+b2dsZSBTYW5zJnF1b3Q7LFJvYm90byxSb2JvdG9EcmFmdCxIZWx2ZXRpY2EsQXJpYWwsc2Fucy1z
+ZXJpZjtmb250LXNpemU6MC44NzVyZW07bGV0dGVyLXNwYWNpbmc6MC4yNXB4O2JhY2tncm91bmQ6
+bm9uZTtib3JkZXItcmFkaXVzOjRweDtib3gtc2l6aW5nOmJvcmRlci1ib3g7Y29sb3I6cmdiKDk1
+LDk5LDEwNCk7aGVpZ2h0OjM2cHg7b3V0bGluZTpub25lO3BhZGRpbmc6MHB4IDE2cHggMHB4IDEy
+cHg7bWluLXdpZHRoOjEwNHB4O21hcmdpbi1yaWdodDoxMnB4Ij5SaXNwb25kaTwvc3Bhbj48c3Bh
+biBpZD0iZ21haWwtOjFiMSIgdGFiaW5kZXg9IjAiIGNsYXNzPSJnbWFpbC1hbXMgZ21haWwtYmtH
+IiBzdHlsZT0iYm9yZGVyOm5vbmU7ZGlzcGxheTppbmxpbmUtZmxleDtmb250LWZhbWlseTomcXVv
+dDtHb29nbGUgU2FucyZxdW90OyxSb2JvdG8sUm9ib3RvRHJhZnQsSGVsdmV0aWNhLEFyaWFsLHNh
+bnMtc2VyaWY7Zm9udC1zaXplOjAuODc1cmVtO2xldHRlci1zcGFjaW5nOjAuMjVweDtiYWNrZ3Jv
+dW5kOm5vbmU7Ym9yZGVyLXJhZGl1czo0cHg7Ym94LXNpemluZzpib3JkZXItYm94O2NvbG9yOnJn
+Yig5NSw5OSwxMDQpO2hlaWdodDozNnB4O291dGxpbmU6bm9uZTtwYWRkaW5nOjBweCAxNnB4IDBw
+eCAxMnB4O21pbi13aWR0aDoxMDRweDttYXJnaW4tcmlnaHQ6MTJweCI+SW5vbHRyYTwvc3Bhbj48
+L2Rpdj48L2Rpdj48L3RkPjwvdHI+PC90Ym9keT48L3RhYmxlPjwvZGl2PjwvZGl2PjwvZGl2Pjwv
+ZGl2PjwvZGl2Pgo=
 
---===============2433000358561473122==--
+--===============8718138847750132301==--
 
