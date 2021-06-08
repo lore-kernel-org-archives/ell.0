@@ -1,69 +1,65 @@
-Content-Type: multipart/mixed; boundary="===============7725231043536612111=="
+Content-Type: multipart/mixed; boundary="===============1836744898068447785=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
+From: d. caratti <davide.caratti@gmail.com>
 Subject: Re: [PATCH 1/2] avoid using inet_ntoa()
-Date: Mon, 07 Jun 2021 13:41:30 -0500
-Message-ID: <2e2233ef-f787-9290-54db-1a1bc508eba4@gmail.com>
-In-Reply-To: <CAJ6EMK04dtBF3JmHNmmBgin1cjLZXSGQc71M3sBLSyLS03ib+w@mail.gmail.com>
+Date: Tue, 08 Jun 2021 14:46:48 +0200
+Message-ID: <CAJ6EMK2R79xpJ4yNUNONZWgrwpx4aWr6QVOt6meMPUG6SVYFRg@mail.gmail.com>
+In-Reply-To: <2e2233ef-f787-9290-54db-1a1bc508eba4@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7725231043536612111==
+--===============1836744898068447785==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Davide,
+Il giorno lun 7 giu 2021 alle ore 20:41 Denis Kenzior
+<denkenz@gmail.com> ha scritto:
 
-> that might be useful for other future=C2=A0CLIENT_DEBUG() users.
-> =
+>
+> I would assume so.  You can tell for sure by looking at glibc implementat=
+ion for
+> example.
+>
+> Oh, one other thing.  Have you checked the scope rules for GCC statement
+> expressions?  inet_ntoa uses a static buffer (which glibc further enhance=
+s by
+> marking it as thread-specific storage).  So the returned pointer is guara=
+nteed
+> to be valid after inet_ntoa returns.  The statement expression doesn't se=
+em to
+> do that, so that seems suspicious?
 
+... you are right. GCC documentation [1] says:
 
-Fair enough,  Wish there was a printf extension for ipv4 and ipv6 addresses=
- like =
+"In a statement expression, any temporaries created within a statement
+are destroyed at that statement=E2=80=99s end."
 
-printk uses...  Oh well.
+so, we can't do IP_STR() that way. And using inet_ntop() + static
+buffer, like it's done by iproute2 [2] would actually
+silence the rpminspect warning I'm seeing, but not fix the actual
+problem: AFAIK use of a static buffer is one of the 2 reasons why
+inet_ntoa() has been "obsoleted".
 
-> =
+At this point, probably the cleanest thing to do is to replace
+IP_STR() with a proper call to inet_ntop(), preceded by declaration of
+buf[INET_ADDRSTRLEN] (like it's already done in some hunks of this
+patch). Luckily, it's just 10 places (versus 6 users of inet_ntoa(),
+still looks feasible).
 
-> yes, it seems to look better - I will also fix this.
-> By the=C2=A0way, looking at the inet_ntop() documentation [1], I think th=
-at I can =
+Il giorno lun 7 giu 2021 alle ore 20:41 Denis Kenzior
+<denkenz@gmail.com> ha scritto:
+>
+> > that might be useful for other future CLIENT_DEBUG() users.
+> >
+>
+> Fair enough,  Wish there was a printf extension for ipv4 and ipv6 address=
+es like
+> printk uses...  Oh well.
 
-> also avoid things like
-> =
+yes, that would really make this game less boring :)
 
->  =C2=A0 =C2=A0inet_ntop(AF_INET, &ia, buf, INET_ADDRSTRLEN) ? : "(inv)";
-> =
-
-> because=C2=A0the first argument is hardcoded to AF_INET and also we are s=
-ure that =
-
-> 'buf' is INET_ADDRSTRLEN long.
-> Under these conditions, the return value=C2=A0of inet_ntop() should alway=
-s be 'buf'. =
-
-> Correct?
-
-I would assume so.  You can tell for sure by looking at glibc implementatio=
-n for =
-
-example.
-
-Oh, one other thing.  Have you checked the scope rules for GCC statement =
-
-expressions?  inet_ntoa uses a static buffer (which glibc further enhances =
-by =
-
-marking it as thread-specific storage).  So the returned pointer is guarant=
-eed =
-
-to be valid after inet_ntoa returns.  The statement expression doesn't seem=
- to =
-
-do that, so that seems suspicious?
-
-Regards,
--Denis
---===============7725231043536612111==--
+[1] https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html
+[2] https://github.com/shemminger/iproute2/blob/main/lib/utils.c#L980-L1020
+--===============1836744898068447785==--
 
