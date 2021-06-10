@@ -1,64 +1,123 @@
-Content-Type: multipart/mixed; boundary="===============8067649794567998404=="
+Content-Type: multipart/mixed; boundary="===============6756905048527106296=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH] dhcp-server: Simplify timeout handling
-Date: Thu, 10 Jun 2021 23:20:33 +0200
-Message-ID: <20210610212033.338502-1-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/2] avoid using inet_ntoa()
+Date: Thu, 10 Jun 2021 17:12:52 -0500
+Message-ID: <8d5a064e-b342-4fb8-ba4e-4f3ab9b2e0b4@gmail.com>
+In-Reply-To: <CAJ6EMK3_SOd-ET_mSJE5ZHij99Sso-s4GxbMpefGzMBg8v7yVw@mail.gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8067649794567998404==
+--===============6756905048527106296==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Remove max timeout interval checks no longer useful after
-the l_timeout_modify_ms() parameter type change.
----
- ell/dhcp-server.c | 15 ++-------------
- 1 file changed, 2 insertions(+), 13 deletions(-)
+Hi Davide,
 
-diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index b58b2f6..34512ae 100644
---- a/ell/dhcp-server.c
-+++ b/ell/dhcp-server.c
-@@ -225,15 +225,9 @@ static void set_next_expire_timer(struct l_dhcp_server=
- *server,
- 		uint64_t expiry =3D get_lease_expiry_time(next);
- 		uint64_t now =3D l_time_now();
- 		uint64_t next_timeout =3D l_time_after(expiry, now) ?
--			expiry - now : 0;
--		uint64_t next_timeout_ms =3D l_time_to_msecs(next_timeout) ?: 1;
-+			l_time_to_msecs(expiry - now) : 0;
- =
+>> That would be unfortunate.  I'm really not sure whether this needs to be=
+ 'fixed'
+>> anyway.  ell is meant for single-threaded, event driven apps.  So our us=
+e of
+>> inet_ntoa is just fine.  In fact we do similar stuff all over the place.
+> =
 
--		if (L_WARN_ON(next_timeout_ms >
--					server->lease_seconds * L_MSEC_PER_SEC))
--			next_timeout_ms =3D
--				server->lease_seconds * L_MSEC_PER_SEC;
--
--		l_timeout_modify_ms(server->next_expire, next_timeout_ms);
-+		l_timeout_modify_ms(server->next_expire, next_timeout ?: 1);
- 	} else
- 		server->next_expire =3D l_timeout_create(
- 						server->lease_seconds,
-@@ -246,11 +240,6 @@ static void lease_expired_cb(struct l_timeout *timeout=
-, void *user_data)
- 	struct l_dhcp_server *server =3D user_data;
- 	struct l_dhcp_lease *lease =3D l_queue_peek_tail(server->lease_list);
- =
+> there's nothing wrong with using inet_ntoa() as long as the caller
+> doesn't need to be "IPv6 friendly" and concurrency is not an issue.
+> However,
+> this would result in disabling the whole fedora "badfuncs" CI, that
+> now is failing just because of inet_ntoa().
+> =
 
--	if (!is_expired_lease(lease)) {
--		set_next_expire_timer(server, NULL);
--		return;
--	}
--
- 	if (server->event_handler)
- 		server->event_handler(server, L_DHCP_SERVER_EVENT_LEASE_EXPIRED,
- 					server->user_data, lease);
--- =
 
-2.30.2
+Is this a worthy goal in and of itself though?  What other 'badfuncs' are t=
+here?
 
---===============8067649794567998404==--
+>>> At this point, probably the cleanest thing to do is to replace
+>>> IP_STR() with a proper call to inet_ntop(), preceded by declaration of
+>>> buf[INET_ADDRSTRLEN] (like it's already done in some hunks of this
+>>> patch). Luckily, it's just 10 places (versus 6 users of inet_ntoa(),
+>>> still looks feasible).
+>>
+>> Perhaps we can do something similar to MAC_STR instead?
+> =
+
+> that's  similar to the NIPQUAD / NIPQUAD_FMT thing that was done in
+> Linux before the %pI4 format specified was introduced in printk (
+> https://git.kernel.org/pub/scm/linux/kernel/git/netdev/net.git/commit/?id=
+=3D3685f25de1b0447fff381c420de
+> ) :
+> =
+
+> #include <stdio.h>
+> #include <netinet/in.h>
+> #include <arpa/inet.h>
+> =
+
+> #define IP "%u.%u.%u.%u"
+> #define IP_STR(uint_ip) ((unsigned char *) &uint_ip)[0], \
+>                          ((unsigned char *) &uint_ip)[1], \
+>                          ((unsigned char *) &uint_ip)[2], \
+>                          ((unsigned char *) &uint_ip)[3]
+> =
+
+> int main(int argc, const char *argv[])
+> {
+>          struct in_addr ia =3D { .s_addr =3D 0x010200c0 };
+>          char buf[INET_ADDRSTRLEN];
+> =
+
+>          printf("test 0 %s\n", inet_ntoa(ia));
+>          printf("test 1 %s\n", inet_ntop(AF_INET, &ia, buf, INET_ADDRSTRL=
+EN));
+>          printf("test 2 " IP "\n", IP_STR(ia.s_addr));
+> =
+
+>          return 0;
+> }
+> =
+
+
+I think this or something like this would be quite reasonable to use in / f=
+or =
+
+any debug messages where we print an ip.
+
+> =
+
+>>> Il giorno lun 7 giu 2021 alle ore 20:41 Denis Kenzior
+>>> <denkenz@gmail.com> ha scritto:
+>>>>
+>>>>> that might be useful for other future CLIENT_DEBUG() users.
+>>>>>
+>>>>
+>>>> Fair enough,  Wish there was a printf extension for ipv4 and ipv6 addr=
+esses like
+>>>> printk uses...  Oh well.
+>>>
+>>> yes, that would really make this game less boring :)
+>>>
+>>> [1] https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html
+>>> [2] https://github.com/shemminger/iproute2/blob/main/lib/utils.c#L980-L=
+1020
+>>>
+>>
+>> Yep, that's the other thing we can do.  Just re-implement inet_ntoa or m=
+ake our
+>> own version that covers v4/v6 with a static buffer.  Not sure that is an=
+y better
+>> than just using inet_ntoa though ;)
+> =
+
+> what about converting inet_ntoa() into inet_ntop(), and re-writing
+> IP_STR() as above?
+
+I guess that would be OK.  We just have to remember to not use inet_ntoa in=
+ the =
+
+future...
+
+Regards,
+-Denis
+--===============6756905048527106296==--
 
