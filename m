@@ -1,48 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============1981713374273422690=="
+Content-Type: multipart/mixed; boundary="===============6231040984278111640=="
 MIME-Version: 1.0
-From: Davide Caratti <davide.caratti@gmail.com>
-Subject: [PATCH 2/2] examples: avoid using inet_ntoa()
-Date: Wed, 16 Jun 2021 21:22:15 +0200
-Message-ID: <fb5f207d58299b01ef358503897507be9cc21fe0.1623871292.git.davide.caratti@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/2] ell: avoid using inet_ntoa()
+Date: Fri, 18 Jun 2021 09:54:13 -0500
+Message-ID: <1bc16daf-f783-201c-802f-600721d2f8d2@gmail.com>
 In-Reply-To: <144affac0389b92896ae152643610b6ec497a398.1623871292.git.davide.caratti@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1981713374273422690==
+--===============6231040984278111640==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- examples/https-server-test.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Hi Davide,
 
-diff --git a/examples/https-server-test.c b/examples/https-server-test.c
-index 6362722..b626fd2 100644
---- a/examples/https-server-test.c
-+++ b/examples/https-server-test.c
-@@ -199,12 +199,13 @@ int main(int argc, char *argv[])
- 			https_tls_ready, https_tls_disconnected, NULL);
- =
+On 6/16/21 2:22 PM, Davide Caratti wrote:
+> static checkers (like rpminspect) complain about use of inet_ntoa(), as
+> it relies on a static buffer. Fix this as follows:
+> =
 
- 	if (getenv("TLS_DEBUG")) {
-+		char buf[INET_ADDRSTRLEN];
- 		char *str;
- =
+>   - use inet_ntop() with a buffer of size INET_ADDRSTRLEN allocated in
+>     the stack, similarly to what it is already done for IPv6 addresses
+>   - convert IP_STR() to use NIPQUAD() / NIPQUAD_FMT, similarly to what
+>     is done with MAC addresses
+> ---
+>   ell/acd.c         | 28 +++++++++++++---------------
+>   ell/dhcp-lease.c  |  3 ++-
+>   ell/dhcp-server.c | 37 ++++++++++++++++++-------------------
+>   ell/dhcp.c        |  6 ++++--
+>   ell/rtnl.c        |  7 +++++--
+>   5 files changed, 42 insertions(+), 39 deletions(-)
+> =
 
- 		l_tls_set_debug(tls, https_tls_debug_cb, NULL, NULL);
- =
 
--		str =3D l_strdup_printf("/tmp/ell-certchain-%s.pem",
--					inet_ntoa(client_addr.sin_addr));
-+		inet_ntop(AF_INET,&client_addr.sin_addr, buf, INET_ADDRSTRLEN);
-+		str =3D l_strdup_printf("/tmp/ell-certchain-%s.pem", buf);
- 		l_tls_set_cert_dump_path(tls, str);
- 		l_free(str);
- 	}
--- =
+Both applied, thanks.
 
-2.31.1
+Regards,
+-Denis
 
---===============1981713374273422690==--
+--===============6231040984278111640==--
 
