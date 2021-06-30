@@ -1,43 +1,66 @@
-Content-Type: multipart/mixed; boundary="===============6231040984278111640=="
+Content-Type: multipart/mixed; boundary="===============7117785408099419675=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] ell: avoid using inet_ntoa()
-Date: Fri, 18 Jun 2021 09:54:13 -0500
-Message-ID: <1bc16daf-f783-201c-802f-600721d2f8d2@gmail.com>
-In-Reply-To: <144affac0389b92896ae152643610b6ec497a398.1623871292.git.davide.caratti@gmail.com>
+From: Michael Johnson <mjohnson459@gmail.com>
+Subject: [PATCH] Add logging if bind function fails
+Date: Wed, 30 Jun 2021 14:51:12 +0100
+Message-ID: <20210630135112.47106-1-mjohnson459@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6231040984278111640==
+--===============7117785408099419675==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Davide,
+The bind function returns any errors it encounters but they were
+silently being discarded in this method. This at least logs this if
+debug messages are enabled.
 
-On 6/16/21 2:22 PM, Davide Caratti wrote:
-> static checkers (like rpminspect) complain about use of inet_ntoa(), as
-> it relies on a static buffer. Fix this as follows:
-> =
+In the future it would be nice to have this log even if the debug output
+isn't enabled as DHCP will not be working correctly.
+---
+ ell/dhcp.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
->   - use inet_ntop() with a buffer of size INET_ADDRSTRLEN allocated in
->     the stack, similarly to what it is already done for IPv6 addresses
->   - convert IP_STR() to use NIPQUAD() / NIPQUAD_FMT, similarly to what
->     is done with MAC addresses
-> ---
->   ell/acd.c         | 28 +++++++++++++---------------
->   ell/dhcp-lease.c  |  3 ++-
->   ell/dhcp-server.c | 37 ++++++++++++++++++-------------------
->   ell/dhcp.c        |  6 ++++--
->   ell/rtnl.c        |  7 +++++--
->   5 files changed, 42 insertions(+), 39 deletions(-)
-> =
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index bd346cc..115325e 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -782,7 +782,7 @@ static void dhcp_client_rx_message(const void *data, si=
+ze_t len, void *userdata)
+ 	uint8_t msg_type =3D 0;
+ 	uint8_t t, l;
+ 	const void *v;
+-	int r;
++	int r, e;
+ 	struct in_addr ia;
+ =
 
+ 	CLIENT_DEBUG("");
+@@ -855,9 +855,14 @@ static void dhcp_client_rx_message(const void *data, s=
+ize_t len, void *userdata)
+ 		l_timeout_remove(client->timeout_resend);
+ 		client->timeout_resend =3D NULL;
+ =
 
-Both applied, thanks.
+-		if (client->transport->bind)
+-			client->transport->bind(client->transport,
++		if (client->transport->bind) {
++			e =3D client->transport->bind(client->transport,
+ 						client->lease->address);
++			if (e < 0) {
++				CLIENT_DEBUG("Failed to bind dhcp socket. "
++					"Error %d: %s", e, strerror(-e));
++			}
++		}
+ =
 
-Regards,
--Denis
+ 		dhcp_client_event_notify(client, r);
+ =
 
---===============6231040984278111640==--
+-- =
+
+2.25.1
+
+--===============7117785408099419675==--
 
