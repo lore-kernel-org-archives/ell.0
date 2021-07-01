@@ -1,30 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============6949099326812063279=="
+Content-Type: multipart/mixed; boundary="===============1357930649392921185=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: Re: [PATCH 3/3] util: Add l_streq0
-Date: Thu, 01 Jul 2021 03:39:17 +0200
-Message-ID: <CAOq732K1VyDHfEXDhjwHE41w5p5DZjOe5GbxK5uDJ8oocgh9nQ@mail.gmail.com>
-In-Reply-To: <20210630191802.2sts74grb5oc3szb@xps.localdomain>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH] Add logging if bind function fails
+Date: Thu, 01 Jul 2021 10:31:18 -0500
+Message-ID: <43e12a7d-2fc6-452d-27a3-9af9f686634b@gmail.com>
+In-Reply-To: <20210630135112.47106-1-mjohnson459@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6949099326812063279==
+--===============1357930649392921185==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Martin,
+Hi Michael,
 
-On Wed, 30 Jun 2021 at 21:18, Martin Hundeb=C3=B8ll <martin@geanix.com> w=
-rote:
-> On Wed, Jun 30, 2021 at 08:51:08PM +0200, Andrew Zaborowski wrote:
-> > +bool l_streq0(const char *a, const char *b);
->
-> Should l_streq0 be added to ell.sym?
+On 6/30/21 8:51 AM, Michael Johnson wrote:
+> The bind function returns any errors it encounters but they were
+> silently being discarded in this method. This at least logs this if
+> debug messages are enabled.
+> =
 
-It should and I realised it too late so I resent the patch including
-this change.
+> In the future it would be nice to have this log even if the debug output
+> isn't enabled as DHCP will not be working correctly.
+> ---
+>   ell/dhcp.c | 11 ++++++++---
+>   1 file changed, 8 insertions(+), 3 deletions(-)
+> =
 
-Best regards
---===============6949099326812063279==--
+
+Applied, thanks.
+
+Regards,
+-Denis
+
+--===============1357930649392921185==--
 
