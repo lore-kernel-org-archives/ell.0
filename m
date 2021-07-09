@@ -1,35 +1,52 @@
-Content-Type: multipart/mixed; boundary="===============1741442217011976086=="
+Content-Type: multipart/mixed; boundary="===============8607799069136229071=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/3] icmp6: Add l_icmp6_router_get_address
-Date: Thu, 01 Jul 2021 10:31:53 -0500
-Message-ID: <74ff197d-5207-1403-450a-37f3cceb47b4@gmail.com>
-In-Reply-To: <20210630185108.263533-1-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 1/3] dhcp-server: Fix debug messages in send_offer
+Date: Fri, 09 Jul 2021 13:47:41 +0200
+Message-ID: <20210709114743.378521-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1741442217011976086==
+--===============8607799069136229071==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+find_free_or_expired_ip() or check_requested_ip() should fail if no
+addresses are left in the pool, rather than lease_add() so emit that
+error message there.  The only thing lease_add() validates that has not
+been validated before might be the origin MAC, treat the lease_add()
+failure more as an internal error.
+---
+ ell/dhcp-server.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-On 6/30/21 1:51 PM, Andrew Zaborowski wrote:
-> Add a getter for the router's address and make a small formatting change
-> while there.
-> ---
->   ell/ell.sym |  1 +
->   ell/icmp6.c | 15 ++++++++++++++-
->   ell/icmp6.h |  1 +
->   3 files changed, 16 insertions(+), 1 deletion(-)
-> =
+diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+index 34512ae..b761833 100644
+--- a/ell/dhcp-server.c
++++ b/ell/dhcp-server.c
+@@ -451,13 +451,13 @@ static void send_offer(struct l_dhcp_server *server,
+ 							client_msg->chaddr);
+ =
 
+ 	if (!reply->yiaddr) {
+-		SERVER_DEBUG("Could not find lease or send offer");
++		SERVER_DEBUG("No free IP addresses, OFFER abandoned");
+ 		return;
+ 	}
+ =
 
-Patch 1 & 2 applied from this series and the follow-up 3/3 as well.
+ 	lease =3D add_lease(server, true, client_msg->chaddr, reply->yiaddr);
+ 	if (!lease) {
+-		SERVER_DEBUG("No free IP addresses, OFFER abandoned");
++		SERVER_DEBUG("add_lease() failed");
+ 		return;
+ 	}
+ =
 
-Regards,
--Denis
+-- =
 
---===============1741442217011976086==--
+2.30.2
+
+--===============8607799069136229071==--
 
