@@ -1,14 +1,14 @@
-Content-Type: multipart/mixed; boundary="===============4453440214050875174=="
+Content-Type: multipart/mixed; boundary="===============8698699694889101656=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/8] dhcp-server: Add "authoritative" mode
-Date: Wed, 28 Jul 2021 10:42:40 -0500
-Message-ID: <fc2fc4b7-8892-81fb-1658-33fa79ab33dc@gmail.com>
-In-Reply-To: <20210723182331.135123-1-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 3/8] dhcp-server: Respect client's broadcast flag
+Date: Wed, 28 Jul 2021 10:47:32 -0500
+Message-ID: <30283874-160a-eb89-cf8a-008e06288bcc@gmail.com>
+In-Reply-To: <20210723182331.135123-3-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============4453440214050875174==
+--===============8698699694889101656==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -16,311 +16,182 @@ Content-Transfer-Encoding: quoted-printable
 Hi Andrew,
 
 On 7/23/21 1:23 PM, Andrew Zaborowski wrote:
-> An authoritative DHCP server basically assumes that there are no other
-> DHCP servers on the network and replies to DHCPREQUEST messages
-> requesting IPs from outside of its subnet or with a wrong server ID
-> value.  This speeds up connections from clients who try to use IP
-> leases they have cached from other networks and who start their IP
-> configuration by trying DHCPREQUESTs for those leases.
-> =
-
-> The term is not defined in the DHCP standard but is used by various
-> implementations.  Default to authoritative being true.  When set to
-> false, handle a DHCPREQUEST message directed at other servers by taking
-> it as meaning the client is declining our own lease offer as mandated
-> by RFC 2131 on page 16.
-> =
-
-> Refactor the checks in DHCPREQUEST handling quoting parts of the RFC.
-> The new checks are stricter and I'm not preserving some of the checks
-> that didn't seem justified, for example in the
-> "if (server_id_opt || !lease) ... send_nak()" block it didn't seem to
-> make sense to only reply to clients who have no lease (offered or
-> active) and ignore those who do have a lease with a different IP
-> address, the opposite would make more sense.
-
-It seems like this is supposed to be handling the init-reboot, bound, renew=
-ing, =
-
-rebinding states where server_id isn't present...?
-
+> Follow notes in RFC2131 4.1, 4.3.2 and 4.4.4 when deciding whether we
+> can use unicast for a given message.  We want to prefer unicast when
+> possible but we should follow the spec on the broadcast flag and the
+> destination address.
 > ---
->   ell/dhcp-server.c | 109 ++++++++++++++++++++++++++++++++++++++++------
->   ell/dhcp.h        |   2 +
->   ell/ell.sym       |   1 +
->   3 files changed, 98 insertions(+), 14 deletions(-)
+>   ell/dhcp-private.h |  3 ++
+>   ell/dhcp-server.c  | 90 +++++++++++++++++++++++++++++++++++-----------
+>   2 files changed, 72 insertions(+), 21 deletions(-)
 > =
 
+> diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
+> index c422322..f761162 100644
+> --- a/ell/dhcp-private.h
+> +++ b/ell/dhcp-private.h
+> @@ -66,6 +66,9 @@ enum dhcp_option_overload {
+>   #define DHCP_OPTION_MAXIMUM_MESSAGE_SIZE 57 /* Section 9.10 */
+>   #define DHCP_OPTION_CLIENT_IDENTIFIER 61 /* Section 9.14 */
+>   =
+
+> +/* RFC 2131, Figure 2 */
+> +#define DHCP_FLAG_BROADCAST (1 << 15)
+> +
+>   /* RFC 2131, Figure 1 */
+>   struct dhcp_message {
+>   	uint8_t op;
 > diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-> index bae0f10..6415872 100644
+> index 9f4703c..fb26e29 100644
 > --- a/ell/dhcp-server.c
 > +++ b/ell/dhcp-server.c
-> @@ -87,6 +87,8 @@ struct l_dhcp_server {
->   	struct dhcp_transport *transport;
->   =
-
->   	struct l_acd *acd;
-> +
-> +	bool authoritative : 1;
->   };
->   =
-
->   #define MAC "%02x:%02x:%02x:%02x:%02x:%02x"
-> @@ -615,9 +617,6 @@ static void listener_event(const void *data, size_t l=
-en, void *user_data)
->   			if (l =3D=3D 4)
->   				server_id_opt =3D l_get_u32(v);
->   =
-
-> -			if (server->address !=3D server_id_opt)
-> -				return;
-> -
->   			break;
->   		case L_DHCP_OPTION_REQUESTED_IP_ADDRESS:
->   			if (l =3D=3D 4)
-> @@ -640,6 +639,9 @@ static void listener_event(const void *data, size_t l=
-en, void *user_data)
->   		SERVER_DEBUG("Received DISCOVER, requested IP "NIPQUAD_FMT,
->   					NIPQUAD(requested_ip_opt));
->   =
-
-> +		if (server_id_opt && server_id_opt !=3D server->address)
-> +			break;
-> +
-
-So strictly speaking, according to DHCPDISCOVER from the client shouldn't e=
-ven =
-
-have this option...
-
->   		send_offer(server, message, lease, requested_ip_opt);
->   =
-
->   		break;
-> @@ -647,27 +649,92 @@ static void listener_event(const void *data, size_t=
- len, void *user_data)
->   		SERVER_DEBUG("Received REQUEST, requested IP "NIPQUAD_FMT,
->   				NIPQUAD(requested_ip_opt));
->   =
-
-> -		if (requested_ip_opt =3D=3D 0) {
-> -			requested_ip_opt =3D message->ciaddr;
-> -			if (requested_ip_opt =3D=3D 0)
-> +		/*
-> +		 * RFC2131 Section 3.5: "Those servers not selected by the
-> +		 * DHCPREQUEST message use the message as notification that
-> +		 * the client has declined that server's offer."
-> +		 */
-> +		if (server_id_opt && server_id_opt !=3D server->address) {
-> +			if (server->authoritative) {
-> +				send_nak(server, message);
->   				break;
-
-So you send a NAK here if server_id_opt is provided and doesn't match...
-
-> -		}
-> +			}
->   =
-
-> -		if (lease && requested_ip_opt =3D=3D lease->address) {
-> -			send_ack(server, message, lease->address);
-> +			if (!lease || !lease->offering)
-> +				break;
-> +
-> +			remove_lease(server, lease);
->   			break;
->   		}
->   =
-
-> -		if (server_id_opt || !lease) {
-> -			send_nak(server, message);
-> +		/*
-> +		 * RFC2131 Section 3.5: "If the selected server is unable to
-> +		 * satisfy the DHCPREQUEST message (...), the server SHOULD
-> +		 * respond with a DHCPNAK message."
-> +		 *
-> +		 * But:
-> +		 * 4.3.2: "If the DHCP server has no record of this client,
-> +		 * then it MUST remain silent (...)"
-> +		 */
-> +		if (!lease) {
-> +			if (server_id_opt =3D=3D server->address ||
-> +					server->authoritative)
-
-So why check server->authoritative here?  It seems like you can only get to=
- this =
-
-point if the server_id_opt is provided and matches, or not provided at all.=
-  The =
-
-'server_id_opt =3D=3D' part also seems unsafe for those cases where server_=
-id isn't =
-
-provided at all...?
-
-> +				send_nak(server, message);
-> +
->   			break;
->   		}
-> +
-> +		/*
-> +		 * 4.3.2: "If the DHCPREQUEST message contains a 'server
-> +		 * identifier' option, the message is in response to a
-> +		 * DHCPOFFER message.  Otherwise, the message is a request
-> +		 * to verify or extend an existing lease."
-> +		 */
-> +		if (server_id_opt =3D=3D server->address) {
-
-Same here, checking server_id_opt seems unsafe?
-
-> +			/*
-> +			 * Allow either no 'requested IP address' option or
-> +			 * a value identical with the one we offered because
-> +			 * the spec is unclear on whether it is to be
-> +			 * included:
-> +			 *
-> +			 * Section 4.3.2: "DHCPREQUEST generated during
-> +			 * SELECTING state: (...) 'requested IP address' MUST
-> +			 * be filled in with the yiaddr value from the chosen
-> +			 * DHCPOFFER."
-> +			 *
-> +			 * but section 3.5 suggests only in the INIT-REBOOT
-> +			 * state: "The 'requested IP address' option is to be
-> +			 * filled in only in a DHCPREQUEST message when the
-> +			 * client is verifying network parameters obtained
-> +			 * previously."
-> +			 */
-> +			if (!lease->offering ||
-> +					(requested_ip_opt &&
-> +					 requested_ip_opt !=3D lease->address)) {
-> +				send_nak(server, message);
-> +				break;
-> +			}
-> +		} else {
-> +			/*
-> +			 * 3.5: "If a server receives a DHCPREQUEST message
-> +			 * with an invalid 'requested IP address', the server
-> +			 * SHOULD respond to the client with a DHCPNAK message"
-> +			 */
-> +			if (lease->offering ||
-> +					(requested_ip_opt &&
-> +					 requested_ip_opt !=3D lease->address)) {
-> +				send_nak(server, message);
-> +				break;
-> +			}
-> +		}
-> +
-> +		send_ack(server, message, lease->address);
->   		break;
->   	case DHCP_MESSAGE_TYPE_DECLINE:
->   		SERVER_DEBUG("Received DECLINE");
->   =
-
-> -		if (!server_id_opt || !requested_ip_opt || !lease ||
-> -				!lease->offering)
-> +		if (server_id_opt !=3D server->address || !requested_ip_opt ||
-> +				!lease || !lease->offering)
-
-This also seems unsafe? server_id must be present, but you're not checking =
-this =
-
-here?
-
->   			break;
->   =
-
->   		if (requested_ip_opt =3D=3D lease->address)
-> @@ -677,7 +744,8 @@ static void listener_event(const void *data, size_t l=
-en, void *user_data)
->   	case DHCP_MESSAGE_TYPE_RELEASE:
->   		SERVER_DEBUG("Received RELEASE");
->   =
-
-> -		if (!server_id_opt || !lease || lease->offering)
-> +		if (server_id_opt !=3D server->address || !lease ||
-> +				lease->offering)
-
-Or here?
-
->   			break;
->   =
-
->   		if (message->ciaddr =3D=3D lease->address)
-> @@ -687,6 +755,9 @@ static void listener_event(const void *data, size_t l=
-en, void *user_data)
->   	case DHCP_MESSAGE_TYPE_INFORM:
->   		SERVER_DEBUG("Received INFORM");
->   =
-
-> +		if (server_id_opt && server_id_opt !=3D server->address)
-> +			break;
-> +
->   		send_inform(server, message);
->   		break;
->   	}
-> @@ -732,6 +803,7 @@ LIB_EXPORT struct l_dhcp_server *l_dhcp_server_new(in=
-t ifindex)
->   	server->expired_list =3D l_queue_new();
->   =
-
->   	server->started =3D false;
-> +	server->authoritative =3D true;
->   =
-
->   	server->lease_seconds =3D DEFAULT_DHCP_LEASE_SEC;
->   	server->max_expired =3D MAX_EXPIRED_LEASES;
-> @@ -1053,6 +1125,15 @@ failed:
->   	return false;
+> @@ -420,6 +420,71 @@ static void server_message_init(struct l_dhcp_server=
+ *server,
+>   	reply->ciaddr =3D client_msg->ciaddr;
 >   }
 >   =
 
-> +LIB_EXPORT void l_dhcp_server_set_authoritative(struct l_dhcp_server *se=
-rver,
-> +						bool authoritative)
+> +static bool server_message_send(struct l_dhcp_server *server,
+> +				struct dhcp_message *reply, size_t len,
+> +				uint8_t type)
 > +{
-> +	if (unlikely(!server))
-> +		return;
+> +	uint32_t daddr;
+> +	uint16_t dport;
+> +	const uint8_t *dest_mac;
 > +
-> +	server->authoritative =3D authoritative;
+> +	/*
+> +	 * RFC2131 Section 4.1: "If the 'giaddr' field in a DHCP message from
+> +	 * a client is non-zero, the server sends any return messages to the
+> +	 * 'DHCP server' port on the BOOTP relay agent whose address appears
+> +	 * in 'giaddr'. If the 'giaddr' field is zero and the 'ciaddr' field
+> +	 * is nonzero, then the server unicasts DHCPOFFER and DHCPACK messages
+> +	 * to the address in 'ciaddr'.  If 'giaddr' is zero and 'ciaddr' is
+> +	 * zero, and the broadcast bit is set, then the server broadcasts
+> +	 * DHCPOFFER and DHCPACK messages to 0xffffffff. If the broadcast bit
+> +	 * is not set and 'giaddr' is zero and 'ciaddr' is zero, then the
+> +	 * server unicasts DHCPOFFER and DHCPACK messages to the client's
+> +	 * hardware address and 'yiaddr' address.  In all cases, when 'giaddr'
+> +	 * is zero, the server broadcasts any DHCPNAK messages to 0xffffffff."
+> +	 *
+> +	 * 4.3.2: "If 'giaddr' is set in the DHCPREQUEST message, the client
+> +	 * is on a different subnet.  The server MUST set the broadcast bit in
+> +	 * the DHCPNAK, so that the relay agent will broadcast the DHCPNAK to
+> +	 * the client, because the client may not have a correct network
+> +	 * address or subnet mask, and the client may not be answering ARP
+> +	 * requests."
+> +	 */
+> +	if (reply->giaddr) {
+> +		dport =3D DHCP_PORT_SERVER;
+> +		daddr =3D reply->giaddr;
+> +		dest_mac =3D reply->chaddr;
+> +
+> +		if (type =3D=3D DHCP_MESSAGE_TYPE_NAK)
+> +			reply->flags |=3D L_CPU_TO_BE16(DHCP_FLAG_BROADCAST);
+> +	} else {
+> +		dport =3D DHCP_PORT_CLIENT;
+> +
+> +		if (type =3D=3D DHCP_MESSAGE_TYPE_NAK) {
+> +			daddr =3D 0xffffffff;
+> +			dest_mac =3D MAC_BCAST_ADDR;
+> +		} else if (reply->ciaddr) {
+> +			daddr =3D reply->ciaddr;
+> +			dest_mac =3D reply->chaddr;
+> +		} else if (L_BE16_TO_CPU(reply->flags) & DHCP_FLAG_BROADCAST) {
+> +			daddr =3D 0xffffffff;
+> +			dest_mac =3D MAC_BCAST_ADDR;
+> +		} else {
+> +			daddr =3D reply->yiaddr;
+> +			dest_mac =3D reply->chaddr;
+> +		}
+> +	}
+> +
+> +	if (server->transport->l2_send(server->transport, server->address,
+> +					DHCP_PORT_SERVER, daddr, dport,
+> +					dest_mac, reply, len) < 0) {
+> +		SERVER_DEBUG("Failed to send %s",
+> +				_dhcp_message_type_to_string(type));
+> +		return false;
+> +	}
+> +
+> +	return true;
 > +}
 > +
->   LIB_EXPORT struct l_dhcp_lease *l_dhcp_server_discover(
->   						struct l_dhcp_server *server,
->   						uint32_t requested_ip_opt,
-> diff --git a/ell/dhcp.h b/ell/dhcp.h
-> index 2804c78..830cbb1 100644
-> --- a/ell/dhcp.h
-> +++ b/ell/dhcp.h
-> @@ -141,6 +141,8 @@ bool l_dhcp_server_set_ip_address(struct l_dhcp_serve=
-r *server,
->   bool l_dhcp_server_set_netmask(struct l_dhcp_server *server, const char=
- *mask);
->   bool l_dhcp_server_set_gateway(struct l_dhcp_server *server, const char=
- *ip);
->   bool l_dhcp_server_set_dns(struct l_dhcp_server *server, char **dns);
-> +void l_dhcp_server_set_authoritative(struct l_dhcp_server *server,
-> +					bool authoritative);
+>   static void add_server_options(struct l_dhcp_server *server,
+>   				struct dhcp_message_builder *builder)
+>   {
+> @@ -491,11 +556,7 @@ static void send_offer(struct l_dhcp_server *server,
+>   	SERVER_DEBUG("Sending OFFER of "NIPQUAD_FMT " to "MAC,
+>   			NIPQUAD(reply->yiaddr),	MAC_STR(reply->chaddr));
 >   =
 
->   struct l_dhcp_lease *l_dhcp_server_discover(struct l_dhcp_server *serve=
-r,
->   						uint32_t requested_ip_opt,
-> diff --git a/ell/ell.sym b/ell/ell.sym
-> index 4d41448..3be10dc 100644
-> --- a/ell/ell.sym
-> +++ b/ell/ell.sym
-> @@ -259,6 +259,7 @@ global:
->   	l_dhcp_server_set_netmask;
->   	l_dhcp_server_set_gateway;
->   	l_dhcp_server_set_dns;
-> +	l_dhcp_server_set_authoritative;
->   	l_dhcp_server_discover;
->   	l_dhcp_server_request;
->   	l_dhcp_server_decline;
+> -	if (server->transport->l2_send(server->transport, server->address,
+> -					DHCP_PORT_SERVER,
+> -					reply->ciaddr, DHCP_PORT_CLIENT,
+> -					reply->chaddr, reply, len) < 0)
+> -		SERVER_DEBUG("Failed to send OFFER");
+> +	server_message_send(server, reply, len, DHCP_MESSAGE_TYPE_OFFER);
+>   }
+>   =
+
+>   static void send_inform(struct l_dhcp_server *server,
+> @@ -515,11 +576,7 @@ static void send_inform(struct l_dhcp_server *server,
+>   =
+
+>   	_dhcp_message_builder_finalize(&builder, &len);
+>   =
+
+> -	if (server->transport->l2_send(server->transport, server->address,
+> -					DHCP_PORT_SERVER, reply->ciaddr,
+> -					DHCP_PORT_CLIENT, reply->chaddr,
+> -					reply, len) < 0)
+> -		SERVER_DEBUG("Failed to send INFORM");
+> +	server_message_send(server, reply, len, DHCP_MESSAGE_TYPE_ACK);
+
+Inform?
+
+>   }
+>   =
+
+>   static void send_nak(struct l_dhcp_server *server,
+> @@ -537,11 +594,7 @@ static void send_nak(struct l_dhcp_server *server,
+>   =
+
+>   	_dhcp_message_builder_finalize(&builder, &len);
+>   =
+
+> -	if (server->transport->l2_send(server->transport, server->address,
+> -					DHCP_PORT_SERVER, reply->ciaddr,
+> -					DHCP_PORT_CLIENT, MAC_BCAST_ADDR,
+> -					reply, len) < 0)
+> -		SERVER_DEBUG("Failed to send NACK");
+> +	server_message_send(server, reply, len, DHCP_MESSAGE_TYPE_NAK);
+>   }
+>   =
+
+>   static void send_ack(struct l_dhcp_server *server,
+> @@ -574,13 +627,8 @@ static void send_ack(struct l_dhcp_server *server,
+>   =
+
+>   	SERVER_DEBUG("Sending ACK to "NIPQUAD_FMT, NIPQUAD(reply->yiaddr));
+>   =
+
+> -	if (server->transport->l2_send(server->transport, server->address,
+> -					DHCP_PORT_SERVER, reply->ciaddr,
+> -					DHCP_PORT_CLIENT,
+> -					reply->chaddr, reply, len) < 0) {
+> -		SERVER_DEBUG("Failed to send ACK");
+> +	if (!server_message_send(server, reply, len, DHCP_MESSAGE_TYPE_ACK))
+>   		return;
+> -	}
+>   =
+
+>   	lease =3D add_lease(server, false, reply->chaddr, reply->yiaddr);
+>   =
+
 > =
 
 
 Regards,
 -Denis
---===============4453440214050875174==--
+--===============8698699694889101656==--
 
