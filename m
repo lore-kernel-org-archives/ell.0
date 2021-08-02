@@ -1,235 +1,158 @@
-Content-Type: multipart/mixed; boundary="===============5524569474297963561=="
+Content-Type: multipart/mixed; boundary="===============2034489619966693551=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 14/15] unit: Stricter checks in unit-dhcp
-Date: Mon, 02 Aug 2021 16:04:23 +0200
-Message-ID: <20210802140424.170150-14-andrew.zaborowski@intel.com>
+Subject: [PATCH 15/15] unit: Test DHCP rapid commit
+Date: Mon, 02 Aug 2021 16:04:24 +0200
+Message-ID: <20210802140424.170150-15-andrew.zaborowski@intel.com>
 In-Reply-To: <20210802140424.170150-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============5524569474297963561==
+--===============2034489619966693551==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-When the client state machine is expected to have generated a packet and
-the transport l2_send callback is expected to have filled in
-client_packet/client_packet_len, make sure this has actually happened.
-Without this the test passes with rapid-commit enabled even though the
-code looks like it's requiring 4 messages -- the DHCPDISCOVER is being
-re-sent and the server generates a second DHCPACK.
 ---
- unit/test-dhcp.c | 40 ++++++++++++++++++++++++++++++++++------
- 1 file changed, 34 insertions(+), 6 deletions(-)
+ unit/test-dhcp.c | 34 ++++++++++++++++++++--------------
+ 1 file changed, 20 insertions(+), 14 deletions(-)
 
 diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
-index e03eaca..079f037 100644
+index 079f037..11ee10e 100644
 --- a/unit/test-dhcp.c
 +++ b/unit/test-dhcp.c
-@@ -655,13 +655,17 @@ static bool dhcp_message_compare(const uint8_t *expec=
-ted, size_t expected_len,
- 	return r;
+@@ -823,7 +823,7 @@ static struct l_dhcp_client *client_init(const uint8_t =
+*mac)
  }
  =
 
-+static bool client_send_called =3D false;
-+
- static int fake_transport_send(struct dhcp_transport *transport,
- 				const struct sockaddr_in *dest,
- 				const void *data, size_t len)
- {
- 	assert(len <=3D sizeof(client_packet));
-+	assert(!client_send_called);
- 	memcpy(client_packet, data, len);
- 	client_packet_len =3D len;
-+	client_send_called =3D true;
- =
-
- 	return len;
- }
-@@ -673,8 +677,10 @@ static int fake_transport_l2_send(struct dhcp_transpor=
-t *transprot,
- 					const void *data, size_t len)
- {
- 	assert(len <=3D sizeof(client_packet));
-+	assert(!client_send_called);
- 	memcpy(client_packet, data, len);
- 	client_packet_len =3D len;
-+	client_send_called =3D true;
- =
-
- 	return len;
- }
-@@ -710,16 +716,21 @@ static void test_discover(const void *data)
- =
-
- 	assert(l_dhcp_client_start(client));
- =
-
-+	assert(client_send_called);
-+	client_send_called =3D false;
- 	assert(dhcp_message_compare(discover_data_1, sizeof(discover_data_1),
- 					client_packet, client_packet_len));
- =
-
- 	transport->rx_cb(offer_data_1, sizeof(offer_data_1), client);
- =
-
-+	assert(client_send_called);
-+	client_send_called =3D false;
- 	assert(dhcp_message_compare(request_data_1, sizeof(request_data_1),
- 					client_packet, client_packet_len));
- =
-
- 	event_handler_called =3D false;
- 	transport->rx_cb(ack_data_1, sizeof(ack_data_1), client);
-+	assert(!client_send_called);
- 	assert(event_handler_called);
- =
-
- 	lease =3D l_dhcp_client_get_lease(client);
-@@ -736,6 +747,8 @@ static void test_discover(const void *data)
- 	assert(lease->t2 =3D=3D 0x00012750);
- =
-
- 	l_dhcp_client_destroy(client);
-+	assert(client_send_called);
-+	client_send_called =3D false;
- }
- =
-
- static bool l2_send_called =3D false;
-@@ -749,6 +762,7 @@ static int fake_transport_server_l2_send(struct dhcp_tr=
-ansport *s,
- 					const void *data, size_t len)
- {
- 	assert(len <=3D sizeof(server_packet));
-+	assert(!l2_send_called);
- 	memcpy(server_packet, data, len);
- 	server_packet_len =3D len;
- =
-
-@@ -774,9 +788,11 @@ static void server_event(struct l_dhcp_server *server,
- {
- 	switch (event) {
- 	case L_DHCP_SERVER_EVENT_NEW_LEASE:
-+		assert(!new_client);
- 		new_client =3D l_dhcp_lease_get_address(lease);
- 		break;
- 	case L_DHCP_SERVER_EVENT_LEASE_EXPIRED:
-+		assert(!expired_client);
- 		expired_client =3D l_dhcp_lease_get_address(lease);
- 		break;
- 	}
-@@ -806,15 +822,17 @@ static struct l_dhcp_client *client_init(const uint8_=
-t *mac)
- 	return client;
- }
- =
-
--static bool client_connect(struct l_dhcp_client *client,
-+static void client_connect(struct l_dhcp_client *client,
- 				struct l_dhcp_server *server)
+ static void client_connect(struct l_dhcp_client *client,
+-				struct l_dhcp_server *server)
++				struct l_dhcp_server *server, bool rapid_commit)
  {
  	struct dhcp_transport *srv_transport =3D
  					_dhcp_server_get_transport(server);
- 	struct dhcp_transport *cli_transport =3D
- 					_dhcp_client_get_transport(client);
--	if (!l_dhcp_client_start(client))
--		return false;
-+
-+	assert(l_dhcp_client_start(client));
-+	assert(client_send_called);
-+	client_send_called =3D false;
+@@ -839,15 +839,17 @@ static void client_connect(struct l_dhcp_client *clie=
+nt,
+ 	assert(l2_send_called);
+ 	l2_send_called =3D false;
  =
 
- 	/* RX DISCOVER */
- 	srv_transport->rx_cb(client_packet, client_packet_len, server);
-@@ -823,6 +841,8 @@ static bool client_connect(struct l_dhcp_client *client,
+-	/* RX OFFER */
+-	cli_transport->rx_cb(server_packet, server_packet_len, client);
+-	assert(client_send_called);
+-	client_send_called =3D false;
++	if (!rapid_commit) {
++		/* RX OFFER */
++		cli_transport->rx_cb(server_packet, server_packet_len, client);
++		assert(client_send_called);
++		client_send_called =3D false;
  =
 
- 	/* RX OFFER */
- 	cli_transport->rx_cb(server_packet, server_packet_len, client);
-+	assert(client_send_called);
-+	client_send_called =3D false;
- =
-
- 	/* RX REQUEST */
- 	srv_transport->rx_cb(client_packet, client_packet_len, server);
-@@ -831,10 +851,9 @@ static bool client_connect(struct l_dhcp_client *clien=
-t,
+-	/* RX REQUEST */
+-	srv_transport->rx_cb(client_packet, client_packet_len, server);
+-	assert(l2_send_called);
+-	l2_send_called =3D false;
++		/* RX REQUEST */
++		srv_transport->rx_cb(client_packet, client_packet_len, server);
++		assert(l2_send_called);
++		l2_send_called =3D false;
++	}
  =
 
  	/* RX ACK */
  	cli_transport->rx_cb(server_packet, server_packet_len, client);
-+	assert(!client_send_called);
+@@ -885,6 +887,7 @@ static struct l_dhcp_server *server_init()
  =
 
- 	assert(event_handler_called);
--
--	return true;
- }
+ static void test_complete_run(const void *data)
+ {
++	bool rapid_commit =3D L_PTR_TO_UINT(data);
+ 	static const uint8_t addr1[6] =3D { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
+ 	static const uint8_t addr2[6] =3D { 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c };
+ 	struct dhcp_transport *srv_transport;
+@@ -902,6 +905,7 @@ static void test_complete_run(const void *data)
+ 	char **dns_list;
  =
 
- static struct l_dhcp_server *server_init()
-@@ -941,7 +960,8 @@ static void test_complete_run(const void *data)
- 	l_free(cli_addr);
+ 	server =3D server_init();
++	l_dhcp_server_set_enable_rapid_commit(server, rapid_commit);
  =
 
- 	l_dhcp_client_stop(client1);
--
-+	assert(client_send_called);
-+	client_send_called =3D false;
- 	srv_transport->rx_cb(client_packet, client_packet_len, server);
- 	assert(expired_client);
- 	assert(!strcmp(expired_client, "192.168.1.2"));
-@@ -949,6 +969,8 @@ static void test_complete_run(const void *data)
- 	expired_client =3D NULL;
+ 	assert(l_dhcp_server_set_ip_range(server, "192.168.1.2",
+ 						"192.168.1.100"));
+@@ -910,7 +914,7 @@ static void test_complete_run(const void *data)
  =
 
- 	l_dhcp_client_stop(client2);
-+	assert(client_send_called);
-+	client_send_called =3D false;
- 	srv_transport->rx_cb(client_packet, client_packet_len, server);
- 	assert(expired_client);
- 	assert(!strcmp(expired_client, "192.168.1.3"));
-@@ -956,7 +978,9 @@ static void test_complete_run(const void *data)
- 	expired_client =3D NULL;
+ 	client1 =3D client_init(addr1);
  =
 
- 	l_dhcp_client_destroy(client1);
-+	assert(!client_send_called);
- 	l_dhcp_client_destroy(client2);
-+	assert(!client_send_called);
+-	client_connect(client1, server);
++	client_connect(client1, server, rapid_commit);
  =
 
- 	l_dhcp_server_stop(server);
- 	l_dhcp_server_destroy(server);
-@@ -992,6 +1016,8 @@ static void test_expired_ip_reuse(const void *data)
+ 	cli_lease =3D l_dhcp_client_get_lease(client1);
+ 	assert(cli_lease);
+@@ -943,7 +947,7 @@ static void test_complete_run(const void *data)
+ =
+
+ 	client2 =3D client_init(addr2);
+ =
+
+-	client_connect(client2, server);
++	client_connect(client2, server, rapid_commit);
+ =
+
+ 	cli_lease =3D l_dhcp_client_get_lease(client2);
+ 	assert(cli_lease);
+@@ -999,6 +1003,7 @@ static void test_expired_ip_reuse(const void *data)
+ =
+
+ 	l_dhcp_server_set_ip_range(server, "192.168.1.2", "192.168.1.11");
+ 	_dhcp_server_set_max_expired_clients(server, 10);
++	l_dhcp_server_set_enable_rapid_commit(server, false);
+ =
+
+ 	/*
+ 	 * Connect and release 10 clients, this should max out the expired
+@@ -1011,7 +1016,7 @@ static void test_expired_ip_reuse(const void *data)
+ =
+
+ 		addr[5] =3D i;
+ 		client =3D client_init(addr);
+-		client_connect(client, server);
++		client_connect(client, server, false);
+ 		l_free(new_client);
  		new_client =3D NULL;
  =
 
- 		l_dhcp_client_destroy(client);
-+		assert(client_send_called);
-+		client_send_called =3D false;
- 		srv_transport->rx_cb(client_packet, client_packet_len, server);
- 		l_free(expired_client);
- 		expired_client =3D NULL;
-@@ -1010,6 +1036,8 @@ static void test_expired_ip_reuse(const void *data)
- 	l_free(cli_addr);
+@@ -1025,7 +1030,7 @@ static void test_expired_ip_reuse(const void *data)
  =
 
- 	l_dhcp_client_destroy(client_new);
-+	assert(client_send_called);
-+	client_send_called =3D false;
- 	l_dhcp_server_destroy(server);
- }
+ 	addr[5] =3D i + 1;
+ 	client_new =3D client_init(addr);
+-	client_connect(client_new, server);
++	client_connect(client_new, server, false);
+ 	l_free(new_client);
+ 	new_client =3D NULL;
  =
 
+@@ -1064,7 +1069,8 @@ int main(int argc, char *argv[])
+ =
+
+ 	l_test_add("discover", test_discover, NULL);
+ =
+
+-	l_test_add("complete run", test_complete_run, NULL);
++	l_test_add("complete run", test_complete_run, L_UINT_TO_PTR(false));
++	l_test_add("rapid commit", test_complete_run, L_UINT_TO_PTR(true));
+ 	l_test_add("expired IP reuse", test_expired_ip_reuse, NULL);
+ =
+
+ 	return l_test_run();
 -- =
 
 2.30.2
 
---===============5524569474297963561==--
+--===============2034489619966693551==--
 
