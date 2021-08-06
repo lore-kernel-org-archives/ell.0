@@ -1,139 +1,83 @@
-Content-Type: multipart/mixed; boundary="===============7348261069234028059=="
+Content-Type: multipart/mixed; boundary="===============7449351095771399465=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 2/3] dhcp-server: Validate chaddr against source MAC
-Date: Sat, 07 Aug 2021 01:52:58 +0200
-Message-ID: <20210806235259.304436-2-andrew.zaborowski@intel.com>
-In-Reply-To: <20210806235259.304436-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 1/3] dhcp-server: Fix double free in
+ l_dhcp_server_expire_by_mac
+Date: Sat, 07 Aug 2021 01:52:57 +0200
+Message-ID: <20210806235259.304436-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============7348261069234028059==
+--===============7449351095771399465==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-In DHCP over ethernet -- the only thing we currently support -- the
-chaddr in a DHCP message should always match the client's address, i.e.
-the source address in messages from client to server.  On wifi, where
-the client's frame source can't be easily spoofed, validating chaddr
-may add a little security.  Some other DHCP servers support this too,
-either on or off by default.
+When using l_queue_foreach_remove() on lease_list we can't call
+lease_release() because that will try to do l_queue_remove() on the same
+queue, in addition to all the things we need it to do.
 ---
- ell/dhcp-private.h   |  3 ++-
- ell/dhcp-server.c    |  6 +++++-
- ell/dhcp-transport.c | 16 +++++++++++++---
- ell/dhcp.c           |  3 ++-
- 4 files changed, 22 insertions(+), 6 deletions(-)
+ ell/dhcp-server.c | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
 
-diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
-index 5a09f5e..bc10765 100644
---- a/ell/dhcp-private.h
-+++ b/ell/dhcp-private.h
-@@ -107,7 +107,8 @@ const char *_dhcp_option_to_string(uint8_t option);
- uint16_t _dhcp_checksum(const void *buf, size_t len);
- uint16_t _dhcp_checksumv(const struct iovec *iov, size_t iov_cnt);
- =
-
--typedef void (*dhcp_transport_rx_cb_t)(const void *, size_t, void *);
-+typedef void (*dhcp_transport_rx_cb_t)(const void *, size_t, void *,
-+					const uint8_t *);
- =
-
- struct dhcp_transport {
- 	int (*open)(struct dhcp_transport *s, uint32_t xid);
 diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
-index 84dc41d..05f9b73 100644
+index f92807a..84dc41d 100644
 --- a/ell/dhcp-server.c
 +++ b/ell/dhcp-server.c
-@@ -705,7 +705,8 @@ static void send_ack(struct l_dhcp_server *server,
- 					server->user_data, lease);
- }
+@@ -1418,25 +1418,42 @@ LIB_EXPORT bool l_dhcp_server_lease_remove(struct l=
+_dhcp_server *server,
+ struct dhcp_expire_by_mac_data {
+ 	struct l_dhcp_server *server;
+ 	const uint8_t *mac;
++	unsigned int expired_cnt;
+ };
  =
 
--static void listener_event(const void *data, size_t len, void *user_data)
-+static void listener_event(const void *data, size_t len, void *user_data,
-+				const uint8_t *saddr)
+ static bool dhcp_expire_by_mac(void *data, void *user_data)
  {
- 	struct l_dhcp_server *server =3D user_data;
- 	const struct dhcp_message *message =3D data;
-@@ -722,6 +723,9 @@ static void listener_event(const void *data, size_t len=
-, void *user_data)
+ 	struct l_dhcp_lease *lease =3D data;
+ 	struct dhcp_expire_by_mac_data *expire_data =3D user_data;
++	struct l_dhcp_server *server =3D expire_data->server;
  =
 
- 	SERVER_DEBUG("");
- =
-
-+	if (saddr && memcmp(saddr, message->chaddr, ETH_ALEN))
-+		return;
-+
- 	if (!_dhcp_message_iter_init(&iter, message, len))
- 		return;
- =
-
-diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
-index 68108e2..7c73fee 100644
---- a/ell/dhcp-transport.c
-+++ b/ell/dhcp-transport.c
-@@ -111,8 +111,11 @@ static bool _dhcp_default_transport_read_handler(struc=
-t l_io *io,
- 	ssize_t len;
- 	struct dhcp_packet *p;
- 	uint16_t c;
-+	struct sockaddr_ll saddr;
-+	socklen_t saddr_len =3D sizeof(saddr);
- =
-
--	len =3D read(fd, buf, sizeof(buf));
-+	len =3D recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *) &saddr,
-+			&saddr_len);
- 	if (len < 0)
+ 	if (!match_lease_mac(lease, expire_data->mac))
  		return false;
  =
 
-@@ -148,8 +151,15 @@ static bool _dhcp_default_transport_read_handler(struc=
-t l_io *io,
- =
-
- 	len -=3D sizeof(struct udphdr) - sizeof(struct iphdr);
- =
-
--	if (transport->super.rx_cb)
--		transport->super.rx_cb(&p->dhcp, len, transport->super.rx_data);
-+	if (transport->super.rx_cb) {
-+		const uint8_t *src_mac =3D NULL;
+-	lease_release(expire_data->server, lease);
++	if (server->event_handler)
++		server->event_handler(server, L_DHCP_SERVER_EVENT_LEASE_EXPIRED,
++					server->user_data, lease);
 +
-+		if (saddr_len >=3D sizeof(saddr) && saddr.sll_halen =3D=3D ETH_ALEN)
-+			src_mac =3D saddr.sll_addr;
++	if (!lease->offering) {
++		if (l_queue_length(server->expired_list) > server->max_expired)
++			_dhcp_lease_free(l_queue_pop_head(server->expired_list));
 +
-+		transport->super.rx_cb(&p->dhcp, len, transport->super.rx_data,
-+					src_mac);
-+	}
- =
-
++		l_queue_push_tail(server->expired_list, lease);
++	} else
++		_dhcp_lease_free(lease);
++
++	expire_data->expired_cnt++;
  	return true;
  }
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index 2efbf39..32e4a7c 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -775,7 +775,8 @@ static int dhcp_client_receive_offer(struct l_dhcp_clie=
-nt *client,
- 	return 0;
- }
  =
 
--static void dhcp_client_rx_message(const void *data, size_t len, void *use=
-rdata)
-+static void dhcp_client_rx_message(const void *data, size_t len, void *use=
-rdata,
-+					const uint8_t *saddr)
+ LIB_EXPORT void l_dhcp_server_expire_by_mac(struct l_dhcp_server *server,
+ 						const uint8_t *mac)
  {
- 	struct l_dhcp_client *client =3D userdata;
- 	const struct dhcp_message *message =3D data;
+-	struct dhcp_expire_by_mac_data expire_data =3D { server, mac };
++	struct dhcp_expire_by_mac_data expire_data =3D { server, mac, 0 };
+ =
+
+ 	l_queue_foreach_remove(server->lease_list, dhcp_expire_by_mac,
+ 				&expire_data);
++
++	if (expire_data.expired_cnt)
++		set_next_expire_timer(server, NULL);
+ }
 -- =
 
 2.30.2
 
---===============7348261069234028059==--
+--===============7449351095771399465==--
 
