@@ -1,55 +1,139 @@
-Content-Type: multipart/mixed; boundary="===============0869701302211503316=="
+Content-Type: multipart/mixed; boundary="===============7348261069234028059=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 01/15] dhcp-server: Add "authoritative" mode
-Date: Mon, 02 Aug 2021 13:15:17 -0500
-Message-ID: <536c4a41-b0dd-6ba7-8097-a93e8164a398@gmail.com>
-In-Reply-To: <20210802140424.170150-1-andrew.zaborowski@intel.com>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Subject: [PATCH 2/3] dhcp-server: Validate chaddr against source MAC
+Date: Sat, 07 Aug 2021 01:52:58 +0200
+Message-ID: <20210806235259.304436-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20210806235259.304436-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============0869701302211503316==
+--===============7348261069234028059==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+In DHCP over ethernet -- the only thing we currently support -- the
+chaddr in a DHCP message should always match the client's address, i.e.
+the source address in messages from client to server.  On wifi, where
+the client's frame source can't be easily spoofed, validating chaddr
+may add a little security.  Some other DHCP servers support this too,
+either on or off by default.
+---
+ ell/dhcp-private.h   |  3 ++-
+ ell/dhcp-server.c    |  6 +++++-
+ ell/dhcp-transport.c | 16 +++++++++++++---
+ ell/dhcp.c           |  3 ++-
+ 4 files changed, 22 insertions(+), 6 deletions(-)
 
-On 8/2/21 9:04 AM, Andrew Zaborowski wrote:
-> An authoritative DHCP server basically assumes that there are no other
-> DHCP servers on the network and replies to DHCPREQUEST messages
-> requesting IPs from outside of its subnet or with a wrong server ID
-> value.  This speeds up connections from clients who try to use IP
-> leases they have cached from other networks and who start their IP
-> configuration by trying DHCPREQUESTs for those leases.
-> =
+diff --git a/ell/dhcp-private.h b/ell/dhcp-private.h
+index 5a09f5e..bc10765 100644
+--- a/ell/dhcp-private.h
++++ b/ell/dhcp-private.h
+@@ -107,7 +107,8 @@ const char *_dhcp_option_to_string(uint8_t option);
+ uint16_t _dhcp_checksum(const void *buf, size_t len);
+ uint16_t _dhcp_checksumv(const struct iovec *iov, size_t iov_cnt);
+ =
 
-> The term is not defined in the DHCP standard but is used by various
-> implementations.  Default to authoritative being true.  When set to
-> false, handle a DHCPREQUEST message directed at other servers by taking
-> it as meaning the client is declining our own lease offer as mandated
-> by RFC 2131 on page 16.
-> =
+-typedef void (*dhcp_transport_rx_cb_t)(const void *, size_t, void *);
++typedef void (*dhcp_transport_rx_cb_t)(const void *, size_t, void *,
++					const uint8_t *);
+ =
 
-> Refactor the checks in DHCPREQUEST handling quoting parts of the RFC.
-> The new checks are stricter and I'm not preserving some of the checks
-> that didn't seem justified, for example in the
-> "if (server_id_opt || !lease) ... send_nak()" block it didn't seem to
-> make sense to only reply to clients who have no lease (offered or
-> active) and ignore those who do have a lease with a different IP
-> address, the opposite would make more sense.
-> ---
->   ell/dhcp-server.c | 117 +++++++++++++++++++++++++++++++++++++++-------
->   ell/dhcp.h        |   2 +
->   ell/ell.sym       |   1 +
->   3 files changed, 103 insertions(+), 17 deletions(-)
-> =
+ struct dhcp_transport {
+ 	int (*open)(struct dhcp_transport *s, uint32_t xid);
+diff --git a/ell/dhcp-server.c b/ell/dhcp-server.c
+index 84dc41d..05f9b73 100644
+--- a/ell/dhcp-server.c
++++ b/ell/dhcp-server.c
+@@ -705,7 +705,8 @@ static void send_ack(struct l_dhcp_server *server,
+ 					server->user_data, lease);
+ }
+ =
 
+-static void listener_event(const void *data, size_t len, void *user_data)
++static void listener_event(const void *data, size_t len, void *user_data,
++				const uint8_t *saddr)
+ {
+ 	struct l_dhcp_server *server =3D user_data;
+ 	const struct dhcp_message *message =3D data;
+@@ -722,6 +723,9 @@ static void listener_event(const void *data, size_t len=
+, void *user_data)
+ =
 
-All applied, thanks.
+ 	SERVER_DEBUG("");
+ =
 
-Regards,
--Denis
++	if (saddr && memcmp(saddr, message->chaddr, ETH_ALEN))
++		return;
++
+ 	if (!_dhcp_message_iter_init(&iter, message, len))
+ 		return;
+ =
 
---===============0869701302211503316==--
+diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
+index 68108e2..7c73fee 100644
+--- a/ell/dhcp-transport.c
++++ b/ell/dhcp-transport.c
+@@ -111,8 +111,11 @@ static bool _dhcp_default_transport_read_handler(struc=
+t l_io *io,
+ 	ssize_t len;
+ 	struct dhcp_packet *p;
+ 	uint16_t c;
++	struct sockaddr_ll saddr;
++	socklen_t saddr_len =3D sizeof(saddr);
+ =
+
+-	len =3D read(fd, buf, sizeof(buf));
++	len =3D recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *) &saddr,
++			&saddr_len);
+ 	if (len < 0)
+ 		return false;
+ =
+
+@@ -148,8 +151,15 @@ static bool _dhcp_default_transport_read_handler(struc=
+t l_io *io,
+ =
+
+ 	len -=3D sizeof(struct udphdr) - sizeof(struct iphdr);
+ =
+
+-	if (transport->super.rx_cb)
+-		transport->super.rx_cb(&p->dhcp, len, transport->super.rx_data);
++	if (transport->super.rx_cb) {
++		const uint8_t *src_mac =3D NULL;
++
++		if (saddr_len >=3D sizeof(saddr) && saddr.sll_halen =3D=3D ETH_ALEN)
++			src_mac =3D saddr.sll_addr;
++
++		transport->super.rx_cb(&p->dhcp, len, transport->super.rx_data,
++					src_mac);
++	}
+ =
+
+ 	return true;
+ }
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index 2efbf39..32e4a7c 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -775,7 +775,8 @@ static int dhcp_client_receive_offer(struct l_dhcp_clie=
+nt *client,
+ 	return 0;
+ }
+ =
+
+-static void dhcp_client_rx_message(const void *data, size_t len, void *use=
+rdata)
++static void dhcp_client_rx_message(const void *data, size_t len, void *use=
+rdata,
++					const uint8_t *saddr)
+ {
+ 	struct l_dhcp_client *client =3D userdata;
+ 	const struct dhcp_message *message =3D data;
+-- =
+
+2.30.2
+
+--===============7348261069234028059==--
 
