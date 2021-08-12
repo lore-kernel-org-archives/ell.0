@@ -1,127 +1,185 @@
-Content-Type: multipart/mixed; boundary="===============3197223215295230263=="
+Content-Type: multipart/mixed; boundary="===============6011562806430737815=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 3/3] unit: In test-dhcp update rx callback parameters
-Date: Sat, 07 Aug 2021 01:52:59 +0200
-Message-ID: <20210806235259.304436-3-andrew.zaborowski@intel.com>
-In-Reply-To: <20210806235259.304436-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/4] dhcp: Add some setters for struct l_dhcp_lease
+Date: Thu, 12 Aug 2021 22:51:10 +0200
+Message-ID: <20210812205112.86584-2-andrew.zaborowski@intel.com>
+In-Reply-To: <20210812205112.86584-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3197223215295230263==
+--===============6011562806430737815==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-dhcp.c | 25 ++++++++++++++++---------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+ ell/dhcp-lease.c | 107 +++++++++++++++++++++++++++++++++++++++++++++++
+ ell/dhcp.h       |   8 ++++
+ ell/ell.sym      |   6 +++
+ 3 files changed, 121 insertions(+)
 
-diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
-index 11ee10e..e502be7 100644
---- a/unit/test-dhcp.c
-+++ b/unit/test-dhcp.c
-@@ -721,7 +721,7 @@ static void test_discover(const void *data)
- 	assert(dhcp_message_compare(discover_data_1, sizeof(discover_data_1),
- 					client_packet, client_packet_len));
+diff --git a/ell/dhcp-lease.c b/ell/dhcp-lease.c
+index a28a3f3..40dba83 100644
+--- a/ell/dhcp-lease.c
++++ b/ell/dhcp-lease.c
+@@ -300,3 +300,110 @@ LIB_EXPORT const uint8_t *l_dhcp_lease_get_mac(const =
+struct l_dhcp_lease *lease)
  =
 
--	transport->rx_cb(offer_data_1, sizeof(offer_data_1), client);
-+	transport->rx_cb(offer_data_1, sizeof(offer_data_1), client, NULL);
+ 	return lease->mac;
+ }
++
++LIB_EXPORT bool l_dhcp_lease_set_address(struct l_dhcp_lease *lease,
++						const char *address_str)
++{
++	struct in_addr in_addr;
++
++	if (unlikely(!lease || !address_str))
++		return false;
++
++	if (unlikely(inet_pton(AF_INET, address_str, &in_addr) !=3D 1))
++		return false;
++
++	lease->address =3D in_addr.s_addr;
++	return true;
++}
++
++LIB_EXPORT bool l_dhcp_lease_set_gateway(struct l_dhcp_lease *lease,
++						const char *gateway_str)
++{
++	struct in_addr in_addr;
++
++	if (unlikely(!lease))
++		return false;
++
++	if (!gateway_str) {
++		lease->router =3D 0;
++		return true;
++	}
++
++	if (unlikely(inet_pton(AF_INET, gateway_str, &in_addr) !=3D 1))
++		return false;
++
++	lease->router =3D in_addr.s_addr;
++	return true;
++}
++
++LIB_EXPORT bool l_dhcp_lease_set_mac(struct l_dhcp_lease *lease,
++					const uint8_t *mac)
++{
++	if (unlikely(!lease || !mac))
++		return false;
++
++	memcpy(lease->mac, mac, 6);
++	return true;
++}
++
++LIB_EXPORT bool l_dhcp_lease_set_dns(struct l_dhcp_lease *lease,
++					const char **dns_str_list)
++{
++	unsigned int n;
++	L_AUTO_FREE_VAR(uint32_t *, new_list) =3D NULL;
++
++	if (unlikely(!lease))
++		return false;
++
++	if (!dns_str_list) {
++		l_free(l_steal_ptr(lease->dns));
++		return true;
++	}
++
++	for (n =3D 0; dns_str_list[n]; n++);
++	new_list =3D l_new(uint32_t, n + 1);
++
++	for (n =3D 0; dns_str_list[n]; n++) {
++		struct in_addr in_addr;
++
++		if (unlikely(inet_pton(AF_INET, dns_str_list[n],
++					&in_addr) !=3D 1))
++			return false;
++
++		new_list[n] =3D in_addr.s_addr;
++	}
++
++	l_free(lease->dns);
++	lease->dns =3D l_steal_ptr(new_list);
++	return true;
++}
++
++LIB_EXPORT bool l_dhcp_lease_set_lifetime(struct l_dhcp_lease *lease,
++						uint32_t lifetime)
++{
++	if (unlikely(!lease))
++		return false;
++
++	lease->lifetime =3D lifetime;
++	return true;
++}
++
++LIB_EXPORT bool l_dhcp_lease_set_server_id(struct l_dhcp_lease *lease,
++						const char *server_id_str)
++{
++	struct in_addr in_addr;
++
++	if (unlikely(!lease))
++		return false;
++
++	if (!server_id_str) {
++		lease->server_address =3D 0;
++		return true;
++	}
++
++	if (unlikely(inet_pton(AF_INET, server_id_str, &in_addr) !=3D 1))
++		return false;
++
++	lease->server_address =3D in_addr.s_addr;
++	return true;
++}
+diff --git a/ell/dhcp.h b/ell/dhcp.h
+index 4f18f01..4406cd2 100644
+--- a/ell/dhcp.h
++++ b/ell/dhcp.h
+@@ -120,6 +120,14 @@ uint32_t l_dhcp_lease_get_t1(const struct l_dhcp_lease=
+ *lease);
+ uint32_t l_dhcp_lease_get_t2(const struct l_dhcp_lease *lease);
+ uint32_t l_dhcp_lease_get_lifetime(const struct l_dhcp_lease *lease);
  =
 
- 	assert(client_send_called);
- 	client_send_called =3D false;
-@@ -729,7 +729,7 @@ static void test_discover(const void *data)
- 					client_packet, client_packet_len));
- =
-
- 	event_handler_called =3D false;
--	transport->rx_cb(ack_data_1, sizeof(ack_data_1), client);
-+	transport->rx_cb(ack_data_1, sizeof(ack_data_1), client, NULL);
- 	assert(!client_send_called);
- 	assert(event_handler_called);
- =
-
-@@ -829,30 +829,36 @@ static void client_connect(struct l_dhcp_client *clie=
-nt,
- 					_dhcp_server_get_transport(server);
- 	struct dhcp_transport *cli_transport =3D
- 					_dhcp_client_get_transport(client);
-+	uint8_t cli_addr[ETH_ALEN];
-+	const struct dhcp_message *msg =3D (struct dhcp_message *) client_packet;
- =
-
- 	assert(l_dhcp_client_start(client));
- 	assert(client_send_called);
- 	client_send_called =3D false;
-+	memcpy(cli_addr, msg->chaddr, ETH_ALEN);
- =
-
- 	/* RX DISCOVER */
--	srv_transport->rx_cb(client_packet, client_packet_len, server);
-+	srv_transport->rx_cb(client_packet, client_packet_len, server,
-+				cli_addr);
- 	assert(l2_send_called);
- 	l2_send_called =3D false;
- =
-
- 	if (!rapid_commit) {
- 		/* RX OFFER */
--		cli_transport->rx_cb(server_packet, server_packet_len, client);
-+		cli_transport->rx_cb(server_packet, server_packet_len, client,
-+					NULL);
- 		assert(client_send_called);
- 		client_send_called =3D false;
- =
-
- 		/* RX REQUEST */
--		srv_transport->rx_cb(client_packet, client_packet_len, server);
-+		srv_transport->rx_cb(client_packet, client_packet_len, server,
-+					cli_addr);
- 		assert(l2_send_called);
- 		l2_send_called =3D false;
- 	}
- =
-
- 	/* RX ACK */
--	cli_transport->rx_cb(server_packet, server_packet_len, client);
-+	cli_transport->rx_cb(server_packet, server_packet_len, client, NULL);
- 	assert(!client_send_called);
- =
-
- 	assert(event_handler_called);
-@@ -966,7 +972,7 @@ static void test_complete_run(const void *data)
- 	l_dhcp_client_stop(client1);
- 	assert(client_send_called);
- 	client_send_called =3D false;
--	srv_transport->rx_cb(client_packet, client_packet_len, server);
-+	srv_transport->rx_cb(client_packet, client_packet_len, server, addr1);
- 	assert(expired_client);
- 	assert(!strcmp(expired_client, "192.168.1.2"));
- 	l_free(expired_client);
-@@ -975,7 +981,7 @@ static void test_complete_run(const void *data)
- 	l_dhcp_client_stop(client2);
- 	assert(client_send_called);
- 	client_send_called =3D false;
--	srv_transport->rx_cb(client_packet, client_packet_len, server);
-+	srv_transport->rx_cb(client_packet, client_packet_len, server, addr2);
- 	assert(expired_client);
- 	assert(!strcmp(expired_client, "192.168.1.3"));
- 	l_free(expired_client);
-@@ -1023,7 +1029,8 @@ static void test_expired_ip_reuse(const void *data)
- 		l_dhcp_client_destroy(client);
- 		assert(client_send_called);
- 		client_send_called =3D false;
--		srv_transport->rx_cb(client_packet, client_packet_len, server);
-+		srv_transport->rx_cb(client_packet, client_packet_len, server,
-+					addr);
- 		l_free(expired_client);
- 		expired_client =3D NULL;
- 	}
++bool l_dhcp_lease_set_address(struct l_dhcp_lease *lease, const char *addr=
+ess);
++bool l_dhcp_lease_set_gateway(struct l_dhcp_lease *lease, const char *gate=
+way);
++bool l_dhcp_lease_set_mac(struct l_dhcp_lease *lease, const uint8_t *mac);
++bool l_dhcp_lease_set_dns(struct l_dhcp_lease *lease, const char **dns);
++bool l_dhcp_lease_set_lifetime(struct l_dhcp_lease *lease, uint32_t lifeti=
+me);
++bool l_dhcp_lease_set_server_id(struct l_dhcp_lease *lease,
++				const char *address);
++
+ struct l_dhcp_server *l_dhcp_server_new(int ifindex);
+ void l_dhcp_server_destroy(struct l_dhcp_server *server);
+ bool l_dhcp_server_start(struct l_dhcp_server *server);
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 66ebf46..f96a52d 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -236,6 +236,12 @@ global:
+ 	l_dhcp_lease_get_t1;
+ 	l_dhcp_lease_get_t2;
+ 	l_dhcp_lease_get_lifetime;
++	l_dhcp_lease_set_address;
++	l_dhcp_lease_set_gateway;
++	l_dhcp_lease_set_mac;
++	l_dhcp_lease_set_dns;
++	l_dhcp_lease_set_lifetime;
++	l_dhcp_lease_set_server_id;
+ 	l_dhcp_client_new;
+ 	l_dhcp_client_destroy;
+ 	l_dhcp_client_add_request_option;
 -- =
 
 2.30.2
 
---===============3197223215295230263==--
+--===============6011562806430737815==--
 
