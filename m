@@ -1,60 +1,35 @@
-Content-Type: multipart/mixed; boundary="===============1921208907639953004=="
+Content-Type: multipart/mixed; boundary="===============4039098746356516653=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-Subject: [PATCH 4/4] dhcp: Optimize dhcp_client_address_add sligtly
-Date: Thu, 12 Aug 2021 22:51:12 +0200
-Message-ID: <20210812205112.86584-4-andrew.zaborowski@intel.com>
-In-Reply-To: <20210812205112.86584-1-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+Subject: Re: [PATCH 1/3] dhcp-server: Fix double free in
+ l_dhcp_server_expire_by_mac
+Date: Thu, 12 Aug 2021 20:27:34 -0500
+Message-ID: <69337569-fa53-f3be-90df-63962b2c00b5@gmail.com>
+In-Reply-To: <20210806235259.304436-1-andrew.zaborowski@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============1921208907639953004==
+--===============4039098746356516653==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Don't allocate/build a netmask string when we can use
-client->lease->subnet_mask directly -- we access client->lease fields
-directly in most of this file.
----
- ell/dhcp.c | 13 ++-----------
- 1 file changed, 2 insertions(+), 11 deletions(-)
+Hi Andrew,
 
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index 49398d5..7878f0c 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -685,22 +685,13 @@ static void dhcp_client_address_add_cb(int error, uin=
-t16_t type,
- =
+On 8/6/21 6:52 PM, Andrew Zaborowski wrote:
+> When using l_queue_foreach_remove() on lease_list we can't call
+> lease_release() because that will try to do l_queue_remove() on the same
+> queue, in addition to all the things we need it to do.
+> ---
+>   ell/dhcp-server.c | 21 +++++++++++++++++++--
+>   1 file changed, 19 insertions(+), 2 deletions(-)
+> =
 
- static void dhcp_client_address_add(struct l_dhcp_client *client)
- {
--	struct l_rtnl_address *a;
- 	L_AUTO_FREE_VAR(char *, ip) =3D l_dhcp_lease_get_address(client->lease);
--	uint8_t prefix_len;
-+	uint8_t prefix_len =3D __builtin_popcountl(client->lease->subnet_mask);
-+	struct l_rtnl_address *a =3D l_rtnl_address_new(ip, prefix_len);
- 	uint32_t l =3D l_dhcp_lease_get_lifetime(client->lease);
--	L_AUTO_FREE_VAR(char *, netmask) =3D
--			l_dhcp_lease_get_netmask(client->lease);
- 	L_AUTO_FREE_VAR(char *, broadcast) =3D
- 			l_dhcp_lease_get_broadcast(client->lease);
--	struct in_addr in_addr;
- =
 
--	if (inet_pton(AF_INET, netmask, &in_addr) > 0)
--		prefix_len =3D __builtin_popcountl(in_addr.s_addr);
--	else
--		prefix_len =3D 24;
--
--	a =3D l_rtnl_address_new(ip, prefix_len);
- 	l_rtnl_address_set_noprefixroute(a, true);
- 	l_rtnl_address_set_lifetimes(a, l, l);
- 	l_rtnl_address_set_broadcast(a, broadcast);
--- =
+All applied, thanks.
 
-2.30.2
+Regards,
+-Denis
 
---===============1921208907639953004==--
+--===============4039098746356516653==--
 
