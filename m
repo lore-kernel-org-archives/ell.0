@@ -1,69 +1,68 @@
-Content-Type: multipart/mixed; boundary="===============8833252518554955050=="
+Content-Type: multipart/mixed; boundary="===============3849278260834037128=="
 MIME-Version: 1.0
 From: Sergei Trofimovich <slyich@gmail.com>
-Subject: [PATCH 1/2] unit/test-cipher: always report local ciphers as supported
-Date: Mon, 30 Aug 2021 15:08:45 +0100
-Message-ID: <20210830140846.4096201-1-slyich@gmail.com>
+Subject: [PATCH 2/2] unit/test-uuid: skip tests on system without AF_ALG
+ support
+Date: Mon, 30 Aug 2021 15:08:46 +0100
+Message-ID: <20210830140846.4096201-2-slyich@gmail.com>
+In-Reply-To: <20210830140846.4096201-1-slyich@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============8833252518554955050==
+--===============3849278260834037128==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Fixes test failure on system with CONFIG_CRYPTO_USER_API=3Dn kernel:
 
-    FAIL: unit/test-cipher
-    =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+    FAIL: unit/test-uuid
+    =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
 
-    test-cipher: unit/test-cipher.c:124:
-      test_arc4: Assertion `l_cipher_is_supported(L_CIPHER_ARC4)' failed.
-    FAIL unit/test-cipher (exit status: 134)
+    test-uuid: unit/test-uuid.c:58: test_v3: Assertion `r' failed.
+    FAIL unit/test-uuid (exit status: 134)
 
 Lack of AF_ALG family is the result of CONFIG_CRYPTO_USER_API=3Dn.
 
-The change moved supported ciphed detection before AF_ALG socket
-creation attempt.
+The change moved supported ciphed detection under respective
+cipher detection presence: MD5 for v3 UUID, SHA1 for v5 UUID.
 
 Signed-off-by: Sergei Trofimovich <slyich@gmail.com>
 ---
- ell/cipher.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ unit/test-uuid.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/ell/cipher.c b/ell/cipher.c
-index 0d10394..866fdb5 100644
---- a/ell/cipher.c
-+++ b/ell/cipher.c
-@@ -677,6 +677,10 @@ static void init_supported()
+diff --git a/unit/test-uuid.c b/unit/test-uuid.c
+index e9943b3..4e183b1 100644
+--- a/unit/test-uuid.c
++++ b/unit/test-uuid.c
+@@ -227,13 +227,16 @@ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
  =
 
- 	initialized =3D true;
+-	l_test_add("/uuid/v3", test_v3, NULL);
++	if (l_checksum_is_supported(L_CHECKSUM_MD5, false))
++		l_test_add("/uuid/v3", test_v3, NULL);
  =
 
-+	for (c =3D 0; c < L_ARRAY_SIZE(local_impl_ciphers); c++)
-+		if (HAVE_LOCAL_IMPLEMENTATION(c))
-+			supported_ciphers |=3D 1 << c;
-+
- 	sk =3D socket(PF_ALG, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
- 	if (sk < 0)
- 		return;
-@@ -698,10 +702,6 @@ static void init_supported()
- 		supported_ciphers |=3D 1 << c;
- 	}
+ 	if (l_getrandom_is_supported())
+ 		l_test_add("/uuid/v4", test_v4, NULL);
  =
 
--	for (c =3D 0; c < L_ARRAY_SIZE(local_impl_ciphers); c++)
--		if (HAVE_LOCAL_IMPLEMENTATION(c))
--			supported_ciphers |=3D 1 << c;
--
- 	strcpy((char *) salg.salg_type, "aead");
- =
-
- 	for (a =3D L_AEAD_CIPHER_AES_CCM; a <=3D L_AEAD_CIPHER_AES_GCM; a++) {
+-	l_test_add("/uuid/v5", test_v5, NULL);
+-	l_test_add("/uuid/to string", test_to_string, NULL);
++	if (l_checksum_is_supported(L_CHECKSUM_SHA1, false)) {
++		l_test_add("/uuid/v5", test_v5, NULL);
++		l_test_add("/uuid/to string", test_to_string, NULL);
++	}
+ 	l_test_add("/uuid/from string", test_from_string, NULL);
+ 	l_test_add("/uuid/from string/too short", test_from_string_too_short, NUL=
+L);
+ 	l_test_add("/uuid/from string/too long", test_from_string_too_long, NULL);
 -- =
 
 2.33.0
 
---===============8833252518554955050==--
+--===============3849278260834037128==--
 
