@@ -1,34 +1,54 @@
-Content-Type: multipart/mixed; boundary="===============6255068550525496546=="
+Content-Type: multipart/mixed; boundary="===============3220813507023947774=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH] dhcp-server: Fill in DNS info in lease objects
-Date: Tue, 31 Aug 2021 08:26:28 -0500
-Message-ID: <4d4e975f-133a-360c-4f0d-b23f47530c6c@gmail.com>
-In-Reply-To: <20210828030632.28287-1-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 1/2] unit/test-cipher: always report local ciphers as
+ supported
+Date: Tue, 31 Aug 2021 08:33:33 -0500
+Message-ID: <4cc37873-71c5-5f1f-8635-570e6e9dc660@gmail.com>
+In-Reply-To: <20210830140846.4096201-1-slyich@gmail.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============6255068550525496546==
+--===============3220813507023947774==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+On 8/30/21 9:08 AM, Sergei Trofimovich wrote:
+> Fixes test failure on system with CONFIG_CRYPTO_USER_API=3Dn kernel:
+> =
 
-On 8/27/21 10:06 PM, Andrew Zaborowski wrote:
-> Copy the DNS info that we send to the client also to the lease object
-> that we keep on our side for our own tracking, same as we copy the IP,
-> the gateway, the netmask etc.
+>      FAIL: unit/test-cipher
+>      =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> =
+
+>      test-cipher: unit/test-cipher.c:124:
+>        test_arc4: Assertion `l_cipher_is_supported(L_CIPHER_ARC4)' failed.
+>      FAIL unit/test-cipher (exit status: 134)
+> =
+
+> Lack of AF_ALG family is the result of CONFIG_CRYPTO_USER_API=3Dn.
+> =
+
+> The change moved supported ciphed detection before AF_ALG socket
+> creation attempt.
+> =
+
+> Signed-off-by: Sergei Trofimovich <slyich@gmail.com>
 > ---
->   ell/dhcp-server.c | 7 +++++++
->   1 file changed, 7 insertions(+)
+>   ell/cipher.c | 8 ++++----
+>   1 file changed, 4 insertions(+), 4 deletions(-)
 > =
 
 
-Applied, thanks.
+Both applied, thanks.  I did add an extra line in patch 2 for coding style =
+
+purposes and reworded the commit headers slightly.  Also removed Signed-off=
+-by =
+
+lines since we do not use them in ell.
 
 Regards,
 -Denis
-
---===============6255068550525496546==--
+--===============3220813507023947774==--
 
