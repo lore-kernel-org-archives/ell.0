@@ -1,54 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============3220813507023947774=="
+Content-Type: multipart/mixed; boundary="===============2358295181929959459=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz@gmail.com>
-Subject: Re: [PATCH 1/2] unit/test-cipher: always report local ciphers as
- supported
-Date: Tue, 31 Aug 2021 08:33:33 -0500
-Message-ID: <4cc37873-71c5-5f1f-8635-570e6e9dc660@gmail.com>
-In-Reply-To: <20210830140846.4096201-1-slyich@gmail.com>
+From: Inga Stotland <inga.stotland@intel.com>
+Subject: [PATCH] cipher: Allow zero byte input for AEAD cipher
+Date: Fri, 10 Sep 2021 15:24:32 -0700
+Message-ID: <20210910222432.26046-1-inga.stotland@intel.com>
 List-Id: <ell.lists.01.org>
 To: ell@lists.01.org
 
---===============3220813507023947774==
+--===============2358295181929959459==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On 8/30/21 9:08 AM, Sergei Trofimovich wrote:
-> Fixes test failure on system with CONFIG_CRYPTO_USER_API=3Dn kernel:
-> =
+For AEAD-based cipher, either the plaintext or the associated
+data may contain zero bytes.
 
->      FAIL: unit/test-cipher
->      =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> =
+Add extra checks to disallow combinations of NULL input data and
+nonzero data length.
+---
+ ell/cipher.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
->      test-cipher: unit/test-cipher.c:124:
->        test_arc4: Assertion `l_cipher_is_supported(L_CIPHER_ARC4)' failed.
->      FAIL unit/test-cipher (exit status: 134)
-> =
+diff --git a/ell/cipher.c b/ell/cipher.c
+index 866fdb5..6b8528c 100644
+--- a/ell/cipher.c
++++ b/ell/cipher.c
+@@ -607,7 +607,10 @@ LIB_EXPORT bool l_aead_cipher_encrypt(struct l_aead_ci=
+pher *cipher,
+ 	if (unlikely(!cipher))
+ 		return false;
+ =
 
-> Lack of AF_ALG family is the result of CONFIG_CRYPTO_USER_API=3Dn.
-> =
+-	if (unlikely(!in) || unlikely(!out))
++	if (unlikely(!in && !ad) || unlikely(!out))
++		return false;
++
++	if (unlikely(!in && in_len) || unlikely(!ad && ad_len))
+ 		return false;
+ =
 
-> The change moved supported ciphed detection before AF_ALG socket
-> creation attempt.
-> =
+ 	if (cipher->type =3D=3D L_AEAD_CIPHER_AES_CCM) {
+-- =
 
-> Signed-off-by: Sergei Trofimovich <slyich@gmail.com>
-> ---
->   ell/cipher.c | 8 ++++----
->   1 file changed, 4 insertions(+), 4 deletions(-)
-> =
+2.31.1
 
-
-Both applied, thanks.  I did add an extra line in patch 2 for coding style =
-
-purposes and reworded the commit headers slightly.  Also removed Signed-off=
--by =
-
-lines since we do not use them in ell.
-
-Regards,
--Denis
---===============3220813507023947774==--
+--===============2358295181929959459==--
 
