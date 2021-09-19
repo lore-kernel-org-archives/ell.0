@@ -1,133 +1,104 @@
-Content-Type: multipart/mixed; boundary="===============2359433328197034566=="
+Content-Type: multipart/mixed; boundary="===============5099374182609926601=="
 MIME-Version: 1.0
-From: wen zhang <zhw2101024 at gmail.com>
+From: Simon Maurer <mail at maurer.systems>
 To: ell at lists.01.org
-Subject: [PATCH]run unit tests on both OpenSSL-1.x and OpenSSL-3.x
-Date: Tue, 29 Mar 2022 13:09:24 +0800
-Message-ID: <CAKjfnjruDgyK0EB4RtqXoHy6CR2SU=iTt11UmfDtGw4AfDZhMw@mail.gmail.com>
+Subject: [PATCH] signal: pass signalfd_siginfo to notify callback
+Date: Sun, 19 Sep 2021 15:00:24 +0000
+Message-ID: <67176274-9e4e-6a4d-a0b5-22b2a8acf90d@maurer.systems>
 
---===============2359433328197034566==
+--===============5099374182609926601==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Some unit tests are breaking on systems with OpenSSL 3.x.
-This patch detects the OpenSSL version, then if we are building Ell on
-OpenSSL 3.x, the legacy module options will be appended to openssl commands.
+Warning: breaks API/ABI of ell signal, but signalfd_siginfo contains a =
 
---===============2359433328197034566==
-Content-Type: text/html
-MIME-Version: 1.0
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="attachment.htm"
+lot of useful information
+---
+  ell/main.c   | 4 ++--
+  ell/signal.c | 6 +++---
+  ell/signal.h | 3 ++-
+  3 files changed, 7 insertions(+), 6 deletions(-)
 
-PGRpdiBkaXI9Imx0ciI+PGRpdj5Tb21lIHVuaXQgdGVzdHMgYXJlIGJyZWFraW5nIG9uIHN5c3Rl
-bXMgd2l0aCBPcGVuU1NMIDMueC48L2Rpdj48ZGl2PlRoaXMgcGF0Y2ggZGV0ZWN0cyB0aGUgT3Bl
-blNTTCB2ZXJzaW9uLCB0aGVuIGlmIHdlIGFyZSBidWlsZGluZyBFbGwgb24gT3BlblNTTCAzLngs
-IHRoZSBsZWdhY3kgbW9kdWxlIG9wdGlvbnMgd2lsbCBiZSBhcHBlbmRlZCB0byBvcGVuc3NsIGNv
-bW1hbmRzLjwvZGl2PjwvZGl2Pgo=
+diff --git a/ell/main.c b/ell/main.c
+index 1a6cd60f..9697f019 100644
+--- a/ell/main.c
++++ b/ell/main.c
+@@ -604,7 +604,7 @@ struct signal_data {
+  	void *user_data;
+  };
 
---===============2359433328197034566==
-Content-Type: text/x-patch
-MIME-Version: 1.0
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="0001-adjust-cert-tests-to-both-OpenSSL-1.x-and-OpenSSL-3..patch"
+-static void sigint_handler(void *user_data)
++static void sigint_handler(const struct signalfd_siginfo *si, void =
 
-RnJvbSA4NmZjZTEwODFjZmRlNWI0OTRiZGI5MDA0ZTA4OGI1NTcyMzc0ZTM1IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBaaGFuZ1dlbiA8emh3MjEwMTAyNEBnbWFpbC5jb20+CkRhdGU6
-IFR1ZSwgMjkgTWFyIDIwMjIgMTI6NTE6MzUgKzA4MDAKU3ViamVjdDogW1BBVENIXSBhZGp1c3Qg
-Y2VydCB0ZXN0cyB0byBib3RoIE9wZW5TU0wtMS54IGFuZCBPcGVuU1NMLTMueAoKLS0tCiBNYWtl
-ZmlsZS5hbSAgfCAxNiArKysrKysrKy0tLS0tLS0tCiBjb25maWd1cmUuYWMgfCAgNiArKysrKysK
-IDIgZmlsZXMgY2hhbmdlZCwgMTQgaW5zZXJ0aW9ucygrKSwgOCBkZWxldGlvbnMoLSkKCmRpZmYg
-LS1naXQgYS9NYWtlZmlsZS5hbSBiL01ha2VmaWxlLmFtCmluZGV4IDhjY2IzNWUuLjhmZmRiOTEg
-MTAwNjQ0Ci0tLSBhL01ha2VmaWxlLmFtCisrKyBiL01ha2VmaWxlLmFtCkBAIC00NDMsNyArNDQz
-LDcgQEAgdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczEucGVtOgogCSQoQU1fVl9HRU4pb3BlbnNz
-bCBnZW5yc2EgLW91dCAkQCAkKCQoQU1fVl9QKV9yZWRpcmVjdF9vcGVuc3NsKQogCiB1bml0L2Nl
-cnQtY2xpZW50LWtleS1wa2NzMS1kZXMucGVtOiB1bml0L2NlcnQtY2xpZW50LWtleS1wa2NzMS5w
-ZW0KLQkkKEFNX1ZfR0VOKW9wZW5zc2wgcnNhIC1pbiAkPCAtb3V0ICRAIC1kZXMgLXBhc3NvdXQg
-cGFzczphYmMKKwkkKEFNX1ZfR0VOKW9wZW5zc2wgcnNhIC1pbiAkPCAtb3V0ICRAIC1kZXMgLXBh
-c3NvdXQgcGFzczphYmMgQE9QRU5TU0xfTEVHQUNZX09QVFNACiAKIHVuaXQvY2VydC1jbGllbnQt
-a2V5LXBrY3MxLWRlczMucGVtOiB1bml0L2NlcnQtY2xpZW50LWtleS1wa2NzMS5wZW0KIAkkKEFN
-X1ZfR0VOKW9wZW5zc2wgcnNhIC1pbiAkPCAtb3V0ICRAIC1kZXMzIC1wYXNzb3V0IHBhc3M6YWJj
-CkBAIC00NjIsMTUgKzQ2MiwxNSBAQCB1bml0L2NlcnQtY2xpZW50LWtleS1wa2NzOC5wZW06IHVu
-aXQvY2VydC1jbGllbnQta2V5LXBrY3MxLnBlbQogCiB1bml0L2NlcnQtY2xpZW50LWtleS1wa2Nz
-OC1tZDUtZGVzLnBlbTogdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczgucGVtCiAJJChBTV9WX0dF
-TilvcGVuc3NsIHBrY3M4IC1pbiAkPCAtb3V0ICRAIFwKLQkJCS10b3BrOCAtdjEgUEJFLU1ENS1E
-RVMgLXBhc3NvdXQgcGFzczphYmMKKwkJCS10b3BrOCAtdjEgUEJFLU1ENS1ERVMgLXBhc3NvdXQg
-cGFzczphYmMgQE9QRU5TU0xfTEVHQUNZX09QVFNACiAKIHVuaXQvY2VydC1jbGllbnQta2V5LXBr
-Y3M4LXNoYTEtZGVzLnBlbTogdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczgucGVtCiAJJChBTV9W
-X0dFTilvcGVuc3NsIHBrY3M4IC1pbiAkPCAtb3V0ICRAIFwKLQkJCS10b3BrOCAtdjEgUEJFLVNI
-QTEtREVTIC1wYXNzb3V0IHBhc3M6YWJjCisJCQktdG9wazggLXYxIFBCRS1TSEExLURFUyAtcGFz
-c291dCBwYXNzOmFiYyBAT1BFTlNTTF9MRUdBQ1lfT1BUU0AKIAogdW5pdC9jZXJ0LWNsaWVudC1r
-ZXktcGtjczgtdjItZGVzLnBlbTogdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczgucGVtCiAJJChB
-TV9WX0dFTilvcGVuc3NsIHBrY3M4IC1pbiAkPCAtb3V0ICRAIFwKLQkJCS10b3BrOCAtdjIgZGVz
-LWNiYyAtdjJwcmYgaG1hY1dpdGhTSEExIC1wYXNzb3V0IHBhc3M6YWJjCisJCQktdG9wazggLXYy
-IGRlcy1jYmMgLXYycHJmIGhtYWNXaXRoU0hBMSAtcGFzc291dCBwYXNzOmFiYyBAT1BFTlNTTF9M
-RUdBQ1lfT1BUU0AKIAogdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczgtdjItZGVzLWVkZTMucGVt
-OiB1bml0L2NlcnQtY2xpZW50LWtleS1wa2NzOC5wZW0KIAkkKEFNX1ZfR0VOKW9wZW5zc2wgcGtj
-czggLWluICQ8IC1vdXQgJEAgXApAQCAtNTc0LDE5ICs1NzQsMTkgQEAgdW5pdC9jZXJ0LWVudGl0
-eS1wa2NzMTItbm9tYWMucDEyOiB1bml0L2NlcnQtZW50aXR5LWludC1rZXkucGVtIHVuaXQvY2Vy
-dC1lbnRpdHkKIAkkKEFNX1ZfR0VOKW9wZW5zc2wgcGtjczEyIC1pbmtleSAkPCAtaW4gJChidWls
-ZGRpcikvdW5pdC9jZXJ0LWVudGl0eS1pbnQucGVtIC1vdXQgJEAgLWV4cG9ydCAtcGFzc291dCBw
-YXNzOmFiYyAtbm9tYWMgIyBkZWZhdXQgY2lwaGVycwogCiB1bml0L2NlcnQtZW50aXR5LXBrY3Mx
-Mi1yYzItc2hhMS5wMTI6IHVuaXQvY2VydC1lbnRpdHktaW50LWtleS5wZW0gdW5pdC9jZXJ0LWVu
-dGl0eS1pbnQucGVtIHVuaXQvY2VydC1jaGFpbi5wZW0KLQkkKEFNX1ZfR0VOKW9wZW5zc2wgcGtj
-czEyIC1pbmtleSAkPCAtaW4gJChidWlsZGRpcikvdW5pdC9jZXJ0LWVudGl0eS1pbnQucGVtIC1j
-ZXJ0ZmlsZSAkKGJ1aWxkZGlyKS91bml0L2NlcnQtY2hhaW4ucGVtIC1vdXQgJEAgLWV4cG9ydCAt
-cGFzc291dCBwYXNzOmFiYyAtY2VydHBiZSBQQkUtU0hBMS1SQzItNDAgLWtleXBiZSBQQkUtU0hB
-MS1SQzItMTI4IC1tYWNhbGcgc2hhMQorCSQoQU1fVl9HRU4pb3BlbnNzbCBwa2NzMTIgLWlua2V5
-ICQ8IC1pbiAkKGJ1aWxkZGlyKS91bml0L2NlcnQtZW50aXR5LWludC5wZW0gLWNlcnRmaWxlICQo
-YnVpbGRkaXIpL3VuaXQvY2VydC1jaGFpbi5wZW0gLW91dCAkQCAtZXhwb3J0IC1wYXNzb3V0IHBh
-c3M6YWJjIC1jZXJ0cGJlIFBCRS1TSEExLVJDMi00MCAta2V5cGJlIFBCRS1TSEExLVJDMi0xMjgg
-LW1hY2FsZyBzaGExIEBPUEVOU1NMX0xFR0FDWV9PUFRTQAogCiB1bml0L2NlcnQtZW50aXR5LXBr
-Y3MxMi1kZXMtc2hhMjU2LnAxMjogdW5pdC9jZXJ0LWVudGl0eS1pbnQta2V5LnBlbSB1bml0L2Nl
-cnQtZW50aXR5LWludC5wZW0gdW5pdC9jZXJ0LWNoYWluLnBlbQogCSQoQU1fVl9HRU4pb3BlbnNz
-bCBwa2NzMTIgLWlua2V5ICQ8IC1pbiAkKGJ1aWxkZGlyKS91bml0L2NlcnQtZW50aXR5LWludC5w
-ZW0gLWNlcnRmaWxlICQoYnVpbGRkaXIpL3VuaXQvY2VydC1jaGFpbi5wZW0gLW91dCAkQCAtZXhw
-b3J0IC1wYXNzb3V0IHBhc3M6YWJjIC1jZXJ0cGJlIFBCRS1TSEExLTNERVMgLWtleXBiZSBQQkUt
-U0hBMS0yREVTIC1tYWNhbGcgc2hhMjU2CiAKIHVuaXQvY2VydC1lbnRpdHktcGtjczEyLXJjNC1z
-aGEzODQucDEyOiB1bml0L2NlcnQtZW50aXR5LWludC1rZXkucGVtIHVuaXQvY2VydC1lbnRpdHkt
-aW50LnBlbSB1bml0L2NlcnQtY2hhaW4ucGVtCi0JJChBTV9WX0dFTilvcGVuc3NsIHBrY3MxMiAt
-aW5rZXkgJDwgLWluICQoYnVpbGRkaXIpL3VuaXQvY2VydC1lbnRpdHktaW50LnBlbSAtY2VydGZp
-bGUgJChidWlsZGRpcikvdW5pdC9jZXJ0LWNoYWluLnBlbSAtb3V0ICRAIC1leHBvcnQgLXBhc3Nv
-dXQgcGFzczphYmMgLWNlcnRwYmUgUEJFLVNIQTEtUkM0LTEyOCAta2V5cGJlIFBCRS1TSEExLVJD
-Mi00MCAtbWFjYWxnIHNoYTM4NAorCSQoQU1fVl9HRU4pb3BlbnNzbCBwa2NzMTIgLWlua2V5ICQ8
-IC1pbiAkKGJ1aWxkZGlyKS91bml0L2NlcnQtZW50aXR5LWludC5wZW0gLWNlcnRmaWxlICQoYnVp
-bGRkaXIpL3VuaXQvY2VydC1jaGFpbi5wZW0gLW91dCAkQCAtZXhwb3J0IC1wYXNzb3V0IHBhc3M6
-YWJjIC1jZXJ0cGJlIFBCRS1TSEExLVJDNC0xMjggLWtleXBiZSBQQkUtU0hBMS1SQzItNDAgLW1h
-Y2FsZyBzaGEzODQgQE9QRU5TU0xfTEVHQUNZX09QVFNACiAKIHVuaXQvY2VydC1lbnRpdHktcGtj
-czEyLXBrY3M1LXNoYTUxMi5wMTI6IHVuaXQvY2VydC1lbnRpdHktaW50LWtleS5wZW0gdW5pdC9j
-ZXJ0LWVudGl0eS1pbnQucGVtIHVuaXQvY2VydC1jaGFpbi5wZW0KLQkkKEFNX1ZfR0VOKW9wZW5z
-c2wgcGtjczEyIC1pbmtleSAkPCAtaW4gJChidWlsZGRpcikvdW5pdC9jZXJ0LWVudGl0eS1pbnQu
-cGVtIC1jZXJ0ZmlsZSAkKGJ1aWxkZGlyKS91bml0L2NlcnQtY2hhaW4ucGVtIC1vdXQgJEAgLWV4
-cG9ydCAtcGFzc291dCBwYXNzOmFiYyAtY2VydHBiZSBkZXMtY2JjIC1rZXlwYmUgZGVzLWNiYyAt
-bWFjYWxnIHNoYTUxMgorCSQoQU1fVl9HRU4pb3BlbnNzbCBwa2NzMTIgLWlua2V5ICQ8IC1pbiAk
-KGJ1aWxkZGlyKS91bml0L2NlcnQtZW50aXR5LWludC5wZW0gLWNlcnRmaWxlICQoYnVpbGRkaXIp
-L3VuaXQvY2VydC1jaGFpbi5wZW0gLW91dCAkQCAtZXhwb3J0IC1wYXNzb3V0IHBhc3M6YWJjIC1j
-ZXJ0cGJlIGRlcy1jYmMgLWtleXBiZSBkZXMtY2JjIC1tYWNhbGcgc2hhNTEyIEBPUEVOU1NMX0xF
-R0FDWV9PUFRTQAogCiB1bml0L2NlcnQtZW50aXR5LWNvbWJpbmVkLnBlbTogdW5pdC9jZXJ0LWVu
-dGl0eS1wa2NzMTItcmMyLXNoYTEucDEyCi0JJChBTV9WX0dFTilvcGVuc3NsIHBrY3MxMiAtaW4g
-JDwgLW91dCAkQCAtcGFzc2luIHBhc3M6YWJjIC1wYXNzb3V0IHBhc3M6YWJjCisJJChBTV9WX0dF
-TilvcGVuc3NsIHBrY3MxMiAtaW4gJDwgLW91dCAkQCAtcGFzc2luIHBhc3M6YWJjIC1wYXNzb3V0
-IHBhc3M6YWJjIEBPUEVOU1NMX0xFR0FDWV9PUFRTQAogCiB1bml0L2tleS1wbGFpbnRleHQuaDog
-dW5pdC9wbGFpbnRleHQudHh0CiAJJChBTV9WX0dFTil4eGQgLWkgPCAkPCA+ICRACmRpZmYgLS1n
-aXQgYS9jb25maWd1cmUuYWMgYi9jb25maWd1cmUuYWMKaW5kZXggOTM1MGUxNC4uNGIwNzU5ZCAx
-MDA2NDQKLS0tIGEvY29uZmlndXJlLmFjCisrKyBiL2NvbmZpZ3VyZS5hYwpAQCAtMzEsNiArMzEs
-OCBAQCBBQ19DX0JJR0VORElBTihsaXR0bGVfZW5kaWFuPW5vLCBsaXR0bGVfZW5kaWFuPXllcywg
-bGl0dGxlX2VuZGlhbj1ubykKIExUX1BSRVJFUSgyLjIpCiBMVF9JTklUKFtkaXNhYmxlLXN0YXRp
-Y10pCiAKK1BLR19QUk9HX1BLR19DT05GSUcoMC4yOS4yKQorCiBBQ19BUkdfRU5BQkxFKG9wdGlt
-aXphdGlvbiwgQUNfSEVMUF9TVFJJTkcoWy0tZGlzYWJsZS1vcHRpbWl6YXRpb25dLAogCQkJW2Rp
-c2FibGUgY29kZSBvcHRpbWl6YXRpb24gdGhyb3VnaCBjb21waWxlcl0pLCBbCiAJaWYgKHRlc3Qg
-IiR7ZW5hYmxldmFsfSIgPSAibm8iKTsgdGhlbgpAQCAtMTMyLDYgKzEzNCwxMCBAQCBmaQogQU1f
-Q09ORElUSU9OQUwoREJVU19URVNUUywgdGVzdCAiJHtsaXR0bGVfZW5kaWFufSIgPSAieWVzIikK
-IEFNX0NPTkRJVElPTkFMKENFUlRfVEVTVFMsIHRlc3QgIiR7aGF2ZV9vcGVuc3NsfSIgPSAieWVz
-IikKIAorUEtHX0NIRUNLX1ZBUihPUEVOU1NMX0xJQkRJUiwgb3BlbnNzbCA+PSAzLjAsIGxpYmRp
-ciwgT1BFTlNTTF9MRUdBQ1lfT1BUUz0iLXByb3ZpZGVyIGRlZmF1bHQgLXByb3ZpZGVyLXBhdGgg
-JHtPUEVOU1NMX0xJQkRJUn0vb3NzbC1tb2R1bGVzIC1wcm92aWRlciBsZWdhY3kiLAorCQkgICAg
-ICAgICAgIE9QRU5TU0xfTEVHQUNZX09QVFM9IiIpCitBQ19TVUJTVChPUEVOU1NMX0xFR0FDWV9P
-UFRTKQorCiBBQ19DT05GSUdfRklMRVMoTWFrZWZpbGUgZWxsL2VsbC5wYykKIAogQUNfT1VUUFVU
-Ci0tIAoyLjMzLjAuNTE0Lmc5OWM5OWVkODI1Cgo=
+*user_data)
+  {
+  	struct signal_data *data =3D user_data;
 
---===============2359433328197034566==--
+@@ -612,7 +612,7 @@ static void sigint_handler(void *user_data)
+  		data->callback(SIGINT, data->user_data);
+  }
+
+-static void sigterm_handler(void *user_data)
++static void sigterm_handler(const struct signalfd_siginfo *si, void =
+
+*user_data)
+  {
+  	struct signal_data *data =3D user_data;
+
+diff --git a/ell/signal.c b/ell/signal.c
+index 2afdb45f..e756615b 100644
+--- a/ell/signal.c
++++ b/ell/signal.c
+@@ -66,7 +66,7 @@ static struct l_io *signalfd_io =3D NULL;
+  static struct l_queue *signal_list =3D NULL;
+  static sigset_t signal_mask;
+
+-static void handle_callback(struct signal_desc *desc)
++static void handle_callback(struct signal_desc *desc, const struct =
+
+signalfd_siginfo *si)
+  {
+  	const struct l_queue_entry *entry;
+
+@@ -75,7 +75,7 @@ static void handle_callback(struct signal_desc *desc)
+  		struct l_signal *signal =3D entry->data;
+
+  		if (signal->callback)
+-			signal->callback(signal->user_data);
++			signal->callback(si, signal->user_data);
+  	}
+  }
+
+@@ -101,7 +101,7 @@ static bool signalfd_read_cb(struct l_io *io, void =
+
+*user_data)
+  	desc =3D l_queue_find(signal_list, desc_match_signo,
+  						L_UINT_TO_PTR(si.ssi_signo));
+  	if (desc)
+-		handle_callback(desc);
++		handle_callback(desc, &si);
+
+  	return true;
+  }
+diff --git a/ell/signal.h b/ell/signal.h
+index 1d98476a..a6512d9b 100644
+--- a/ell/signal.h
++++ b/ell/signal.h
+@@ -30,8 +30,9 @@ extern "C" {
+  #endif
+
+  struct l_signal;
++struct signalfd_siginfo;
+
+-typedef void (*l_signal_notify_cb_t) (void *user_data);
++typedef void (*l_signal_notify_cb_t) (const struct signalfd_siginfo =
+
+*si, void *user_data);
+  typedef void (*l_signal_destroy_cb_t) (void *user_data);
+
+  struct l_signal *l_signal_create(uint32_t signo, l_signal_notify_cb_t =
+
+callback,
+--===============5099374182609926601==--
 
