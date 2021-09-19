@@ -1,88 +1,68 @@
-Content-Type: multipart/mixed; boundary="===============9211155262556559403=="
+Content-Type: multipart/mixed; boundary="===============3450091035488648425=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 06/11] netconfig: Add l_netconfig_get_{dhcp6,icmp6}_client
-Date: Thu, 21 Apr 2022 00:10:19 +0200
-Message-ID: <20220420221024.1276317-6-andrew.zaborowski@intel.com>
-In-Reply-To: 20220420221024.1276317-1-andrew.zaborowski@intel.com
+Subject: Re: AIO support
+Date: Sun, 19 Sep 2021 16:11:09 -0500
+Message-ID: <7c57da7d-6ac9-6a63-62fd-42453f7bedf9@gmail.com>
+In-Reply-To: 4eac85e0-0529-4dcc-5e7b-31101d2dae71@maurer.systems
 
---===============9211155262556559403==
+--===============3450091035488648425==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/ell.sym     |  2 ++
- ell/netconfig.c | 18 ++++++++++++++++++
- ell/netconfig.h |  4 ++++
- 3 files changed, 24 insertions(+)
+Hi Simon,
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 60dd257..0f9f884 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -749,6 +749,8 @@ global:
- 	l_netconfig_start;
- 	l_netconfig_stop;
- 	l_netconfig_get_dhcp_client;
-+	l_netconfig_get_dhcp6_client;
-+	l_netconfig_get_icmp6_client;
- 	l_netconfig_set_event_handler;
- 	l_netconfig_apply_rtnl;
- 	l_netconfig_get_addresses;
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 3c1ad32..0419b0f 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1004,6 +1004,24 @@ LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhc=
-p_client(
- 	return netconfig->dhcp_client;
- }
- =
+>> Can you elaborate?=C2=A0 I always thought
+>> fcntl(fd, F_SETFL, O_NONBLOCK);
+>>
+>> would enable non-blocking behavior on files just fine?=C2=A0 Or is this =
+an issue =
 
-+LIB_EXPORT struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
-+						struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return NULL;
-+
-+	return netconfig->dhcp6_client;
-+}
-+
-+LIB_EXPORT struct l_icmp6_client *l_netconfig_get_icmp6_client(
-+						struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return NULL;
-+
-+	return netconfig->icmp6_client;
-+}
-+
- LIB_EXPORT void l_netconfig_set_event_handler(struct l_netconfig *netconfi=
-g,
- 					l_netconfig_event_cb_t handler,
- 					void *user_data,
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index f90ec81..a50a895 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -75,6 +75,10 @@ void l_netconfig_stop(struct l_netconfig *netconfig);
- =
+>> with a particular driver?
+>>
+> =
 
- struct l_dhcp_client *l_netconfig_get_dhcp_client(
- 						struct l_netconfig *netconfig);
-+struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
-+						struct l_netconfig *netconfig);
-+struct l_icmp6_client *l_netconfig_get_icmp6_client(
-+						struct l_netconfig *netconfig);
- =
+> I tested it and never got EAGAIN. I found this in the man page of open fo=
+r the =
 
- void l_netconfig_set_event_handler(struct l_netconfig *netconfig,
- 					l_netconfig_event_cb_t handler,
--- =
+> flag O_NONBLOCK or O_NDELAY:
+> =
 
-2.32.0
+> "Note=C2=A0 that this flag has no effect for regular files and block devi=
+ces; that =
 
---===============9211155262556559403==--
+> is, I/O operations will (briefly) block when device activity is required, =
+
+> regardless of whether O_NONBLOCK is set.=C2=A0 Since O_NONBLOCK semantics=
+ might =
+
+> eventually be implemented, applications should not depend=C2=A0 upon=C2=
+=A0 blocking  =
+
+> behavior=C2=A0 when specifying this flag for regular files and block devi=
+ces."
+> =
+
+
+Ah, indeed.  I think I even knew that, sorry for the noise.
+
+> An alternative could be preadv2 with the flag RWF_NOWAIT. But it is only =
+
+> available since linux 4.14 and we are using an older kernel. Also epoll d=
+oesn't =
+
+> wait for preadv2.
+
+Right, epoll will just simply return immediately on regular files.  Have yo=
+u =
+
+tried using a timer or l_idle to drive the reading?  Is there ioctl(fd, =
+
+FIONREAD, ...) or equivalent that could be used not to block?
+
+Regards,
+-Denis
+--===============3450091035488648425==--
 
