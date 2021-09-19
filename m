@@ -1,41 +1,68 @@
-Content-Type: multipart/mixed; boundary="===============8913110540613050210=="
+Content-Type: multipart/mixed; boundary="===============1154472067986060875=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Marcel Holtmann <marcel at holtmann.org>
 To: ell at lists.01.org
-Subject: Re: [PATCH] pem.c: do not use rawmemchr()
-Date: Thu, 18 Nov 2021 08:31:22 -0600
-Message-ID: <a3357996-414f-aa9d-29b4-bbec8543e6f8@gmail.com>
-In-Reply-To: 20211118130315.499471-1-alex@linutronix.de
+Subject: Re: AIO support
+Date: Sun, 19 Sep 2021 21:59:30 +0200
+Message-ID: <3C5C7E56-11E3-4A13-B011-8D61BF746D60@holtmann.org>
+In-Reply-To: 4eac85e0-0529-4dcc-5e7b-31101d2dae71@maurer.systems
 
---===============8913110540613050210==
+--===============1154472067986060875==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Alexander,
+Hi Simon,
 
-On 11/18/21 7:03 AM, Alexander Kanavin wrote:
-> From: Alexander Kanavin <alex.kanavin(a)gmail.com>
+>>> Awesome library! Thank you very much. I'm using it for an embedded linu=
+x =
+
+>> Glad you like it!
+>>> application with not so strict real time constraints. Problem is, I nee=
+d non blocking file access, because the memory card on my system is quite s=
+low. It turns out that this whole non-blocking access doesn't work for file=
+s, so now I'm =
+
+>> Can you elaborate?  I always thought
+>> fcntl(fd, F_SETFL, O_NONBLOCK);
+>> would enable non-blocking behavior on files just fine?  Or is this an is=
+sue with a particular driver?
 > =
 
-> This is a glibc-only function, and causes build failures with
-> alternative libc implementations such as musl.
-
-I believe ell builds just fine on musl.  We already have an alternate =
-
-implementation of rawmemchr in ell/missing.h and it should be used automagi=
-cally =
-
-in case its absence is detected at configure time.  Is this not working for=
- you ?
-
-> ---
->   ell/pem.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
+> I tested it and never got EAGAIN. I found this in the man page of open fo=
+r the flag O_NONBLOCK or O_NDELAY:
 > =
 
+> "Note  that this flag has no effect for regular files and block devices; =
+that is, I/O operations will (briefly) block when device activity is requir=
+ed, regardless of whether O_NONBLOCK is set.  Since O_NONBLOCK semantics mi=
+ght eventually be implemented, applications should not depend  upon  blocki=
+ng  behavior  when specifying this flag for regular files and block devices=
+."
+> =
 
-Regards,
--Denis
---===============8913110540613050210==--
+> An alternative could be preadv2 with the flag RWF_NOWAIT. But it is only =
+available since linux 4.14 and we are using an older kernel. Also epoll doe=
+sn't wait for preadv2.
+
+I am a bit cautious about aio_write etc. since it requires you to link with=
+ -lrt according to the manpage. We actually wanted to keep it at just -lc s=
+ince that helps in case of other C libraries besides glibc.
+
+That you require signal handling inside the API is something that worries m=
+e additionally. Even with signalfd, doing any complex signal handling besid=
+es SIGTERM is kinda messy. I think that AIO support might be better done ou=
+tside of ELL.
+
+What kind of file-reading or file-writing are you doing that you need AIO s=
+upport anyway? You can actually poll() a file fd. You just have to do it ca=
+refully so it doesn=E2=80=99t become a busy loop. Have you tried just using=
+ l_idle to only read/write when we having nothing else going on in our main=
+loop?
+
+Regards
+
+Marcel
+
+--===============1154472067986060875==--
 
