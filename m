@@ -1,38 +1,56 @@
-Content-Type: multipart/mixed; boundary="===============8127499559419283889=="
+Content-Type: multipart/mixed; boundary="===============1854639028434899567=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH v2 1/5] settings: add l_settings_clone
-Date: Fri, 04 Feb 2022 13:32:29 -0600
-Message-ID: <34bea58d-abd4-8508-ec27-a7feec68c69c@gmail.com>
-In-Reply-To: 20220204174614.261669-1-prestwoj@gmail.com
+Subject: Re: AIO support
+Date: Sun, 19 Sep 2021 13:00:44 -0500
+Message-ID: <15045604-1991-c85c-5654-2c8f1cfd3c95@gmail.com>
+In-Reply-To: 61f114ce-ed19-980d-8b97-1eb3b30eee51@maurer.systems
 
---===============8127499559419283889==
+--===============1854639028434899567==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Hi Simon,
 
-On 2/4/22 11:46, James Prestwood wrote:
-> Returns identical copy of settings
-> ---
->   ell/ell.sym    |  1 +
->   ell/settings.c | 57 ++++++++++++++++++++++++++++++++++++++++++++++++++
->   ell/settings.h |  2 ++
->   3 files changed, 60 insertions(+)
+On 9/19/21 12:12 PM, Simon Maurer wrote:
+> Hi
+> Awesome library! Thank you very much. I'm using it for an embedded linux =
+
+
+Glad you like it!
+
+> application with not so strict real time constraints. Problem is, I need =
+non =
+
+> blocking file access, because the memory card on my system is quite slow.=
+ It =
+
+> turns out that this whole non-blocking access doesn't work for files, so =
+now I'm =
+
+
+Can you elaborate?  I always thought
+fcntl(fd, F_SETFL, O_NONBLOCK);
+
+would enable non-blocking behavior on files just fine?  Or is this an issue=
+ with =
+
+a particular driver?
+
+> using the POSIX AIO interface and I've integrated it into ELL:
+> https://github.com/mausys/ell/blob/master/ell/aio.c
+> (But needs to be linked against rt)
+> This is just a draft and it also works on top of ELL, but maybe other =
+
+> applications need this too.
 > =
 
-> v2:
->   * memdup the entire embedded_group_data structure rather than manually
->     copying each part individually.
-> =
 
-
-Patches 1-3 applied, thanks.
+Thanks, I'll take a peek later during the week.
 
 Regards,
 -Denis
-
---===============8127499559419283889==--
+--===============1854639028434899567==--
 
