@@ -1,88 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============0330768779999921404=="
+Content-Type: multipart/mixed; boundary="===============5833159817040821677=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH v2 2/5] unit: add settings test for clone APIs
-Date: Fri, 04 Feb 2022 09:46:11 -0800
-Message-ID: <20220204174614.261669-2-prestwoj@gmail.com>
-In-Reply-To: 20220204174614.261669-1-prestwoj@gmail.com
+Subject: Re: AIO support
+Date: Mon, 20 Sep 2021 11:31:03 -0500
+Message-ID: <0949c1b4-ee95-9dc4-1565-814bef66fb33@gmail.com>
+In-Reply-To: 26ba7ca3-b836-6dfc-9379-f069d51e055c@maurer.systems
 
---===============0330768779999921404==
+--===============5833159817040821677==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- unit/test-settings.c | 41 ++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 40 insertions(+), 1 deletion(-)
+Hi Simon,
 
-v2:
- * Fix 'settings' leak
+Please no top-posting.
 
-diff --git a/unit/test-settings.c b/unit/test-settings.c
-index a25197a..e506bd4 100644
---- a/unit/test-settings.c
-+++ b/unit/test-settings.c
-@@ -559,6 +559,45 @@ static void test_invalid_data(const void *test_data)
- 	l_settings_free(settings);
- }
- =
+On 9/20/21 11:00 AM, Simon Maurer wrote:
+> Hi Denis,
+> =
 
-+static void check_clone_data(struct l_settings *settings)
-+{
-+	const char *value;
-+	const char *type =3D NULL;
-+
-+	assert(l_settings_has_group(settings, "normal"));
-+	assert(l_settings_has_key(settings, "normal", "key"));
-+	value =3D l_settings_get_value(settings, "normal", "key");
-+	assert(value);
-+	assert(!strcmp(value, "value"));
-+
-+	assert(l_settings_has_embedded_group(settings, "single_cert"));
-+	value =3D l_settings_get_embedded_value(settings, "single_cert",
-+								&type);
-+	assert(value && type);
-+	assert(!strcmp(type, "pem"));
-+	assert(!strcmp(value, TEST_CERTIFICATE));
-+}
-+
-+static void test_clone(const void *data)
-+{
-+	const char *raw_data =3D
-+			"[normal]\n"
-+			"key=3Dvalue\n"
-+			"[@pem(a)single_cert]\n"
-+			TEST_CERTIFICATE;
-+
-+	struct l_settings *settings =3D l_settings_new();
-+	struct l_settings *copy;
-+
-+	assert(l_settings_load_from_data(settings, raw_data, strlen(raw_data)));
-+	check_clone_data(settings);
-+
-+	copy =3D l_settings_clone(settings);
-+	check_clone_data(copy);
-+	l_settings_free(copy);
-+	l_settings_free(settings);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -571,7 +610,7 @@ int main(int argc, char *argv[])
- 	l_test_add("Invalid Data 2", test_invalid_data, key_before_group_data);
- 	l_test_add("Test valid ext group", test_valid_extended_group, NULL);
- 	l_test_add("Test invalid ext group", test_invalid_extended_group, NULL);
--
-+	l_test_add("Test clone", test_clone, NULL);
- =
+> Yes I agree, but I still need the the syscall wrappers, because glibc doe=
+sn't =
 
- 	return l_test_run();
- }
--- =
 
-2.31.1
+Can't we syscall() in ell, like we do with keyctl in key.c?
 
---===============0330768779999921404==--
+> provide them. So bundling it with ell and make libaio a private library o=
+f ell =
+
+> seams to be a good solution for me.
+
+That would not be our first choice.
+
+Regards,
+-Denis
+--===============5833159817040821677==--
 
