@@ -1,90 +1,31 @@
-Content-Type: multipart/mixed; boundary="===============1080623972430220335=="
+Content-Type: multipart/mixed; boundary="===============6845436584754128810=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Marcel Holtmann <marcel at holtmann.org>
 To: ell at lists.01.org
-Subject: [PATCH 1/2] netconfig: Write gateway MAC from DHCP to ARP cache
-Date: Thu, 12 May 2022 00:43:15 +0200
-Message-ID: <20220511224316.1283868-1-andrew.zaborowski@intel.com>
+Subject: Re: AIO support
+Date: Mon, 20 Sep 2021 11:20:57 +0200
+Message-ID: <F69C075D-F359-4924-822A-0F5457F31B03@holtmann.org>
+In-Reply-To: e64463ea-34af-1911-14b3-19fa69a239c2@maurer.systems
 
---===============1080623972430220335==
+--===============6845436584754128810==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Write the MAC directly to the ARP table to save an ARP query for the
-gateway's MAC when it is known from the freshly obtained lease.  For
-practical reasons do this outside of l_netconfig_apply_rtnl().
----
-This applies on top of the earlier netconfig patches.
+Hi Simon,
 
- ell/netconfig.c | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+> I'm looking now into libaio. POSIX AIO is implemented in libc with user t=
+hreads, while libaio uses linux native syscalls. Maybe I can also get rid o=
+f signal usage. IMHO non-blocking file access / async IO is quite important=
+ for embedded applications and it would be nice to have this feature in ell.
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index ad41c9a..d495da2 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -25,6 +25,7 @@
- #endif
- =
+have you looked into using l_idle for providing async read/write callbacks =
+that way. I have the feeling that AIO is total overkill for embedded applic=
+ations.
 
- #include <linux/types.h>
-+#include <linux/if_ether.h>
- #include <netinet/ip.h>
- #include <arpa/inet.h>
- #include <netinet/icmp6.h>
-@@ -360,6 +361,37 @@ static void netconfig_remove_dhcp_address_routes(struc=
-t l_netconfig *nc,
- 	}
- }
- =
+Regards
 
-+static void netconfig_set_neighbor_entry_cb(int error,
-+						uint16_t type, const void *data,
-+						uint32_t len, void *user_data)
-+{
-+	/* Not critical.  TODO: log warning */
-+}
-+
-+static int netconfig_dhcp_gateway_to_arp(struct l_netconfig *nc)
-+{
-+	const struct l_dhcp_lease *lease =3D
-+		l_dhcp_client_get_lease(nc->dhcp_client);
-+	_auto_(l_free) char *server_id =3D l_dhcp_lease_get_server_id(lease);
-+	_auto_(l_free) char *gw =3D l_dhcp_lease_get_gateway(lease);
-+	const uint8_t *server_mac =3D l_dhcp_lease_get_server_mac(lease);
-+	struct in_addr in_gw;
-+
-+	if (!gw || strcmp(server_id, gw) || !server_mac)
-+		return -ENOENT;
-+
-+	/* Gateway MAC is known, write it into ARP cache to save ARP traffic */
-+	in_gw.s_addr =3D l_dhcp_lease_get_gateway_u32(lease);
-+
-+	if (!l_rtnl_neighbor_set_hwaddr(rtnl, nc->ifindex, AF_INET, &in_gw,
-+					server_mac, ETH_ALEN,
-+					netconfig_set_neighbor_entry_cb, nc,
-+					NULL))
-+		return -EIO;
-+
-+	return 0;
-+}
-+
- static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
- 						enum l_dhcp_client_event event,
- 						void *user_data)
-@@ -384,6 +416,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
-client *client,
- 		netconfig_set_dhcp_lifetimes(nc, false);
- 		nc->v4_configured =3D true;
- 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
-+		netconfig_dhcp_gateway_to_arp(nc);
- 		break;
- 	case L_DHCP_CLIENT_EVENT_LEASE_RENEWED:
- 		if (L_WARN_ON(!nc->v4_configured))
--- =
+Marcel
 
-2.32.0
-
---===============1080623972430220335==--
+--===============6845436584754128810==--
 
