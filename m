@@ -1,54 +1,49 @@
-Content-Type: multipart/mixed; boundary="===============0702166471690474272=="
+Content-Type: multipart/mixed; boundary="===============1300907073864071489=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Simon Maurer <mail at maurer.systems>
 To: ell at lists.01.org
-Subject: [PATCH 4/5] util: add l_secure_select_byte
-Date: Fri, 04 Feb 2022 09:06:01 -0800
-Message-ID: <20220204170603.216439-4-prestwoj@gmail.com>
-In-Reply-To: 20220204170603.216439-1-prestwoj@gmail.com
+Subject: Re: AIO support
+Date: Mon, 20 Sep 2021 16:00:49 +0000
+Message-ID: <26ba7ca3-b836-6dfc-9379-f069d51e055c@maurer.systems>
+In-Reply-To: 6dcafff5-5cc5-4cb1-de41-9a76ae5ed217@gmail.com
 
---===============0702166471690474272==
+--===============1300907073864071489==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This was taken from IWD and modified slightly to act off a boolean
-rather than a 0xff/0x00 byte to stay consistent with l_secure_select
----
- ell/util.h | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+Hi Denis,
 
-diff --git a/ell/util.h b/ell/util.h
-index 9d4e36c..d390d27 100644
---- a/ell/util.h
-+++ b/ell/util.h
-@@ -425,6 +425,21 @@ static inline void l_secure_select(bool select_left,
- 		o[i] =3D r[i] ^ ((l[i] ^ r[i]) & mask);
- }
- =
+Yes I agree, but I still need the the syscall wrappers, because glibc =
 
-+/*
-+ * Returns either true_value or false_value (depending if mask is 0xFF or =
-0x00
-+ * respectively).
-+ * This constant time selection method allows to keep an identical memory
-+ * access pattern.
-+ */
-+static inline uint8_t l_secure_select_byte(bool select_true,
-+					const uint8_t true_value,
-+					const uint8_t false_value)
-+{
-+	uint8_t mask =3D -(!!select_true);
-+
-+	return (mask & true_value) | (~mask & false_value);
-+}
-+
- #ifdef __cplusplus
- }
- #endif
--- =
+doesn't provide them. So bundling it with ell and make libaio a private =
 
-2.31.1
+library of ell seams to be a good solution for me.
 
---===============0702166471690474272==--
+Regards,
+Simon
+
+On 9/20/21 3:29 PM, Denis Kenzior wrote:
+> Hi Simon,
+> =
+
+> On 9/20/21 10:23 AM, Simon Maurer wrote:
+>> I wrote a little "proof of concept" for using ell with libaio:
+>> https://github.com/mausys/ellaio/blob/main/aio.c
+>> No more signals and threads. Also libaio is LGPL too, so it could be =
+
+>> bundled with ell.
+> =
+
+> libaio seems to be a small convenience wrapper around linux system calls =
+
+> (~500 lines).=C2=A0 Why not use io_submit, io_setup, etc directly for the =
+
+> parts you need?
+> =
+
+> Regards,
+> -Denis
+
+--===============1300907073864071489==--
 
