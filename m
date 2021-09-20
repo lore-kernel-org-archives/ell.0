@@ -1,41 +1,28 @@
-Content-Type: multipart/mixed; boundary="===============0210318383417109212=="
+Content-Type: multipart/mixed; boundary="===============1676566238445129892=="
 MIME-Version: 1.0
-From: Michael Johnson <mjohnson459 at gmail.com>
+From: Simon Maurer <mail at maurer.systems>
 To: ell at lists.01.org
-Subject: [PATCH] dhcp: CLIENT_ENTER_STATE should log as INFO
-Date: Wed, 18 May 2022 17:58:36 +0100
-Message-ID: <20220518165836.180763-1-mjohnson459@gmail.com>
+Subject: Re: AIO support
+Date: Mon, 20 Sep 2021 09:14:22 +0000
+Message-ID: <e64463ea-34af-1911-14b3-19fa69a239c2@maurer.systems>
+In-Reply-To: 81f5657e-111b-84ed-48f3-5e90d6bdbf75@maurer.systems
 
---===============0210318383417109212==
+--===============1676566238445129892==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This was missed in the d5377c6. Now the state will only log when INFO or
-above is enabled.
----
- ell/dhcp.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+I'm looking now into libaio. POSIX AIO is implemented in libc with user =
 
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index 8ff5594..4e66faa 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -56,9 +56,7 @@
- #define CLIENT_WARN(fmt, args...)					\
- 	CLIENT_LOG(L_LOG_WARNING, fmt, ## args)
- #define CLIENT_ENTER_STATE(s)						\
--	l_util_debug(client->debug_handler, client->debug_data,		\
--			"%s:%i Entering state: " #s,			\
--			__func__, __LINE__);				\
-+	CLIENT_INFO("Entering state: " #s);				\
- 	client->state =3D (s)
- =
+threads, while libaio uses linux native syscalls. Maybe I can also get =
 
- #define BITS_PER_LONG (sizeof(unsigned long) * 8)
--- =
+rid of signal usage. IMHO non-blocking file access / async IO is quite =
 
-2.25.1
+important for embedded applications and it would be nice to have this =
 
---===============0210318383417109212==--
+feature in ell.
+
+Regards
+Simon
+--===============1676566238445129892==--
 
