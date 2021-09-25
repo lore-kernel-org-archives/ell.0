@@ -1,60 +1,60 @@
-Content-Type: multipart/mixed; boundary="===============4447347709481665241=="
+Content-Type: multipart/mixed; boundary="===============5665892417560230119=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Simon Maurer <mail at maurer.systems>
 To: ell at lists.01.org
-Subject: Re: [PATCH 01/11] net: Add l_net_subnet_matches
-Date: Mon, 18 Apr 2022 12:59:59 -0500
-Message-ID: <d347beb5-ac09-c641-bb62-b919da565d9f@gmail.com>
-In-Reply-To: CAOq732JnYMhs3rLhSYspyoKW53Ef+-DXH0g0oNaCTq1WF+FMXg@mail.gmail.com
+Subject: Re: AIO support
+Date: Sat, 25 Sep 2021 19:37:16 +0200
+Message-ID: <cfbb7a4a-120f-2429-0ca1-5edeaee9e495@maurer.systems>
+In-Reply-To: f07404c6-ab34-c7f8-77fe-9b01a7839bc1@gmail.com
 
---===============4447347709481665241==
+--===============5665892417560230119==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi Denis
 
-On 4/18/22 12:21, Andrew Zaborowski wrote:
-> On Mon, 18 Apr 2022 at 19:04, Denis Kenzior <denkenz(a)gmail.com> wrote:
->> On 4/18/22 12:01, Andrew Zaborowski wrote:
->>>> There were a bit too many '()' for my liking.  I moved the casts to th=
-e variable
->>>> declaration block above which ended up being the same number of lines =
-and looked
->>>> a bit cleaner.
->>>
->>> Do we want to do the array[bytes] access after the !bits check to
->>> avoid accessing the byte after the end of the address for weird cases
->>> where the prefix_len is exactly the number of bits in the two buffers
->>> we received.
->>
->> Aren't we guaranteed to be operating on 4 byte values?  So unless prefix=
-_len =3D=3D
->> 32, I don't see how we could perform out-of-bounds access?
+On 9/24/21 4:21 PM, Denis Kenzior wrote:
+
+>> I started testing the aio interface for ell and it seems to work, =
+
+>> except it's not asynchronous. Turns out libaio works only under =
+
+>> certain circumstances:
+>> http://lse.sourceforge.net/io/aio.html
 > =
 
-> 4 or 16 bytes, in theory yes but I can imagine someone trying to use a
+> yes, this was a widely reported criticism.=C2=A0 I assume O_DIRECT is not =
 
-IPv6 doesn't really use subnets like IPv4 does though?  I'm not even sure t=
-his =
+> applicable to your use case?
 
-function would be relevant for IPv6?  Is it?  Looks like we do this for FIL=
-S, =
+I tried to open the file with O_DIRECT, but still got no asynchronous =
 
-but I'm not even certain that the check in ie.c in iwd is correct.
+operations. I don't know what the problem was, NVMe, btrfs, ... also I =
 
-> buffer of just long enough for the subnet address, or passing a
-> prefix_len of 32 / 128 for things like a route prefix.
+tried it on an usb stick with FAT32. Anyway, if it's only working under =
 
-Well, prefix_len of 32/128 implies point-to-point routing (and even 31 in I=
-Pv4 =
+certain conditions it's useless and dangerous for real time =
 
-would be special).  So I'm not sure calling this function with such prefixe=
-s =
+applications. I can't expect the user of my aio interface to be an =
 
-even makes sense?
+expert in Linux filesystems and knowing all the restrictions of aio.
+
+> =
+
+> Honestly, for ell, io_uring would be much more interesting to support.  =
+
+> With maybe a fallback to aio or a threaded/blocking implementation for =
+
+> older kernels.
+
+I might write an io_uring implementation in the future. But since =
+
+io_uring is not available on my target system, I have to stick with =
+
+POSIX AIO. A lot of Linux BSPs are only available for outdated kernel.
 
 Regards,
--Denis
---===============4447347709481665241==--
+Simon
+--===============5665892417560230119==--
 
