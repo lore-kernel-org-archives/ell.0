@@ -1,26 +1,31 @@
-Content-Type: multipart/mixed; boundary="===============8425180377328545483=="
+Content-Type: multipart/mixed; boundary="===============3817168404344149613=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] acd: remove 'No target or source conflict' print
-Date: Mon, 31 Jan 2022 13:22:16 -0600
-Message-ID: <ad1385ed-d618-9aa5-1ca3-eea10cb26ace@gmail.com>
-In-Reply-To: 20220131174944.3855357-1-prestwoj@gmail.com
+Subject: Re: [PATCH] dhcp6: Switch to BOUND before LEASE_OBTAINED
+Date: Mon, 08 Nov 2021 08:42:39 -0600
+Message-ID: <3027c204-e320-ce5f-458f-d6fa63ed7644@gmail.com>
+In-Reply-To: 20211108112901.372486-1-andrew.zaborowski@intel.com
 
---===============8425180377328545483==
+--===============3817168404344149613==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Hi Andrew,
 
-On 1/31/22 11:49, James Prestwood wrote:
-> This is quite common and expected with ACD, and printing it serves
-> no useful purpose. The kind of debugging that is important is when
-> a conflict is detected.
+On 11/8/21 5:29 AM, Andrew Zaborowski wrote:
+> Reorder actions so that when we obtain the lease, we first switch to
+> DHCP6_STATE_BOUND and configure the address + emit
+> L_DHCP6_CLIENT_EVENT_LEASE_OBTAINED after that.  This allows the event
+> handler to use l_dhcp6_client_get_lease().  l_dhcp6_client_get_lease is
+> hardwired to return NULL in DHCP6_STATE_REQUESTING.
+> =
+
+> Issue reported by T=C3=A9rence Clastres.
 > ---
->   ell/acd.c | 5 +----
->   1 file changed, 1 insertion(+), 4 deletions(-)
+>   ell/dhcp6.c | 2 +-
+>   1 file changed, 1 insertion(+), 1 deletion(-)
 > =
 
 
@@ -29,5 +34,5 @@ Applied, thanks.
 Regards,
 -Denis
 
---===============8425180377328545483==--
+--===============3817168404344149613==--
 
