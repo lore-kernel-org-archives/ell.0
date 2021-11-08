@@ -1,46 +1,46 @@
-Content-Type: multipart/mixed; boundary="===============6052970399954908020=="
+Content-Type: multipart/mixed; boundary="===============7501656408228120631=="
 MIME-Version: 1.0
-From: udayfield04 at gmail.com
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] strv: Add l_strv_eq
-Date: Fri, 04 Mar 2022 07:58:23 +0000
-Message-ID: <20220304075823.2870.83029@ml01.vlan13.01.org>
-In-Reply-To: 9677a64f-d767-1ced-fe73-b68fd880f310@gmail.com
+Subject: [PATCH] dhcp6: Switch to BOUND before LEASE_OBTAINED
+Date: Mon, 08 Nov 2021 12:29:01 +0100
+Message-ID: <20211108112901.372486-1-andrew.zaborowski@intel.com>
 
---===============6052970399954908020==
+--===============7501656408228120631==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Tamilyogi Proxy Unblock Tamilyogi proxy site List =
+Reorder actions so that when we obtain the lease, we first switch to
+DHCP6_STATE_BOUND and configure the address + emit
+L_DHCP6_CLIENT_EVENT_LEASE_OBTAINED after that.  This allows the event
+handler to use l_dhcp6_client_get_lease().  l_dhcp6_client_get_lease is
+hardwired to return NULL in DHCP6_STATE_REQUESTING.
 
-https://lifetrixcorner.com/tamilyogi-proxy/
+Issue reported by T=C3=A9rence Clastres.
+---
+ ell/dhcp6.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-ExtraTorrent Proxy Unblock Extratorrent Proxy List of all  Sites
-https://lifetrixcorner.com/extratorrent-proxy/
+diff --git a/ell/dhcp6.c b/ell/dhcp6.c
+index 67d4628..7dfc664 100644
+--- a/ell/dhcp6.c
++++ b/ell/dhcp6.c
+@@ -1401,8 +1401,8 @@ static void dhcp6_client_rx_message(const void *data,=
+ size_t len,
+ 	if (r =3D=3D DHCP6_STATE_BOUND) {
+ 		l_timeout_remove(client->timeout_send);
+ 		client->timeout_send =3D NULL;
+-		dhcp6_client_setup_lease(client);
+ 		dhcp6_client_new_transaction(client, r);
++		dhcp6_client_setup_lease(client);
+ 		return;
+ 	}
+ =
 
-ETTV Proxy Unblockit ETTV Proxy & latest Sites
-https://lifetrixcorner.com/ettv-proxy/
+-- =
 
-Torrentz2 Proxy Unblock access Torrentz2 Proxy List =
+2.32.0
 
-https://lifetrixcorner.com/torrentz2/
-
-isoHunt Proxy Unblock isoHunt Proxy list sites
-https://lifetrixcorner.com/isohunt/
-
-
-MagnetDL Proxy Unblock & MagnetDL Proxy List sites
-https://lifetrixcorner.com/magnetdl-proxy/
-
-
-Demonoid Proxy Unblock Demonoid Proxy Site List
-https://lifetrixcorner.com/demonoid/ =
-
-
-
-Write For Us =E2=80=93 Submit Guest Post on Lifestyle, Beauty, Travel, Heal=
-th, Fitness
-https://lifetrixcorner.com/write-for-us-guest-post/
---===============6052970399954908020==--
+--===============7501656408228120631==--
 
