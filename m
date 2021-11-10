@@ -1,47 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============0321732484247500043=="
+Content-Type: multipart/mixed; boundary="===============4108067717210437064=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel at holtmann.org>
+From: Ossama Othman <ossama.othman at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] build: Check for openssl legacy provider requirement
-Date: Fri, 20 May 2022 11:13:55 +0200
-Message-ID: <0373E38A-FD24-457D-B4DE-DFB4A9F91DCD@holtmann.org>
-In-Reply-To: 20220519224828.91435-1-mathew.j.martineau@linux.intel.com
+Subject: [PATCH 3/3] Makefile: Bump library 'current' version.
+Date: Tue, 09 Nov 2021 16:14:48 -0800
+Message-ID: <20211110001448.175980-4-ossama.othman@intel.com>
+In-Reply-To: 20211110001448.175980-1-ossama.othman@intel.com
 
---===============0321732484247500043==
+--===============4108067717210437064==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Mat,
+The l_rtnl interface changed.  Bump the "current" ELL library version
+number accordingly.
+---
+ Makefile.am | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-> OpenSSL 3 introduced some command line incompatibilities and removed
-> some old algorithms from the defaults. This broke some of the unit test
-> cert generation commands on distros like Ubuntu 22.04 and Fedora 36.
-> =
+diff --git a/Makefile.am b/Makefile.am
+index 4e650c9..73f5298 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -8,8 +8,8 @@ ACLOCAL_AMFLAGS =3D -I build-aux
+ # Interfaces added:		CURRENT++ REVISION=3D0 AGE++
+ # Interfaces removed:		CURRENT++ REVISION=3D0 AGE=3D0
+ =
 
-> Detect support of "providers" by the system openssl command and insert
-> the necessary command line parameters to enable legacy algorithms for
-> openssl v3, but leave the commands unchanged for older openssl versions.
-> ---
-> =
+-ELL_CURRENT =3D 0
+-ELL_REVISION =3D 2
++ELL_CURRENT =3D 1
++ELL_REVISION =3D 0
+ ELL_AGE =3D 0
+ =
 
-> Tested on Ubuntu 22.04, Fedora 36, and Fedora 35.
-> =
+ linux_headers =3D linux/gpio.h
+-- =
 
-> ---
-> Makefile.am  | 26 ++++++++++++++++++--------
-> configure.ac |  3 +++
-> 2 files changed, 21 insertions(+), 8 deletions(-)
+2.32.0
 
-what would it take to just use OpenSSL 3 since these are just required on t=
-he development systems. I need to check my release system since that is his=
-torically always behind, but I feel this business of supporting two OpenSSL=
- versions will get out of hand quickly. It is too bad that we can not gener=
-ate the certificates with our own tools.
-
-Regards
-
-Marcel
-
---===============0321732484247500043==--
+--===============4108067717210437064==--
 
