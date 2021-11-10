@@ -1,183 +1,176 @@
-Content-Type: multipart/mixed; boundary="===============6663272632834642975=="
+Content-Type: multipart/mixed; boundary="===============0702491579510944554=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Ossama Othman <ossama.othman at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 13/14] netconfig: Start ACD before committing static IPv4
-Date: Thu, 16 Jun 2022 00:47:38 +0200
-Message-ID: <20220615224739.1936538-13-andrew.zaborowski@intel.com>
-In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
+Subject: [PATCH 1/3] rtnl: Fix address conversion buffer overflow.
+Date: Tue, 09 Nov 2021 16:14:46 -0800
+Message-ID: <20211110001448.175980-2-ossama.othman@intel.com>
+In-Reply-To: 20211110001448.175980-1-ossama.othman@intel.com
 
---===============6663272632834642975==
+--===============0702491579510944554==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-When the IPv4 is configured to be static we can use ACD in order to
-check that the IP is available and not already in use.  If a
-conflict is found netconfig will be reset and no IP will be set on
-the interface.  The ACD client is left with the default
-'defend once' policy, and probes are not turned off.  This will
-increase connection time, but for static IP it is considered the
-safe approach.
+Some l_rtnl functions that return a stringified address could
+potentially overrun a user supplied buffer of insufficient length.
+Add a buffer length argument to prevent ELL from making incorrect
+assumptions.  Impacted functions are l_rtnl_address_get_address(),
+l_rtnl_route_get_gateway(), and l_rtnl_route_get_prefsrc().
 ---
- ell/netconfig.c | 71 ++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 64 insertions(+), 7 deletions(-)
+ ell/rtnl.c | 28 +++++++++++++++++-----------
+ ell/rtnl.h |  8 +++++---
+ 2 files changed, 22 insertions(+), 14 deletions(-)
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index bcb2df9..7d4a97e 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -53,6 +53,7 @@
- #include "strv.h"
- #include "net.h"
- #include "net-private.h"
-+#include "acd.h"
- #include "netconfig.h"
+diff --git a/ell/rtnl.c b/ell/rtnl.c
+index 4a1a248..bfda632 100644
+--- a/ell/rtnl.c
++++ b/ell/rtnl.c
+@@ -58,21 +58,24 @@ struct l_rtnl_address {
  =
 
- struct l_netconfig {
-@@ -81,6 +82,7 @@ struct l_netconfig {
- 	struct l_idle *signal_expired_work;
- 	unsigned int ifaddr6_dump_cmd_id;
- 	struct l_queue *icmp_route_data;
-+	struct l_acd *acd;
- =
-
- 	/* These objects, if not NULL, are owned by @addresses and @routes */
- 	struct l_rtnl_address *v4_address;
-@@ -389,8 +391,8 @@ static void netconfig_set_dhcp_lifetimes(struct l_netco=
-nfig *nc, bool updated)
- 		l_queue_push_tail(nc->routes.updated, nc->v4_default_route);
- }
- =
-
--static void netconfig_remove_dhcp_address_routes(struct l_netconfig *nc,
--							bool expired)
-+static void netconfig_remove_v4_address_routes(struct l_netconfig *nc,
-+						bool expired)
+ static inline int address_to_string(int family, const struct in_addr *v4,
+ 					const struct in6_addr *v6,
+-					char *out_address)
++					char *out_buf, size_t buflen)
  {
- 	struct l_queue *routes =3D
- 		expired ? nc->routes.expired : nc->routes.removed;
-@@ -466,7 +468,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
-client *client,
- 		if (L_WARN_ON(!nc->v4_configured))
- 			break;
- =
-
--		netconfig_remove_dhcp_address_routes(nc, false);
-+		netconfig_remove_v4_address_routes(nc, false);
- 		netconfig_add_dhcp_address_routes(nc);
- 		netconfig_set_dhcp_lifetimes(nc, false);
- 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_UPDATE);
-@@ -492,7 +494,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
-client *client,
- 		if (L_WARN_ON(!nc->v4_configured))
- 			break;
- =
-
--		netconfig_remove_dhcp_address_routes(nc, true);
-+		netconfig_remove_v4_address_routes(nc, true);
- 		nc->v4_configured =3D false;
- =
-
- 		if (l_dhcp_client_start(nc->dhcp_client))
-@@ -1327,16 +1329,69 @@ static void netconfig_add_v6_static_address_routes(=
-struct l_netconfig *nc)
- 	netconfig_add_v6_static_routes(nc, ip, prefix_len);
- }
- =
-
--static void netconfig_do_static_config(struct l_idle *idle, void *user_dat=
-a)
-+static void netconfig_ipv4_acd_event(enum l_acd_event event, void *user_da=
-ta)
- {
- 	struct l_netconfig *nc =3D user_data;
- =
-
--	l_idle_remove(l_steal_ptr(nc->do_static_work));
-+	switch (event) {
-+	case L_ACD_EVENT_AVAILABLE:
-+		if (L_WARN_ON(nc->v4_configured))
-+			break;
- =
-
--	if (nc->v4_static_addr && !nc->v4_configured) {
- 		netconfig_add_v4_static_address_routes(nc);
- 		nc->v4_configured =3D true;
- 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
-+		break;
-+	case L_ACD_EVENT_CONFLICT:
-+		if (L_WARN_ON(nc->v4_configured))
-+			break;
++	const void *src =3D NULL;
 +
-+		/*
-+		 * Conflict found, no IP was actually set or routes added so
-+		 * just emit the event.
-+		 */
-+		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
-+		break;
-+	case L_ACD_EVENT_LOST:
-+		if (L_WARN_ON(!nc->v4_configured))
-+			break;
-+
-+		/*
-+		 * Set IP but lost it some time later.  Reset IPv4 in this
-+		 * case and emit the FAILED event since we have no way to
-+		 * recover from here.
-+		 */
-+		netconfig_remove_v4_address_routes(nc, false);
-+		nc->v4_configured =3D false;
-+		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
-+		break;
-+	}
-+}
-+
-+static void netconfig_do_static_config(struct l_idle *idle, void *user_dat=
-a)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+
-+	l_idle_remove(l_steal_ptr(nc->do_static_work));
-+
-+	if (nc->v4_static_addr && !nc->v4_configured) {
-+		char ip[INET_ADDRSTRLEN];
-+
-+		l_rtnl_address_get_address(nc->v4_static_addr, ip);
-+
-+		nc->acd =3D l_acd_new(nc->ifindex);
-+                l_acd_set_event_handler(nc->acd, netconfig_ipv4_acd_event,=
- nc,
-+					NULL);
-+
-+		if (!l_acd_start(nc->acd, ip)) {
-+			l_acd_destroy(l_steal_ptr(nc->acd));
-+
-+			/* Configure right now as a fallback */
-+			netconfig_add_v4_static_address_routes(nc);
-+			nc->v4_configured =3D true;
-+			netconfig_emit_event(nc, AF_INET,
-+						L_NETCONFIG_EVENT_CONFIGURE);
-+		}
+ 	switch (family) {
+ 	case AF_INET:
+-		if (!inet_ntop(family, v4, out_address, INET_ADDRSTRLEN))
+-			return -errno;
++                src =3D v4;
+ 		break;
+ 	case AF_INET6:
+-		if (!inet_ntop(family, v6, out_address, INET6_ADDRSTRLEN))
+-			return -errno;
++                src =3D v6;
+ 		break;
+ 	default:
+ 		return  false;
  	}
  =
 
- 	if (nc->v6_static_addr && !nc->v6_configured) {
-@@ -1604,6 +1659,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
-netconfig)
- =
-
- 	l_dhcp_client_stop(netconfig->dhcp_client);
- 	l_dhcp6_client_stop(netconfig->dhcp6_client);
++	if (!inet_ntop(family, src, out_buf, buflen))
++		return -errno;
 +
-+	l_acd_destroy(l_steal_ptr(netconfig->acd));
+ 	return 0;
  }
  =
 
- LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhcp_client(
+@@ -162,14 +165,15 @@ LIB_EXPORT void l_rtnl_address_free(struct l_rtnl_add=
+ress *addr)
+ }
+ =
+
+ LIB_EXPORT bool l_rtnl_address_get_address(const struct l_rtnl_address *ad=
+dr,
+-						char *out_buf)
++						char *out_buf,
++						size_t buflen)
+ {
+ 	if (unlikely(!addr))
+ 		return false;
+ =
+
+ 	return !address_to_string(addr->family, &addr->in_addr,
+ 						&addr->in6_addr,
+-						out_buf);
++						out_buf, buflen);
+ }
+ =
+
+ LIB_EXPORT uint8_t l_rtnl_address_get_family(const struct l_rtnl_address *=
+addr)
+@@ -394,13 +398,14 @@ LIB_EXPORT uint8_t l_rtnl_route_get_family(const stru=
+ct l_rtnl_route *rt)
+ }
+ =
+
+ LIB_EXPORT bool l_rtnl_route_get_gateway(const struct l_rtnl_route *rt,
+-						char *out_buf)
++						char *out_buf,
++						size_t buflen)
+ {
+ 	if (unlikely(!rt))
+ 		return false;
+ =
+
+ 	return !address_to_string(rt->family, &rt->gw.in_addr, &rt->gw.in6_addr,
+-					out_buf);
++					out_buf, buflen);
+ }
+ =
+
+ LIB_EXPORT uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *r=
+t)
+@@ -461,7 +466,8 @@ LIB_EXPORT bool l_rtnl_route_set_preference(struct l_rt=
+nl_route *rt,
+ }
+ =
+
+ LIB_EXPORT bool l_rtnl_route_get_prefsrc(const struct l_rtnl_route *rt,
+-						char *out_address)
++						char *out_buf,
++						size_t buflen)
+ {
+ 	if (unlikely(!rt))
+ 		return false;
+@@ -473,7 +479,7 @@ LIB_EXPORT bool l_rtnl_route_get_prefsrc(const struct l=
+_rtnl_route *rt,
+ =
+
+ 	return !address_to_string(rt->family, &rt->prefsrc.in_addr,
+ 						&rt->prefsrc.in6_addr,
+-						out_address);
++						out_buf, buflen);
+ }
+ =
+
+ LIB_EXPORT bool l_rtnl_route_set_prefsrc(struct l_rtnl_route *rt,
+diff --git a/ell/rtnl.h b/ell/rtnl.h
+index 274816c..802692b 100644
+--- a/ell/rtnl.h
++++ b/ell/rtnl.h
+@@ -43,7 +43,7 @@ struct l_rtnl_address *l_rtnl_address_clone(const struct =
+l_rtnl_address *orig);
+ void l_rtnl_address_free(struct l_rtnl_address *addr);
+ DEFINE_CLEANUP_FUNC(l_rtnl_address_free);
+ bool l_rtnl_address_get_address(const struct l_rtnl_address *addr,
+-				char *out_buf);
++				char *out_buf, size_t buflen);
+ uint8_t l_rtnl_address_get_family(const struct l_rtnl_address *addr);
+ uint8_t l_rtnl_address_get_prefix_length(const struct l_rtnl_address *addr=
+);
+ bool l_rtnl_address_get_broadcast(const struct l_rtnl_address *addr,
+@@ -68,14 +68,16 @@ struct l_rtnl_route *l_rtnl_route_new_prefix(const char=
+ *ip,
+ void l_rtnl_route_free(struct l_rtnl_route *rt);
+ DEFINE_CLEANUP_FUNC(l_rtnl_route_free);
+ uint8_t l_rtnl_route_get_family(const struct l_rtnl_route *rt);
+-bool l_rtnl_route_get_gateway(const struct l_rtnl_route *rt, char *out_buf=
+);
++bool l_rtnl_route_get_gateway(const struct l_rtnl_route *rt, char *out_buf,
++					size_t buflen);
+ uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *rt);
+ bool l_rtnl_route_set_lifetime(struct l_rtnl_route *rt, uint32_t lt);
+ uint32_t l_rtnl_route_get_mtu(const struct l_rtnl_route *rt);
+ bool l_rtnl_route_set_mtu(struct l_rtnl_route *rt, uint32_t mtu);
+ uint8_t l_rtnl_route_get_preference(const struct l_rtnl_route *rt);
+ bool l_rtnl_route_set_preference(struct l_rtnl_route *rt, uint8_t preferen=
+ce);
+-bool l_rtnl_route_get_prefsrc(const struct l_rtnl_route *rt, char *out_add=
+ress);
++bool l_rtnl_route_get_prefsrc(const struct l_rtnl_route *rt, char *out_buf,
++					size_t buflen);
+ bool l_rtnl_route_set_prefsrc(struct l_rtnl_route *rt, const char *address=
+);
+ uint32_t l_rtnl_route_get_priority(const struct l_rtnl_route *rt);
+ bool l_rtnl_route_set_priority(struct l_rtnl_route *rt, uint32_t priority);
 -- =
 
-2.34.1
+2.32.0
 
---===============6663272632834642975==--
+--===============0702491579510944554==--
 
