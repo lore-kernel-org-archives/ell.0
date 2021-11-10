@@ -1,150 +1,47 @@
-Content-Type: multipart/mixed; boundary="===============5781392866501108743=="
+Content-Type: multipart/mixed; boundary="===============4153138571395813681=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Marcel Holtmann <marcel at holtmann.org>
 To: ell at lists.01.org
-Subject: [PATCH 07/17] netconfig: Use an internal rtnl socket for
- l_netconfig_apply_rtnl
-Date: Sat, 14 May 2022 00:47:03 +0200
-Message-ID: <20220513224713.1447773-7-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 3/3] Makefile: Bump library 'current' version.
+Date: Wed, 10 Nov 2021 06:58:32 +0100
+Message-ID: <1F9E641A-022D-4E02-87CC-83EFA4AA0599@holtmann.org>
+In-Reply-To: 20211110001448.175980-4-ossama.othman@intel.com
 
---===============5781392866501108743==
+--===============4153138571395813681==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Since we'll need to keep an internal RTNL socket for DHCPv6
-functionality anyway, change l_netconfig_apply_rtnl's signature to not
-require an rtnl parameter.
----
- ell/netconfig.c | 34 ++++++++++++++++++++--------------
- ell/netconfig.h |  3 +--
- 2 files changed, 21 insertions(+), 16 deletions(-)
+Hi Ossama,
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 94d3ed1..55a7993 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -64,6 +64,7 @@ struct l_netconfig {
- 	char **v6_dns_override;
- 	char **v6_domain_names_override;
- =
+> The l_rtnl interface changed.  Bump the "current" ELL library version
+> number accordingly.
+> ---
+> Makefile.am | 4 ++--
+> 1 file changed, 2 insertions(+), 2 deletions(-)
+> =
 
-+	struct l_netlink *rtnl;
- 	bool started;
- 	struct l_idle *do_static_work;
- 	bool v4_configured;
-@@ -730,8 +731,13 @@ static void netconfig_icmp6_event_handler(struct l_icm=
-p6_client *client,
- LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
- {
- 	struct l_netconfig *nc;
-+	struct l_netlink *rtnl =3D l_netlink_new(NETLINK_ROUTE);
-+
-+	if (!rtnl)
-+		return NULL;
- =
+> diff --git a/Makefile.am b/Makefile.am
+> index 4e650c9..73f5298 100644
+> --- a/Makefile.am
+> +++ b/Makefile.am
+> @@ -8,8 +8,8 @@ ACLOCAL_AMFLAGS =3D -I build-aux
+> # Interfaces added:		CURRENT++ REVISION=3D0 AGE++
+> # Interfaces removed:		CURRENT++ REVISION=3D0 AGE=3D0
+> =
 
- 	nc =3D l_new(struct l_netconfig, 1);
-+	nc->rtnl =3D rtnl;
- 	nc->ifindex =3D ifindex;
- 	nc->v4_enabled =3D true;
- =
+> -ELL_CURRENT =3D 0
+> -ELL_REVISION =3D 2
+> +ELL_CURRENT =3D 1
+> +ELL_REVISION =3D 0
+> ELL_AGE =3D 0
 
-@@ -789,6 +795,7 @@ LIB_EXPORT void l_netconfig_destroy(struct l_netconfig =
-*netconfig)
- 	l_queue_destroy(netconfig->routes.added, NULL);
- 	l_queue_destroy(netconfig->routes.updated, NULL);
- 	l_queue_destroy(netconfig->routes.removed, NULL);
-+	l_netlink_destroy(netconfig->rtnl);
- 	l_free(netconfig);
- }
- =
+actually we have bothered changing this as long as we are still 0.x and not=
+ stable. So I rather skip this for now.
 
-@@ -1193,42 +1200,41 @@ LIB_EXPORT void l_netconfig_set_event_handler(struc=
-t l_netconfig *netconfig,
- 	netconfig->handler.destroy =3D destroy;
- }
- =
+Regards
 
--LIB_EXPORT void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
--					struct l_netlink *rtnl)
-+LIB_EXPORT void l_netconfig_apply_rtnl(struct l_netconfig *netconfig)
- {
- 	const struct l_queue_entry *entry;
- =
+Marcel
 
- 	for (entry =3D l_queue_get_entries(netconfig->addresses.removed); entry;
- 			entry =3D entry->next)
--		l_rtnl_ifaddr_delete(rtnl, netconfig->ifindex, entry->data,
--					NULL, NULL, NULL);
-+		l_rtnl_ifaddr_delete(netconfig->rtnl, netconfig->ifindex,
-+					entry->data, NULL, NULL, NULL);
- =
-
- 	for (entry =3D l_queue_get_entries(netconfig->addresses.added); entry;
- 			entry =3D entry->next)
--		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
--					NULL, NULL, NULL);
-+		l_rtnl_ifaddr_add(netconfig->rtnl, netconfig->ifindex,
-+					entry->data, NULL, NULL, NULL);
- =
-
- 	/* We can use l_rtnl_ifaddr_add here since that uses NLM_F_REPLACE */
- 	for (entry =3D l_queue_get_entries(netconfig->addresses.updated); entry;
- 			entry =3D entry->next)
--		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
--					NULL, NULL, NULL);
-+		l_rtnl_ifaddr_add(netconfig->rtnl, netconfig->ifindex,
-+					entry->data, NULL, NULL, NULL);
- =
-
- 	for (entry =3D l_queue_get_entries(netconfig->routes.removed); entry;
- 			entry =3D entry->next)
--		l_rtnl_route_delete(rtnl, netconfig->ifindex, entry->data,
--					NULL, NULL, NULL);
-+		l_rtnl_route_delete(netconfig->rtnl, netconfig->ifindex,
-+					entry->data, NULL, NULL, NULL);
- =
-
- 	for (entry =3D l_queue_get_entries(netconfig->routes.added); entry;
- 			entry =3D entry->next)
--		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
--					NULL, NULL, NULL);
-+		l_rtnl_route_add(netconfig->rtnl, netconfig->ifindex,
-+					entry->data, NULL, NULL, NULL);
- =
-
- 	/* We can use l_rtnl_route_add here since that uses NLM_F_REPLACE */
- 	for (entry =3D l_queue_get_entries(netconfig->routes.updated); entry;
- 			entry =3D entry->next)
--		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
--					NULL, NULL, NULL);
-+		l_rtnl_route_add(netconfig->rtnl, netconfig->ifindex,
-+					entry->data, NULL, NULL, NULL);
- }
- =
-
- LIB_EXPORT const struct l_queue_entry *l_netconfig_get_addresses(
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index d58dda1..874491f 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -81,8 +81,7 @@ void l_netconfig_set_event_handler(struct l_netconfig *ne=
-tconfig,
- 					void *user_data,
- 					l_netconfig_destroy_cb_t destroy);
- =
-
--void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
--				struct l_netlink *rtnl);
-+void l_netconfig_apply_rtnl(struct l_netconfig *netconfig);
- const struct l_queue_entry *l_netconfig_get_addresses(
- 				struct l_netconfig *netconfig,
- 				const struct l_queue_entry **out_added,
--- =
-
-2.32.0
-
---===============5781392866501108743==--
+--===============4153138571395813681==--
 
