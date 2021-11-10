@@ -1,81 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============2597269140925692963=="
+Content-Type: multipart/mixed; boundary="===============7196799667913756130=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Ossama Othman <ossama.othman at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 2/6] rtnl: Add l_rtnl_route_get_dst
-Date: Mon, 07 Feb 2022 16:07:13 +0100
-Message-ID: <20220207150717.60511-2-andrew.zaborowski@intel.com>
-In-Reply-To: 20220207150717.60511-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 3/3] Makefile: Bump library 'current' version.
+Date: Wed, 10 Nov 2021 09:56:37 -0800
+Message-ID: <CAE+88WPW63yrsBz5gcYCDBTHBYVjARwWc0Z5x7sCVRWcCNFZzQ@mail.gmail.com>
+In-Reply-To: 1F9E641A-022D-4E02-87CC-83EFA4AA0599@holtmann.org
 
---===============2597269140925692963==
+--===============7196799667913756130==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/ell.sym |  1 +
- ell/rtnl.c  | 14 ++++++++++++++
- ell/rtnl.h  |  2 ++
- 3 files changed, 17 insertions(+)
+Hi Marcel,
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 60c5525..203a91b 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -634,6 +634,7 @@ global:
- 	l_rtnl_route_free;
- 	l_rtnl_route_get_family;
- 	l_rtnl_route_get_gateway;
-+	l_rtnl_route_get_dst;
- 	l_rtnl_route_get_lifetime;
- 	l_rtnl_route_set_lifetime;
- 	l_rtnl_route_get_mtu;
-diff --git a/ell/rtnl.c b/ell/rtnl.c
-index dda27cf..5f0940b 100644
---- a/ell/rtnl.c
-+++ b/ell/rtnl.c
-@@ -410,6 +410,20 @@ LIB_EXPORT bool l_rtnl_route_get_gateway(const struct =
-l_rtnl_route *rt,
- 					out_buf);
- }
- =
+On Tue, Nov 9, 2021 at 9:58 PM Marcel Holtmann <marcel(a)holtmann.org> wrot=
+e:
+> > -ELL_CURRENT =3D 0
+> > -ELL_REVISION =3D 2
+> > +ELL_CURRENT =3D 1
+> > +ELL_REVISION =3D 0
+> > ELL_AGE =3D 0
+>
+> actually we have bothered changing this as long as we are still 0.x and n=
+ot stable. So I rather skip this for now.
 
-+LIB_EXPORT bool l_rtnl_route_get_dst(const struct l_rtnl_route *rt, char *=
-out_buf,
-+					uint8_t *out_prefix_len)
-+{
-+	if (unlikely(!rt))
-+		return false;
-+
-+	if (address_to_string(rt->family, &rt->dst.in_addr, &rt->dst.in6_addr,
-+					out_buf) !=3D 0)
-+		return false;
-+
-+	*out_prefix_len =3D rt->dst_prefix_len;
-+	return true;
-+}
-+
- LIB_EXPORT uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *r=
-t,
- 						uint64_t reference_time)
- {
-diff --git a/ell/rtnl.h b/ell/rtnl.h
-index 8028d8d..1e232df 100644
---- a/ell/rtnl.h
-+++ b/ell/rtnl.h
-@@ -72,6 +72,8 @@ void l_rtnl_route_free(struct l_rtnl_route *rt);
- DEFINE_CLEANUP_FUNC(l_rtnl_route_free);
- uint8_t l_rtnl_route_get_family(const struct l_rtnl_route *rt);
- bool l_rtnl_route_get_gateway(const struct l_rtnl_route *rt, char *out_buf=
-);
-+bool l_rtnl_route_get_dst(const struct l_rtnl_route *rt, char *out_buf,
-+				uint8_t *out_prefix_len);
- uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *rt,
- 					uint64_t reference_time);
- bool l_rtnl_route_set_lifetime(struct l_rtnl_route *rt, uint32_t lt,
--- =
+Okay, sounds good.
 
-2.32.0
-
---===============2597269140925692963==--
+-Ossama
+--===============7196799667913756130==--
 
