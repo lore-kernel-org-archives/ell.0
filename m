@@ -1,131 +1,65 @@
-Content-Type: multipart/mixed; boundary="===============6056757150464199213=="
+Content-Type: multipart/mixed; boundary="===============7740909292610498270=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau at linux.intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH] build: Generate test certs using OpenSSL 3 legacy provider
-Date: Fri, 20 May 2022 17:15:34 -0700
-Message-ID: <20220521001534.1050889-1-mathew.j.martineau@linux.intel.com>
+Subject: Re: [PATCH 1/3] rtnl: Fix address conversion buffer overflow.
+Date: Wed, 10 Nov 2021 09:55:51 -0600
+Message-ID: <ac6e7c2c-c8ea-a10c-20a3-f3c8d5ee2031@gmail.com>
+In-Reply-To: 20211110001448.175980-2-ossama.othman@intel.com
 
---===============6056757150464199213==
+--===============7740909292610498270==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-OpenSSL 3 moved some legacy algorithms to a separate "legacy" provider,
-so they are not available by default. Add the necessary command line
-parameters for use with OpenSSL 3, which distros are switching to. For
-example, Ubuntu 22.04 and Fedora 36 are the first version of those
-distributions to use OpenSSL 3 or later.
+Hi Ossama,
 
-This does break compatibility with older OpenSSL versions and
-configuring the project with "--enable-maintainer-mode". The
-tradeoff is keeping the autoconf/automake checks simpler.
----
- Makefile.am | 21 +++++++++++++--------
- 1 file changed, 13 insertions(+), 8 deletions(-)
+On 11/9/21 6:14 PM, Ossama Othman wrote:
+> Some l_rtnl functions that return a stringified address could
+> potentially overrun a user supplied buffer of insufficient length.
+> Add a buffer length argument to prevent ELL from making incorrect
+> assumptions.  Impacted functions are l_rtnl_address_get_address(),
+> l_rtnl_route_get_gateway(), and l_rtnl_route_get_prefsrc().
+> ---
+>   ell/rtnl.c | 28 +++++++++++++++++-----------
+>   ell/rtnl.h |  8 +++++---
+>   2 files changed, 22 insertions(+), 14 deletions(-)
+> =
 
-diff --git a/Makefile.am b/Makefile.am
-index d8ba99c..b8423c4 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -444,7 +444,8 @@ unit/cert-client-key-pkcs1.pem:
- 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
- =
 
- unit/cert-client-key-pkcs1-des.pem: unit/cert-client-key-pkcs1.pem
--	$(AM_V_GEN)openssl rsa -in $< -out $@ -des -passout pass:abc
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -des -passout pass:abc \
-+			-provider legacy -provider default
- =
+<snip>
 
- unit/cert-client-key-pkcs1-des3.pem: unit/cert-client-key-pkcs1.pem
- 	$(AM_V_GEN)openssl rsa -in $< -out $@ -des3 -passout pass:abc
-@@ -463,15 +464,18 @@ unit/cert-client-key-pkcs8.pem: unit/cert-client-key-=
-pkcs1.pem
- =
+>   bool l_rtnl_address_get_address(const struct l_rtnl_address *addr,
+> -				char *out_buf);
+> +				char *out_buf, size_t buflen);
 
- unit/cert-client-key-pkcs8-md5-des.pem: unit/cert-client-key-pkcs8.pem
- 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
--			-topk8 -v1 PBE-MD5-DES -passout pass:abc
-+			-topk8 -v1 PBE-MD5-DES -passout pass:abc \
-+			-provider legacy -provider default
- =
+So I'm a little torn about this.  On the one hand, specifying the buffer le=
+n is =
 
- unit/cert-client-key-pkcs8-sha1-des.pem: unit/cert-client-key-pkcs8.pem
- 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
--			-topk8 -v1 PBE-SHA1-DES -passout pass:abc
-+			-topk8 -v1 PBE-SHA1-DES -passout pass:abc \
-+			-provider legacy -provider default
- =
+indeed safer.  However, simply passing a buffer of size INET6_ADDRSTRLEN is=
+ also =
 
- unit/cert-client-key-pkcs8-v2-des.pem: unit/cert-client-key-pkcs8.pem
- 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
--			-topk8 -v2 des-cbc -v2prf hmacWithSHA1 -passout pass:abc
-+			-topk8 -v2 des-cbc -v2prf hmacWithSHA1 -passout pass:abc \
-+			-provider legacy -provider default
- =
+guaranteed to work for any address that we support and saves the need for t=
+he =
 
- unit/cert-client-key-pkcs8-v2-des-ede3.pem: unit/cert-client-key-pkcs8.pem
- 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
-@@ -575,19 +579,20 @@ unit/cert-entity-pkcs12-nomac.p12: unit/cert-entity-i=
-nt-key.pem unit/cert-entity
- 	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -out $@ -export -passout pass:abc -nomac # defaut ciphers
- =
+extra argument.  Alternatively, if you know the family or can look it up vi=
+a =
 
- unit/cert-entity-pkcs12-rc2-sha1.p12: unit/cert-entity-int-key.pem unit/ce=
-rt-entity-int.pem unit/cert-chain.pem
--	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-RC2-40 -keypbe PBE-SHA1-RC2-128 -macalg sha1
-+	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-RC2-40 -keypbe PBE-SHA1-RC2-128 -macalg sha1 -provid=
-er legacy -provider default
- =
+l_rtnl_*_get_family(), you can use INET_ADDRSTRLEN for ipv4 getters.  Maybe=
+ this =
 
- unit/cert-entity-pkcs12-des-sha256.p12: unit/cert-entity-int-key.pem unit/=
-cert-entity-int.pem unit/cert-chain.pem
- 	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-2DES -macalg sha256
- =
+is more of a documentation issue?
 
- unit/cert-entity-pkcs12-rc4-sha384.p12: unit/cert-entity-int-key.pem unit/=
-cert-entity-int.pem unit/cert-chain.pem
--	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-RC4-128 -keypbe PBE-SHA1-RC2-40 -macalg sha384
-+	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-RC4-128 -keypbe PBE-SHA1-RC2-40 -macalg sha384 -prov=
-ider legacy -provider default
- =
+If you look at how iwd uses these functions, the extra argument is unnecess=
+ary.
 
- unit/cert-entity-pkcs12-pkcs5-sha512.p12: unit/cert-entity-int-key.pem uni=
-t/cert-entity-int.pem unit/cert-chain.pem
--	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe des-cbc -keypbe des-cbc -macalg sha512
-+	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe des-cbc -keypbe des-cbc -macalg sha512 -provider legacy -prov=
-ider default
- =
+Can you share more info about what made you propose this change?  Are you u=
+sing =
 
- unit/cert-entity-combined.pem: unit/cert-entity-pkcs12-rc2-sha1.p12
--	$(AM_V_GEN)openssl pkcs12 -in $< -out $@ -passin pass:abc -passout pass:a=
-bc
-+	$(AM_V_GEN)openssl pkcs12 -in $< -out $@ -passin pass:abc -passout pass:a=
-bc \
-+			 -provider legacy -provider default
- =
+these functions in ways where the buffer size argument would be advantageou=
+s?
 
- unit/key-plaintext.h: unit/plaintext.txt
- 	$(AM_V_GEN)xxd -i < $< > $@
--- =
-
-2.36.1
-
---===============6056757150464199213==--
+Regards,
+-Denis
+--===============7740909292610498270==--
 
