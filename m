@@ -1,129 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============1387935809691514393=="
+Content-Type: multipart/mixed; boundary="===============0777661572562451339=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 10/17] netconfig: Add getters for DNS addresses and domain
- names
-Date: Sat, 14 May 2022 00:47:06 +0200
-Message-ID: <20220513224713.1447773-10-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH] log: Set retain attribute on __ell_debug
+Date: Thu, 11 Nov 2021 12:47:58 -0600
+Message-ID: <8ee36d26-5741-43bd-57ad-5429f2c9c9dd@gmail.com>
+In-Reply-To: 20211111030742.2005152-1-i@maskray.me
 
---===============1387935809691514393==
+--===============0777661572562451339==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/ell.sym     |  2 ++
- ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++++
- ell/netconfig.h |  2 ++
- 3 files changed, 68 insertions(+)
+Hi Fangrui,
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 0f9f884..0ce604b 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -755,6 +755,8 @@ global:
- 	l_netconfig_apply_rtnl;
- 	l_netconfig_get_addresses;
- 	l_netconfig_get_routes;
-+	l_netconfig_get_dns_list;
-+	l_netconfig_get_domain_names;
- local:
- 	*;
- };
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 4af2fe7..60962ce 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1420,3 +1420,67 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_g=
-et_routes(
- =
+On 11/10/21 9:07 PM, Fangrui Song wrote:
+> LLD 13 and GNU ld 2.37 support -z start-stop-gc which allows garbage
+> collection of C identifier name sections despite the __start_/__stop_
+> references. GNU ld before 2015-10 had the behavior as well. Simply set
+> the retain attribute so that GCC 11 (if configure-time binutils is 2.36
+> or newer)/Clang 13 will set the SHF_GNU_RETAIN section attribute to
+> prevent garbage collection.
+> =
 
- 	return l_queue_get_entries(netconfig->routes.current);
- }
-+
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_dns_list(struct l_netconfig *netconfig)
-+{
-+	char **ret =3D NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
-+
-+#define CONCAT(dest, src, free)		\
-+	do {				\
-+		char **tmp =3D src;	\
-+		tmp =3D free ? tmp : l_strv_copy(tmp);	\
-+		if (!dest)		\
-+			dest =3D tmp;	\
-+		else if (tmp) {		\
-+			unsigned int destlen =3D l_strv_length(dest);	\
-+			unsigned int srclen =3D l_strv_length(tmp);	\
-+			dest =3D l_realloc(dest, sizeof(char *) *	\
-+				(destlen + srclen + 1));	\
-+			memcpy(dest + destlen, tmp, sizeof(char *) *	\
-+					(srclen + 1));	\
-+			l_free(tmp);	\
-+		}			\
-+	} while (0)
-+
-+	if (netconfig->v4_dns_override)
-+		CONCAT(ret, netconfig->v4_dns_override, false);
-+	else if ((v4_lease =3D
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)))
-+		CONCAT(ret, l_dhcp_lease_get_dns(v4_lease), true);
-+
-+	if (netconfig->v6_dns_override)
-+		CONCAT(ret, netconfig->v6_dns_override, false);
-+	else if ((v6_lease =3D
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		CONCAT(ret, l_dhcp6_lease_get_dns(v6_lease), true);
-+
-+	return ret;
-+}
-+
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_domain_names(struct l_netconfig *netconf=
-ig)
-+{
-+	char **ret =3D NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
-+
-+	if (netconfig->v4_domain_names_override)
-+		CONCAT(ret, netconfig->v4_domain_names_override, false);
-+	else if ((v4_lease =3D
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)) &&
-+			l_dhcp_lease_get_domain_name(v4_lease)) {
-+		ret =3D l_new(char *, 2);
-+		ret[0] =3D l_dhcp_lease_get_domain_name(v4_lease);
-+	}
-+
-+	if (netconfig->v6_dns_override)
-+		CONCAT(ret, netconfig->v6_domain_names_override, false);
-+	else if ((v6_lease =3D
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		CONCAT(ret, l_dhcp6_lease_get_domains(v6_lease), true);
-+
-+	return ret;
-+}
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index 69100a2..0b1182d 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -98,6 +98,8 @@ const struct l_queue_entry *l_netconfig_get_routes(
- 				const struct l_queue_entry **out_updated,
- 				const struct l_queue_entry **out_removed,
- 				const struct l_queue_entry **out_expired);
-+char **l_netconfig_get_dns_list(struct l_netconfig *netconfig);
-+char **l_netconfig_get_domain_names(struct l_netconfig *netconfig);
- =
+> Without the patch, there are linker errors with -z start-stop-gc (LLD def=
+ault):
+> =
 
- #ifdef __cplusplus
- }
--- =
+> ```
+> ld.lld: error: undefined symbol: __start___ell_debug
+>>>> referenced by log.c
+>>>>                log.o:(register_debug_section) in archive ell/.libs/lib=
+ell-private.a
+> ```
+> ---
+>   ell/log.h | 8 +++++++-
+>   1 file changed, 7 insertions(+), 1 deletion(-)
+> =
 
-2.32.0
 
---===============1387935809691514393==--
+We do not use C++ style comments, so I just changed those over to C-style /=
+* */ =
+
+block.  Applied, thanks!
+
+Regards,
+-Denis
+--===============0777661572562451339==--
 
