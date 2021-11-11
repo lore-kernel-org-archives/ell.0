@@ -1,137 +1,65 @@
-Content-Type: multipart/mixed; boundary="===============0577677530150218309=="
+Content-Type: multipart/mixed; boundary="===============2016301954511445170=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Fangrui Song <i at maskray.me>
 To: ell at lists.01.org
-Subject: [PATCH 06/17] netconfig: Avoid returning internal l_queues
-Date: Sat, 14 May 2022 00:47:02 +0200
-Message-ID: <20220513224713.1447773-6-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
+Subject: [PATCH] log: Set retain attribute on __ell_debug
+Date: Wed, 10 Nov 2021 19:07:42 -0800
+Message-ID: <20211111030742.2005152-1-i@maskray.me>
 
---===============0577677530150218309==
+--===============2016301954511445170==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Return const struct l_queue_entry pointers instead.
+LLD 13 and GNU ld 2.37 support -z start-stop-gc which allows garbage
+collection of C identifier name sections despite the __start_/__stop_
+references. GNU ld before 2015-10 had the behavior as well. Simply set
+the retain attribute so that GCC 11 (if configure-time binutils is 2.36
+or newer)/Clang 13 will set the SHF_GNU_RETAIN section attribute to
+prevent garbage collection.
+
+Without the patch, there are linker errors with -z start-stop-gc (LLD defau=
+lt):
+
+```
+ld.lld: error: undefined symbol: __start___ell_debug
+>>> referenced by log.c
+>>>               log.o:(register_debug_section) in archive ell/.libs/libel=
+l-private.a
+```
 ---
- ell/netconfig.c | 35 ++++++++++++++++++-----------------
- ell/netconfig.h | 20 +++++++++++---------
- 2 files changed, 29 insertions(+), 26 deletions(-)
+ ell/log.h | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 990b166..94d3ed1 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1231,37 +1231,38 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
-config *netconfig,
- 					NULL, NULL, NULL);
- }
+diff --git a/ell/log.h b/ell/log.h
+index 924523b..32d6b8a 100644
+--- a/ell/log.h
++++ b/ell/log.h
+@@ -61,12 +61,18 @@ struct l_debug_desc {
+ 	unsigned int flags;
+ } __attribute__((aligned(8)));
  =
 
--LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
--						struct l_netconfig *netconfig,
--						struct l_queue **out_added,
--						struct l_queue **out_updated,
--						struct l_queue **out_removed)
-+LIB_EXPORT const struct l_queue_entry *l_netconfig_get_addresses(
-+					struct l_netconfig *netconfig,
-+					const struct l_queue_entry **out_added,
-+					const struct l_queue_entry **out_updated,
-+					const struct l_queue_entry **out_removed)
- {
- 	if (out_added)
--		*out_added =3D netconfig->addresses.added;
-+		*out_added =3D l_queue_get_entries(netconfig->addresses.added);
- =
-
- 	if (out_updated)
--		*out_updated =3D netconfig->addresses.updated;
-+		*out_updated =3D l_queue_get_entries(netconfig->addresses.updated);
- =
-
- 	if (out_removed)
--		*out_removed =3D netconfig->addresses.removed;
-+		*out_removed =3D l_queue_get_entries(netconfig->addresses.removed);
- =
-
--	return netconfig->addresses.current;
-+	return l_queue_get_entries(netconfig->addresses.current);
- }
- =
-
--LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
-onfig,
--						struct l_queue **out_added,
--						struct l_queue **out_updated,
--						struct l_queue **out_removed)
-+LIB_EXPORT const struct l_queue_entry *l_netconfig_get_routes(
-+					struct l_netconfig *netconfig,
-+					const struct l_queue_entry **out_added,
-+					const struct l_queue_entry **out_updated,
-+					const struct l_queue_entry **out_removed)
- {
- 	if (out_added)
--		*out_added =3D netconfig->routes.added;
-+		*out_added =3D l_queue_get_entries(netconfig->routes.added);
- =
-
- 	if (out_updated)
--		*out_updated =3D netconfig->routes.updated;
-+		*out_updated =3D l_queue_get_entries(netconfig->routes.updated);
- =
-
- 	if (out_removed)
--		*out_removed =3D netconfig->routes.removed;
-+		*out_removed =3D l_queue_get_entries(netconfig->routes.removed);
- =
-
--	return netconfig->routes.current;
-+	return l_queue_get_entries(netconfig->routes.current);
- }
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index f90ec81..d58dda1 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -33,7 +33,7 @@ struct l_dhcp_client;
- struct l_dhcp6_client;
- struct l_icmp6_client;
- struct l_netlink;
--struct l_queue;
-+struct l_queue_entry;
- struct l_netconfig;
- struct l_rtnl_address;
- struct l_rtnl_route;
-@@ -83,14 +83,16 @@ void l_netconfig_set_event_handler(struct l_netconfig *=
-netconfig,
- =
-
- void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
- 				struct l_netlink *rtnl);
--struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
--					struct l_queue **out_added,
--					struct l_queue **out_updated,
--					struct l_queue **out_removed);
--struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
--					struct l_queue **out_added,
--					struct l_queue **out_updated,
--					struct l_queue **out_removed);
-+const struct l_queue_entry *l_netconfig_get_addresses(
-+				struct l_netconfig *netconfig,
-+				const struct l_queue_entry **out_added,
-+				const struct l_queue_entry **out_updated,
-+				const struct l_queue_entry **out_removed);
-+const struct l_queue_entry *l_netconfig_get_routes(
-+				struct l_netconfig *netconfig,
-+				const struct l_queue_entry **out_added,
-+				const struct l_queue_entry **out_updated,
-+				const struct l_queue_entry **out_removed);
- =
-
- #ifdef __cplusplus
- }
++// Set the retain attribute so that the section cannot be discarded by ld
++// --gc-sections -z start-stop-gc. Older compilers would warn for the unkn=
+own
++// attribute, so just disable -Wattributes.
+ #define L_DEBUG_SYMBOL(symbol, format, ...) do { \
++_Pragma("GCC diagnostic push") \
++_Pragma("GCC diagnostic ignored \"-Wattributes\"") \
+ 	static struct l_debug_desc symbol \
+-	__attribute__((used, section("__ell_debug"), aligned(8))) =3D { \
++	__attribute__((used, retain, section("__ell_debug"), aligned(8))) =3D { \
+ 		.file =3D __FILE__, .func =3D __func__, \
+ 		.flags =3D L_DEBUG_FLAG_DEFAULT, \
+ 	}; \
++_Pragma("GCC diagnostic pop") \
+ 	if (symbol.flags & L_DEBUG_FLAG_PRINT) \
+ 		l_log(L_LOG_DEBUG, "%s:%s() " format, __FILE__, \
+ 					__func__ , ##__VA_ARGS__); \
 -- =
 
-2.32.0
+2.34
 
---===============0577677530150218309==--
+--===============2016301954511445170==--
 
