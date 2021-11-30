@@ -1,32 +1,68 @@
-Content-Type: multipart/mixed; boundary="===============8553881220512177431=="
+Content-Type: multipart/mixed; boundary="===============4519040050935224655=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 1/3] tls: Flush record buffers on l_tls_close
-Date: Thu, 26 May 2022 11:23:25 -0500
-Message-ID: <4a6097a6-3c93-9975-b176-d51c08725741@gmail.com>
-In-Reply-To: 20220526155657.63641-1-andrew.zaborowski@intel.com
+Subject: [PATCH 2/2] unit: add test for l_uintset_count
+Date: Tue, 30 Nov 2021 09:45:07 -0800
+Message-ID: <20211130174507.383992-2-prestwoj@gmail.com>
+In-Reply-To: 20211130174507.383992-1-prestwoj@gmail.com
 
---===============8553881220512177431==
+--===============4519040050935224655==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+---
+ unit/test-uintset.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
-On 5/26/22 10:56, Andrew Zaborowski wrote:
-> We probably don't want to handle data fragments we received before an
-> l_tls_close if the TLS tunnel gets restarted in the future.
-> ---
->   ell/tls.c | 3 +++
->   1 file changed, 3 insertions(+)
-> =
+diff --git a/unit/test-uintset.c b/unit/test-uintset.c
+index 3c9790e..6afa7a8 100644
+--- a/unit/test-uintset.c
++++ b/unit/test-uintset.c
+@@ -363,6 +363,29 @@ static void test_uintset_isempty(const void *user_data)
+ 	l_uintset_free(b);
+ }
+ =
 
++static void test_uintset_count(const void *user_data)
++{
++	uint32_t i;
++	struct l_uintset *set =3D l_uintset_new(32);
++
++	assert(l_uintset_count(set) =3D=3D 0);
++
++	for (i =3D 0; i < 32; i++) {
++		l_uintset_put(set, i);
++		assert(l_uintset_count(set) =3D=3D i);
++	}
++
++	assert(l_uintset_count(set) =3D=3D i - 1);
++
++	l_uintset_take(set, 10);
++	assert(l_uintset_count(set) =3D=3D i - 2);
++
++	for (i =3D 0; i < 32; i++)
++		l_uintset_take(set, i);
++
++	assert(l_uintset_count(set) =3D=3D 0);
++}
++
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -381,6 +404,7 @@ int main(int argc, char *argv[])
+ 	l_test_add("l_uintset intersect test 2", test_uintset_intersect_test,
+ 							&intersect_data_2);
+ 	l_test_add("l_uintset isempty", test_uintset_isempty, NULL);
++	l_test_add("l_uintset count", test_uintset_count, NULL);
+ =
 
-All applied, thanks.
+ 	return l_test_run();
+ }
+-- =
 
-Regards,
--Denis
+2.31.1
 
---===============8553881220512177431==--
+--===============4519040050935224655==--
 
