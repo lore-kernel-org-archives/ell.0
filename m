@@ -1,127 +1,88 @@
-Content-Type: multipart/mixed; boundary="===============4729056409957613534=="
+Content-Type: multipart/mixed; boundary="===============5336173880124722582=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH v2 1/5] settings: add l_settings_clone
-Date: Fri, 04 Feb 2022 09:46:10 -0800
-Message-ID: <20220204174614.261669-1-prestwoj@gmail.com>
+Subject: [PATCH 1/2] uintset: add l_uintset_count
+Date: Tue, 30 Nov 2021 09:45:06 -0800
+Message-ID: <20211130174507.383992-1-prestwoj@gmail.com>
 
---===============4729056409957613534==
+--===============5336173880124722582==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Returns identical copy of settings
+This counts the number of true bits in a set.
 ---
- ell/ell.sym    |  1 +
- ell/settings.c | 57 ++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/settings.h |  2 ++
- 3 files changed, 60 insertions(+)
-
-v2:
- * memdup the entire embedded_group_data structure rather than manually
-   copying each part individually.
+ ell/ell.sym   |  1 +
+ ell/uintset.c | 26 ++++++++++++++++++++++++++
+ ell/uintset.h |  1 +
+ 3 files changed, 28 insertions(+)
 
 diff --git a/ell/ell.sym b/ell/ell.sym
-index 60c5525..827e68c 100644
+index d9b48ee..cb6eadf 100644
 --- a/ell/ell.sym
 +++ b/ell/ell.sym
-@@ -452,6 +452,7 @@ global:
- 	l_ringbuf_append;
- 	/* settings */
- 	l_settings_new;
-+	l_settings_clone;
- 	l_settings_free;
- 	l_settings_load_from_data;
- 	l_settings_to_data;
-diff --git a/ell/settings.c b/ell/settings.c
-index 6958e12..31d23fe 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -116,6 +116,63 @@ LIB_EXPORT struct l_settings *l_settings_new(void)
- 	return settings;
+@@ -530,6 +530,7 @@ global:
+ 	l_uintset_clone;
+ 	l_uintset_intersect;
+ 	l_uintset_isempty;
++	l_uintset_count;
+ 	/* uuid */
+ 	l_uuid_v3;
+ 	l_uuid_v4;
+diff --git a/ell/uintset.c b/ell/uintset.c
+index 74de420..693f58c 100644
+--- a/ell/uintset.c
++++ b/ell/uintset.c
+@@ -555,3 +555,29 @@ LIB_EXPORT bool l_uintset_isempty(const struct l_uints=
+et *set)
+ =
+
+ 	return true;
  }
++
++
++#include <ell/ell.h>
++/**
++ * l_uintset_count
++ *
++ * @set: The set of numbers
++ *
++ * Returns the number of true bits in the set.
++ */
++LIB_EXPORT uint32_t l_uintset_count(const struct l_uintset *set)
++{
++	uint16_t i;
++	uint32_t offset_max;
++	uint32_t count =3D 0;
++
++	if (unlikely(!set))
++		return 0;
++
++	offset_max =3D (set->size + BITS_PER_LONG - 1) / BITS_PER_LONG;
++
++	for (i =3D 0; i < offset_max; i++)
++		count +=3D __builtin_popcountl(set->bits[i]);
++
++	return count;
++}
+diff --git a/ell/uintset.h b/ell/uintset.h
+index 07ed778..79f3358 100644
+--- a/ell/uintset.h
++++ b/ell/uintset.h
+@@ -61,6 +61,7 @@ struct l_uintset *l_uintset_clone(const struct l_uintset =
+*original);
+ struct l_uintset *l_uintset_intersect(const struct l_uintset *set_a,
+ 						const struct l_uintset *set_b);
+ bool l_uintset_isempty(const struct l_uintset *set);
++uint32_t l_uintset_count(const struct l_uintset *set);
  =
 
-+static void copy_key_value_foreach(void *data, void *user_data)
-+{
-+	struct setting_data *s =3D data;
-+	struct l_queue *settings =3D user_data;
-+	struct setting_data *copy =3D l_new(struct setting_data, 1);
-+
-+	copy->key =3D l_strdup(s->key);
-+	copy->value =3D l_strdup(s->value);
-+
-+	l_queue_push_head(settings, copy);
-+}
-+
-+static void copy_group_foreach(void *data, void *user_data)
-+{
-+	struct group_data *group =3D data;
-+	struct l_queue *groups =3D user_data;
-+	struct group_data *copy =3D l_new(struct group_data, 1);
-+
-+	copy->name =3D l_strdup(group->name);
-+	copy->settings =3D l_queue_new();
-+
-+	l_queue_push_head(groups, copy);
-+
-+	l_queue_foreach(group->settings, copy_key_value_foreach,
-+				copy->settings);
-+}
-+
-+static void copy_embedded_foreach(void *data, void *user_data)
-+{
-+	struct embedded_group_data *embedded =3D data;
-+	struct l_queue *groups =3D user_data;
-+	struct embedded_group_data *copy;
-+
-+	copy =3D l_memdup(embedded, sizeof(struct embedded_group_data) +
-+			embedded->len + 1);
-+	copy->name =3D l_strdup(embedded->name);
-+
-+	l_queue_push_tail(groups, copy);
-+}
-+
-+LIB_EXPORT struct l_settings *l_settings_clone(
-+					const struct l_settings *settings)
-+{
-+	struct l_settings *copy;
-+
-+	if (unlikely(!settings))
-+		return NULL;
-+
-+	copy =3D l_settings_new();
-+
-+	l_queue_foreach(settings->groups, copy_group_foreach, copy->groups);
-+	l_queue_foreach(settings->embedded_groups, copy_embedded_foreach,
-+				copy->embedded_groups);
-+
-+	return copy;
-+}
-+
- LIB_EXPORT void l_settings_free(struct l_settings *settings)
- {
- 	if (unlikely(!settings))
-diff --git a/ell/settings.h b/ell/settings.h
-index 9262ab9..f094ef5 100644
---- a/ell/settings.h
-+++ b/ell/settings.h
-@@ -37,6 +37,8 @@ typedef void (*l_settings_debug_cb_t) (const char *str, v=
-oid *user_data);
- typedef void (*l_settings_destroy_cb_t) (void *user_data);
- =
-
- struct l_settings *l_settings_new(void);
-+struct l_settings *l_settings_clone(const struct l_settings *settings);
-+
- void l_settings_free(struct l_settings *settings);
- DEFINE_CLEANUP_FUNC(l_settings_free);
- =
-
+ #ifdef __cplusplus
+ }
 -- =
 
 2.31.1
 
---===============4729056409957613534==--
+--===============5336173880124722582==--
 
