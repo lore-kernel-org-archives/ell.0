@@ -1,73 +1,83 @@
-Content-Type: multipart/mixed; boundary="===============4935617497714353895=="
+Content-Type: multipart/mixed; boundary="===============6813648613830913565=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 09/12] netconfig: Add netconfig API
-Date: Fri, 11 Mar 2022 10:11:23 -0600
-Message-ID: <10a6ede1-411a-3b1a-0269-35502dfdbe42@gmail.com>
-In-Reply-To: 20220307145543.1558788-9-andrew.zaborowski@intel.com
+Subject: [PATCH] genl: add l_genl_family_request_sent
+Date: Mon, 06 Dec 2021 10:17:45 -0800
+Message-ID: <20211206181745.1161158-1-prestwoj@gmail.com>
 
---===============4935617497714353895==
+--===============6813648613830913565==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Returns true if a request has been sent to genl. This is useful
+for knowning if a l_genl_family_cancel call will have any effect
+besides NULLing out the callback.
+---
+ ell/ell.sym |  1 +
+ ell/genl.c  | 16 ++++++++++++++++
+ ell/genl.h  |  1 +
+ 3 files changed, 18 insertions(+)
 
-On 3/7/22 08:55, Andrew Zaborowski wrote:
-> This adds the netconfig class that will encapsulate static IP
-> configuration, DHCP, DHCP6, ICMP6, SLAAC logic and free the user of
-> manually handling DHCP/DHCP6 events to implement netconfig policies.
-> The user will still need to handle committing received DNS and mdns
-> information.
-> =
+diff --git a/ell/ell.sym b/ell/ell.sym
+index febb855..51db458 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -342,6 +342,7 @@ global:
+ 	l_genl_family_send;
+ 	l_genl_family_dump;
+ 	l_genl_family_cancel;
++	l_genl_family_request_sent;
+ 	l_genl_family_register;
+ 	l_genl_family_unregister;
+ 	/* hwdb */
+diff --git a/ell/genl.c b/ell/genl.c
+index 7d79ef5..9a52be4 100644
+--- a/ell/genl.c
++++ b/ell/genl.c
+@@ -1960,6 +1960,22 @@ done:
+ 	return true;
+ }
+ =
 
-> In this patch only IPv4 DHCP is implemented and no configurable settings
-> are added.
-> =
++LIB_EXPORT bool l_genl_family_request_sent(struct l_genl_family *family,
++						unsigned int id)
++{
++	struct l_genl *genl;
++
++	if (unlikely(!family) || unlikely(!id))
++		return false;
++
++	genl =3D family->genl;
++	if (!genl)
++		return false;
++
++	return l_queue_find(genl->pending_list, match_request_id,
++				L_UINT_TO_PTR(id)) !=3D NULL;
++}
++
+ static void add_membership(struct l_genl *genl, struct genl_mcast *mcast)
+ {
+ 	int group =3D mcast->id;
+diff --git a/ell/genl.h b/ell/genl.h
+index 7550bf8..7e5b7bb 100644
+--- a/ell/genl.h
++++ b/ell/genl.h
+@@ -141,6 +141,7 @@ unsigned int l_genl_family_dump(struct l_genl_family *f=
+amily,
+ 				void *user_data,
+ 				l_genl_destroy_func_t destroy);
+ bool l_genl_family_cancel(struct l_genl_family *family, unsigned int id);
++bool l_genl_family_request_sent(struct l_genl_family *family, unsigned int=
+ id);
+ =
 
-> When events are emitted for address and/or route changes, the changes
-> are split into "added", "updated" and "removed" lists so that the user
-> can decide apply those changes without first removing all addresses and
-> routes from the interface and the re-adding the complete new list.
-> They can also decide to let another entity apply the changes.  The
-> obvious downside is the proliferation of lists.
-> ---
->   Makefile.am     |   6 +-
->   ell/ell.h       |   1 +
->   ell/ell.sym     |   7 +
->   ell/netconfig.c | 377 ++++++++++++++++++++++++++++++++++++++++++++++++
->   ell/netconfig.h |  72 +++++++++
->   5 files changed, 461 insertions(+), 2 deletions(-)
->   create mode 100644 ell/netconfig.c
->   create mode 100644 ell/netconfig.h
-> =
+ unsigned int l_genl_family_register(struct l_genl_family *family,
+ 				const char *group, l_genl_msg_func_t callback,
+-- =
 
+2.31.1
 
-Due to:
-
-make --no-print-directory all-am
-   CC       unit/test-unit.o
-   CC       ell/netconfig.lo
-In file included from ell/netconfig.c:32:
-ell/netconfig.c: In function =E2=80=98l_netconfig_stop=E2=80=99:
-ell/netconfig.c:339:39: error: =E2=80=98struct l_netconfig=E2=80=99 has no =
-member named =E2=80=98started=E2=80=99
-   339 |  if (unlikely(!netconfig || !netconfig->started))
-       |                                       ^~
-ell/useful.h:26:41: note: in definition of macro =E2=80=98unlikely=E2=80=99
-    26 | #define unlikely(x) __builtin_expect(!!(x), 0)
-       |                                         ^
-
-I slightly amended this patch to move the 'started' variable introduction f=
-rom =
-
-patch 11 over to this patch.
-
-Applied, thanks.
-
-Regards,
--Denis
-
---===============4935617497714353895==--
+--===============6813648613830913565==--
 
