@@ -1,41 +1,31 @@
-Content-Type: multipart/mixed; boundary="===============2617029076536160319=="
+Content-Type: multipart/mixed; boundary="===============8374378364924186656=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH] rtnl: change l_rtnl_address expire times to uint64_t
-Date: Wed, 30 Mar 2022 12:23:21 -0700
-Message-ID: <20220330192321.1871376-1-prestwoj@gmail.com>
+Subject: Re: [PATCH] unit: add asserts to unitset test
+Date: Mon, 06 Dec 2021 18:44:49 -0600
+Message-ID: <32e598aa-d69a-c6a4-2a8f-2205583c35c9@gmail.com>
+In-Reply-To: 20211207000549.1386858-1-prestwoj@gmail.com
 
---===============2617029076536160319==
+--===============8374378364924186656==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-These are calculated from uint64_t values so they also should be
-uint64_t sizes.
----
- ell/rtnl.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Hi James,
 
-diff --git a/ell/rtnl.c b/ell/rtnl.c
-index afbff9d..f7f36ab 100644
---- a/ell/rtnl.c
-+++ b/ell/rtnl.c
-@@ -54,8 +54,8 @@ struct l_rtnl_address {
- 	char label[IFNAMSIZ];
- 	uint32_t preferred_lifetime;
- 	uint32_t valid_lifetime;
--	uint32_t preferred_expiry_time;
--	uint32_t valid_expiry_time;
-+	uint64_t preferred_expiry_time;
-+	uint64_t valid_expiry_time;
- 	uint32_t flags;
- };
- =
+On 12/6/21 6:05 PM, James Prestwood wrote:
+> To satisfy static analysis add a few more return checks
+> ---
+>   unit/test-uintset.c | 10 +++++-----
+>   1 file changed, 5 insertions(+), 5 deletions(-)
+> =
 
--- =
 
-2.34.1
+Applied, thanks.
 
---===============2617029076536160319==--
+Regards,
+-Denis
+
+--===============8374378364924186656==--
 
