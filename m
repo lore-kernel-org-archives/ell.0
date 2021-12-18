@@ -1,52 +1,70 @@
-Received: from mail-qt1-f182.google.com (mail-qt1-f182.google.com [209.85.160.182])
+Received: from mail-pj1-f47.google.com (mail-pj1-f47.google.com [209.85.216.47])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EFBB3FF7
-	for <ell@lists.linux.dev>; Wed, 15 Sep 2021 18:25:48 +0000 (UTC)
-Received: by mail-qt1-f182.google.com with SMTP id w17so3171175qta.9
-        for <ell@lists.linux.dev>; Wed, 15 Sep 2021 11:25:48 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B9222CAE
+	for <ell@lists.linux.dev>; Sat, 18 Dec 2021 04:15:10 +0000 (UTC)
+Received: by mail-pj1-f47.google.com with SMTP id c22-20020a17090a109600b001b101f02dd1so7446150pja.5
+        for <ell@lists.linux.dev>; Fri, 17 Dec 2021 20:15:10 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linuxfoundation.org; s=google;
-        h=date:from:to:subject:message-id:mime-version:content-disposition;
-        bh=PcSZ6JE3kihObY1mhYPtT2/CptLZpy/2COSkLEUaGPY=;
-        b=CcuXPqsNzkX4/RHBeAQyEF9vZQQI2nasK6sGpjIWfh+tMaeYA8LN2Quwvcru/kGZVr
-         c6fn7qR6QjMVMhfHKET0B5L6eDZEkXxK3mpUXhh4HqZ3DG/xqsSOwZ0rYPAeAr74uoFG
-         1NY7G6H38bLA2jHSoX/vWswL56l13KqRbpfIA=
+        d=gmail.com; s=20210112;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=bAeKdw0mH7rnDXP3tO9iUA7fazJ5wgkv5c0rwgIscFY=;
+        b=RrjOtmeoHepyQ+PiMFijddppPKoLKxRW3iBFnY5XXzno3bRdZkSUfjdqakqEsSEuVv
+         SNfXy+6mNms0Q9TuXiQDgmOVhi2ufcTJ8I9w030oOVCw8MvADgl5N90DfVgAMMFr7Hq+
+         BT3wZSTy5FD2UW47pXw6dOvu8yzFOKc0XPJ/kQVUUO0D2mwaBiZ6evRoRcZrRt6551YD
+         ulNe+9om/BFJYqZzGPA9AKCIqVqNP1Aj0G7CGTlSKbzqB4FKStcZXRmxz1Orr36E6pv+
+         PPYEesRbTu1sULubT3LVu+/pnE5a5++zdwI5EY7sH3p5HQUN+lfrsy+hOhshFMqLQBx6
+         nBvg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:date:from:to:subject:message-id:mime-version
-         :content-disposition;
-        bh=PcSZ6JE3kihObY1mhYPtT2/CptLZpy/2COSkLEUaGPY=;
-        b=BAXrQLrPidueUhDQjH9/TJq9a/mx5ykN0nmjB5mhVzp0gEx4LSb7/mRbSQvU9ehOpc
-         jhovJzSIf5JW+6codP8YdGCSltOUsUL/4zxpGwfgiWdu+xysBmaIg9V7oRY+vXQ0O/WR
-         j+aMY1Ls4BzfXzXWZfnBNHtOb3fdJQ/OUj7wrjBlZhzgFigAlY768zVsYLmdnAvtugjz
-         /8lnzwjFlJNEl1jiZLJTMNG9ZeSQaj4EAVkPCqYgVNz3CxLerRUtnUAGELJAjfgLRbE+
-         jmMH3uJcRqAIFXghKlMK86Rm5HDrEhsRt54K+KQWKUBT23AcyXH2DhStTwKua295yGT7
-         d1mg==
-X-Gm-Message-State: AOAM5305Pe0+T48ssE/xWiPz4f0EJZ+UBkCuSBWE447vR3tJeC0lFc72
-	2fGo55KRQ7bdu7sHVVAp3LpymysdgaXDtQ==
-X-Google-Smtp-Source: ABdhPJy3JDQqpx4y+UyCU/AmL5dR+FYxfjNrZa8DQ/ccpaXfQO5h8S4zIluHQEg1F4sOGqL/Y1adig==
-X-Received: by 2002:ac8:668e:: with SMTP id d14mr1247696qtp.342.1631730347184;
-        Wed, 15 Sep 2021 11:25:47 -0700 (PDT)
-Received: from meerkat.local (bras-base-mtrlpq5031w-grc-32-216-209-220-181.dsl.bell.ca. [216.209.220.181])
-        by smtp.gmail.com with ESMTPSA id d129sm542308qkf.136.2021.09.15.11.25.46
-        for <ell@lists.linux.dev>
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=bAeKdw0mH7rnDXP3tO9iUA7fazJ5wgkv5c0rwgIscFY=;
+        b=SVzoQOMFSJ1/ybfly7AY8F3gd6jeeSKZaJq5/apRUPQ0i7TntRdepLToK08/jzWC8x
+         R/RB3tc0xWotO7GmZGEffZ8rlIbbHt8mAqWG0iWMmQvQL0nfS7+MBU0Li6B7B8UnQM2X
+         AC4m3SW6Kl8XvK0gtiEk/rIzlYWQLl7AIBfur5CUsem0OYWyxluMCxh6kdEIL59//jxw
+         4xHzEd9kPZ5l/Nuahy1BkTf/IcFtg39uitvm0C4NwFQEYeKiqI8N8hBr98Bnc4w1yWiH
+         R59axEqm6nDn4C9kL0InVqUhXViQXyut8KRL9Y93Ccd0uBA3cuC1hDo+FN1ghfuNVMZz
+         rozA==
+X-Gm-Message-State: AOAM532gf+H06krQoaUpk8QOzmgcFDZg4ExX4+smahpXZ/NsAGos/9Vn
+	HNhnpvTZJHPWz3RfFCZqirXW37eCQScliA==
+X-Google-Smtp-Source: ABdhPJykPzNI1V4dyE0X+m5SZHIIQBgoYax3C6XrIKAV+QReiNNLA1dPD+7VTALtME87ZDp3qrM7VA==
+X-Received: by 2002:a17:902:74c1:b0:148:b010:5391 with SMTP id f1-20020a17090274c100b00148b0105391mr6354075plt.155.1639800909301;
+        Fri, 17 Dec 2021 20:15:09 -0800 (PST)
+Received: from hydra.localdomain ([50.45.159.39])
+        by smtp.gmail.com with ESMTPSA id qe2sm10194506pjb.42.2021.12.17.20.15.08
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 15 Sep 2021 11:25:46 -0700 (PDT)
-Date: Wed, 15 Sep 2021 14:25:45 -0400
-From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+        Fri, 17 Dec 2021 20:15:08 -0800 (PST)
+From: Ossama Othman <ossama.othman@gmail.com>
+X-Google-Original-From: Ossama Othman <ossama.othman@intel.com>
 To: ell@lists.linux.dev
-Subject: Test delivery to ell@lists.linux.dev
-Message-ID: <20210915182545.2jx777b37qf7p44q@meerkat.local>
+Cc: Ossama Othman <ossama.othman@intel.com>
+Subject: [PATCH 0/3] Fix Valgrind errors
+Date: Fri, 17 Dec 2021 20:14:28 -0800
+Message-Id: <20211218041431.114737-1-ossama.othman@intel.com>
+X-Mailer: git-send-email 2.32.0
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
 
-Testing list archival, please ignore.
+Running the ELL test suite through Valgrind triggers a few errors.
+This set of patches addresses three of those errors.
 
--K
+Ossama Othman (3):
+  dhcp-server: Fix memory leak.
+  unit: Free l_uintset when done.
+  unit: Initialize variables prior to use
+
+ ell/dhcp-server.c   | 1 +
+ unit/test-rtnl.c    | 2 +-
+ unit/test-uintset.c | 2 ++
+ 3 files changed, 4 insertions(+), 1 deletion(-)
+
+-- 
+2.32.0
+
