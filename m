@@ -1,55 +1,30 @@
-Content-Type: multipart/mixed; boundary="===============6290051180561978466=="
+Content-Type: multipart/mixed; boundary="===============3934116019610249155=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 15/17] netconfig: Set a limit on number of routes from ICMPv6
-Date: Sat, 14 May 2022 00:47:11 +0200
-Message-ID: <20220513224713.1447773-15-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 2/4] dhcp6: Minor optimzation in dhcp6_client_send_initial
+Date: Mon, 03 Jan 2022 12:38:30 -0600
+Message-ID: <16152c08-ca61-3fd0-d2bc-31f78c240d3d@gmail.com>
+In-Reply-To: 20220103141830.311011-2-andrew.zaborowski@intel.com
 
---===============6290051180561978466==
+--===============3934116019610249155==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-While some networks can be configured in a way that prevents rogue
-Router Advertisements from reaching clients, add a very basic mechanism
-to avoid a denial-of-service in such a case by limiting the number of
-routes we track from RAs.  This won't prevent the loss of routing but
-might prevent OOM crashes or slowdowns.
----
- ell/netconfig.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Hi Andrew,
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 5bfd940..2c2001e 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -135,6 +135,8 @@ static unsigned int rtnl_use_count;
- static struct l_queue *addr_wait_list;
- static unsigned int rtnl_id;
- =
+On 1/3/22 08:18, Andrew Zaborowski wrote:
+> ---
+>   ell/dhcp6.c | 2 +-
+>   1 file changed, 1 insertion(+), 1 deletion(-)
+> =
 
-+static const unsigned int max_icmp6_routes =3D 100;
-+
- static void netconfig_update_cleanup(struct l_netconfig *nc)
- {
- 	l_queue_clear(nc->addresses.added, NULL);
-@@ -736,6 +738,9 @@ static struct netconfig_route_data *netconfig_add_icmp6=
-_route(
- 	struct netconfig_route_data *rd;
- 	struct l_rtnl_route *rt;
- =
 
-+	if (l_queue_length(nc->icmp_route_data) >=3D max_icmp6_routes)
-+		return NULL;	/* TODO: log a warning the first time */
-+
- 	rt =3D netconfig_route_new(nc, AF_INET6, dst->address, dst->prefix_len,
- 					gateway, RTPROT_RA);
- 	if (L_WARN_ON(!rt))
--- =
+Applied, thanks.
 
-2.32.0
+Regards,
+-Denis
 
---===============6290051180561978466==--
+--===============3934116019610249155==--
 
