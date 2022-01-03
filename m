@@ -1,35 +1,62 @@
-Content-Type: multipart/mixed; boundary="===============5668387938214613227=="
+Content-Type: multipart/mixed; boundary="===============7107933873135070759=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] genl: add l_genl_family_request_sent
-Date: Mon, 06 Dec 2021 13:49:22 -0600
-Message-ID: <a25e31cb-c2aa-dd83-bf90-e845457b55c2@gmail.com>
-In-Reply-To: 20211206181745.1161158-1-prestwoj@gmail.com
+Subject: Re: [PATCH 1/4] rtnl: Add l_rtnl_route_set_gateway
+Date: Mon, 03 Jan 2022 12:37:59 -0600
+Message-ID: <492f1eb9-7785-55b2-2479-3c2b88c7b48d@gmail.com>
+In-Reply-To: 20220103141830.311011-1-andrew.zaborowski@intel.com
 
---===============5668387938214613227==
+--===============7107933873135070759==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Hi Andrew,
 
-On 12/6/21 12:17 PM, James Prestwood wrote:
-> Returns true if a request has been sent to genl. This is useful
-> for knowning if a l_genl_family_cancel call will have any effect
-> besides NULLing out the callback.
+On 1/3/22 08:18, Andrew Zaborowski wrote:
+> Allow creating prefix routes for off-link prefixes, i.e. ones that
+> should be routed through a gateway.
 > ---
 >   ell/ell.sym |  1 +
->   ell/genl.c  | 16 ++++++++++++++++
->   ell/genl.h  |  1 +
+>   ell/rtnl.c  | 16 ++++++++++++++++
+>   ell/rtnl.h  |  1 +
 >   3 files changed, 18 insertions(+)
 > =
 
 
-Applied, thanks.
+<snip>
+
+>   =
+
+> +LIB_EXPORT bool l_rtnl_route_set_gateway(struct l_rtnl_route *rt,
+> +						const char *address)
+> +{
+> +	if (unlikely(!rt))
+> +		return false;
+> +
+> +	switch (rt->family) {
+> +	case AF_INET:
+> +		return inet_pton(AF_INET, address, &rt->gw.in_addr) =3D=3D 1;
+> +	case AF_INET6:
+> +		return inet_pton(AF_INET6, address, &rt->gw.in6_addr) =3D=3D 1;
+> +	default:
+> +		return  false;
+> +	}
+> +}
+> +
+
+Since we already have l_rtnl_route_new_gateway, would this make more sense =
+as a =
+
+dedicated constructor? Something like l_rtnl_route_new_static?
+
+>   LIB_EXPORT uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route=
+ *rt)
+>   {
+>   	if (unlikely(!rt))
 
 Regards,
 -Denis
-
---===============5668387938214613227==--
+--===============7107933873135070759==--
 
