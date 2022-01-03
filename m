@@ -1,143 +1,83 @@
-Content-Type: multipart/mixed; boundary="===============5431484233120587147=="
+Content-Type: multipart/mixed; boundary="===============4729210662146975710=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 11/15] netconfig: Write /proc/sys/net files to enable IPv6
-Date: Fri, 20 May 2022 17:43:34 +0200
-Message-ID: <20220520154338.2056273-11-andrew.zaborowski@intel.com>
-In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
+Subject: [PATCH 1/4] rtnl: Add l_rtnl_route_set_gateway
+Date: Mon, 03 Jan 2022 15:18:27 +0100
+Message-ID: <20220103141830.311011-1-andrew.zaborowski@intel.com>
 
---===============5431484233120587147==
+--===============4729210662146975710==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Write the accept_ra setting to 0.  On l_netconfig_start if the existing
-address dump command finds no link-local address then also try resetting
-disable_ipv6 and toggling addr_gen_mode to trigger the kernel to
-generate a link-local address.
+Allow creating prefix routes for off-link prefixes, i.e. ones that
+should be routed through a gateway.
 ---
- ell/netconfig.c | 66 ++++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 63 insertions(+), 3 deletions(-)
+ ell/ell.sym |  1 +
+ ell/rtnl.c  | 16 ++++++++++++++++
+ ell/rtnl.h  |  1 +
+ 3 files changed, 18 insertions(+)
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index e3ca85a..ef3227b 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -28,6 +28,12 @@
- #include <netinet/ip.h>
- #include <arpa/inet.h>
- #include <netinet/icmp6.h>
-+#include <net/if.h>
-+#include <errno.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+#include <fcntl.h>
-+#include <unistd.h>
- =
-
- #include "private.h"
- #include "useful.h"
-@@ -849,6 +855,30 @@ static void netconfig_icmp6_event_handler(struct l_icm=
-p6_client *client,
- 		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 51db458..e581add 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -633,6 +633,7 @@ global:
+ 	l_rtnl_route_free;
+ 	l_rtnl_route_get_family;
+ 	l_rtnl_route_get_gateway;
++	l_rtnl_route_set_gateway;
+ 	l_rtnl_route_get_lifetime;
+ 	l_rtnl_route_set_lifetime;
+ 	l_rtnl_route_get_mtu;
+diff --git a/ell/rtnl.c b/ell/rtnl.c
+index 4a1a248..ee6dc9a 100644
+--- a/ell/rtnl.c
++++ b/ell/rtnl.c
+@@ -403,6 +403,22 @@ LIB_EXPORT bool l_rtnl_route_get_gateway(const struct =
+l_rtnl_route *rt,
+ 					out_buf);
  }
  =
 
-+static int netconfig_proc_write_ipv6_setting(struct l_netconfig *nc,
-+						const char *setting,
-+						const char *value)
++LIB_EXPORT bool l_rtnl_route_set_gateway(struct l_rtnl_route *rt,
++						const char *address)
 +{
-+	char ifname[IF_NAMESIZE];
-+	_auto_(l_free) char *filename =3D NULL;
-+	int fd;
-+	int r;
++	if (unlikely(!rt))
++		return false;
 +
-+	if (unlikely(!if_indextoname(nc->ifindex, ifname)))
-+		return -errno;
-+
-+	filename =3D l_strdup_printf("/proc/sys/net/ipv6/conf/%s/%s",
-+					ifname, setting);
-+
-+	fd =3D L_TFR(open(filename, O_WRONLY));
-+	if (unlikely(fd < 0))
-+		return -errno;
-+
-+	r =3D L_TFR(write(fd, value, strlen(value)));
-+	L_TFR(close(fd));
-+	return r;
++	switch (rt->family) {
++	case AF_INET:
++		return inet_pton(AF_INET, address, &rt->gw.in_addr) =3D=3D 1;
++	case AF_INET6:
++		return inet_pton(AF_INET6, address, &rt->gw.in6_addr) =3D=3D 1;
++	default:
++		return  false;
++	}
 +}
 +
- LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+ LIB_EXPORT uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *r=
+t)
  {
- 	struct l_netconfig *nc;
-@@ -881,6 +911,9 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
- ifindex)
- 					netconfig_icmp6_event_handler,
- 					nc, NULL);
- =
-
-+	/* Disable in-kernel autoconfiguration for the interface */
-+	netconfig_proc_write_ipv6_setting(nc, "accept_ra", "0");
-+
- 	return nc;
- }
- =
-
-@@ -1317,6 +1350,32 @@ static void netconfig_ifaddr_ipv6_dump_cb(int error,=
- uint16_t type,
- 	netconfig_ifaddr_ipv6_notify(type, data, len, user_data);
- }
- =
-
-+static void netconfig_ifaddr_ipv6_dump_done_cb(void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+
-+	/*
-+	 * Handle the case of no link-local address having been found during
-+	 * the dump.  If nc->ifaddr6_dump_cmd_id is 0, we have found one or
-+	 * the dump is being cancelled.  Otherwise try disabing the
-+	 * "disable_ipv6" setting for the interface since it may have been
-+	 * enabled.  Also write "addr_gen_mode" which triggers regerating
-+	 * the link-local addresss on the interface in the kernel if it
-+	 * was previously removed.
-+	 */
-+	if (!nc->ifaddr6_dump_cmd_id || !nc->started)
-+		return;
-+
-+	nc->ifaddr6_dump_cmd_id =3D 0;
-+
-+	/* "do no generate a link-local address" */
-+	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "1");
-+	/* "generate address based on EUI64 (default)" */
-+	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "0");
-+	/* "enable IPv6 operation" */
-+	netconfig_proc_write_ipv6_setting(nc, "disable_ipv6", "0");
-+}
-+
- LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
- {
- 	if (unlikely(!netconfig || netconfig->started))
-@@ -1378,9 +1437,10 @@ configure_ipv6:
- 	}
- =
-
- 	netconfig->ifaddr6_dump_cmd_id =3D l_rtnl_ifaddr6_dump(
--						l_rtnl_get(&netconfig->rtnl),
--						netconfig_ifaddr_ipv6_dump_cb,
--						netconfig, NULL);
-+					l_rtnl_get(&netconfig->rtnl),
-+					netconfig_ifaddr_ipv6_dump_cb,
-+					netconfig,
-+					netconfig_ifaddr_ipv6_dump_done_cb);
- 	if (!netconfig->ifaddr6_dump_cmd_id)
- 		goto unregister;
- =
-
+ 	if (unlikely(!rt))
+diff --git a/ell/rtnl.h b/ell/rtnl.h
+index 274816c..70cbaec 100644
+--- a/ell/rtnl.h
++++ b/ell/rtnl.h
+@@ -69,6 +69,7 @@ void l_rtnl_route_free(struct l_rtnl_route *rt);
+ DEFINE_CLEANUP_FUNC(l_rtnl_route_free);
+ uint8_t l_rtnl_route_get_family(const struct l_rtnl_route *rt);
+ bool l_rtnl_route_get_gateway(const struct l_rtnl_route *rt, char *out_buf=
+);
++bool l_rtnl_route_set_gateway(struct l_rtnl_route *rt, const char *address=
+);
+ uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *rt);
+ bool l_rtnl_route_set_lifetime(struct l_rtnl_route *rt, uint32_t lt);
+ uint32_t l_rtnl_route_get_mtu(const struct l_rtnl_route *rt);
 -- =
 
 2.32.0
 
---===============5431484233120587147==--
+--===============4729210662146975710==--
 
