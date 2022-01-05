@@ -1,54 +1,45 @@
-Content-Type: multipart/mixed; boundary="===============7122794682772332200=="
+Content-Type: multipart/mixed; boundary="===============8766894527640264409=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH v2 4/5] util: add l_secure_select_byte
-Date: Fri, 04 Feb 2022 09:46:13 -0800
-Message-ID: <20220204174614.261669-4-prestwoj@gmail.com>
-In-Reply-To: 20220204174614.261669-1-prestwoj@gmail.com
+Subject: Re: [PATCH 3/4] icmp6: Respect lifetime values in a RA
+Date: Wed, 05 Jan 2022 15:30:34 +0100
+Message-ID: <CAOq732+CXpXbPxzKJTd77_rf8dFHCquCp_C81DGQ4+5qWB1h3g@mail.gmail.com>
+In-Reply-To: 13e7bc94-5030-085f-a084-4672950c568b@gmail.com
 
---===============7122794682772332200==
+--===============8766894527640264409==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This was taken from IWD and modified slightly to act off a boolean
-rather than a 0xff/0x00 byte to stay consistent with l_secure_select
----
- ell/util.h | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+On Mon, 3 Jan 2022 at 20:01, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> On 1/3/22 08:18, Andrew Zaborowski wrote:
+> > "A value of zero indicates that the router is not to be used as a
+> > default router."
+> >
+>
+> You may want to put this into the code directly.
 
-diff --git a/ell/util.h b/ell/util.h
-index 9d4e36c..d390d27 100644
---- a/ell/util.h
-+++ b/ell/util.h
-@@ -425,6 +425,21 @@ static inline void l_secure_select(bool select_left,
- 		o[i] =3D r[i] ^ ((l[i] ^ r[i]) & mask);
- }
- =
+Ok, for some reason we don't quote the RFC in this file.
 
-+/*
-+ * Returns either true_value or false_value (depending if mask is 0xFF or =
-0x00
-+ * respectively).
-+ * This constant time selection method allows to keep an identical memory
-+ * access pattern.
-+ */
-+static inline uint8_t l_secure_select_byte(bool select_true,
-+					const uint8_t true_value,
-+					const uint8_t false_value)
-+{
-+	uint8_t mask =3D -(!!select_true);
-+
-+	return (mask & true_value) | (~mask & false_value);
-+}
-+
- #ifdef __cplusplus
- }
- #endif
--- =
+>
+> > Also set the lifetime values on the routes to those received so that the
+> > user of, say, l_icmp6_client_get_router(), can also determine whether
+> > there is a default router.
+>
+> Note that we do not re-upload the routes to the kernel on every RA receiv=
+ed.
+> See the TODO comment in icmp6_client_handle_message().  Once lifetime exp=
+ires,
+> the route will be removed -> internet is broke.  Please at least sanity t=
+est the
+> changes you're sending out or label them as RFC if you haven't done so.
 
-2.31.1
+Ok, I've dropped the l_icmp6_client_set_rtnl() use locally in IWD so
+this wouldn't have shown up even if the router had set a short
+lifetime.  But I need some way for the user to check if there's a
+default gateway.
 
---===============7122794682772332200==--
+Best regards
+--===============8766894527640264409==--
 
