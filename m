@@ -1,85 +1,58 @@
-Content-Type: multipart/mixed; boundary="===============1625625066611029998=="
+Content-Type: multipart/mixed; boundary="===============4885125070725336109=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 4/5] util: add l_secure_select_byte
-Date: Fri, 04 Feb 2022 09:51:29 -0800
-Message-ID: <554cdd2aa640cc7ebb34768e9bdfe78dacef1ca3.camel@gmail.com>
-In-Reply-To: de076f60-25d4-c950-799f-87327ce1cf2f@gmail.com
+Subject: [PATCH 2/5] icmp6: Free ra in icmp6_client_read_handler on ECANCELED
+Date: Thu, 06 Jan 2022 16:05:26 +0100
+Message-ID: <20220106150529.458775-2-andrew.zaborowski@intel.com>
+In-Reply-To: 20220106150529.458775-1-andrew.zaborowski@intel.com
 
---===============1625625066611029998==
+--===============4885125070725336109==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, 2022-02-04 at 11:35 -0600, Denis Kenzior wrote:
-> Hi James,
-> =
+Make sure we free @ra in in icmp6_client_read_handler even when
+icmp6_client_handle_message returns -ECANCELED.
 
-> On 2/4/22 11:06, James Prestwood wrote:
-> > This was taken from IWD and modified slightly to act off a boolean
-> > rather than a 0xff/0x00 byte to stay consistent with
-> > l_secure_select
-> > ---
-> > =C2=A0 ell/util.h | 15 +++++++++++++++
-> > =C2=A0 1 file changed, 15 insertions(+)
-> > =
+Fixes this:
+=3D=3D1088=3D=3D 1,176 bytes in 9 blocks are definitely lost in loss record=
+ 28 of 29
+=3D=3D1088=3D=3D    at 0x4843839: malloc (in /usr/libexec/valgrind/vgpreloa=
+d_memcheck-amd64-linux.so)
+=3D=3D1088=3D=3D    by 0x4808A1: l_malloc (util.c:62)
+=3D=3D1088=3D=3D    by 0x4C0966: icmp6_client_read_handler (icmp6.c:659)
+=3D=3D1088=3D=3D    by 0x4877AF: io_callback (io.c:120)
+=3D=3D1088=3D=3D    by 0x48693C: l_main_iterate (main.c:478)
+=3D=3D1088=3D=3D    by 0x486A0B: l_main_run (main.c:525)
+=3D=3D1088=3D=3D    by 0x486A0B: l_main_run (main.c:507)
+=3D=3D1088=3D=3D    by 0x486C3F: l_main_run_with_signal (main.c:647)
+=3D=3D1088=3D=3D    by 0x404755: main (main.c:532)
+---
+ ell/icmp6.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-> > diff --git a/ell/util.h b/ell/util.h
-> > index 9d4e36c..d390d27 100644
-> > --- a/ell/util.h
-> > +++ b/ell/util.h
-> > @@ -425,6 +425,21 @@ static inline void l_secure_select(bool
-> > select_left,
-> > =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0=C2=A0o[i] =3D r[i] ^ ((l[i] ^ r[i]) & mask);
-> > =C2=A0 }
-> > =C2=A0 =
+diff --git a/ell/icmp6.c b/ell/icmp6.c
+index 6b1652c..87e46d1 100644
+--- a/ell/icmp6.c
++++ b/ell/icmp6.c
+@@ -401,9 +401,7 @@ static bool icmp6_client_read_handler(struct l_io *io, =
+void *userdata)
+ 	}
+ =
 
-> > +/*
-> > + * Returns either true_value or false_value (depending if mask is
-> > 0xFF or 0x00
-> > + * respectively).
-> > + * This constant time selection method allows to keep an identical
-> > memory
-> > + * access pattern.
-> > + */
-> > +static inline uint8_t l_secure_select_byte(bool select_true,
-> > +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
-=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0const uint8_t true_value,
-> > +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
-=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0const uint8_t false_value)
-> > +{
-> > +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0uint8_t mask =3D -(!!select_=
-true);
-> > +
-> > +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0return (mask & true_value) |=
- (~mask & false_value);
-> > +}
-> > +
-> =
+ 	r =3D icmp6_client_handle_message(client, ra, l, &src);
+-	if (r =3D=3D -ECANCELED)
+-		return true;
+-	else if (r < 0)
++	if (r < 0)
+ 		goto done;
+ =
 
-> Why not use secure_select from ell/useful.h ?
+ 	/* Stop solicitations */
+-- =
 
-Ugh, we should keep these things in one place, unless there was a
-reason for doing it this way?
+2.32.0
 
-> =
-
-> > =C2=A0 #ifdef __cplusplus
-> > =C2=A0 }
-> > =C2=A0 #endif
-> > =
-
-> =
-
-> Regards,
-> -Denis
-
-
---===============1625625066611029998==--
+--===============4885125070725336109==--
 
