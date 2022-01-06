@@ -1,43 +1,88 @@
-Content-Type: multipart/mixed; boundary="===============7236070813185630865=="
+Content-Type: multipart/mixed; boundary="===============2626533561844213845=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] configure: Update to support Autoconf >= 2.69
-Date: Thu, 07 Apr 2022 10:20:27 -0500
-Message-ID: <36243bcd-0fa4-f8cf-f731-2b5a102e0878@gmail.com>
-In-Reply-To: 20220407040007.99836-1-ossama.othman@intel.com
+Subject: [PATCH 5/5] icmp6: Set limits on route list sizes
+Date: Thu, 06 Jan 2022 16:05:29 +0100
+Message-ID: <20220106150529.458775-5-andrew.zaborowski@intel.com>
+In-Reply-To: 20220106150529.458775-1-andrew.zaborowski@intel.com
 
---===============7236070813185630865==
+--===============2626533561844213845==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+It seems to be easy for someone to DOS the ICMP6 stacks on a local
+network by sending a lot of RAs.
+---
+ ell/icmp6.c | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
-On 4/6/22 23:00, Ossama Othman wrote:
-> Bootstrapping ELL against Autoconf 2.71 triggers warnings about use of
-> the deprecated Autoconf macros.  Replace use of the deprecated
-> AC_HELP_STRING and AC_LANG_C macros with AS_HELP_STRING and
-> AC_LANG([C]), respectively.
-> =
+diff --git a/ell/icmp6.c b/ell/icmp6.c
+index f720bc5..b7c0fcc 100644
+--- a/ell/icmp6.c
++++ b/ell/icmp6.c
+@@ -410,6 +410,8 @@ static void icmp6_router_update(struct l_icmp6_client *=
+client,
+ 		icmp6_client_event_notify(client, event, r);
+ }
+ =
 
-> Bump the Autoconf prerequisite, accordingly, to support the updated
-> macros, from 2.60 to 2.69.  Only require Autoconf 2.69 as a
-> prerequisite since many Linux distributions do not yet ship with
-> Autoconf 2.71.
-> =
++#define ICMP6_MAX_ROUTES 50
++
+ /* Mostly RFC4861 Section 6.3.4 */
+ static void icmp6_onlink_prefix_update(struct l_icmp6_client *client,
+ 					struct l_icmp6_router *ra,
+@@ -494,6 +496,14 @@ static void icmp6_onlink_prefix_update(struct l_icmp6_=
+client *client,
+ 	info->client =3D client;
+ 	l_queue_push_head(client->prefix_routes, info);
+ =
 
-> This also addresses a `configure' script generation error on Fedora 36.
-> ---
->   configure.ac | 20 ++++++++++----------
->   1 file changed, 10 insertions(+), 10 deletions(-)
-> =
++	/* Prevent the queue from growing too long (possible DOS) */
++	if (l_queue_length(client->prefix_routes) > ICMP6_MAX_ROUTES) {
++		CLIENT_DEBUG("Too many prefix routes, removing oldest");
++
++		icmp6_prefix_timeout(NULL,
++				l_queue_peek_tail(client->prefix_routes));
++	}
++
+ 	if (!changed)
+ 		return;
+ =
 
+@@ -552,6 +562,26 @@ static int icmp6_client_handle_message(struct l_icmp6_=
+client *client,
+ 		r->client =3D client;
+ 		l_queue_push_head(client->routers, r);
+ =
 
-Applied, thanks,
++		/* Prevent the queue from growing too long (possible DOS) */
++		if (l_queue_length(client->routers) > ICMP6_MAX_ROUTES) {
++			struct l_icmp6_router *r2 =3D
++				l_queue_peek_tail(client->routers);
++			enum l_icmp6_client_event event =3D
++				L_ICMP6_CLIENT_EVENT_DEFAULT_ROUTER_REMOVED;
++
++			CLIENT_DEBUG("Too many routers, removing oldest");
++			l_queue_remove(client->routers, r2);
++
++			if (r2->default_route)
++				icmp6_client_event_notify(client, event, r2);
++
++			_icmp6_router_free(r2);
++
++			/* Client may have stopped us */
++			if (!client->io)
++				return -ECANCELED;
++		}
++
+ 		icmp6_client_event_notify(client,
+ 					L_ICMP6_CLIENT_EVENT_ROUTER_FOUND,
+ 					NULL);
+-- =
 
-Regards,
--Denis
+2.32.0
 
---===============7236070813185630865==--
+--===============2626533561844213845==--
 
