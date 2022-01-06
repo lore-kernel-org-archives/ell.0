@@ -1,37 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============5264722065158582621=="
+Content-Type: multipart/mixed; boundary="===============0234221603415868051=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 01/11] net: Rename l_net_subnet_matches to l_net_prefix_matches
-Date: Thu, 21 Apr 2022 00:10:14 +0200
-Message-ID: <20220420221024.1276317-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 3/5] icmp6: Call debug user data destroy handler
+Date: Thu, 06 Jan 2022 16:05:27 +0100
+Message-ID: <20220106150529.458775-3-andrew.zaborowski@intel.com>
+In-Reply-To: 20220106150529.458775-1-andrew.zaborowski@intel.com
 
---===============5264722065158582621==
+--===============0234221603415868051==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- ell/net.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ ell/icmp6.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/ell/net.h b/ell/net.h
-index eaaf14c..0521d75 100644
---- a/ell/net.h
-+++ b/ell/net.h
-@@ -41,7 +41,7 @@ bool l_net_hostname_is_localhost(const char *hostname);
- bool l_net_get_address(int ifindex, struct in_addr *out);
- bool l_net_get_link_local_address(int ifindex, struct in6_addr *out);
+diff --git a/ell/icmp6.c b/ell/icmp6.c
+index 87e46d1..6a2d705 100644
+--- a/ell/icmp6.c
++++ b/ell/icmp6.c
+@@ -473,6 +473,7 @@ LIB_EXPORT void l_icmp6_client_free(struct l_icmp6_clie=
+nt *client)
  =
 
--static inline bool l_net_subnet_matches(const void *a, const void *b,
-+static inline bool l_net_prefix_matches(const void *a, const void *b,
- 					uint8_t prefix_len)
- {
- 	uint8_t bytes =3D prefix_len / 8;
+ 	l_icmp6_client_stop(client);
+ 	l_queue_destroy(client->routes, NULL);
++	l_icmp6_client_set_debug(client, NULL, NULL, NULL);
+ 	l_queue_destroy(client->event_handlers, icmp6_event_handler_destroy);
+ 	l_free(client);
+ }
 -- =
 
 2.32.0
 
---===============5264722065158582621==--
+--===============0234221603415868051==--
 
