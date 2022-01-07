@@ -1,171 +1,73 @@
-Content-Type: multipart/mixed; boundary="===============0096093948878143021=="
+Content-Type: multipart/mixed; boundary="===============3386670274051111174=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 16/17] examples: Update netconfig method calls
-Date: Fri, 13 May 2022 16:55:09 +0200
-Message-ID: <20220513145510.1408510-16-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 4/5] icmp6: Track routers and prefix routes from multiple
+ RAs
+Date: Fri, 07 Jan 2022 22:55:36 +0100
+Message-ID: <CAOq732+tRb=o8aiKXGGXgWUk0D8qbcQ-m38HxKE7TzjRMdiQog@mail.gmail.com>
+In-Reply-To: d9934b52-f4a6-3049-f25f-0d5d6d9d5cad@gmail.com
 
---===============0096093948878143021==
+--===============3386670274051111174==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- examples/netconfig-test.c | 49 ++++++++++++++++-----------------------
- 1 file changed, 20 insertions(+), 29 deletions(-)
+On Fri, 7 Jan 2022 at 22:26, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> > (But, didn't we talk on the IWD list about how we need to pass those
+> > events to a "netconfig-committer" entity and let it apply the
+> > settings?)
+> >
+>
+> That's why I'm asking.  It seems there is an implicit assumption that we =
+want to
+> pass all the information from l_icmp6_client up to iwd and have it commit=
+ the
+> routes.   But given the complexity of doing this, I'm actually not entire=
+ly sure
+> it is worth the effort.
 
-diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
-index c9d02ab..77ad74c 100644
---- a/examples/netconfig-test.c
-+++ b/examples/netconfig-test.c
-@@ -40,7 +40,6 @@
- #include <ell/ell.h>
- =
+There's also going to be complexity in receiving this information on
+the NM side and passing it further on, but I'm not sure what is the
+alternative.
 
- static bool apply;
--static struct l_netlink *rtnl;
- =
+Once we have a D-Bus backend for this, the cost of doing the other
+(non-DBus) backend in netconfig-committer.c is small.
 
- static void do_debug(const char *str, void *user_data)
- {
-@@ -61,16 +60,14 @@ static void signal_handler(uint32_t signo, void *user_d=
-ata)
- }
- =
+>
+> >>
+> >> In case of 2, the client just wants a snapshot of what the settings sh=
+ould be,
+> >> not get notified that each individual route has changed.
+> >
+> > Right, but we do need most of the events in this case.  If we're not
+>
+> I'm still not following.  Wouldn't l_icmp6_client_get_full_info() be what=
+ you
+> want?  And have the client call it after every L_ICMP6_CLIENT_EVENT_ROUTE=
+R_FOUND?
 
- static void log_addresses(const char *af_str, const char *action,
--				struct l_queue *list)
-+				const struct l_queue_entry *entry)
- {
--	const struct l_queue_entry *entry;
--
--	if (l_queue_isempty(list))
-+	if (!entry)
- 		return;
- =
+We will need something like l_icmp6_client_get_full_info(), but we
+still need to react to all the other events: a new prefix being added
+or removed, a router MTU changing, a router declaring that it no
+longer wants to be a default router, etc.
 
- 	l_info("[netconfig%s] Addresses %s:", af_str, action);
- =
+>
+> >> Yes, we could do that since you're not passing lifetimes in the propos=
+ed iwd
+> >> API.  But is that intended or an oversight?
+> >
+> > To be honest I didn't realise that finite lifetimes are actually
+> > popular (judging from the docs I read so far...), in fact only the
+> > prefix options support infinite lifetimes, default router info
+> > doesn't.  So wrt the D-Bus API it seems that not passing the lifetimes
+> > and lifetime updates will be much more efficient.  As for applying
+>
+> Question is, are you sure that this is what NM guys would be ok with?
 
--	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
-+	for (; entry; entry =3D entry->next) {
- 		struct l_rtnl_address *addr =3D entry->data;
- 		char ip_str[INET6_ADDRSTRLEN];
- =
+I still need an answer on this, but it shouldn't affect ell as long as
+it has a complete-ish icmp6 API.
 
-@@ -83,25 +80,26 @@ static void log_addresses(const char *af_str, const cha=
-r *action,
- }
- =
-
- static void log_routes(const char *af_str, const char *action,
--			struct l_queue *list)
-+			const struct l_queue_entry *entry)
- {
--	const struct l_queue_entry *entry;
--
--	if (l_queue_isempty(list))
-+	if (!entry)
- 		return;
- =
-
- 	l_info("[netconfig%s] Routes %s:", af_str, action);
- =
-
--	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
-+	for (; entry; entry =3D entry->next) {
- 		struct l_rtnl_route *rt =3D entry->data;
--		char subnet_str[INET6_ADDRSTRLEN];
-+		char subnet_str[INET6_ADDRSTRLEN] =3D "unknown";
- 		char gateway_str[INET6_ADDRSTRLEN];
- 		uint8_t prefix_len;
-+		bool onlink;
- =
-
- 		l_rtnl_route_get_dst(rt, subnet_str, &prefix_len);
--		l_rtnl_route_get_gateway(rt, gateway_str);
--		l_info("[netconfig%s] \t%s/%i, gateway %s, orig lifetime %i s",
--			af_str, subnet_str, prefix_len, gateway_str,
-+		onlink =3D !l_rtnl_route_get_gateway(rt, gateway_str);
-+		l_info("[netconfig%s] \t%s/%i, %s%s, orig lifetime %i s",
-+			af_str, subnet_str, prefix_len,
-+			onlink ? "onlink" : "next-hop ",
-+			onlink ? "" : gateway_str,
- 			l_rtnl_route_get_lifetime(rt));
- 	}
- }
-@@ -110,7 +108,7 @@ static void event_handler(struct l_netconfig *netconfig=
-, uint8_t family,
- 				enum l_netconfig_event event, void *user_data)
- {
- 	const char *af_str =3D family =3D=3D AF_INET ? "v4" : "v6";
--	struct l_queue *added, *updated, *removed;
-+	const struct l_queue_entry *added, *updated, *removed, *expired;
- =
-
- 	switch (event) {
- 	case L_NETCONFIG_EVENT_CONFIGURE:
-@@ -128,18 +126,21 @@ static void event_handler(struct l_netconfig *netconf=
-ig, uint8_t family,
- 		return;
- 	}
- =
-
--	l_netconfig_get_addresses(netconfig, &added, &updated, &removed);
-+	l_netconfig_get_addresses(netconfig, &added, &updated,
-+					&removed, &expired);
- 	log_addresses(af_str, "added", added);
- 	log_addresses(af_str, "updated", updated);
- 	log_addresses(af_str, "removed", removed);
-+	log_addresses(af_str, "expired", expired);
- =
-
--	l_netconfig_get_routes(netconfig, &added, &updated, &removed);
-+	l_netconfig_get_routes(netconfig, &added, &updated, &removed, &expired);
- 	log_routes(af_str, "added", added);
- 	log_routes(af_str, "updated", updated);
- 	log_routes(af_str, "removed", removed);
-+	log_routes(af_str, "expired", expired);
- =
-
- 	if (apply)
--		l_netconfig_apply_rtnl(netconfig, rtnl);
-+		l_netconfig_apply_rtnl(netconfig);
- }
- =
-
- static const struct option main_options[] =3D {
-@@ -181,14 +182,6 @@ int main(int argc, char *argv[])
- 	if (!l_main_init())
- 		return EXIT_FAILURE;
- =
-
--	if (apply) {
--		rtnl =3D l_netlink_new(NETLINK_ROUTE);
--		if (!rtnl) {
--			fprintf(stderr, "l_netlink_new(NETLINK_ROUTE) error\n");
--			return EXIT_FAILURE;
--		}
--	}
--
- 	l_log_set_stderr();
- 	l_debug_enable("*");
- =
-
-@@ -203,7 +196,5 @@ int main(int argc, char *argv[])
- 	l_netconfig_destroy(netconfig);
- 	l_main_exit();
- =
-
--	l_netlink_destroy(rtnl);
--
- 	return EXIT_SUCCESS;
- }
--- =
-
-2.32.0
-
---===============0096093948878143021==--
+Best regards
+--===============3386670274051111174==--
 
