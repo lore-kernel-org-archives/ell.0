@@ -1,85 +1,76 @@
-Content-Type: multipart/mixed; boundary="===============3628183765222820078=="
+Content-Type: multipart/mixed; boundary="===============3658401027934347484=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 14/14] netconfig: Add l_netconfig_reset_config
-Date: Thu, 16 Jun 2022 00:47:39 +0200
-Message-ID: <20220615224739.1936538-14-andrew.zaborowski@intel.com>
-In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
+Subject: [PATCH] ecc: add l_ecc_point_y_isodd
+Date: Tue, 18 Jan 2022 08:56:05 -0800
+Message-ID: <20220118165605.1968201-1-prestwoj@gmail.com>
 
---===============3628183765222820078==
+--===============3658401027934347484==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+This is required to know how a compressed point will be interpreted
+after sending the raw (compressed) X coordiate.
 ---
- ell/ell.sym     |  1 +
- ell/netconfig.c | 20 ++++++++++++++++++++
- ell/netconfig.h |  1 +
- 3 files changed, 22 insertions(+)
+ ell/ecc.c   | 5 +++++
+ ell/ecc.h   | 1 +
+ ell/ell.sym | 1 +
+ 3 files changed, 7 insertions(+)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index d74e8c9..8f4e59d 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -748,6 +748,7 @@ global:
- 	l_netconfig_set_dns_override;
- 	l_netconfig_set_domain_names_override;
- 	l_netconfig_check_config;
-+	l_netconfig_reset_config;
- 	l_netconfig_start;
- 	l_netconfig_stop;
- 	l_netconfig_get_dhcp_client;
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 7d4a97e..d593088 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1292,6 +1292,26 @@ LIB_EXPORT bool l_netconfig_check_config(struct l_ne=
-tconfig *netconfig)
- 	return netconfig_check_config(netconfig);
+diff --git a/ell/ecc.c b/ell/ecc.c
+index 5830e01..c934da0 100644
+--- a/ell/ecc.c
++++ b/ell/ecc.c
+@@ -735,6 +735,11 @@ LIB_EXPORT ssize_t l_ecc_point_get_y(const struct l_ec=
+c_point *p, void *y,
+ 	return p->curve->ndigits * 8;
  }
  =
 
-+LIB_EXPORT bool l_netconfig_reset_config(struct l_netconfig *netconfig)
++LIB_EXPORT bool l_ecc_point_y_isodd(const struct l_ecc_point *p)
 +{
-+	if (unlikely(!netconfig || netconfig->started))
-+		return false;
-+
-+	l_netconfig_set_hostname(netconfig, NULL);
-+	l_netconfig_set_route_priority(netconfig, 0);
-+	l_netconfig_set_family_enabled(netconfig, AF_INET, true);
-+	l_netconfig_set_static_addr(netconfig, AF_INET, NULL);
-+	l_netconfig_set_gateway_override(netconfig, AF_INET, NULL);
-+	l_netconfig_set_dns_override(netconfig, AF_INET, NULL);
-+	l_netconfig_set_domain_names_override(netconfig, AF_INET, NULL);
-+	l_netconfig_set_family_enabled(netconfig, AF_INET6, false);
-+	l_netconfig_set_static_addr(netconfig, AF_INET6, NULL);
-+	l_netconfig_set_gateway_override(netconfig, AF_INET6, NULL);
-+	l_netconfig_set_dns_override(netconfig, AF_INET6, NULL);
-+	l_netconfig_set_domain_names_override(netconfig, AF_INET6, NULL);
-+	return true;
++	return p->y[0] & 1;
 +}
 +
- static void netconfig_add_v4_static_address_routes(struct l_netconfig *nc)
+ LIB_EXPORT ssize_t l_ecc_point_get_data(const struct l_ecc_point *p, void =
+*buf,
+ 					size_t len)
  {
- 	char ip[INET_ADDRSTRLEN];
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index 0b1182d..ac467b6 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -69,6 +69,7 @@ bool l_netconfig_set_dns_override(struct l_netconfig *net=
-config, uint8_t family,
- bool l_netconfig_set_domain_names_override(struct l_netconfig *netconfig,
- 						uint8_t family, char **names);
- bool l_netconfig_check_config(struct l_netconfig *netconfig);
-+bool l_netconfig_reset_config(struct l_netconfig *netconfig);
+diff --git a/ell/ecc.h b/ell/ecc.h
+index 84a16c2..0bddd0e 100644
+--- a/ell/ecc.h
++++ b/ell/ecc.h
+@@ -69,6 +69,7 @@ struct l_ecc_point *l_ecc_point_clone(const struct l_ecc_=
+point *p);
+ const struct l_ecc_curve *l_ecc_point_get_curve(const struct l_ecc_point *=
+p);
+ ssize_t l_ecc_point_get_x(const struct l_ecc_point *p, void *x, size_t xle=
+n);
+ ssize_t l_ecc_point_get_y(const struct l_ecc_point *p, void *y, size_t yle=
+n);
++bool l_ecc_point_y_isodd(const struct l_ecc_point *p);
  =
 
- bool l_netconfig_start(struct l_netconfig *netconfig);
- void l_netconfig_stop(struct l_netconfig *netconfig);
+ ssize_t l_ecc_point_get_data(const struct l_ecc_point *p, void *buf, size_=
+t len);
+ void l_ecc_point_free(struct l_ecc_point *p);
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 51db458..a65ee6d 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -572,6 +572,7 @@ global:
+ 	l_ecc_point_from_data;
+ 	l_ecc_point_get_x;
+ 	l_ecc_point_get_y;
++	l_ecc_point_y_isodd;
+ 	l_ecc_point_get_data;
+ 	l_ecc_point_inverse;
+ 	l_ecc_point_multiply;
 -- =
 
-2.34.1
+2.31.1
 
---===============3628183765222820078==--
+--===============3658401027934347484==--
 
