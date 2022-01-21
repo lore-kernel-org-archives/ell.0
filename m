@@ -1,53 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============1629909683713422548=="
+Content-Type: multipart/mixed; boundary="===============4046656319775730099=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 01/17] net: Add l_net_mask_prefix utility
-Date: Fri, 13 May 2022 16:54:54 +0200
-Message-ID: <20220513145510.1408510-1-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH] ecc: enforce strict length with l_ecc_point_from_data
+Date: Fri, 21 Jan 2022 10:33:31 -0800
+Message-ID: <251d2c897e0a3232c88e9ed609906c38e8b215d7.camel@gmail.com>
+In-Reply-To: 769ff176-449d-ff4c-d591-5a74e9e8024b@gmail.com
 
---===============1629909683713422548==
+--===============4046656319775730099==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add function that zeros bits after prefix_len'th bit in an address.  Put
-it in net.h so it can be use by both netconfig.c and icmp6.c,
-potentially others.
----
- ell/net.h | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+On Fri, 2022-01-21 at 10:51 -0600, Denis Kenzior wrote:
+> Hi James,
+> =
 
-diff --git a/ell/net.h b/ell/net.h
-index 0521d75..bc9ba12 100644
---- a/ell/net.h
-+++ b/ell/net.h
-@@ -61,6 +61,20 @@ static inline bool l_net_prefix_matches(const void *a, c=
-onst void *b,
- 	return !bits || ((left ^ right) & (0xff00u >> bits)) =3D=3D 0;
- }
- =
+> On 1/21/22 10:45, James Prestwood wrote:
+> > This add some extra convenience to users of l_ecc_point_from_data
+> > allowing the exact length to be verified in addition to creating
+> > the point.
+> > ---
+> > =C2=A0 ell/ecc.c | 10 +++++-----
+> > =C2=A0 1 file changed, 5 insertions(+), 5 deletions(-)
+> > =
 
-+static inline void l_net_mask_prefix(uint8_t *address, uint8_t prefix_len,
-+					uint8_t address_bytes)
-+{
-+	uint8_t last_byte =3D prefix_len / 8;
-+	uint8_t bits =3D prefix_len & 7;
-+
-+	if (prefix_len & 7) {
-+		address[last_byte] &=3D 0xff00 >> bits;
-+		last_byte++;
-+	}
-+
-+	memset(address + last_byte, 0, address_bytes - last_byte);
-+}
-+
- #ifdef __cplusplus
- }
- #endif
--- =
+> =
 
-2.32.0
+> This seems to break test-sae?
 
---===============1629909683713422548==--
+Yes patch coming. Every other use passed the exact bytes except SAE.
+
+> =
+
+> Regards,
+> -Denis
+> =
+
+
+
+--===============4046656319775730099==--
 
