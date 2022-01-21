@@ -1,35 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============1119164645463257856=="
+Content-Type: multipart/mixed; boundary="===============0059344629461047045=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 12/12] examples: Add a netconfig API example/test utility
-Date: Fri, 11 Mar 2022 10:25:06 -0600
-Message-ID: <5dee9a96-14be-5a62-f021-fbae0cab2e78@gmail.com>
-In-Reply-To: 20220307145543.1558788-12-andrew.zaborowski@intel.com
+Subject: [PATCH v2 2/2] tls-suites: use exact length on l_ecc_point_from_data
+Date: Fri, 21 Jan 2022 11:36:08 -0800
+Message-ID: <20220121193608.2634573-2-prestwoj@gmail.com>
+In-Reply-To: 20220121193608.2634573-1-prestwoj@gmail.com
 
---===============1119164645463257856==
+--===============0059344629461047045==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+This was passing the remaining length in but prior this length was
+only checked if less than point_bytes. If it was greater the
+recent update to l_ecc_point_from_data will cause an error return.
 
-On 3/7/22 08:55, Andrew Zaborowski wrote:
-> A test utility that simply starts netconfig on a given interface and
-> prints events that occur.  DNS/mdns changes aren't committed to the
-> system.
-> ---
->   Makefile.am               |   4 +-
->   examples/netconfig-test.c | 208 ++++++++++++++++++++++++++++++++++++++
->   2 files changed, 211 insertions(+), 1 deletion(-)
->   create mode 100644 examples/netconfig-test.c
-> =
+Instead use point_bytes directly.
+---
+ ell/tls-suites.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/ell/tls-suites.c b/ell/tls-suites.c
+index 055ee80..1c1ca07 100644
+--- a/ell/tls-suites.c
++++ b/ell/tls-suites.c
+@@ -534,7 +534,7 @@ static void tls_handle_ecdhe_server_key_xchg(struct l_t=
+ls *tls,
+ 	params->curve =3D l_ecc_curve_from_tls_group(tls->negotiated_curve->id);
+ 	params->public =3D l_ecc_point_from_data(params->curve,
+ 						L_ECC_POINT_TYPE_FULL,
+-						buf, len);
++						buf, point_bytes);
+ 	tls->pending.key_xchg_params =3D params;
+ 	buf +=3D point_bytes;
+ 	len -=3D point_bytes;
+-- =
 
-Applied with a minor amend to get rid of a >80 char line.
+2.31.1
 
-Regards,
--Denis
-
---===============1119164645463257856==--
+--===============0059344629461047045==--
 
