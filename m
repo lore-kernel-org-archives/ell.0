@@ -1,143 +1,165 @@
-Content-Type: multipart/mixed; boundary="===============8754488779582547531=="
+Content-Type: multipart/mixed; boundary="===============4994998342774315997=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 09/14] netconfig: Write /proc/sys/net files to enable IPv6
-Date: Thu, 16 Jun 2022 00:47:34 +0200
-Message-ID: <20220615224739.1936538-9-andrew.zaborowski@intel.com>
-In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
+Subject: [PATCH v2] dhcp: handle multiple offers from the same server
+Date: Mon, 31 Jan 2022 14:03:50 -0800
+Message-ID: <20220131220350.3984579-1-prestwoj@gmail.com>
 
---===============8754488779582547531==
+--===============4994998342774315997==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Write the accept_ra setting to 0.  On l_netconfig_start if the existing
-address dump command finds no link-local address then also try resetting
-disable_ipv6 and toggling addr_gen_mode to trigger the kernel to
-generate a link-local address.
+It was found that some DHCP servers send multiple offers on occation. Wheth=
+er
+this is a bug or not its been seen in products and ELL should handle this
+gracefully.
+
+The issue comes down to these DHCP servers expecting a request associated w=
+ith
+the last offer they send. The existing behavior in ELL is to ignore all off=
+ers
+after the initial, and continue resending requests for the original offer. =
+When
+this happens the DHCP server never responds with an ACK.
+
+The spec briefly outlines multiple DHCP offers but in the context of multip=
+le
+DHCP servers rather than multiple offers from the same DHCP server. In any
+case its left up to the DHCP client to choose whatever offer it wants, so t=
+his
+is what ELL will do.
+
+Now only the last offer will be used while in the REQUESTING state. If anot=
+her
+offer comes in before the ACK, that offer will be used and a new request wi=
+ll
+be sent out. Note this is only the case when the offers contain the same
+server ID as the first offer sent (this eliminates the multi DHCP server ca=
+se
+and will maintain existing behavior, where the first offer is selected alwa=
+ys).
 ---
- ell/netconfig.c | 66 +++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 64 insertions(+), 2 deletions(-)
+ ell/dhcp.c | 62 ++++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 49 insertions(+), 13 deletions(-)
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index b8f98d0..8d0425d 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -28,6 +28,12 @@
- #include <netinet/ip.h>
- #include <arpa/inet.h>
- #include <netinet/icmp6.h>
-+#include <net/if.h>
-+#include <errno.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+#include <fcntl.h>
-+#include <unistd.h>
- =
+v2:
+ - Added a debug print in the multiple offer case
 
- #include "private.h"
- #include "useful.h"
-@@ -858,6 +864,30 @@ static void netconfig_icmp6_event_handler(struct l_icm=
-p6_client *client,
- 		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
- }
- =
-
-+static int netconfig_proc_write_ipv6_setting(struct l_netconfig *nc,
-+						const char *setting,
-+						const char *value)
-+{
-+	char ifname[IF_NAMESIZE];
-+	_auto_(l_free) char *filename =3D NULL;
-+	int fd;
-+	int r;
-+
-+	if (unlikely(!if_indextoname(nc->ifindex, ifname)))
-+		return -errno;
-+
-+	filename =3D l_strdup_printf("/proc/sys/net/ipv6/conf/%s/%s",
-+					ifname, setting);
-+
-+	fd =3D L_TFR(open(filename, O_WRONLY));
-+	if (unlikely(fd < 0))
-+		return -errno;
-+
-+	r =3D L_TFR(write(fd, value, strlen(value)));
-+	L_TFR(close(fd));
-+	return r;
-+}
-+
- LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index be03697..e2d18fc 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -757,6 +757,7 @@ static int dhcp_client_receive_offer(struct l_dhcp_clie=
+nt *client,
+ 					size_t len)
  {
- 	struct l_netconfig *nc;
-@@ -890,6 +920,9 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
- ifindex)
- 					netconfig_icmp6_event_handler,
- 					nc, NULL);
+ 	struct dhcp_message_iter iter;
++	struct l_dhcp_lease *lease;
  =
 
-+	/* Disable in-kernel autoconfiguration for the interface */
-+	netconfig_proc_write_ipv6_setting(nc, "accept_ra", "0");
-+
- 	return nc;
- }
+ 	CLIENT_DEBUG("");
  =
 
-@@ -1330,6 +1363,34 @@ static void netconfig_ifaddr_ipv6_dump_cb(int error,=
- uint16_t type,
- 	netconfig_ifaddr_ipv6_notify(type, data, len, user_data);
- }
+@@ -766,15 +767,55 @@ static int dhcp_client_receive_offer(struct l_dhcp_cl=
+ient *client,
+ 	if (!_dhcp_message_iter_init(&iter, offer, len))
+ 		return -EINVAL;
  =
 
-+static void netconfig_ifaddr_ipv6_dump_done_cb(void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+
+-	client->lease =3D _dhcp_lease_parse_options(&iter);
+-	if (!client->lease)
++	lease =3D _dhcp_lease_parse_options(&iter);
++	if (!lease)
+ 		return -ENOMSG;
+ =
+
 +	/*
-+	 * Handle the case of no link-local address having been found during
-+	 * the dump.  If nc->ifaddr6_dump_cmd_id is 0, we have found one or
-+	 * the dump is being cancelled.  Otherwise try disabing the
-+	 * "disable_ipv6" setting for the interface since it may have been
-+	 * enabled.  Also write "addr_gen_mode" which triggers regerating
-+	 * the link-local addresss on the interface in the kernel if it
-+	 * was previously removed.
++	 * Received another offer. In the case of multiple DHCP servers we want
++	 * to ignore it and continue using the first offer. If this is from the
++	 * same server its likely a buggy DHCP implementation and we should
++	 * use the last offer it sends.
 +	 */
-+	if (!nc->ifaddr6_dump_cmd_id || !nc->started)
-+		return;
++	if (client->lease) {
++		if (client->lease->server_address !=3D lease->server_address) {
++			_dhcp_lease_free(lease);
++			return -ENOMSG;
++		}
 +
-+	nc->ifaddr6_dump_cmd_id =3D 0;
++		CLIENT_DEBUG("Server sent another offer, using it instead");
 +
-+	/* "do not generate a link-local address" */
-+	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "1");
-+	/* "generate address based on EUI64 (default)" */
-+	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "0");
-+	/* "enable IPv6 operation" */
-+	netconfig_proc_write_ipv6_setting(nc, "disable_ipv6", "0");
++		_dhcp_lease_free(client->lease);
++	}
 +
-+	/* TODO: save original values and reset in l_netconfig_stop() */
++	client->lease =3D lease;
++
+ 	client->lease->address =3D offer->yiaddr;
+ =
+
+ 	return 0;
+ }
+ =
+
++static bool dhcp_client_handle_offer(struct l_dhcp_client *client,
++					const struct dhcp_message *message,
++					size_t len)
++{
++	if (dhcp_client_receive_offer(client, message, len) < 0)
++		return false;
++
++	CLIENT_ENTER_STATE(DHCP_STATE_REQUESTING);
++	client->attempt =3D 1;
++
++	if (dhcp_client_send_request(client) < 0) {
++		l_dhcp_client_stop(client);
++
++		return false;
++	}
++
++	l_timeout_modify_ms(client->timeout_resend, dhcp_fuzz_secs(4));
++
++	return true;
 +}
 +
- LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
+ static void dhcp_client_rx_message(const void *data, size_t len, void *use=
+rdata,
+ 					const uint8_t *saddr)
  {
- 	if (unlikely(!netconfig || netconfig->started))
-@@ -1390,8 +1451,9 @@ configure_ipv6:
- 	}
+@@ -832,21 +873,16 @@ static void dhcp_client_rx_message(const void *data, =
+size_t len, void *userdata,
+ 		if (msg_type !=3D DHCP_MESSAGE_TYPE_OFFER)
+ 			return;
  =
 
- 	netconfig->ifaddr6_dump_cmd_id =3D l_rtnl_ifaddr6_dump(l_rtnl_get(),
--						netconfig_ifaddr_ipv6_dump_cb,
--						netconfig, NULL);
-+					netconfig_ifaddr_ipv6_dump_cb,
-+					netconfig,
-+					netconfig_ifaddr_ipv6_dump_done_cb);
- 	if (!netconfig->ifaddr6_dump_cmd_id)
- 		goto unregister;
+-		if (dhcp_client_receive_offer(client, message, len) < 0)
++		if (!dhcp_client_handle_offer(client, message, len))
+ 			return;
  =
 
+-		CLIENT_ENTER_STATE(DHCP_STATE_REQUESTING);
+-		client->attempt =3D 1;
+-
+-		if (dhcp_client_send_request(client) < 0) {
+-			l_dhcp_client_stop(client);
+-
+-			return;
+-		}
+-
+-		l_timeout_modify_ms(client->timeout_resend, dhcp_fuzz_secs(4));
+ 		break;
+ 	case DHCP_STATE_REQUESTING:
++		if (msg_type =3D=3D DHCP_MESSAGE_TYPE_OFFER) {
++			dhcp_client_handle_offer(client, message, len);
++			return;
++		}
++		/* Fall through */
+ 	case DHCP_STATE_RENEWING:
+ 	case DHCP_STATE_REBINDING:
+ 	receive_rapid_commit:
 -- =
 
-2.34.1
+2.31.1
 
---===============8754488779582547531==--
+--===============4994998342774315997==--
 
