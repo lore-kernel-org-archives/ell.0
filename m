@@ -1,34 +1,38 @@
-Content-Type: multipart/mixed; boundary="===============6216257199061278548=="
+Content-Type: multipart/mixed; boundary="===============8127499559419283889=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 17/17] icmp6: Ignore bad prefixes per RFC4862
-Date: Wed, 18 May 2022 14:02:56 -0500
-Message-ID: <18279cb7-f9a9-56f5-d943-e0d7d45a012e@gmail.com>
-In-Reply-To: 20220513224713.1447773-17-andrew.zaborowski@intel.com
+Subject: Re: [PATCH v2 1/5] settings: add l_settings_clone
+Date: Fri, 04 Feb 2022 13:32:29 -0600
+Message-ID: <34bea58d-abd4-8508-ec27-a7feec68c69c@gmail.com>
+In-Reply-To: 20220204174614.261669-1-prestwoj@gmail.com
 
---===============6216257199061278548==
+--===============8127499559419283889==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi James,
 
-On 5/13/22 17:47, Andrew Zaborowski wrote:
-> "Silently ignore" Prefix Information options with a preferred time
-> longer than valid time and those matching the link-local prefix as
-> mandated by RFC4862 Section 5.5.3.  These prefixes are also invalid
-> according to RFC4861.
+On 2/4/22 11:46, James Prestwood wrote:
+> Returns identical copy of settings
 > ---
->   ell/icmp6.c | 32 ++++++++++++++++++++++++++++++--
->   1 file changed, 30 insertions(+), 2 deletions(-)
+>   ell/ell.sym    |  1 +
+>   ell/settings.c | 57 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>   ell/settings.h |  2 ++
+>   3 files changed, 60 insertions(+)
+> =
+
+> v2:
+>   * memdup the entire embedded_group_data structure rather than manually
+>     copying each part individually.
 > =
 
 
-Applied, thanks.
+Patches 1-3 applied, thanks.
 
 Regards,
 -Denis
 
---===============6216257199061278548==--
+--===============8127499559419283889==--
 
