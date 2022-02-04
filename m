@@ -1,128 +1,74 @@
-Content-Type: multipart/mixed; boundary="===============4777885081800906390=="
+Content-Type: multipart/mixed; boundary="===============3720002168213345536=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 6/8] netconfig: Add getters for DNS addresses and domain names
-Date: Fri, 15 Apr 2022 20:32:09 +0200
-Message-ID: <20220415183211.987345-6-andrew.zaborowski@intel.com>
-In-Reply-To: 20220415183211.987345-1-andrew.zaborowski@intel.com
+Subject: [PATCH 3/5] settings: add l_settings_remove_embedded_groups
+Date: Fri, 04 Feb 2022 09:06:00 -0800
+Message-ID: <20220204170603.216439-3-prestwoj@gmail.com>
+In-Reply-To: 20220204170603.216439-1-prestwoj@gmail.com
 
---===============4777885081800906390==
+--===============3720002168213345536==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+This removes all embedded groups from a l_settings object
 ---
- ell/ell.sym     |  2 ++
- ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++++
- ell/netconfig.h |  2 ++
- 3 files changed, 68 insertions(+)
+ ell/ell.sym    |  1 +
+ ell/settings.c | 11 +++++++++++
+ ell/settings.h |  1 +
+ 3 files changed, 13 insertions(+)
 
 diff --git a/ell/ell.sym b/ell/ell.sym
-index f35bf82..56565a2 100644
+index 827e68c..96b3a7d 100644
 --- a/ell/ell.sym
 +++ b/ell/ell.sym
-@@ -755,6 +755,8 @@ global:
- 	l_netconfig_apply_rtnl;
- 	l_netconfig_get_addresses;
- 	l_netconfig_get_routes;
-+	l_netconfig_get_dns_list;
-+	l_netconfig_get_domain_names;
- local:
- 	*;
- };
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 2915988..1ae206b 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1303,3 +1303,67 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_g=
-et_routes(
+@@ -490,6 +490,7 @@ global:
+ 	l_settings_has_embedded_group;
+ 	l_settings_get_embedded_groups;
+ 	l_settings_get_embedded_value;
++	l_settings_remove_embedded_groups;
+ 	/* signal */
+ 	l_signal_create;
+ 	l_signal_remove;
+diff --git a/ell/settings.c b/ell/settings.c
+index a553ec0..6187a46 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -1566,3 +1566,14 @@ LIB_EXPORT const char *l_settings_get_embedded_value(
  =
 
- 	return l_queue_get_entries(netconfig->routes.current);
+ 	return group->data;
  }
 +
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_dns_list(struct l_netconfig *netconfig)
++LIB_EXPORT bool l_settings_remove_embedded_groups(struct l_settings *setti=
+ngs)
 +{
-+	char **ret =3D NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
++	if (unlikely(!settings))
++		return false;
 +
-+#define CONCAT(dest, src, free)		\
-+	do {				\
-+		char **tmp =3D src;	\
-+		tmp =3D free ? tmp : l_strv_copy(tmp);	\
-+		if (!dest)		\
-+			dest =3D tmp;	\
-+		else if (tmp) {		\
-+			unsigned int destlen =3D l_strv_length(dest);	\
-+			unsigned int srclen =3D l_strv_length(tmp);	\
-+			dest =3D l_realloc(dest, sizeof(char *) *	\
-+				(destlen + srclen + 1));	\
-+			memcpy(dest + destlen, tmp, sizeof(char *) *	\
-+					(srclen + 1));	\
-+			l_free(tmp);	\
-+		}			\
-+	} while (0)
++	l_queue_destroy(settings->embedded_groups, embedded_group_destroy);
++	settings->embedded_groups =3D l_queue_new();
 +
-+	if (netconfig->v4_dns_override)
-+		CONCAT(ret, netconfig->v4_dns_override, false);
-+	else if ((v4_lease =3D
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)))
-+		CONCAT(ret, l_dhcp_lease_get_dns(v4_lease), true);
-+
-+	if (netconfig->v6_dns_override)
-+		CONCAT(ret, netconfig->v6_dns_override, false);
-+	else if ((v6_lease =3D
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		CONCAT(ret, l_dhcp6_lease_get_dns(v6_lease), true);
-+
-+	return ret;
++	return true;
 +}
-+
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_domain_names(struct l_netconfig *netconf=
-ig)
-+{
-+	char **ret =3D NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
-+
-+	if (netconfig->v4_domain_names_override)
-+		CONCAT(ret, netconfig->v4_domain_names_override, false);
-+	else if ((v4_lease =3D
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)) &&
-+			l_dhcp_lease_get_domain_name(v4_lease)) {
-+		ret =3D l_new(char *, 2);
-+		ret[0] =3D l_dhcp_lease_get_domain_name(v4_lease);
-+	}
-+
-+	if (netconfig->v6_dns_override)
-+		CONCAT(ret, netconfig->v6_domain_names_override, false);
-+	else if ((v6_lease =3D
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		CONCAT(ret, l_dhcp6_lease_get_domains(v6_lease), true);
-+
-+	return ret;
-+}
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index b94107c..a1bd7f2 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -97,6 +97,8 @@ const struct l_queue_entry *l_netconfig_get_routes(
- 				const struct l_queue_entry **out_added,
- 				const struct l_queue_entry **out_updated,
- 				const struct l_queue_entry **out_removed);
-+char **l_netconfig_get_dns_list(struct l_netconfig *netconfig);
-+char **l_netconfig_get_domain_names(struct l_netconfig *netconfig);
+diff --git a/ell/settings.h b/ell/settings.h
+index f094ef5..519014d 100644
+--- a/ell/settings.h
++++ b/ell/settings.h
+@@ -137,6 +137,7 @@ bool l_settings_remove_key(struct l_settings *settings,=
+ const char *group_name,
+ bool l_settings_remove_group(struct l_settings *settings,
+ 				const char *group_name);
  =
 
- #ifdef __cplusplus
- }
++bool l_settings_remove_embedded_groups(struct l_settings *settings);
+ char **l_settings_get_embedded_groups(struct l_settings *settings);
+ bool l_settings_has_embedded_group(struct l_settings *settings,
+ 					const char *group);
 -- =
 
-2.32.0
+2.31.1
 
---===============4777885081800906390==--
+--===============3720002168213345536==--
 
