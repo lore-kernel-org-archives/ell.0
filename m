@@ -1,52 +1,62 @@
-Content-Type: multipart/mixed; boundary="===============4068083403357447555=="
+Content-Type: multipart/mixed; boundary="===============1239444979114087337=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 4/6] netconfig: Add netconfig API
-Date: Tue, 08 Feb 2022 11:35:55 -0600
-Message-ID: <1d920cfa-8c3f-4c25-1116-483d5b2b1498@gmail.com>
-In-Reply-To: 20220207150717.60511-4-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 4/5] util: add l_secure_select_byte
+Date: Fri, 04 Feb 2022 11:35:34 -0600
+Message-ID: <de076f60-25d4-c950-799f-87327ce1cf2f@gmail.com>
+In-Reply-To: 20220204170603.216439-4-prestwoj@gmail.com
 
---===============4068083403357447555==
+--===============1239444979114087337==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi James,
 
-On 2/7/22 09:07, Andrew Zaborowski wrote:
-> This adds the netconfig class that will encapsulate static IP
-> configuration, DHCP, DHCP6, ICMP6, SLAAC logic and free the user of
-> manually handling DHCP/DHCP6 events to implement netconfig policies.
-> The user will still need to handle committing received DNS and mdns
-> information.
-> =
-
-> In this patch only IPv4 DHCP is implemented and no configurable settings
-> are added.
-> =
-
-> When events are emitted for address and/or route changes, the changes
-> are split into "added", "updated" and "removed" lists so that the user
-> can decide apply those changes without first removing all addresses and
-> routes from the interface and the re-adding the complete new list.
-> They can also decide to let another entity apply the changes.
+On 2/4/22 11:06, James Prestwood wrote:
+> This was taken from IWD and modified slightly to act off a boolean
+> rather than a 0xff/0x00 byte to stay consistent with l_secure_select
 > ---
->   Makefile.am     |   6 +-
->   ell/ell.h       |   1 +
->   ell/ell.sym     |   8 ++
->   ell/netconfig.c | 375 ++++++++++++++++++++++++++++++++++++++++++++++++
->   ell/netconfig.h |  73 ++++++++++
->   5 files changed, 461 insertions(+), 2 deletions(-)
->   create mode 100644 ell/netconfig.c
->   create mode 100644 ell/netconfig.h
+>   ell/util.h | 15 +++++++++++++++
+>   1 file changed, 15 insertions(+)
 > =
 
+> diff --git a/ell/util.h b/ell/util.h
+> index 9d4e36c..d390d27 100644
+> --- a/ell/util.h
+> +++ b/ell/util.h
+> @@ -425,6 +425,21 @@ static inline void l_secure_select(bool select_left,
+>   		o[i] =3D r[i] ^ ((l[i] ^ r[i]) & mask);
+>   }
+>   =
 
-I have no real comments here.  This seems like the right approach.
+> +/*
+> + * Returns either true_value or false_value (depending if mask is 0xFF o=
+r 0x00
+> + * respectively).
+> + * This constant time selection method allows to keep an identical memory
+> + * access pattern.
+> + */
+> +static inline uint8_t l_secure_select_byte(bool select_true,
+> +					const uint8_t true_value,
+> +					const uint8_t false_value)
+> +{
+> +	uint8_t mask =3D -(!!select_true);
+> +
+> +	return (mask & true_value) | (~mask & false_value);
+> +}
+> +
+
+Why not use secure_select from ell/useful.h ?
+
+>   #ifdef __cplusplus
+>   }
+>   #endif
+> =
+
 
 Regards,
 -Denis
-
---===============4068083403357447555==--
+--===============1239444979114087337==--
 
