@@ -1,88 +1,76 @@
-Content-Type: multipart/mixed; boundary="===============6166744591686483082=="
+Content-Type: multipart/mixed; boundary="===============0245017808739960825=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 11/11] netconfig: Add l_netconfig_get_{dhcp6,icmp6}_client
-Date: Mon, 11 Apr 2022 16:20:56 +0200
-Message-ID: <20220411142056.817784-11-andrew.zaborowski@intel.com>
-In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
+Subject: [PATCH v2 3/5] settings: add l_settings_remove_embedded_groups
+Date: Fri, 04 Feb 2022 09:46:12 -0800
+Message-ID: <20220204174614.261669-3-prestwoj@gmail.com>
+In-Reply-To: 20220204174614.261669-1-prestwoj@gmail.com
 
---===============6166744591686483082==
+--===============0245017808739960825==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+This removes all embedded groups from a l_settings object
 ---
- ell/ell.sym     |  2 ++
- ell/netconfig.c | 18 ++++++++++++++++++
- ell/netconfig.h |  4 ++++
- 3 files changed, 24 insertions(+)
+ ell/ell.sym    |  1 +
+ ell/settings.c | 10 ++++++++++
+ ell/settings.h |  1 +
+ 3 files changed, 12 insertions(+)
+
+v2:
+ * Use l_queue_clear(). Not sure how I didn't notice this API existed.
 
 diff --git a/ell/ell.sym b/ell/ell.sym
-index 9b3a6e1..f35bf82 100644
+index 827e68c..96b3a7d 100644
 --- a/ell/ell.sym
 +++ b/ell/ell.sym
-@@ -749,6 +749,8 @@ global:
- 	l_netconfig_start;
- 	l_netconfig_stop;
- 	l_netconfig_get_dhcp_client;
-+	l_netconfig_get_dhcp6_client;
-+	l_netconfig_get_icmp6_client;
- 	l_netconfig_set_event_handler;
- 	l_netconfig_apply_rtnl;
- 	l_netconfig_get_addresses;
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 15eb4ed..72495ec 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1062,6 +1062,24 @@ LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhc=
-p_client(
- 	return netconfig->dhcp_client;
+@@ -490,6 +490,7 @@ global:
+ 	l_settings_has_embedded_group;
+ 	l_settings_get_embedded_groups;
+ 	l_settings_get_embedded_value;
++	l_settings_remove_embedded_groups;
+ 	/* signal */
+ 	l_signal_create;
+ 	l_signal_remove;
+diff --git a/ell/settings.c b/ell/settings.c
+index 31d23fe..ac4259c 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -1561,3 +1561,13 @@ LIB_EXPORT const char *l_settings_get_embedded_value(
+ =
+
+ 	return group->data;
  }
- =
-
-+LIB_EXPORT struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
-+						struct l_netconfig *netconfig)
++
++LIB_EXPORT bool l_settings_remove_embedded_groups(struct l_settings *setti=
+ngs)
 +{
-+	if (unlikely(!netconfig))
-+		return NULL;
++	if (unlikely(!settings))
++		return false;
 +
-+	return netconfig->dhcp6_client;
++	l_queue_clear(settings->embedded_groups, embedded_group_destroy);
++
++	return true;
 +}
-+
-+LIB_EXPORT struct l_icmp6_client *l_netconfig_get_icmp6_client(
-+						struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return NULL;
-+
-+	return netconfig->icmp6_client;
-+}
-+
- LIB_EXPORT void l_netconfig_set_event_handler(struct l_netconfig *netconfi=
-g,
- 					l_netconfig_event_cb_t handler,
- 					void *user_data,
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index aab9d3f..dc56bcb 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -75,6 +75,10 @@ void l_netconfig_stop(struct l_netconfig *netconfig);
+diff --git a/ell/settings.h b/ell/settings.h
+index f094ef5..519014d 100644
+--- a/ell/settings.h
++++ b/ell/settings.h
+@@ -137,6 +137,7 @@ bool l_settings_remove_key(struct l_settings *settings,=
+ const char *group_name,
+ bool l_settings_remove_group(struct l_settings *settings,
+ 				const char *group_name);
  =
 
- struct l_dhcp_client *l_netconfig_get_dhcp_client(
- 						struct l_netconfig *netconfig);
-+struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
-+						struct l_netconfig *netconfig);
-+struct l_icmp6_client *l_netconfig_get_icmp6_client(
-+						struct l_netconfig *netconfig);
- =
-
- void l_netconfig_set_event_handler(struct l_netconfig *netconfig,
- 					l_netconfig_event_cb_t handler,
++bool l_settings_remove_embedded_groups(struct l_settings *settings);
+ char **l_settings_get_embedded_groups(struct l_settings *settings);
+ bool l_settings_has_embedded_group(struct l_settings *settings,
+ 					const char *group);
 -- =
 
-2.32.0
+2.31.1
 
---===============6166744591686483082==--
+--===============0245017808739960825==--
 
