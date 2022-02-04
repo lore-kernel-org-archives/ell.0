@@ -1,160 +1,54 @@
-Content-Type: multipart/mixed; boundary="===============4959192223748820942=="
+Content-Type: multipart/mixed; boundary="===============0702166471690474272=="
 MIME-Version: 1.0
 From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH] dhcp: handle multiple offers from the same server
-Date: Mon, 31 Jan 2022 13:46:36 -0800
-Message-ID: <20220131214636.3975983-1-prestwoj@gmail.com>
+Subject: [PATCH 4/5] util: add l_secure_select_byte
+Date: Fri, 04 Feb 2022 09:06:01 -0800
+Message-ID: <20220204170603.216439-4-prestwoj@gmail.com>
+In-Reply-To: 20220204170603.216439-1-prestwoj@gmail.com
 
---===============4959192223748820942==
+--===============0702166471690474272==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-It was found that some DHCP servers send multiple offers on occation. Wheth=
-er
-this is a bug or not its been seen in products and ELL should handle this
-gracefully.
-
-The issue comes down to these DHCP servers expecting a request associated w=
-ith
-the last offer they send. The existing behavior in ELL is to ignore all off=
-ers
-after the initial, and continue resending requests for the original offer. =
-When
-this happens the DHCP server never responds with an ACK.
-
-The spec briefly outlines multiple DHCP offers but in the context of multip=
-le
-DHCP servers rather than multiple offers from the same DHCP server. In any
-case its left up to the DHCP client to choose whatever offer it wants, so t=
-his
-is what ELL will do.
-
-Now only the last offer will be used while in the REQUESTING state. If anot=
-her
-offer comes in before the ACK, that offer will be used and a new request wi=
-ll
-be sent out. Note this is only the case when the offers contain the same
-server ID as the first offer sent (this eliminates the multi DHCP server ca=
-se
-and will maintain existing behavior, where the first offer is selected alwa=
-ys).
+This was taken from IWD and modified slightly to act off a boolean
+rather than a 0xff/0x00 byte to stay consistent with l_secure_select
 ---
- ell/dhcp.c | 60 ++++++++++++++++++++++++++++++++++++++++++------------
- 1 file changed, 47 insertions(+), 13 deletions(-)
+ ell/util.h | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index be03697..66e4b8e 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -757,6 +757,7 @@ static int dhcp_client_receive_offer(struct l_dhcp_clie=
-nt *client,
- 					size_t len)
- {
- 	struct dhcp_message_iter iter;
-+	struct l_dhcp_lease *lease;
- =
-
- 	CLIENT_DEBUG("");
- =
-
-@@ -766,15 +767,53 @@ static int dhcp_client_receive_offer(struct l_dhcp_cl=
-ient *client,
- 	if (!_dhcp_message_iter_init(&iter, offer, len))
- 		return -EINVAL;
- =
-
--	client->lease =3D _dhcp_lease_parse_options(&iter);
--	if (!client->lease)
-+	lease =3D _dhcp_lease_parse_options(&iter);
-+	if (!lease)
- 		return -ENOMSG;
- =
-
-+	/*
-+	 * Received another offer. In the case of multiple DHCP servers we want
-+	 * to ignore it and continue using the first offer. If this is from the
-+	 * same server its likely a buggy DHCP implementation and we need to
-+	 * use the last offer it sends.
-+	 */
-+	if (client->lease) {
-+		if (client->lease->server_address !=3D lease->server_address) {
-+			_dhcp_lease_free(lease);
-+			return -ENOMSG;
-+		}
-+
-+		_dhcp_lease_free(client->lease);
-+	}
-+
-+	client->lease =3D lease;
-+
- 	client->lease->address =3D offer->yiaddr;
- =
-
- 	return 0;
+diff --git a/ell/util.h b/ell/util.h
+index 9d4e36c..d390d27 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -425,6 +425,21 @@ static inline void l_secure_select(bool select_left,
+ 		o[i] =3D r[i] ^ ((l[i] ^ r[i]) & mask);
  }
  =
 
-+static bool dhcp_client_handle_offer(struct l_dhcp_client *client,
-+					const struct dhcp_message *message,
-+					size_t len)
++/*
++ * Returns either true_value or false_value (depending if mask is 0xFF or =
+0x00
++ * respectively).
++ * This constant time selection method allows to keep an identical memory
++ * access pattern.
++ */
++static inline uint8_t l_secure_select_byte(bool select_true,
++					const uint8_t true_value,
++					const uint8_t false_value)
 +{
-+	if (dhcp_client_receive_offer(client, message, len) < 0)
-+		return false;
++	uint8_t mask =3D -(!!select_true);
 +
-+	CLIENT_ENTER_STATE(DHCP_STATE_REQUESTING);
-+	client->attempt =3D 1;
-+
-+	if (dhcp_client_send_request(client) < 0) {
-+		l_dhcp_client_stop(client);
-+
-+		return false;
-+	}
-+
-+	l_timeout_modify_ms(client->timeout_resend, dhcp_fuzz_secs(4));
-+
-+	return true;
++	return (mask & true_value) | (~mask & false_value);
 +}
 +
- static void dhcp_client_rx_message(const void *data, size_t len, void *use=
-rdata,
- 					const uint8_t *saddr)
- {
-@@ -832,21 +871,16 @@ static void dhcp_client_rx_message(const void *data, =
-size_t len, void *userdata,
- 		if (msg_type !=3D DHCP_MESSAGE_TYPE_OFFER)
- 			return;
- =
-
--		if (dhcp_client_receive_offer(client, message, len) < 0)
-+		if (!dhcp_client_handle_offer(client, message, len))
- 			return;
- =
-
--		CLIENT_ENTER_STATE(DHCP_STATE_REQUESTING);
--		client->attempt =3D 1;
--
--		if (dhcp_client_send_request(client) < 0) {
--			l_dhcp_client_stop(client);
--
--			return;
--		}
--
--		l_timeout_modify_ms(client->timeout_resend, dhcp_fuzz_secs(4));
- 		break;
- 	case DHCP_STATE_REQUESTING:
-+		if (msg_type =3D=3D DHCP_MESSAGE_TYPE_OFFER) {
-+			dhcp_client_handle_offer(client, message, len);
-+			return;
-+		}
-+		/* Fall through */
- 	case DHCP_STATE_RENEWING:
- 	case DHCP_STATE_REBINDING:
- 	receive_rapid_commit:
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
 2.31.1
 
---===============4959192223748820942==--
+--===============0702166471690474272==--
 
