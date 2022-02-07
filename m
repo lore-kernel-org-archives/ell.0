@@ -1,65 +1,150 @@
-Content-Type: multipart/mixed; boundary="===============7740909292610498270=="
+Content-Type: multipart/mixed; boundary="===============2000355399882768534=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 1/3] rtnl: Fix address conversion buffer overflow.
-Date: Wed, 10 Nov 2021 09:55:51 -0600
-Message-ID: <ac6e7c2c-c8ea-a10c-20a3-f3c8d5ee2031@gmail.com>
-In-Reply-To: 20211110001448.175980-2-ossama.othman@intel.com
+Subject: [PATCH 5/6] netconfig: Add l_netconfig_apply_rtnl
+Date: Mon, 07 Feb 2022 16:07:16 +0100
+Message-ID: <20220207150717.60511-5-andrew.zaborowski@intel.com>
+In-Reply-To: 20220207150717.60511-1-andrew.zaborowski@intel.com
 
---===============7740909292610498270==
+--===============2000355399882768534==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+Add l_netconfig_apply_rtnl and the getters for current lists of routes
+and addresses for the netconfig user to be able to commit address and
+route changes.
+---
+ ell/ell.sym     |  3 ++
+ ell/netconfig.c | 73 +++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/netconfig.h | 11 ++++++++
+ 3 files changed, 87 insertions(+)
 
-On 11/9/21 6:14 PM, Ossama Othman wrote:
-> Some l_rtnl functions that return a stringified address could
-> potentially overrun a user supplied buffer of insufficient length.
-> Add a buffer length argument to prevent ELL from making incorrect
-> assumptions.  Impacted functions are l_rtnl_address_get_address(),
-> l_rtnl_route_get_gateway(), and l_rtnl_route_get_prefsrc().
-> ---
->   ell/rtnl.c | 28 +++++++++++++++++-----------
->   ell/rtnl.h |  8 +++++---
->   2 files changed, 22 insertions(+), 14 deletions(-)
-> =
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 6c27800..b256771 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -728,6 +728,9 @@ global:
+ 	l_netconfig_stop;
+ 	l_netconfig_get_dhcp_client;
+ 	l_netconfig_set_event_handler;
++	l_netconfig_apply_rtnl;
++	l_netconfig_get_addresses;
++	l_netconfig_get_routes;
+ local:
+ 	*;
+ };
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index e3ac751..7317a79 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -373,3 +373,76 @@ LIB_EXPORT void l_netconfig_set_event_handler(struct l=
+_netconfig *netconfig,
+ 	netconfig->handler.user_data =3D user_data;
+ 	netconfig->handler.destroy =3D destroy;
+ }
++
++LIB_EXPORT void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
++					struct l_netlink *rtnl)
++{
++	const struct l_queue_entry *entry;
++
++	for (entry =3D l_queue_get_entries(netconfig->addresses.removed); entry;
++			entry =3D entry->next)
++		l_rtnl_ifaddr_delete(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	for (entry =3D l_queue_get_entries(netconfig->addresses.added); entry;
++			entry =3D entry->next)
++		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	/* We can use l_rtnl_ifaddr_add here since that uses NLM_F_REPLACE */
++	for (entry =3D l_queue_get_entries(netconfig->addresses.updated); entry;
++			entry =3D entry->next)
++		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	for (entry =3D l_queue_get_entries(netconfig->routes.removed); entry;
++			entry =3D entry->next)
++		l_rtnl_route_delete(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	for (entry =3D l_queue_get_entries(netconfig->routes.added); entry;
++			entry =3D entry->next)
++		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	/* We can use l_rtnl_route_add here since that uses NLM_F_REPLACE */
++	for (entry =3D l_queue_get_entries(netconfig->routes.updated); entry;
++			entry =3D entry->next)
++		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++}
++
++LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
++						struct l_netconfig *netconfig,
++						struct l_queue **out_added,
++						struct l_queue **out_updated,
++						struct l_queue **out_removed)
++{
++	if (out_added)
++		*out_added =3D netconfig->addresses.added;
++
++	if (out_updated)
++		*out_updated =3D netconfig->addresses.updated;
++
++	if (out_removed)
++		*out_removed =3D netconfig->addresses.removed;
++
++	return netconfig->addresses.current;
++}
++
++LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
+onfig,
++						struct l_queue **out_added,
++						struct l_queue **out_updated,
++						struct l_queue **out_removed)
++{
++	if (out_added)
++		*out_added =3D netconfig->routes.added;
++
++	if (out_updated)
++		*out_updated =3D netconfig->routes.updated;
++
++	if (out_removed)
++		*out_removed =3D netconfig->routes.removed;
++
++	return netconfig->routes.current;
++}
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index eab48b0..bb5eff5 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -66,6 +66,17 @@ void l_netconfig_set_event_handler(struct l_netconfig *n=
+etconfig,
+ 					void *user_data,
+ 					l_netconfig_destroy_cb_t destroy);
+ =
 
++void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
++				struct l_netlink *rtnl);
++struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
++					struct l_queue **out_added,
++					struct l_queue **out_updated,
++					struct l_queue **out_removed);
++struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
++					struct l_queue **out_added,
++					struct l_queue **out_updated,
++					struct l_queue **out_removed);
++
+ #ifdef __cplusplus
+ }
+ #endif
+-- =
 
-<snip>
+2.32.0
 
->   bool l_rtnl_address_get_address(const struct l_rtnl_address *addr,
-> -				char *out_buf);
-> +				char *out_buf, size_t buflen);
-
-So I'm a little torn about this.  On the one hand, specifying the buffer le=
-n is =
-
-indeed safer.  However, simply passing a buffer of size INET6_ADDRSTRLEN is=
- also =
-
-guaranteed to work for any address that we support and saves the need for t=
-he =
-
-extra argument.  Alternatively, if you know the family or can look it up vi=
-a =
-
-l_rtnl_*_get_family(), you can use INET_ADDRSTRLEN for ipv4 getters.  Maybe=
- this =
-
-is more of a documentation issue?
-
-If you look at how iwd uses these functions, the extra argument is unnecess=
-ary.
-
-Can you share more info about what made you propose this change?  Are you u=
-sing =
-
-these functions in ways where the buffer size argument would be advantageou=
-s?
-
-Regards,
--Denis
---===============7740909292610498270==--
+--===============2000355399882768534==--
 
