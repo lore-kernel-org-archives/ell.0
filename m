@@ -1,115 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============5568409147933035105=="
+Content-Type: multipart/mixed; boundary="===============1931604473480487042=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 04/11] rtnl: Add l_rtnl_route getters for raw address data
-Date: Mon, 11 Apr 2022 16:20:49 +0200
-Message-ID: <20220411142056.817784-4-andrew.zaborowski@intel.com>
-In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 5/6] netconfig: Add l_netconfig_apply_rtnl
+Date: Tue, 08 Feb 2022 12:31:03 -0600
+Message-ID: <957cac35-0017-babd-7ec3-8dc9d4d3ac77@gmail.com>
+In-Reply-To: CAOq732+SYSuUpUCVtNiuSt-FFbX9zY7K00CAdkSd91WY6Uro1A@mail.gmail.com
 
---===============5568409147933035105==
+--===============1931604473480487042==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add l_rtnl_route_get_gateway_in_addr and l_rtnl_route_get_dst_in_addr
-for raw struct in_addr / struct in6_addr addresses, as opposed to string
-representations.  This is to be used to avoid unneeded string
-conversions in both directions.
----
- ell/ell.sym |  2 ++
- ell/rtnl.c  | 30 ++++++++++++++++++++++++++++++
- ell/rtnl.h  |  3 +++
- 3 files changed, 35 insertions(+)
+Hi Andrew,
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 3816e3f..9b3a6e1 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -643,7 +643,9 @@ global:
- 	l_rtnl_route_free;
- 	l_rtnl_route_get_family;
- 	l_rtnl_route_get_gateway;
-+	l_rtnl_route_get_gateway_in_addr;
- 	l_rtnl_route_get_dst;
-+	l_rtnl_route_get_dst_in_addr;
- 	l_rtnl_route_get_lifetime;
- 	l_rtnl_route_set_lifetime;
- 	l_rtnl_route_get_expiry;
-diff --git a/ell/rtnl.c b/ell/rtnl.c
-index dbaf97b..cbe9b87 100644
---- a/ell/rtnl.c
-+++ b/ell/rtnl.c
-@@ -473,6 +473,21 @@ LIB_EXPORT bool l_rtnl_route_get_gateway(const struct =
-l_rtnl_route *rt,
- 					out_buf);
- }
- =
+>>> I wonder if we can use const l_queue_entry * instead.  Or maybe some so=
+rt of
+>>> iterator concept?  Returning a pointer to the internal data structure is
+>>> something we should only do as a last resort.
+>>
+>> "const l_queue_entry *" would work.  We can also just transfer the
+>> ownership of those three lists to the caller and drop our references
+>> to those three lists when we return them.  They're actually temporary,
+>> I just used l_queue_clear instead of destroying and recreating them.
+> =
 
-+LIB_EXPORT const void *l_rtnl_route_get_gateway_in_addr(
-+						const struct l_rtnl_route *rt)
-+{
-+	if (unlikely(!rt))
-+		return NULL;
-+
-+	if (address_is_null(rt->family, &rt->gw.in_addr, &rt->gw.in6_addr))
-+		return NULL;
-+
-+	if (rt->family =3D=3D AF_INET)
-+		return &rt->gw.in_addr;
-+	else
-+		return &rt->gw.in6_addr;
-+}
-+
- LIB_EXPORT bool l_rtnl_route_get_dst(const struct l_rtnl_route *rt,
- 						char *out_buf,
- 						uint8_t *out_prefix_len)
-@@ -488,6 +503,21 @@ LIB_EXPORT bool l_rtnl_route_get_dst(const struct l_rt=
-nl_route *rt,
- 	return true;
- }
- =
+> (This doesn't apply to the complete list of addresses/routes that we
+> also return, you're right that we'd need to return an iterator.
+> struct l_queue_entry is pretty much an iterator except that the
+> .next/.data members are public)
+> =
 
-+LIB_EXPORT const void *l_rtnl_route_get_dst_in_addr(
-+						const struct l_rtnl_route *rt,
-+						uint8_t *out_prefix_len)
-+{
-+	if (unlikely(!rt))
-+		return NULL;
-+
-+	*out_prefix_len =3D rt->dst_prefix_len;
-+
-+	if (rt->family =3D=3D AF_INET)
-+		return &rt->dst.in_addr;
-+	else
-+		return &rt->dst.in6_addr;
-+}
-+
- LIB_EXPORT uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *r=
-t)
- {
- 	if (unlikely(!rt))
-diff --git a/ell/rtnl.h b/ell/rtnl.h
-index 55c4997..2617b1c 100644
---- a/ell/rtnl.h
-+++ b/ell/rtnl.h
-@@ -77,8 +77,11 @@ void l_rtnl_route_free(struct l_rtnl_route *rt);
- DEFINE_CLEANUP_FUNC(l_rtnl_route_free);
- uint8_t l_rtnl_route_get_family(const struct l_rtnl_route *rt);
- bool l_rtnl_route_get_gateway(const struct l_rtnl_route *rt, char *out_buf=
-);
-+const void *l_rtnl_route_get_gateway_in_addr(const struct l_rtnl_route *rt=
-);
- bool l_rtnl_route_get_dst(const struct l_rtnl_route *rt, char *out_buf,
- 				uint8_t *out_prefix_len);
-+const void *l_rtnl_route_get_dst_in_addr(const struct l_rtnl_route *rt,
-+						uint8_t *out_prefix_len);
- uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *rt);
- bool l_rtnl_route_set_lifetime(struct l_rtnl_route *rt, uint32_t lt);
- uint64_t l_rtnl_route_get_expiry(const struct l_rtnl_route *rt);
--- =
 
-2.32.0
+Okay.  See what you can come up with.  If l_queue_entry works, that would l=
+ikely =
 
---===============5568409147933035105==--
+be the easiest approach.
+
+Regards,
+-Denis
+--===============1931604473480487042==--
 
