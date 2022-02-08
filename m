@@ -1,50 +1,48 @@
-Content-Type: multipart/mixed; boundary="===============6369535164601574762=="
+Content-Type: multipart/mixed; boundary="===============1174956388293454058=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] dhcp,dhcp6,icmp6,time: Convert timestamps to
- CLOCK_BOOTTIME
-Date: Wed, 18 May 2022 09:19:30 -0500
-Message-ID: <11b132ac-4069-88a6-ddfb-e68a570b810f@gmail.com>
-In-Reply-To: 20220518003523.1717565-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 1/6] rtnl: Track expiry times instead of lifetimes
+Date: Tue, 08 Feb 2022 11:38:27 -0600
+Message-ID: <61ad7b0e-d685-33c3-187c-c14d0cef2e41@gmail.com>
+In-Reply-To: 20220207150717.60511-1-andrew.zaborowski@intel.com
 
---===============6369535164601574762==
+--===============1174956388293454058==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
-On 5/17/22 19:35, Andrew Zaborowski wrote:
-> The frame reception timestamps obtained for DHCPv4, DHCPv6 and ICMPv6
-> frames from the kernel are based on CLOCK_REALTIME, there's no option to
-> switch them to CLOCK_BOOTTIME, which we use across our retransmission and
-> renew logic.  Add a time-private.h utility to convert the timestamps
-> right where we read them from recvmsg() to produce CLOCK_BOOTTIME based
-> times.  This isn't 100% bulletproof because the offset between the two
-> clocks can vary between the time the frame was received by the kernel and
-> the time we read the offset.  The probability is very low though and we
-> have no better solution at this time other than fixing it in the kernel.
-> Using CLOCK_REALTIME for frame reception timestamps seems to mainly
-> create potential for problems in the common usages.
-> =
+On 2/7/22 09:07, Andrew Zaborowski wrote:
+> Internally within rtnl.c store expiry times of addresses and routes
+> instead of their lifetime periods so that at any time the current
 
-> Fixes: c78ad1bb6d7e ("dhcp: Set lease expiry based on frame reception tim=
-es")
+I'm not too sure about this.  l_rtnl_route/address reflect the information =
+
+obtained from RTNL.  They are going to be used not just for l_netconfig.  W=
+hy do =
+
+we need the expiry time anyway?  Can't l_netconfig just set the lifetime ba=
+sed =
+
+on its own expiry time book-keeping?
+
+> lifetime left can be returned.  This is an incompatible API change to
+> the lifetime getters and setters as they now take a reference_time
+> parameter, which in the setter case should normally be the timestamp of
+> when the address or route was received from DHCP.  These setters and
+> getters don't seem to have been used outside of ell.
 > ---
->   ell/dhcp-transport.c  |  3 ++-
->   ell/dhcp6-transport.c |  5 +++--
->   ell/icmp6.c           |  2 +-
->   ell/time-private.h    |  1 +
->   ell/time.c            | 34 ++++++++++++++++++++++++++++++++++
->   6 files changed, 44 insertions(+), 6 deletions(-)
+>   ell/dhcp.c  |  3 ++-
+>   ell/dhcp6.c |  3 ++-
+>   ell/rtnl.c  | 71 ++++++++++++++++++++++++++++++++++-------------------
+>   ell/rtnl.h  | 15 +++++++----
+>   4 files changed, 60 insertions(+), 32 deletions(-)
 > =
 
-
-Applied, thanks.
 
 Regards,
 -Denis
-
---===============6369535164601574762==--
+--===============1174956388293454058==--
 
