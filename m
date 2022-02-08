@@ -1,128 +1,52 @@
-Content-Type: multipart/mixed; boundary="===============8983774513036004260=="
+Content-Type: multipart/mixed; boundary="===============4068083403357447555=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 1/5] settings: add l_settings_clone
-Date: Fri, 04 Feb 2022 09:05:58 -0800
-Message-ID: <20220204170603.216439-1-prestwoj@gmail.com>
+Subject: Re: [PATCH 4/6] netconfig: Add netconfig API
+Date: Tue, 08 Feb 2022 11:35:55 -0600
+Message-ID: <1d920cfa-8c3f-4c25-1116-483d5b2b1498@gmail.com>
+In-Reply-To: 20220207150717.60511-4-andrew.zaborowski@intel.com
 
---===============8983774513036004260==
+--===============4068083403357447555==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Returns identical copy of settings
----
- ell/ell.sym    |  1 +
- ell/settings.c | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/settings.h |  2 ++
- 3 files changed, 65 insertions(+)
+Hi Andrew,
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 60c5525..827e68c 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -452,6 +452,7 @@ global:
- 	l_ringbuf_append;
- 	/* settings */
- 	l_settings_new;
-+	l_settings_clone;
- 	l_settings_free;
- 	l_settings_load_from_data;
- 	l_settings_to_data;
-diff --git a/ell/settings.c b/ell/settings.c
-index 6958e12..a553ec0 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -116,6 +116,68 @@ LIB_EXPORT struct l_settings *l_settings_new(void)
- 	return settings;
- }
- =
+On 2/7/22 09:07, Andrew Zaborowski wrote:
+> This adds the netconfig class that will encapsulate static IP
+> configuration, DHCP, DHCP6, ICMP6, SLAAC logic and free the user of
+> manually handling DHCP/DHCP6 events to implement netconfig policies.
+> The user will still need to handle committing received DNS and mdns
+> information.
+> =
 
-+static void copy_key_value_foreach(void *data, void *user_data)
-+{
-+	struct setting_data *s =3D data;
-+	struct l_queue *settings =3D user_data;
-+	struct setting_data *copy =3D l_new(struct setting_data, 1);
-+
-+	copy->key =3D l_strdup(s->key);
-+	copy->value =3D l_strdup(s->value);
-+
-+	l_queue_push_head(settings, copy);
-+}
-+
-+static void copy_group_foreach(void *data, void *user_data)
-+{
-+	struct group_data *group =3D data;
-+	struct l_queue *groups =3D user_data;
-+	struct group_data *copy =3D l_new(struct group_data, 1);
-+
-+	copy->name =3D l_strdup(group->name);
-+	copy->settings =3D l_queue_new();
-+
-+	l_queue_push_head(groups, copy);
-+
-+	l_queue_foreach(group->settings, copy_key_value_foreach,
-+				copy->settings);
-+}
-+
-+static void copy_embedded_foreach(void *data, void *user_data)
-+{
-+	struct embedded_group_data *embedded =3D data;
-+	struct l_queue *groups =3D user_data;
-+	struct embedded_group_data *copy;
-+
-+	copy =3D l_malloc(sizeof(struct embedded_group_data) +
-+					embedded->len + 1);
-+	copy->name =3D l_strdup(embedded->name);
-+
-+	memcpy(copy->type, embedded->type, sizeof(embedded->type));
-+	copy->len =3D embedded->len;
-+	memcpy(copy->data, embedded->data, embedded->len);
-+	copy->data[embedded->len] =3D '\0';
-+
-+	l_queue_push_tail(groups, copy);
-+}
-+
-+LIB_EXPORT struct l_settings *l_settings_clone(
-+					const struct l_settings *settings)
-+{
-+	struct l_settings *copy;
-+
-+	if (unlikely(!settings))
-+		return NULL;
-+
-+	copy =3D l_settings_new();
-+
-+	l_queue_foreach(settings->groups, copy_group_foreach, copy->groups);
-+	l_queue_foreach(settings->embedded_groups, copy_embedded_foreach,
-+				copy->embedded_groups);
-+
-+	return copy;
-+}
-+
- LIB_EXPORT void l_settings_free(struct l_settings *settings)
- {
- 	if (unlikely(!settings))
-diff --git a/ell/settings.h b/ell/settings.h
-index 9262ab9..f094ef5 100644
---- a/ell/settings.h
-+++ b/ell/settings.h
-@@ -37,6 +37,8 @@ typedef void (*l_settings_debug_cb_t) (const char *str, v=
-oid *user_data);
- typedef void (*l_settings_destroy_cb_t) (void *user_data);
- =
+> In this patch only IPv4 DHCP is implemented and no configurable settings
+> are added.
+> =
 
- struct l_settings *l_settings_new(void);
-+struct l_settings *l_settings_clone(const struct l_settings *settings);
-+
- void l_settings_free(struct l_settings *settings);
- DEFINE_CLEANUP_FUNC(l_settings_free);
- =
+> When events are emitted for address and/or route changes, the changes
+> are split into "added", "updated" and "removed" lists so that the user
+> can decide apply those changes without first removing all addresses and
+> routes from the interface and the re-adding the complete new list.
+> They can also decide to let another entity apply the changes.
+> ---
+>   Makefile.am     |   6 +-
+>   ell/ell.h       |   1 +
+>   ell/ell.sym     |   8 ++
+>   ell/netconfig.c | 375 ++++++++++++++++++++++++++++++++++++++++++++++++
+>   ell/netconfig.h |  73 ++++++++++
+>   5 files changed, 461 insertions(+), 2 deletions(-)
+>   create mode 100644 ell/netconfig.c
+>   create mode 100644 ell/netconfig.h
+> =
 
--- =
 
-2.31.1
+I have no real comments here.  This seems like the right approach.
 
---===============8983774513036004260==--
+Regards,
+-Denis
+
+--===============4068083403357447555==--
 
