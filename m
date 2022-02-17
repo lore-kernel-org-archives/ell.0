@@ -1,68 +1,59 @@
-Content-Type: multipart/mixed; boundary="===============1154472067986060875=="
+Content-Type: multipart/mixed; boundary="===============2909290420641179682=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel at holtmann.org>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: AIO support
-Date: Sun, 19 Sep 2021 21:59:30 +0200
-Message-ID: <3C5C7E56-11E3-4A13-B011-8D61BF746D60@holtmann.org>
-In-Reply-To: 4eac85e0-0529-4dcc-5e7b-31101d2dae71@maurer.systems
+Subject: Re: [PATCH v2 1/2] base64: refactor l_base64_decode and validate
+ bytes consumed
+Date: Thu, 17 Feb 2022 15:56:22 -0600
+Message-ID: <fcadf4f9-fb4c-7227-def5-24ae64a21666@gmail.com>
+In-Reply-To: 20220217201305.2065223-1-prestwoj@gmail.com
 
---===============1154472067986060875==
+--===============2909290420641179682==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Simon,
+Hi James,
 
->>> Awesome library! Thank you very much. I'm using it for an embedded linu=
-x =
-
->> Glad you like it!
->>> application with not so strict real time constraints. Problem is, I nee=
-d non blocking file access, because the memory card on my system is quite s=
-low. It turns out that this whole non-blocking access doesn't work for file=
-s, so now I'm =
-
->> Can you elaborate?  I always thought
->> fcntl(fd, F_SETFL, O_NONBLOCK);
->> would enable non-blocking behavior on files just fine?  Or is this an is=
-sue with a particular driver?
+On 2/17/22 14:13, James Prestwood wrote:
+> The way the base64 data was being validated was accurate, but included a
+> second loop to iterate the padding. There was nothing wrong with this but
+> for more concise/readable code the padding can be calculated and validated
+> all after the first loop by incrementing pad_len when '=3D' is found rath=
+er
+> than breaking out. The valid base64 character check did need a slight
+> modification to also check that pad_len has not been incremented, which
+> ensures there is no data after the padding (prior this was done by the
+> second, pad checking, loop).
 > =
 
-> I tested it and never got EAGAIN. I found this in the man page of open fo=
-r the flag O_NONBLOCK or O_NDELAY:
+> Then, after the loop, pad_len has been calculated and can be checked agai=
+nst
+> what was expected based on the valid base64 characters found.
 > =
 
-> "Note  that this flag has no effect for regular files and block devices; =
-that is, I/O operations will (briefly) block when device activity is requir=
-ed, regardless of whether O_NONBLOCK is set.  Since O_NONBLOCK semantics mi=
-ght eventually be implemented, applications should not depend  upon  blocki=
-ng  behavior  when specifying this flag for regular files and block devices=
-."
+> This refactoring also makes checking the bytes consumed much easier since
+> the first loop iterates until the very end of the base64 data (including
+> padding).
+> ---
+>   ell/base64.c | 41 ++++++++++++++++++++++-------------------
+>   1 file changed, 22 insertions(+), 19 deletions(-)
 > =
 
-> An alternative could be preadv2 with the flag RWF_NOWAIT. But it is only =
-available since linux 4.14 and we are using an older kernel. Also epoll doe=
-sn't wait for preadv2.
+> v2:
+>   * Fix issue in calculating the end of the base64 data (caused test-pem =
+to
+>     fail). This was because whitespace was not taken into account which
+>     could exist between the base64 and padding. Instead the end of the
+>     base64 data is now saved when the first pad byte is found. This allows
+>     the second loop to use this as its end condition.
+> =
 
-I am a bit cautious about aio_write etc. since it requires you to link with=
- -lrt according to the manpage. We actually wanted to keep it at just -lc s=
-ince that helps in case of other C libraries besides glibc.
 
-That you require signal handling inside the API is something that worries m=
-e additionally. Even with signalfd, doing any complex signal handling besid=
-es SIGTERM is kinda messy. I think that AIO support might be better done ou=
-tside of ELL.
+Applied, thanks.
 
-What kind of file-reading or file-writing are you doing that you need AIO s=
-upport anyway? You can actually poll() a file fd. You just have to do it ca=
-refully so it doesn=E2=80=99t become a busy loop. Have you tried just using=
- l_idle to only read/write when we having nothing else going on in our main=
-loop?
+Regards,
+-Denis
 
-Regards
-
-Marcel
-
---===============1154472067986060875==--
+--===============2909290420641179682==--
 
