@@ -1,163 +1,137 @@
-Content-Type: multipart/mixed; boundary="===============7328709765191511865=="
+Content-Type: multipart/mixed; boundary="===============0861497405069222492=="
 MIME-Version: 1.0
-From: Mat Martineau <mathew.j.martineau at linux.intel.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH] build: Check for openssl legacy provider requirement
-Date: Thu, 19 May 2022 15:48:28 -0700
-Message-ID: <20220519224828.91435-1-mathew.j.martineau@linux.intel.com>
+Subject: [PATCH v2 1/2] base64: refactor l_base64_decode and validate bytes
+ consumed
+Date: Thu, 17 Feb 2022 12:13:04 -0800
+Message-ID: <20220217201305.2065223-1-prestwoj@gmail.com>
 
---===============7328709765191511865==
+--===============0861497405069222492==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-OpenSSL 3 introduced some command line incompatibilities and removed
-some old algorithms from the defaults. This broke some of the unit test
-cert generation commands on distros like Ubuntu 22.04 and Fedora 36.
+The way the base64 data was being validated was accurate, but included a
+second loop to iterate the padding. There was nothing wrong with this but
+for more concise/readable code the padding can be calculated and validated
+all after the first loop by incrementing pad_len when '=3D' is found rather
+than breaking out. The valid base64 character check did need a slight
+modification to also check that pad_len has not been incremented, which
+ensures there is no data after the padding (prior this was done by the
+second, pad checking, loop).
 
-Detect support of "providers" by the system openssl command and insert
-the necessary command line parameters to enable legacy algorithms for
-openssl v3, but leave the commands unchanged for older openssl versions.
+Then, after the loop, pad_len has been calculated and can be checked against
+what was expected based on the valid base64 characters found.
+
+This refactoring also makes checking the bytes consumed much easier since
+the first loop iterates until the very end of the base64 data (including
+padding).
 ---
+ ell/base64.c | 41 ++++++++++++++++++++++-------------------
+ 1 file changed, 22 insertions(+), 19 deletions(-)
 
-Tested on Ubuntu 22.04, Fedora 36, and Fedora 35.
+v2:
+ * Fix issue in calculating the end of the base64 data (caused test-pem to
+   fail). This was because whitespace was not taken into account which
+   could exist between the base64 and padding. Instead the end of the
+   base64 data is now saved when the first pad byte is found. This allows
+   the second loop to use this as its end condition.
 
----
- Makefile.am  | 26 ++++++++++++++++++--------
- configure.ac |  3 +++
- 2 files changed, 21 insertions(+), 8 deletions(-)
-
-diff --git a/Makefile.am b/Makefile.am
-index d8ba99caa47e..df99e0dfc6bc 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -355,6 +355,12 @@ if GLIB
- examples +=3D examples/glib-eventloop
- endif
- =
-
-+if OPENSSL_PROVIDER
-+openssl_legacy =3D -provider legacy -provider default
-+else
-+openssl_legacy =3D
-+endif
+diff --git a/ell/base64.c b/ell/base64.c
+index e430470..747d4d5 100644
+--- a/ell/base64.c
++++ b/ell/base64.c
+@@ -27,56 +27,59 @@
+ #include "utf8.h"
+ #include "base64.h"
+ #include "private.h"
++#include "useful.h"
 +
- if MAINTAINER_MODE
- noinst_PROGRAMS +=3D $(examples)
- endif
-@@ -444,7 +450,8 @@ unit/cert-client-key-pkcs1.pem:
- 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
++#include <stdio.h>
  =
 
- unit/cert-client-key-pkcs1-des.pem: unit/cert-client-key-pkcs1.pem
--	$(AM_V_GEN)openssl rsa -in $< -out $@ -des -passout pass:abc
-+	$(AM_V_GEN)openssl rsa -in $< -out $@ -des -passout pass:abc \
-+			$(openssl_legacy)
+ LIB_EXPORT uint8_t *l_base64_decode(const char *in, size_t in_len,
+ 					size_t *n_written)
+ {
+ 	const char *ptr, *in_end =3D in + in_len;
++	const char *base64_end =3D NULL;
+ 	uint8_t *out_buf, *out;
+-	int base64_len =3D 0, pad_len;
++	int base64_len =3D 0, pad_len =3D 0;
+ 	uint16_t reg =3D 0;
  =
 
- unit/cert-client-key-pkcs1-des3.pem: unit/cert-client-key-pkcs1.pem
- 	$(AM_V_GEN)openssl rsa -in $< -out $@ -des3 -passout pass:abc
-@@ -463,15 +470,18 @@ unit/cert-client-key-pkcs8.pem: unit/cert-client-key-=
-pkcs1.pem
+-	for (ptr =3D in; ptr < in_end; ptr++)
++	for (ptr =3D in; ptr < in_end; ptr++) {
+ 		if (l_ascii_isspace(*ptr))
+ 			/* Whitespace */
+ 			continue;
+-		else if (*ptr =3D=3D '=3D')
++		else if (*ptr =3D=3D '=3D') {
+ 			/* Final padding */
+-			break;
+-		else if (l_ascii_isalnum(*ptr) || *ptr =3D=3D '+' || *ptr =3D=3D '/')
++			if (!pad_len)
++				base64_end =3D ptr;
++
++			pad_len++;
++		} else if (!pad_len && (l_ascii_isalnum(*ptr) || *ptr =3D=3D '+' ||
++					*ptr =3D=3D '/'))
+ 			/* Base64 character */
+ 			base64_len++;
+ 		else
+ 			/* Bad character */
+ 			return NULL;
++	}
  =
 
- unit/cert-client-key-pkcs8-md5-des.pem: unit/cert-client-key-pkcs8.pem
- 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
--			-topk8 -v1 PBE-MD5-DES -passout pass:abc
-+			-topk8 -v1 PBE-MD5-DES -passout pass:abc \
-+			$(openssl_legacy)
+-	in_end =3D ptr;
++	if (ptr !=3D in_end)
++		return NULL;
  =
 
- unit/cert-client-key-pkcs8-sha1-des.pem: unit/cert-client-key-pkcs8.pem
- 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
--			-topk8 -v1 PBE-SHA1-DES -passout pass:abc
-+			-topk8 -v1 PBE-SHA1-DES -passout pass:abc \
-+			$(openssl_legacy)
+ 	if ((base64_len & 3) =3D=3D 1)
+ 		/* Invalid length */
+ 		return NULL;
  =
 
- unit/cert-client-key-pkcs8-v2-des.pem: unit/cert-client-key-pkcs8.pem
- 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
--			-topk8 -v2 des-cbc -v2prf hmacWithSHA1 -passout pass:abc
-+			-topk8 -v2 des-cbc -v2prf hmacWithSHA1 -passout pass:abc \
-+			$(openssl_legacy)
+-	pad_len =3D (4 - base64_len) & 3;
+-	for (; ptr < in + in_len && pad_len; ptr++)
+-		if (l_ascii_isspace(*ptr))
+-			/* Whitespace */
+-			continue;
+-		else if (*ptr =3D=3D '=3D')
+-			/* Final padding */
+-			pad_len--;
+-		else
+-			/* Bad character */
+-			return NULL;
+-	if (pad_len)
++	if (pad_len !=3D align_len(base64_len, 4) - base64_len)
+ 		return NULL;
  =
 
- unit/cert-client-key-pkcs8-v2-des-ede3.pem: unit/cert-client-key-pkcs8.pem
- 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
-@@ -575,19 +585,19 @@ unit/cert-entity-pkcs12-nomac.p12: unit/cert-entity-i=
-nt-key.pem unit/cert-entity
- 	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -out $@ -export -passout pass:abc -nomac # defaut ciphers
++	/* No padding */
++	if (!base64_end)
++		base64_end =3D ptr;
++
+ 	*n_written =3D base64_len * 3 / 4;
+ 	out_buf =3D l_malloc(*n_written);
  =
 
- unit/cert-entity-pkcs12-rc2-sha1.p12: unit/cert-entity-int-key.pem unit/ce=
-rt-entity-int.pem unit/cert-chain.pem
--	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-RC2-40 -keypbe PBE-SHA1-RC2-128 -macalg sha1
-+	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-RC2-40 -keypbe PBE-SHA1-RC2-128 -macalg sha1 $(opens=
-sl_legacy)
+ 	out =3D out_buf;
+ 	base64_len =3D 0;
  =
 
- unit/cert-entity-pkcs12-des-sha256.p12: unit/cert-entity-int-key.pem unit/=
-cert-entity-int.pem unit/cert-chain.pem
- 	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-2DES -macalg sha256
- =
-
- unit/cert-entity-pkcs12-rc4-sha384.p12: unit/cert-entity-int-key.pem unit/=
-cert-entity-int.pem unit/cert-chain.pem
--	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-RC4-128 -keypbe PBE-SHA1-RC2-40 -macalg sha384
-+	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe PBE-SHA1-RC4-128 -keypbe PBE-SHA1-RC2-40 -macalg sha384 $(ope=
-nssl_legacy)
- =
-
- unit/cert-entity-pkcs12-pkcs5-sha512.p12: unit/cert-entity-int-key.pem uni=
-t/cert-entity-int.pem unit/cert-chain.pem
--	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe des-cbc -keypbe des-cbc -macalg sha512
-+	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
-pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
-:abc -certpbe des-cbc -keypbe des-cbc -macalg sha512 $(openssl_legacy)
- =
-
- unit/cert-entity-combined.pem: unit/cert-entity-pkcs12-rc2-sha1.p12
--	$(AM_V_GEN)openssl pkcs12 -in $< -out $@ -passin pass:abc -passout pass:a=
-bc
-+	$(AM_V_GEN)openssl pkcs12 -in $< -out $@ -passin pass:abc -passout pass:a=
-bc $(openssl_legacy)
- =
-
- unit/key-plaintext.h: unit/plaintext.txt
- 	$(AM_V_GEN)xxd -i < $< > $@
-diff --git a/configure.ac b/configure.ac
-index 62338079bc50..87894dba8a6b 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -131,6 +131,9 @@ fi
- =
-
- AM_CONDITIONAL(DBUS_TESTS, test "${little_endian}" =3D "yes")
- AM_CONDITIONAL(CERT_TESTS, test "${have_openssl}" =3D "yes")
-+AM_CONDITIONAL(OPENSSL_PROVIDER, test "${have_openssl}" =3D "yes" &&
-+		openssl list -providers > /dev/null 2>&1 )
-+AC_SUBST(OPENSSL_PROVIDER)
- =
-
- AC_CONFIG_FILES(Makefile ell/ell.pc)
- =
-
+-	for (ptr =3D in; ptr < in_end; ptr++) {
++	for (ptr =3D in; ptr < base64_end; ptr++) {
+ 		if (l_ascii_isspace(*ptr))
+ 			/* Whitespace */
+ 			continue;
 -- =
 
-2.36.1
+2.34.1
 
---===============7328709765191511865==--
+--===============0861497405069222492==--
 
