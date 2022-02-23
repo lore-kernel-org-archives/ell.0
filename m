@@ -1,53 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============1888143957049693707=="
+Content-Type: multipart/mixed; boundary="===============6472502364104404399=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 01/17] net: Add net_prefix_from_ipv6 utility
-Date: Sat, 14 May 2022 00:46:57 +0200
-Message-ID: <20220513224713.1447773-1-andrew.zaborowski@intel.com>
+Subject: [PATCH] utf8: fixed bit shift larger than type size
+Date: Wed, 23 Feb 2022 15:30:20 -0800
+Message-ID: <20220223233020.2723150-1-prestwoj@gmail.com>
 
---===============1888143957049693707==
+--===============6472502364104404399==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add function that zeroes bits after prefix_len'th bit in an address.  Put
-it in net-private.h so it can be used by both netconfig.c and icmp6.c,
-potentially others.
----
- ell/net-private.h | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+The C standard requires the bit shift result value width to be greater
+than or equal to the number of bits being shifted, otherwise the behavior
+is undefined. In this case str[0] was being cast to an unsigned char
+(1 byte) but being shifted 24 bits. This resulted, on some compilers,
+with a runtime error:
 
-diff --git a/ell/net-private.h b/ell/net-private.h
-index cc395bb..39d4d98 100644
---- a/ell/net-private.h
-+++ b/ell/net-private.h
-@@ -22,3 +22,21 @@
+runtime error: left shift of 255 by 24 places cannot be represented in type=
+ 'int'
+
+Casting str[0] to an unsigned int satisfies the width requirements
+for this bit shift.
+---
+ ell/utf8.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ell/utf8.c b/ell/utf8.c
+index 84ab774..ceda1de 100644
+--- a/ell/utf8.c
++++ b/ell/utf8.c
+@@ -98,7 +98,7 @@ LIB_EXPORT int l_utf8_get_codepoint(const char *str, size=
+_t len, wchar_t *cp)
+ 		return 1;
+ 	}
  =
 
- char *net_domain_name_parse(const uint8_t *raw, size_t raw_len);
- char **net_domain_list_parse(const uint8_t *raw, size_t raw_len);
-+
-+static inline const void *net_prefix_from_ipv6(const uint8_t *address,
-+						uint8_t prefix_len)
-+{
-+	uint8_t last_byte =3D prefix_len / 8;
-+	uint8_t bits =3D prefix_len & 7;
-+	static uint8_t prefix[16];
-+
-+	memcpy(prefix, address, last_byte);
-+
-+	if (prefix_len & 7) {
-+		prefix[last_byte] =3D address[last_byte] & (0xff00 >> bits);
-+		last_byte++;
-+	}
-+
-+	memset(prefix + last_byte, 0, 16 - last_byte);
-+	return prefix;
-+}
+-	expect_bytes =3D __builtin_clz(~((unsigned char)str[0] << 24));
++	expect_bytes =3D __builtin_clz(~((unsigned int)str[0] << 24));
+ =
+
+ 	if (expect_bytes < 2 || expect_bytes > 4)
+ 		goto error;
 -- =
 
-2.32.0
+2.34.1
 
---===============1888143957049693707==--
+--===============6472502364104404399==--
 
