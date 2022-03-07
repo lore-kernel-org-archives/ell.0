@@ -1,183 +1,132 @@
-Content-Type: multipart/mixed; boundary="===============5372226531883735701=="
+Content-Type: multipart/mixed; boundary="===============8461108486259292541=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 15/15] netconfig: Start ACD before committing static IPv4
-Date: Fri, 20 May 2022 17:43:38 +0200
-Message-ID: <20220520154338.2056273-15-andrew.zaborowski@intel.com>
-In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
+Subject: [PATCH 08/12] unit: Update dhcp{,6} receive handler arguments
+Date: Mon, 07 Mar 2022 15:55:39 +0100
+Message-ID: <20220307145543.1558788-8-andrew.zaborowski@intel.com>
+In-Reply-To: 20220307145543.1558788-1-andrew.zaborowski@intel.com
 
---===============5372226531883735701==
+--===============8461108486259292541==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-When the IPv4 is configured to be static we can use ACD in order to
-check that the IP is available and not already in use.  If a
-conflict is found netconfig will be reset and no IP will be set on
-the interface.  The ACD client is left with the default
-'defend once' policy, and probes are not turned off.  This will
-increase connection time, but for static IP it is considered the
-safe approach.
 ---
- ell/netconfig.c | 71 ++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 64 insertions(+), 7 deletions(-)
+ unit/test-dhcp.c  | 20 +++++++++++---------
+ unit/test-dhcp6.c |  2 +-
+ 2 files changed, 12 insertions(+), 10 deletions(-)
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index f86fcfb..c1a686e 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -53,6 +53,7 @@
- #include "strv.h"
- #include "net.h"
- #include "net-private.h"
-+#include "acd.h"
- #include "netconfig.h"
+diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
+index 28f763a..e734e03 100644
+--- a/unit/test-dhcp.c
++++ b/unit/test-dhcp.c
+@@ -721,7 +721,7 @@ static void test_discover(const void *data)
+ 	assert(dhcp_message_compare(discover_data_1, sizeof(discover_data_1),
+ 					client_packet, client_packet_len));
  =
 
- struct l_netconfig {
-@@ -82,6 +83,7 @@ struct l_netconfig {
- 	struct l_dhcp6_client *dhcp6_client;
- 	struct l_idle *signal_expired_work;
- 	struct l_queue *icmp_route_data;
-+	struct l_acd *acd;
+-	transport->rx_cb(offer_data_1, sizeof(offer_data_1), client, NULL);
++	transport->rx_cb(offer_data_1, sizeof(offer_data_1), client, NULL, 0);
  =
 
- 	/* These objects, if not NULL, are owned by @addresses and @routes */
- 	struct l_rtnl_address *v4_address;
-@@ -380,8 +382,8 @@ static void netconfig_set_dhcp_lifetimes(struct l_netco=
-nfig *nc, bool updated)
- 		l_queue_push_tail(nc->routes.updated, nc->v4_default_route);
- }
+ 	assert(client_send_called);
+ 	client_send_called =3D false;
+@@ -729,7 +729,7 @@ static void test_discover(const void *data)
+ 					client_packet, client_packet_len));
  =
 
--static void netconfig_remove_dhcp_address_routes(struct l_netconfig *nc,
--							bool expired)
-+static void netconfig_remove_v4_address_routes(struct l_netconfig *nc,
-+						bool expired)
- {
- 	struct l_queue *routes =3D
- 		expired ? nc->routes.expired : nc->routes.removed;
-@@ -457,7 +459,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
-client *client,
- 		if (L_WARN_ON(!nc->v4_configured))
- 			break;
+ 	event_handler_called =3D false;
+-	transport->rx_cb(ack_data_1, sizeof(ack_data_1), client, NULL);
++	transport->rx_cb(ack_data_1, sizeof(ack_data_1), client, NULL, 0);
+ 	assert(!client_send_called);
+ 	assert(event_handler_called);
  =
 
--		netconfig_remove_dhcp_address_routes(nc, false);
-+		netconfig_remove_v4_address_routes(nc, false);
- 		netconfig_add_dhcp_address_routes(nc);
- 		netconfig_set_dhcp_lifetimes(nc, false);
- 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_UPDATE);
-@@ -483,7 +485,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
-client *client,
- 		if (L_WARN_ON(!nc->v4_configured))
- 			break;
+@@ -839,26 +839,26 @@ static void client_connect(struct l_dhcp_client *clie=
+nt,
  =
 
--		netconfig_remove_dhcp_address_routes(nc, true);
-+		netconfig_remove_v4_address_routes(nc, true);
- 		nc->v4_configured =3D false;
+ 	/* RX DISCOVER */
+ 	srv_transport->rx_cb(client_packet, client_packet_len, server,
+-				cli_addr);
++				cli_addr, 0);
+ 	assert(l2_send_called);
+ 	l2_send_called =3D false;
  =
 
- 		if (l_dhcp_client_start(nc->dhcp_client))
-@@ -1318,16 +1320,69 @@ static void netconfig_add_v6_static_address_routes(=
-struct l_netconfig *nc)
- 	netconfig_add_v6_static_routes(nc, ip, prefix_len);
- }
+ 	if (!rapid_commit) {
+ 		/* RX OFFER */
+ 		cli_transport->rx_cb(server_packet, server_packet_len, client,
+-					NULL);
++					NULL, 0);
+ 		assert(client_send_called);
+ 		client_send_called =3D false;
  =
 
--static void netconfig_do_static_config(struct l_idle *idle, void *user_dat=
-a)
-+static void netconfig_ipv4_acd_event(enum l_acd_event event, void *user_da=
-ta)
- {
- 	struct l_netconfig *nc =3D user_data;
- =
-
--	l_idle_remove(l_steal_ptr(nc->do_static_work));
-+	switch (event) {
-+	case L_ACD_EVENT_AVAILABLE:
-+		if (L_WARN_ON(nc->v4_configured))
-+			break;
- =
-
--	if (nc->v4_static_addr && !nc->v4_configured) {
- 		netconfig_add_v4_static_address_routes(nc);
- 		nc->v4_configured =3D true;
- 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
-+		break;
-+	case L_ACD_EVENT_CONFLICT:
-+		if (L_WARN_ON(nc->v4_configured))
-+			break;
-+
-+		/*
-+		 * Conflict found, no IP was actually set or routes added so
-+		 * just emit the event.
-+		 */
-+		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
-+		break;
-+	case L_ACD_EVENT_LOST:
-+		if (L_WARN_ON(!nc->v4_configured))
-+			break;
-+
-+		/*
-+		 * Set IP but lost it some time later.  Reset IPv4 in this
-+		 * case and emit the FAILED event since we have no way to
-+		 * recover from here.
-+		 */
-+		netconfig_remove_v4_address_routes(nc, false);
-+		nc->v4_configured =3D false;
-+		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
-+		break;
-+	}
-+}
-+
-+static void netconfig_do_static_config(struct l_idle *idle, void *user_dat=
-a)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+
-+	l_idle_remove(l_steal_ptr(nc->do_static_work));
-+
-+	if (nc->v4_static_addr && !nc->v4_configured) {
-+		char ip[INET_ADDRSTRLEN];
-+
-+		l_rtnl_address_get_address(nc->v4_static_addr, ip);
-+
-+		nc->acd =3D l_acd_new(nc->ifindex);
-+                l_acd_set_event_handler(nc->acd, netconfig_ipv4_acd_event,=
- nc,
-+					NULL);
-+
-+		if (!l_acd_start(nc->acd, ip)) {
-+			l_acd_destroy(l_steal_ptr(nc->acd));
-+
-+			/* Configure right now as a fallback */
-+			netconfig_add_v4_static_address_routes(nc);
-+			nc->v4_configured =3D true;
-+			netconfig_emit_event(nc, AF_INET,
-+						L_NETCONFIG_EVENT_CONFIGURE);
-+		}
+ 		/* RX REQUEST */
+ 		srv_transport->rx_cb(client_packet, client_packet_len, server,
+-					cli_addr);
++					cli_addr, 0);
+ 		assert(l2_send_called);
+ 		l2_send_called =3D false;
  	}
  =
 
- 	if (nc->v6_static_addr && !nc->v6_configured) {
-@@ -1590,6 +1645,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
-netconfig)
- 	l_dhcp_client_stop(netconfig->dhcp_client);
- 	l_dhcp6_client_stop(netconfig->dhcp6_client);
+ 	/* RX ACK */
+-	cli_transport->rx_cb(server_packet, server_packet_len, client, NULL);
++	cli_transport->rx_cb(server_packet, server_packet_len, client, NULL, 0);
+ 	assert(!client_send_called);
  =
 
-+	l_acd_destroy(l_steal_ptr(netconfig->acd));
-+
- 	l_rtnl_put(&netconfig->rtnl);
- }
+ 	assert(event_handler_called);
+@@ -974,7 +974,8 @@ static void test_complete_run(const void *data)
+ 	l_dhcp_client_stop(client1);
+ 	assert(client_send_called);
+ 	client_send_called =3D false;
+-	srv_transport->rx_cb(client_packet, client_packet_len, server, addr1);
++	srv_transport->rx_cb(client_packet, client_packet_len, server, addr1,
++				0);
+ 	assert(expired_client);
+ 	assert(!strcmp(expired_client, "192.168.1.2"));
+ 	l_free(expired_client);
+@@ -983,7 +984,8 @@ static void test_complete_run(const void *data)
+ 	l_dhcp_client_stop(client2);
+ 	assert(client_send_called);
+ 	client_send_called =3D false;
+-	srv_transport->rx_cb(client_packet, client_packet_len, server, addr2);
++	srv_transport->rx_cb(client_packet, client_packet_len, server, addr2,
++				0);
+ 	assert(expired_client);
+ 	assert(!strcmp(expired_client, "192.168.1.3"));
+ 	l_free(expired_client);
+@@ -1032,7 +1034,7 @@ static void test_expired_ip_reuse(const void *data)
+ 		assert(client_send_called);
+ 		client_send_called =3D false;
+ 		srv_transport->rx_cb(client_packet, client_packet_len, server,
+-					addr);
++					addr, 0);
+ 		l_free(expired_client);
+ 		expired_client =3D NULL;
+ 	}
+diff --git a/unit/test-dhcp6.c b/unit/test-dhcp6.c
+index d7cea7c..1f6522b 100644
+--- a/unit/test-dhcp6.c
++++ b/unit/test-dhcp6.c
+@@ -235,7 +235,7 @@ static void event_handler_lease_obtained(struct l_dhcp6=
+_client *client,
+ 	memcpy(transaction_id, client_packet + 1, sizeof(transaction_id)); \
+ 	memcpy(client_packet, packet, sizeof(packet)); \
+ 	memcpy(client_packet + 1, transaction_id, sizeof(transaction_id)); \
+-	transport->rx_cb(client_packet, sizeof(packet), client) \
++	transport->rx_cb(client_packet, sizeof(packet), 0, client) \
  =
 
+ static void test_obtain_lease(const void *data)
+ {
 -- =
 
 2.32.0
 
---===============5372226531883735701==--
+--===============8461108486259292541==--
 
