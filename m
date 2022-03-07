@@ -1,89 +1,150 @@
-Content-Type: multipart/mixed; boundary="===============3386263774697482797=="
+Content-Type: multipart/mixed; boundary="===============7494371590735627238=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 12/15] netconfig: Write gateway MAC from DHCP to ARP cache
-Date: Fri, 20 May 2022 17:43:35 +0200
-Message-ID: <20220520154338.2056273-12-andrew.zaborowski@intel.com>
-In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
+Subject: [PATCH 10/12] netconfig: Add l_netconfig_apply_rtnl
+Date: Mon, 07 Mar 2022 15:55:41 +0100
+Message-ID: <20220307145543.1558788-10-andrew.zaborowski@intel.com>
+In-Reply-To: 20220307145543.1558788-1-andrew.zaborowski@intel.com
 
---===============3386263774697482797==
+--===============7494371590735627238==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Write the MAC directly to the ARP table to save an ARP query for the
-gateway's MAC when it is known from the freshly obtained lease.  For
-practical reasons do this outside of l_netconfig_apply_rtnl().
+Add l_netconfig_apply_rtnl and the getters for current lists of routes
+and addresses for the netconfig user to be able to commit address and
+route changes.
 ---
- ell/netconfig.c | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+ ell/ell.sym     |  3 ++
+ ell/netconfig.c | 73 +++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/netconfig.h | 11 ++++++++
+ 3 files changed, 87 insertions(+)
 
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 1dcee15..a03dc69 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -739,6 +739,9 @@ global:
+ 	l_netconfig_stop;
+ 	l_netconfig_get_dhcp_client;
+ 	l_netconfig_set_event_handler;
++	l_netconfig_apply_rtnl;
++	l_netconfig_get_addresses;
++	l_netconfig_get_routes;
+ local:
+ 	*;
+ };
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index ef3227b..3277f5c 100644
+index 8927aa8..25f0cf2 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -25,6 +25,7 @@
- #endif
- =
-
- #include <linux/types.h>
-+#include <linux/if_ether.h>
- #include <netinet/ip.h>
- #include <arpa/inet.h>
- #include <netinet/icmp6.h>
-@@ -404,6 +405,37 @@ static void netconfig_remove_dhcp_address_routes(struc=
-t l_netconfig *nc,
- 	}
+@@ -375,3 +375,76 @@ LIB_EXPORT void l_netconfig_set_event_handler(struct l=
+_netconfig *netconfig,
+ 	netconfig->handler.user_data =3D user_data;
+ 	netconfig->handler.destroy =3D destroy;
  }
++
++LIB_EXPORT void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
++					struct l_netlink *rtnl)
++{
++	const struct l_queue_entry *entry;
++
++	for (entry =3D l_queue_get_entries(netconfig->addresses.removed); entry;
++			entry =3D entry->next)
++		l_rtnl_ifaddr_delete(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	for (entry =3D l_queue_get_entries(netconfig->addresses.added); entry;
++			entry =3D entry->next)
++		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	/* We can use l_rtnl_ifaddr_add here since that uses NLM_F_REPLACE */
++	for (entry =3D l_queue_get_entries(netconfig->addresses.updated); entry;
++			entry =3D entry->next)
++		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	for (entry =3D l_queue_get_entries(netconfig->routes.removed); entry;
++			entry =3D entry->next)
++		l_rtnl_route_delete(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	for (entry =3D l_queue_get_entries(netconfig->routes.added); entry;
++			entry =3D entry->next)
++		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++
++	/* We can use l_rtnl_route_add here since that uses NLM_F_REPLACE */
++	for (entry =3D l_queue_get_entries(netconfig->routes.updated); entry;
++			entry =3D entry->next)
++		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
++					NULL, NULL, NULL);
++}
++
++LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
++						struct l_netconfig *netconfig,
++						struct l_queue **out_added,
++						struct l_queue **out_updated,
++						struct l_queue **out_removed)
++{
++	if (out_added)
++		*out_added =3D netconfig->addresses.added;
++
++	if (out_updated)
++		*out_updated =3D netconfig->addresses.updated;
++
++	if (out_removed)
++		*out_removed =3D netconfig->addresses.removed;
++
++	return netconfig->addresses.current;
++}
++
++LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
+onfig,
++						struct l_queue **out_added,
++						struct l_queue **out_updated,
++						struct l_queue **out_removed)
++{
++	if (out_added)
++		*out_added =3D netconfig->routes.added;
++
++	if (out_updated)
++		*out_updated =3D netconfig->routes.updated;
++
++	if (out_removed)
++		*out_removed =3D netconfig->routes.removed;
++
++	return netconfig->routes.current;
++}
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index 7773885..682f4aa 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -65,6 +65,17 @@ void l_netconfig_set_event_handler(struct l_netconfig *n=
+etconfig,
+ 					void *user_data,
+ 					l_netconfig_destroy_cb_t destroy);
  =
 
-+static void netconfig_set_neighbor_entry_cb(int error,
-+						uint16_t type, const void *data,
-+						uint32_t len, void *user_data)
-+{
-+	/* Not critical.  TODO: log warning */
-+}
++void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
++				struct l_netlink *rtnl);
++struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
++					struct l_queue **out_added,
++					struct l_queue **out_updated,
++					struct l_queue **out_removed);
++struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
++					struct l_queue **out_added,
++					struct l_queue **out_updated,
++					struct l_queue **out_removed);
 +
-+static int netconfig_dhcp_gateway_to_arp(struct l_netconfig *nc)
-+{
-+	const struct l_dhcp_lease *lease =3D
-+		l_dhcp_client_get_lease(nc->dhcp_client);
-+	_auto_(l_free) char *server_id =3D l_dhcp_lease_get_server_id(lease);
-+	_auto_(l_free) char *gw =3D l_dhcp_lease_get_gateway(lease);
-+	const uint8_t *server_mac =3D l_dhcp_lease_get_server_mac(lease);
-+	struct in_addr in_gw;
-+
-+	if (!gw || strcmp(server_id, gw) || !server_mac)
-+		return -ENOENT;
-+
-+	/* Gateway MAC is known, write it into ARP cache to save ARP traffic */
-+	in_gw.s_addr =3D l_dhcp_lease_get_gateway_u32(lease);
-+
-+	if (!l_rtnl_neighbor_set_hwaddr(l_rtnl_get(&nc->rtnl), nc->ifindex,
-+					AF_INET, &in_gw, server_mac, ETH_ALEN,
-+					netconfig_set_neighbor_entry_cb, nc,
-+					NULL))
-+		return -EIO;
-+
-+	return 0;
-+}
-+
- static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
- 						enum l_dhcp_client_event event,
- 						void *user_data)
-@@ -428,6 +460,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
-client *client,
- 		netconfig_set_dhcp_lifetimes(nc, false);
- 		nc->v4_configured =3D true;
- 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
-+		netconfig_dhcp_gateway_to_arp(nc);
- 		break;
- 	case L_DHCP_CLIENT_EVENT_LEASE_RENEWED:
- 		if (L_WARN_ON(!nc->v4_configured))
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
 2.32.0
 
---===============3386263774697482797==--
+--===============7494371590735627238==--
 
