@@ -1,158 +1,183 @@
-Received: from mail-wr1-f54.google.com (mail-wr1-f54.google.com [209.85.221.54])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 97B2EEC4
-	for <ell@lists.linux.dev>; Wed, 22 Jun 2022 00:57:21 +0000 (UTC)
-Received: by mail-wr1-f54.google.com with SMTP id n1so20936088wrg.12
-        for <ell@lists.linux.dev>; Tue, 21 Jun 2022 17:57:21 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=7D4qUJhgM+r96UrbtOOEjTi8iwD6F5T0CQRTH1JeAzY=;
-        b=pClYqyxBz0oNGxRvrYqEl/eK4SeEofQYVZXxRWFU1iRQKLbbZAguH7Sg4Gc9hsCSla
-         w8V0wDDrb43pEfHLaN8VtN+Na+o/X9Sa9/OnHj7Tan3DsvfJi5x86ua3BQpYP0XoKgo0
-         HJ//P47wapU8zWvvXA3OMGn3nJBYd/ZGJk+ArZochzGBqt9dE/mwXm9a+kVln4LmiyRF
-         X/s3NZvOyT3iaqkjtTexwuQdAu4l0yS3VKNxlmQz4EhQ1pB4C9hNru/U1ZCODwmBODpf
-         dd+pGYhwNl960+rfwUCzuoje69Ii2SOl1yl2/LxD+1n7rI+shheK+gXhcIFrPtotsPw0
-         iGYw==
-X-Gm-Message-State: AJIora/q1htZAJvpsayFfjEEfrKHCU4n9QAR6tNChmPVb2SRMFliNIT4
-	99LxfgRaKfoNEPYylH/Fkq/En5iskXgT5g==
-X-Google-Smtp-Source: AGRyM1uhKQfHIQ/ahBXxcNPhN8544wRsHmWXqxpUpd+CWj9PkOCjhRNhbXl/KvGmbcmFOyOhedk1pA==
-X-Received: by 2002:a05:6000:381:b0:21b:9a20:6543 with SMTP id u1-20020a056000038100b0021b9a206543mr613152wrf.127.1655859439472;
-        Tue, 21 Jun 2022 17:57:19 -0700 (PDT)
-Received: from iss.Home ([82.213.231.20])
-        by smtp.gmail.com with ESMTPSA id n10-20020adffe0a000000b0021b5861eaf7sm15101935wrr.3.2022.06.21.17.57.18
-        for <ell@lists.linux.dev>
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 21 Jun 2022 17:57:18 -0700 (PDT)
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-To: ell@lists.linux.dev
-Subject: [PATCH] netconfig: Add getters for DNS addresses and domain names
-Date: Wed, 22 Jun 2022 02:57:14 +0200
-Message-Id: <20220622005714.2319560-1-andrew.zaborowski@intel.com>
-X-Mailer: git-send-email 2.34.1
-Precedence: bulk
-X-Mailing-List: ell@lists.linux.dev
-List-Id: <ell.lists.linux.dev>
-List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
-List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
+Content-Type: multipart/mixed; boundary="===============3185769916023081274=="
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+To: ell at lists.01.org
+Subject: [PATCH 06/12] icmp6: Use SO_TIMESTAMP
+Date: Mon, 07 Mar 2022 15:55:37 +0100
+Message-ID: <20220307145543.1558788-6-andrew.zaborowski@intel.com>
+In-Reply-To: 20220307145543.1558788-1-andrew.zaborowski@intel.com
 
+--===============3185769916023081274==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+
+Like in dhcp and dhcp6 set the SO_TIMESTAMP socket option to get kernel
+packet reception times for router advertisements and save it.
 ---
- ell/ell.sym     |  2 ++
- ell/netconfig.c | 73 +++++++++++++++++++++++++++++++++++++++++++++++++
- ell/netconfig.h |  2 ++
- 3 files changed, 77 insertions(+)
+ ell/icmp6-private.h |  4 +++-
+ ell/icmp6.c         | 29 +++++++++++++++++++++++------
+ 2 files changed, 26 insertions(+), 7 deletions(-)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 38422e7..8f4e59d 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -758,6 +758,8 @@ global:
- 	l_netconfig_apply_rtnl;
- 	l_netconfig_get_addresses;
- 	l_netconfig_get_routes;
-+	l_netconfig_get_dns_list;
-+	l_netconfig_get_domain_names;
- local:
- 	*;
- };
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index b4e9802..d4487bd 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1808,3 +1808,76 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_get_routes(
- 
- 	return l_queue_get_entries(netconfig->routes.current);
+diff --git a/ell/icmp6-private.h b/ell/icmp6-private.h
+index 3846bad..2433087 100644
+--- a/ell/icmp6-private.h
++++ b/ell/icmp6-private.h
+@@ -33,6 +33,7 @@ struct l_icmp6_router {
+ 	bool managed : 1;
+ 	bool other : 1;
+ 	uint8_t pref;
++	uint64_t start_time;
+ 	uint16_t lifetime;
+ 	uint32_t mtu;
+ 	uint32_t n_prefixes;
+@@ -43,4 +44,5 @@ struct l_icmp6_router *_icmp6_router_new();
+ void _icmp6_router_free(struct l_icmp6_router *r);
+ struct l_icmp6_router *_icmp6_router_parse(const struct nd_router_advert *=
+ra,
+ 						size_t len,
+-						const uint8_t src[static 16]);
++						const uint8_t src[static 16],
++						uint64_t timestamp);
+diff --git a/ell/icmp6.c b/ell/icmp6.c
+index 3658408..b0f8727 100644
+--- a/ell/icmp6.c
++++ b/ell/icmp6.c
+@@ -126,6 +126,10 @@ static int icmp6_open_router_common(const struct icmp6=
+_filter *filter,
+ 				ifr.ifr_name, strlen(ifr.ifr_name) + 1);
+ 	}
+ =
+
++	if (r < 0)
++		goto fail;
++
++	r =3D setsockopt(s, SOL_SOCKET, SO_TIMESTAMP, &yes, sizeof(yes));
+ 	if (r < 0)
+ 		goto fail;
+ =
+
+@@ -191,7 +195,8 @@ static int icmp6_send_router_solicitation(int s, const =
+uint8_t mac[static 6])
+ 	return 0;
  }
+ =
+
+-static int icmp6_receive(int s, void *buf, size_t buf_len, struct in6_addr=
+ *src)
++static int icmp6_receive(int s, void *buf, size_t buf_len, struct in6_addr=
+ *src,
++				uint64_t *out_timestamp)
+ {
+ 	char c_msg_buf[CMSG_SPACE(sizeof(int))];
+ 	struct iovec iov =3D {
+@@ -210,6 +215,7 @@ static int icmp6_receive(int s, void *buf, size_t buf_l=
+en, struct in6_addr *src)
+ 	};
+ 	struct cmsghdr *cmsg;
+ 	ssize_t l;
++	uint64_t timestamp =3D 0;
+ =
+
+ 	l =3D recvmsg(s, &msg, MSG_DONTWAIT);
+ 	if (l < 0)
+@@ -230,10 +236,16 @@ static int icmp6_receive(int s, void *buf, size_t buf=
+_len, struct in6_addr *src)
+ =
+
+ 			if (hops !=3D 255)
+ 				return -EMULTIHOP;
++		} else if (cmsg->cmsg_level =3D=3D SOL_SOCKET &&
++				cmsg->cmsg_type =3D=3D SCM_TIMESTAMP) {
++			const struct timeval *tv =3D (void *) CMSG_DATA(cmsg);
 +
-+static void netconfig_strv_cat(char ***dest, char **src, bool free)
-+{
-+	unsigned int dest_len;
-+	unsigned int src_len;
-+
-+	if (!src)
-+		return;
-+
-+	if (!free)
-+		src = l_strv_copy(src);
-+
-+	if (!*dest) {
-+		*dest = src;
-+		return;
-+	}
-+
-+	dest_len = l_strv_length(*dest);
-+	src_len = l_strv_length(src);
-+	*dest = l_realloc(*dest, sizeof(char *) * (dest_len + src_len + 1));
-+	memcpy(*dest + dest_len, src, sizeof(char *) * (src_len + 1));
-+	l_free(src);
-+}
-+
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_dns_list(struct l_netconfig *netconfig)
-+{
-+	char **ret = NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
-+
-+	if (netconfig->v4_dns_override)
-+		netconfig_strv_cat(&ret, netconfig->v4_dns_override, false);
-+	else if ((v4_lease =
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)))
-+		netconfig_strv_cat(&ret, l_dhcp_lease_get_dns(v4_lease), true);
-+
-+	if (netconfig->v6_dns_override)
-+		netconfig_strv_cat(&ret, netconfig->v6_dns_override, false);
-+	else if ((v6_lease =
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		netconfig_strv_cat(&ret, l_dhcp6_lease_get_dns(v6_lease), true);
-+
-+	return ret;
-+}
-+
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_domain_names(struct l_netconfig *netconfig)
-+{
-+	char **ret = NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
-+
-+	if (netconfig->v4_domain_names_override)
-+		netconfig_strv_cat(&ret, netconfig->v4_domain_names_override,
-+					false);
-+	else if ((v4_lease =
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)) &&
-+			l_dhcp_lease_get_domain_name(v4_lease)) {
-+		ret = l_new(char *, 2);
-+		ret[0] = l_dhcp_lease_get_domain_name(v4_lease);
-+	}
-+
-+	if (netconfig->v6_dns_override)
-+		netconfig_strv_cat(&ret, netconfig->v6_domain_names_override,
-+					false);
-+	else if ((v6_lease =
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		netconfig_strv_cat(&ret, l_dhcp6_lease_get_domains(v6_lease),
-+					true);
-+
-+	return ret;
-+}
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index d845c55..ac467b6 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -99,6 +99,8 @@ const struct l_queue_entry *l_netconfig_get_routes(
- 				const struct l_queue_entry **out_updated,
- 				const struct l_queue_entry **out_removed,
- 				const struct l_queue_entry **out_expired);
-+char **l_netconfig_get_dns_list(struct l_netconfig *netconfig);
-+char **l_netconfig_get_domain_names(struct l_netconfig *netconfig);
- 
- #ifdef __cplusplus
++			timestamp =3D tv->tv_sec * L_USEC_PER_SEC + tv->tv_usec;
+ 		}
+ 	}
+ =
+
+ 	memcpy(src, &saddr.sin6_addr, sizeof(saddr.sin6_addr));
++	*out_timestamp =3D timestamp ?: l_time_now();
+ 	return 0;
  }
--- 
-2.34.1
+ =
+
+@@ -344,9 +356,11 @@ static void icmp6_client_setup_routes(struct l_icmp6_c=
+lient *client)
+ static int icmp6_client_handle_message(struct l_icmp6_client *client,
+ 						struct nd_router_advert *ra,
+ 						size_t len,
+-						const struct in6_addr *src)
++						const struct in6_addr *src,
++						uint64_t timestamp)
+ {
+-	struct l_icmp6_router *r =3D _icmp6_router_parse(ra, len, src->s6_addr);
++	struct l_icmp6_router *r =3D
++		_icmp6_router_parse(ra, len, src->s6_addr, timestamp);
+ =
+
+ 	if (!r)
+ 		return -EBADMSG;
+@@ -382,6 +396,7 @@ static bool icmp6_client_read_handler(struct l_io *io, =
+void *userdata)
+ 	ssize_t l;
+ 	struct in6_addr src;
+ 	int r;
++	uint64_t timestamp =3D 0;
+ =
+
+ 	/* Poke to see how many bytes we need to read / alloc */
+ 	l =3D recv(s, NULL, 0, MSG_PEEK|MSG_TRUNC);
+@@ -392,7 +407,7 @@ static bool icmp6_client_read_handler(struct l_io *io, =
+void *userdata)
+ 	}
+ =
+
+ 	ra =3D l_malloc(l);
+-	if (icmp6_receive(s, ra, l, &src) < 0)
++	if (icmp6_receive(s, ra, l, &src, &timestamp) < 0)
+ 		goto done;
+ =
+
+ 	if ((size_t) l < sizeof(struct nd_router_advert)) {
+@@ -400,7 +415,7 @@ static bool icmp6_client_read_handler(struct l_io *io, =
+void *userdata)
+ 		goto done;
+ 	}
+ =
+
+-	r =3D icmp6_client_handle_message(client, ra, l, &src);
++	r =3D icmp6_client_handle_message(client, ra, l, &src, timestamp);
+ 	if (r < 0)
+ 		goto done;
+ =
+
+@@ -661,7 +676,8 @@ void _icmp6_router_free(struct l_icmp6_router *r)
+ =
+
+ struct l_icmp6_router *_icmp6_router_parse(const struct nd_router_advert *=
+ra,
+ 						size_t len,
+-						const uint8_t src[static 16])
++						const uint8_t src[static 16],
++						uint64_t timestamp)
+ {
+ 	struct l_icmp6_router *r;
+ 	const uint8_t *opts;
+@@ -726,6 +742,7 @@ struct l_icmp6_router *_icmp6_router_parse(const struct=
+ nd_router_advert *ra,
+ 	if (r->pref =3D=3D 0x2) /* If invalid, reset to medium */
+ 		r->pref =3D 0;
+ =
+
++	r->start_time =3D timestamp;
+ 	r->lifetime =3D L_BE16_TO_CPU(ra->nd_ra_router_lifetime);
+ =
+
+ 	opts =3D (uint8_t *) (ra + 1);
+-- =
+
+2.32.0
+
+--===============3185769916023081274==--
 
