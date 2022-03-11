@@ -1,34 +1,35 @@
-Content-Type: multipart/mixed; boundary="===============6601596710496342520=="
+Content-Type: multipart/mixed; boundary="===============1119164645463257856=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 03/13] netconfig: Add DHCP override and static IP API
-Date: Tue, 26 Apr 2022 21:30:16 -0500
-Message-ID: <4469529f-e08a-6aee-3ab6-c2d5d936ce67@gmail.com>
-In-Reply-To: 20220422185952.105279-3-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 12/12] examples: Add a netconfig API example/test utility
+Date: Fri, 11 Mar 2022 10:25:06 -0600
+Message-ID: <5dee9a96-14be-5a62-f021-fbae0cab2e78@gmail.com>
+In-Reply-To: 20220307145543.1558788-12-andrew.zaborowski@intel.com
 
---===============6601596710496342520==
+--===============1119164645463257856==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
-On 4/22/22 13:59, Andrew Zaborowski wrote:
-> Add API to override things like DNS, domain names, etc. received from
-> DHCP or disable DHCP completely by setting a static address.
+On 3/7/22 08:55, Andrew Zaborowski wrote:
+> A test utility that simply starts netconfig on a given interface and
+> prints events that occur.  DNS/mdns changes aren't committed to the
+> system.
 > ---
->   ell/ell.sym     |   8 ++
->   ell/netconfig.c | 322 +++++++++++++++++++++++++++++++++++++++++++++++-
->   ell/netconfig.h |  16 +++
->   3 files changed, 341 insertions(+), 5 deletions(-)
+>   Makefile.am               |   4 +-
+>   examples/netconfig-test.c | 208 ++++++++++++++++++++++++++++++++++++++
+>   2 files changed, 211 insertions(+), 1 deletion(-)
+>   create mode 100644 examples/netconfig-test.c
 > =
 
 
-Applied, thanks.
+Applied with a minor amend to get rid of a >80 char line.
 
 Regards,
 -Denis
 
---===============6601596710496342520==--
+--===============1119164645463257856==--
 
