@@ -1,58 +1,73 @@
-Content-Type: multipart/mixed; boundary="===============3181102956281942928=="
+Content-Type: multipart/mixed; boundary="===============4935617497714353895=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 1/4] rtnl: Add l_rtnl_route_set_gateway
-Date: Wed, 05 Jan 2022 15:20:58 +0100
-Message-ID: <CAOq732J-4g7vb2F5xt5pMpkB7pUPM8xkX6oomGZ31PMJd7LX-Q@mail.gmail.com>
-In-Reply-To: 492f1eb9-7785-55b2-2479-3c2b88c7b48d@gmail.com
+Subject: Re: [PATCH 09/12] netconfig: Add netconfig API
+Date: Fri, 11 Mar 2022 10:11:23 -0600
+Message-ID: <10a6ede1-411a-3b1a-0269-35502dfdbe42@gmail.com>
+In-Reply-To: 20220307145543.1558788-9-andrew.zaborowski@intel.com
 
---===============3181102956281942928==
+--===============4935617497714353895==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+Hi Andrew,
 
-On Mon, 3 Jan 2022 at 19:54, Denis Kenzior <denkenz(a)gmail.com> wrote:
-> On 1/3/22 08:18, Andrew Zaborowski wrote:
-> > Allow creating prefix routes for off-link prefixes, i.e. ones that
-> > should be routed through a gateway.
-> > ---
-> >   ell/ell.sym |  1 +
-> >   ell/rtnl.c  | 16 ++++++++++++++++
-> >   ell/rtnl.h  |  1 +
-> >   3 files changed, 18 insertions(+)
-> >
->
-> <snip>
->
-> >
-> > +LIB_EXPORT bool l_rtnl_route_set_gateway(struct l_rtnl_route *rt,
-> > +                                             const char *address)
-> > +{
-> > +     if (unlikely(!rt))
-> > +             return false;
-> > +
-> > +     switch (rt->family) {
-> > +     case AF_INET:
-> > +             return inet_pton(AF_INET, address, &rt->gw.in_addr) =3D=
-=3D 1;
-> > +     case AF_INET6:
-> > +             return inet_pton(AF_INET6, address, &rt->gw.in6_addr) =3D=
-=3D 1;
-> > +     default:
-> > +             return  false;
-> > +     }
-> > +}
-> > +
->
-> Since we already have l_rtnl_route_new_gateway, would this make more sens=
-e as a
-> dedicated constructor? Something like l_rtnl_route_new_static?
+On 3/7/22 08:55, Andrew Zaborowski wrote:
+> This adds the netconfig class that will encapsulate static IP
+> configuration, DHCP, DHCP6, ICMP6, SLAAC logic and free the user of
+> manually handling DHCP/DHCP6 events to implement netconfig policies.
+> The user will still need to handle committing received DNS and mdns
+> information.
+> =
 
-Ok.
+> In this patch only IPv4 DHCP is implemented and no configurable settings
+> are added.
+> =
 
-Best regards
---===============3181102956281942928==--
+> When events are emitted for address and/or route changes, the changes
+> are split into "added", "updated" and "removed" lists so that the user
+> can decide apply those changes without first removing all addresses and
+> routes from the interface and the re-adding the complete new list.
+> They can also decide to let another entity apply the changes.  The
+> obvious downside is the proliferation of lists.
+> ---
+>   Makefile.am     |   6 +-
+>   ell/ell.h       |   1 +
+>   ell/ell.sym     |   7 +
+>   ell/netconfig.c | 377 ++++++++++++++++++++++++++++++++++++++++++++++++
+>   ell/netconfig.h |  72 +++++++++
+>   5 files changed, 461 insertions(+), 2 deletions(-)
+>   create mode 100644 ell/netconfig.c
+>   create mode 100644 ell/netconfig.h
+> =
+
+
+Due to:
+
+make --no-print-directory all-am
+   CC       unit/test-unit.o
+   CC       ell/netconfig.lo
+In file included from ell/netconfig.c:32:
+ell/netconfig.c: In function =E2=80=98l_netconfig_stop=E2=80=99:
+ell/netconfig.c:339:39: error: =E2=80=98struct l_netconfig=E2=80=99 has no =
+member named =E2=80=98started=E2=80=99
+   339 |  if (unlikely(!netconfig || !netconfig->started))
+       |                                       ^~
+ell/useful.h:26:41: note: in definition of macro =E2=80=98unlikely=E2=80=99
+    26 | #define unlikely(x) __builtin_expect(!!(x), 0)
+       |                                         ^
+
+I slightly amended this patch to move the 'started' variable introduction f=
+rom =
+
+patch 11 over to this patch.
+
+Applied, thanks.
+
+Regards,
+-Denis
+
+--===============4935617497714353895==--
 
