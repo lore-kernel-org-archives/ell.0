@@ -1,141 +1,186 @@
-Content-Type: multipart/mixed; boundary="===============6311901140536489702=="
+Content-Type: multipart/mixed; boundary="===============7646185385095639792=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 12/17] netconfig: Write /proc/sys/net files to enable IPv6
-Date: Sat, 14 May 2022 00:47:08 +0200
-Message-ID: <20220513224713.1447773-12-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
+Subject: Re: Unable to build ELL with OpenSSL 3
+Date: Fri, 11 Mar 2022 08:31:53 -0800
+Message-ID: <e3949e06c56d45b5da14d4d77e35420378d6d99f.camel@gmail.com>
+In-Reply-To: CAKjfnjrT8C2_WOYSYDzPRXbOUsmR6_gbPchmfqvHeBdVKqTt=w@mail.gmail.com
 
---===============6311901140536489702==
+--===============7646185385095639792==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Write the accept_ra setting to 0.  On l_netconfig_start if the existing
-address dump command finds no link-local address then also try resetting
-disable_ipv6 and toggling addr_gen_mode to trigger the kernel to
-generate a link-local address.
----
- ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 62 insertions(+), 2 deletions(-)
+Hi,
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index c6a5c8e..bdd67cc 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -28,6 +28,12 @@
- #include <netinet/ip.h>
- #include <arpa/inet.h>
- #include <netinet/icmp6.h>
-+#include <net/if.h>
-+#include <errno.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+#include <fcntl.h>
-+#include <unistd.h>
- =
+On Fri, 2022-03-11 at 16:52 +0800, wen zhang wrote:
+> James Prestwood <prestwoj(a)gmail.com> =E4=BA=8E2022=E5=B9=B43=E6=9C=8810=
+=E6=97=A5=E5=91=A8=E5=9B=9B 02:04=E5=86=99=E9=81=93=EF=BC=9A
+> > Hi,
+> > =
 
- #include "private.h"
- #include "useful.h"
-@@ -850,6 +856,30 @@ static void netconfig_icmp6_event_handler(struct l_icm=
-p6_client *client,
- 		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
- }
- =
+> > On Wed, 2022-03-09 at 18:36 +0800, wen zhang wrote:
+> > > I tried to build ELL library on my system built following LFS
+> > > 11.1, but the make command failed. Adding V=3D1 to the make command
+> > > show one openssl command failed to finish.
+> > > > openssl pkcs8 -in unit/cert-client-key-pkcs8.pem -out
+> > > > unit/cert-client-key-pkcs8-v2-des.pem -topk8 -v2 des-cbc -v2prf
+> > > > hmacWithSHA1 -passout pass:abc
+> > > > =
 
-+static int netconfig_proc_write_ipv6_setting(struct l_netconfig *nc,
-+						const char *setting,
-+						const char *value)
-+{
-+	char ifname[IF_NAMESIZE];
-+	_auto_(l_free) char *filename =3D NULL;
-+	int fd;
-+	int r;
-+
-+	if (unlikely(!if_indextoname(nc->ifindex, ifname)))
-+		return -errno;
-+
-+	filename =3D l_strdup_printf("/proc/sys/net/ipv6/conf/%s/%s",
-+					ifname, setting);
-+
-+	fd =3D L_TFR(open(filename, O_WRONLY));
-+	if (unlikely(fd < 0))
-+		return -errno;
-+
-+	r =3D L_TFR(write(fd, value, strlen(value)));
-+	L_TFR(close(fd));
-+	return r;
-+}
-+
- LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
- {
- 	struct l_netconfig *nc;
-@@ -891,6 +921,9 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
- ifindex)
- 					netconfig_icmp6_event_handler,
- 					nc, NULL);
- =
+> > > =
 
-+	/* Disable in-kernel autoconfiguration for the interface */
-+	netconfig_proc_write_ipv6_setting(nc, "accept_ra", "0");
-+
- 	return nc;
- }
- =
+> > > Maybe something need to migrate from OpenSSL 1 to OpenSSL 3? =
 
-@@ -1330,6 +1363,32 @@ static void netconfig_ifaddr_ipv6_dump_cb(int error,=
- uint16_t type,
- 	netconfig_ifaddr_ipv6_notify(type, data, len, user_data);
- }
- =
+> > =
 
-+static void netconfig_ifaddr_ipv6_dump_done_cb(void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+
-+	/*
-+	 * Handle the case of no link-local address having been found during
-+	 * the dump.  If nc->ifaddr6_dump_cmd_id is 0, we have found one or
-+	 * the dump is being cancelled.  Otherwise try disabing the
-+	 * "disable_ipv6" setting for the interface since it may have been
-+	 * enabled.  Also write "addr_gen_mode" which triggers regerating
-+	 * the link-local addresss on the interface in the kernel if it
-+	 * was previously removed.
-+	 */
-+	if (!nc->ifaddr6_dump_cmd_id || !nc->started)
-+		return;
-+
-+	nc->ifaddr6_dump_cmd_id =3D 0;
-+
-+	/* "do no generate a link-local address" */
-+	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "1");
-+	/* "generate address based on EUI64 (default)" */
-+	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "0");
-+	/* "enable IPv6 operation" */
-+	netconfig_proc_write_ipv6_setting(nc, "disable_ipv6", "0");
-+}
-+
- LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
- {
- 	if (unlikely(!netconfig || netconfig->started))
-@@ -1390,8 +1449,9 @@ configure_ipv6:
- 	}
- =
+> > =
 
- 	netconfig->ifaddr6_dump_cmd_id =3D l_rtnl_ifaddr6_dump(rtnl,
--						netconfig_ifaddr_ipv6_dump_cb,
--						netconfig, NULL);
-+					netconfig_ifaddr_ipv6_dump_cb,
-+					netconfig,
-+					netconfig_ifaddr_ipv6_dump_done_cb);
- 	if (!netconfig->ifaddr6_dump_cmd_id)
- 		goto unregister;
- =
+> > So it appears DES was removed from OpenSSL3 as a built in module
+> > [1]. I'm guessing there is some way to compile this in, but the
+> > documentation also mentions some runtime legacy provider. So I
+> > think you'll need to rebuild openssl with DES built in or figure
+> > out a way to enable this provider. I'm thinking we do want to
+> > support the default OpenSSL3 build at some point in the future, but
+> > I'm not sure if our build system can enable this feature
+> > automatically or not.=C2=A0
+> > =
 
--- =
+> > One thing to note is that OpenSSL is only used to verify ELL's
+> > crypto APIs in unit testing. So this failure should not block you
+> > from using the ELL API or IWD. And for IWD specifically all the
+> > unit tests build with OpenSSL3 since none use DES.
+> > =
 
-2.32.0
+> > Also, there is a mailing list specific to ELL=C2=A0ell(a)lists.01.org.
+> > =
 
---===============6311901140536489702==--
+> > [1]=C2=A0https://wiki.openssl.org/index.php/OpenSSL_3.0#Providers
+> > =
+
+> > > _______________________________________________
+> > > iwd mailing list -- iwd(a)lists.01.org
+> > > To unsubscribe send an email to iwd-leave(a)lists.01.org
+> > =
+
+> > =
+
+> > =
+
+> =
+
+> I added provider default and provider legacy into the openssl lines,
+> and make command finished with no error.
+> Here's my patch, maybe can be reviewed once there's another build
+> environment with OpenSSL V3.
+
+This seems to break OpenSSL 1.1:
+
+pkcs8: Option unknown option -provider
+pkcs8: Use -help for summary.
+make[1]: *** [Makefile:3163: unit/cert-client-key-pkcs8-md5-des.pem]
+Error 1
+
+I'm not a build system expert but I'm thinking we need to detect the
+OpenSSL version and generate the PEMs using two different recipes
+depending on version. Or maybe someone else has ideas?
+
+Also you're patch was just a diff. It applied fine but in order to
+merge anything we will need an actual git commit (e.g. git format-
+patch).
+
+Thanks,
+James
+
+> _______________________________________________
+> ell mailing list -- ell(a)lists.01.org
+> To unsubscribe send an email to ell-leave(a)lists.01.org
+
+
+--===============7646185385095639792==
+Content-Type: text/html
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="attachment.htm"
+
+PGh0bWw+PGhlYWQ+PC9oZWFkPjxib2R5PjxkaXY+SGksPC9kaXY+PGRpdj48YnI+PC9kaXY+PGRp
+dj5PbiBGcmksIDIwMjItMDMtMTEgYXQgMTY6NTIgKzA4MDAsIHdlbiB6aGFuZyB3cm90ZTo8L2Rp
+dj48YmxvY2txdW90ZSB0eXBlPSJjaXRlIiBzdHlsZT0ibWFyZ2luOjAgMCAwIC44ZXg7IGJvcmRl
+ci1sZWZ0OjJweCAjNzI5ZmNmIHNvbGlkO3BhZGRpbmctbGVmdDoxZXgiPjxkaXYgZGlyPSJsdHIi
+PjxkaXYgZGlyPSJsdHIiPkphbWVzIFByZXN0d29vZCAmbHQ7PGEgaHJlZj0ibWFpbHRvOnByZXN0
+d29qQGdtYWlsLmNvbSI+cHJlc3R3b2pAZ21haWwuY29tPC9hPiZndDsg5LqOMjAyMuW5tDPmnIgx
+MOaXpeWRqOWbmyAwMjowNOWGmemBk++8mjxicj48L2Rpdj48ZGl2IGNsYXNzPSJnbWFpbF9xdW90
+ZSI+PGJsb2NrcXVvdGUgdHlwZT0iY2l0ZSIgc3R5bGU9Im1hcmdpbjowIDAgMCAuOGV4OyBib3Jk
+ZXItbGVmdDoycHggIzcyOWZjZiBzb2xpZDtwYWRkaW5nLWxlZnQ6MWV4Ij48ZGl2PjxkaXY+SGks
+PC9kaXY+PGRpdj48YnI+PC9kaXY+PGRpdj5PbiBXZWQsIDIwMjItMDMtMDkgYXQgMTg6MzYgKzA4
+MDAsIHdlbiB6aGFuZyB3cm90ZTo8L2Rpdj48YmxvY2txdW90ZSB0eXBlPSJjaXRlIiBzdHlsZT0i
+bWFyZ2luOjAgMCAwIC44ZXg7IGJvcmRlci1sZWZ0OjJweCAjNzI5ZmNmIHNvbGlkO3BhZGRpbmct
+bGVmdDoxZXgiPjxkaXYgZGlyPSJsdHIiPjxkaXY+SSB0cmllZCB0byBidWlsZCBFTEwgbGlicmFy
+eSBvbiBteSBzeXN0ZW0gYnVpbHQgZm9sbG93aW5nIDxhIGhyZWY9Imh0dHBzOi8vd3d3LmxpbnV4
+ZnJvbXNjcmF0Y2gub3JnL2xmcy92aWV3L3N0YWJsZS1zeXN0ZW1kLyIgdGFyZ2V0PSJfYmxhbmsi
+PkxGUyAxMS4xPC9hPiwgYnV0IHRoZSBtYWtlIGNvbW1hbmQgZmFpbGVkLiBBZGRpbmcgVj0xIHRv
+IHRoZSBtYWtlIGNvbW1hbmQgc2hvdyBvbmUgb3BlbnNzbCBjb21tYW5kIGZhaWxlZCB0byBmaW5p
+c2guPC9kaXY+PGJsb2NrcXVvdGUgdHlwZT0iY2l0ZSIgc3R5bGU9Im1hcmdpbjowIDAgMCAuOGV4
+OyBib3JkZXItbGVmdDoycHggIzcyOWZjZiBzb2xpZDtwYWRkaW5nLWxlZnQ6MWV4Ij48ZGl2Pm9w
+ZW5zc2wgcGtjczggLWluIHVuaXQvY2VydC1jbGllbnQta2V5LXBrY3M4LnBlbSAtb3V0IHVuaXQv
+Y2VydC1jbGllbnQta2V5LXBrY3M4LXYyLWRlcy5wZW0gLXRvcGs4IC12MiBkZXMtY2JjIC12MnBy
+ZiBobWFjV2l0aFNIQTEgLXBhc3NvdXQgcGFzczphYmM8L2Rpdj48ZGl2Pjxicj48L2Rpdj48L2Js
+b2NrcXVvdGU+PGRpdj5NYXliZSBzb21ldGhpbmcgbmVlZCB0byBtaWdyYXRlIGZyb20gT3BlblNT
+TCAxIHRvIE9wZW5TU0wgMz8gPGJyPjwvZGl2PjwvZGl2PjwvYmxvY2txdW90ZT48ZGl2Pjxicj48
+L2Rpdj48ZGl2PlNvIGl0IGFwcGVhcnMgREVTIHdhcyByZW1vdmVkIGZyb20gT3BlblNTTDMgYXMg
+YSBidWlsdCBpbiBtb2R1bGUgWzFdLiBJJ20gZ3Vlc3NpbmcgdGhlcmUgaXMgc29tZSB3YXkgdG8g
+Y29tcGlsZSB0aGlzIGluLCBidXQgdGhlIGRvY3VtZW50YXRpb24gYWxzbyBtZW50aW9ucyBzb21l
+IHJ1bnRpbWUgbGVnYWN5IHByb3ZpZGVyLiBTbyBJIHRoaW5rIHlvdSdsbCBuZWVkIHRvIHJlYnVp
+bGQgb3BlbnNzbCB3aXRoIERFUyBidWlsdCBpbiBvciBmaWd1cmUgb3V0IGEgd2F5IHRvIGVuYWJs
+ZSB0aGlzIHByb3ZpZGVyLiBJJ20gdGhpbmtpbmcgd2UgZG8gd2FudCB0byBzdXBwb3J0IHRoZSBk
+ZWZhdWx0IE9wZW5TU0wzIGJ1aWxkIGF0IHNvbWUgcG9pbnQgaW4gdGhlIGZ1dHVyZSwgYnV0IEkn
+bSBub3Qgc3VyZSBpZiBvdXIgYnVpbGQgc3lzdGVtIGNhbiBlbmFibGUgdGhpcyBmZWF0dXJlIGF1
+dG9tYXRpY2FsbHkgb3Igbm90LiZuYnNwOzwvZGl2PjxkaXY+PGJyPjwvZGl2PjxkaXY+T25lIHRo
+aW5nIHRvIG5vdGUgaXMgdGhhdCBPcGVuU1NMIGlzIG9ubHkgdXNlZCB0byB2ZXJpZnkgRUxMJ3Mg
+Y3J5cHRvIEFQSXMgaW4gdW5pdCB0ZXN0aW5nLiBTbyB0aGlzIGZhaWx1cmUgc2hvdWxkIG5vdCBi
+bG9jayB5b3UgZnJvbSB1c2luZyB0aGUgRUxMIEFQSSBvciBJV0QuIEFuZCBmb3IgSVdEIHNwZWNp
+ZmljYWxseSBhbGwgdGhlIHVuaXQgdGVzdHMgYnVpbGQgd2l0aCBPcGVuU1NMMyBzaW5jZSBub25l
+IHVzZSBERVMuPC9kaXY+PGRpdj48YnI+PC9kaXY+PGRpdj5BbHNvLCB0aGVyZSBpcyBhIG1haWxp
+bmcgbGlzdCBzcGVjaWZpYyB0byBFTEwmbmJzcDs8YSBocmVmPSJtYWlsdG86ZWxsQGxpc3RzLjAx
+Lm9yZyIgdGl0bGU9IkNsaWNrIHRvIG1haWwgZWxsQGxpc3RzLjAxLm9yZyIgc3R5bGU9IndoaXRl
+LXNwYWNlOm5vd3JhcCIgdGFyZ2V0PSJfYmxhbmsiPmVsbEBsaXN0cy4wMS5vcmcuPC9hPjwvZGl2
+PjxkaXY+PGJyPjwvZGl2PjxkaXY+WzFdJm5ic3A7PGEgaHJlZj0iaHR0cHM6Ly93aWtpLm9wZW5z
+c2wub3JnL2luZGV4LnBocC9PcGVuU1NMXzMuMCNQcm92aWRlcnMiIHRhcmdldD0iX2JsYW5rIj5o
+dHRwczovL3dpa2kub3BlbnNzbC5vcmcvaW5kZXgucGhwL09wZW5TU0xfMy4wI1Byb3ZpZGVyczwv
+YT48L2Rpdj48ZGl2Pjxicj48L2Rpdj48YmxvY2txdW90ZSB0eXBlPSJjaXRlIiBzdHlsZT0ibWFy
+Z2luOjAgMCAwIC44ZXg7IGJvcmRlci1sZWZ0OjJweCAjNzI5ZmNmIHNvbGlkO3BhZGRpbmctbGVm
+dDoxZXgiPjxkaXY+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X188YnI+PC9kaXY+PGRpdj5pd2QgbWFpbGluZyBsaXN0IC0tIDxhIGhyZWY9Im1haWx0bzppd2RA
+bGlzdHMuMDEub3JnIiB0YXJnZXQ9Il9ibGFuayI+aXdkQGxpc3RzLjAxLm9yZzwvYT48YnI+PC9k
+aXY+PGRpdj5UbyB1bnN1YnNjcmliZSBzZW5kIGFuIGVtYWlsIHRvIDxhIGhyZWY9Im1haWx0bzpp
+d2QtbGVhdmVAbGlzdHMuMDEub3JnIiB0YXJnZXQ9Il9ibGFuayI+aXdkLWxlYXZlQGxpc3RzLjAx
+Lm9yZzwvYT48YnI+PC9kaXY+PC9ibG9ja3F1b3RlPjxkaXY+PGJyPjwvZGl2PjwvZGl2Pjxicj48
+L2Jsb2NrcXVvdGU+PGRpdj5JIGFkZGVkIHByb3ZpZGVyIGRlZmF1bHQgYW5kIHByb3ZpZGVyIGxl
+Z2FjeSBpbnRvIHRoZSBvcGVuc3NsIGxpbmVzLCBhbmQgbWFrZSBjb21tYW5kIGZpbmlzaGVkIHdp
+dGggbm8gZXJyb3IuPC9kaXY+PGRpdj5IZXJlJ3MgbXkgcGF0Y2gsIG1heWJlIGNhbiBiZSByZXZp
+ZXdlZCBvbmNlIHRoZXJlJ3MgYW5vdGhlciBidWlsZCBlbnZpcm9ubWVudCB3aXRoIE9wZW5TU0wg
+VjMuPC9kaXY+PC9kaXY+PC9kaXY+PC9ibG9ja3F1b3RlPjxkaXY+PGJyPjwvZGl2PjxkaXY+VGhp
+cyBzZWVtcyB0byBicmVhayBPcGVuU1NMIDEuMTo8L2Rpdj48ZGl2Pjxicj48L2Rpdj48ZGl2PnBr
+Y3M4OiBPcHRpb24gdW5rbm93biBvcHRpb24gLXByb3ZpZGVyPC9kaXY+PGRpdj5wa2NzODogVXNl
+IC1oZWxwIGZvciBzdW1tYXJ5LjwvZGl2PjxkaXY+bWFrZVsxXTogKioqIFtNYWtlZmlsZTozMTYz
+OiB1bml0L2NlcnQtY2xpZW50LWtleS1wa2NzOC1tZDUtZGVzLnBlbV0gRXJyb3IgMTwvZGl2Pjxk
+aXY+PGJyPjwvZGl2PjxkaXY+SSdtIG5vdCBhIGJ1aWxkIHN5c3RlbSBleHBlcnQgYnV0IEknbSB0
+aGlua2luZyB3ZSBuZWVkIHRvIGRldGVjdCB0aGUgT3BlblNTTCB2ZXJzaW9uIGFuZCBnZW5lcmF0
+ZSB0aGUgUEVNcyB1c2luZyB0d28gZGlmZmVyZW50IHJlY2lwZXMgZGVwZW5kaW5nIG9uIHZlcnNp
+b24uIE9yIG1heWJlIHNvbWVvbmUgZWxzZSBoYXMgaWRlYXM/PC9kaXY+PGRpdj48YnI+PC9kaXY+
+PGRpdj5BbHNvIHlvdSdyZSBwYXRjaCB3YXMganVzdCBhIGRpZmYuIEl0IGFwcGxpZWQgZmluZSBi
+dXQgaW4gb3JkZXIgdG8gbWVyZ2UgYW55dGhpbmcgd2Ugd2lsbCBuZWVkIGFuIGFjdHVhbCBnaXQg
+Y29tbWl0IChlLmcuIGdpdCBmb3JtYXQtcGF0Y2gpLjwvZGl2PjxkaXY+PGJyPjwvZGl2PjxkaXY+
+VGhhbmtzLDxicj48L2Rpdj48ZGl2PkphbWVzPC9kaXY+PGRpdj48YnI+PC9kaXY+PGJsb2NrcXVv
+dGUgdHlwZT0iY2l0ZSIgc3R5bGU9Im1hcmdpbjowIDAgMCAuOGV4OyBib3JkZXItbGVmdDoycHgg
+IzcyOWZjZiBzb2xpZDtwYWRkaW5nLWxlZnQ6MWV4Ij48ZGl2Pl9fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fPGJyPjwvZGl2PjxkaXY+ZWxsIG1haWxpbmcgbGlz
+dCAtLSA8YSBocmVmPSJtYWlsdG86ZWxsQGxpc3RzLjAxLm9yZyI+ZWxsQGxpc3RzLjAxLm9yZzwv
+YT48YnI+PC9kaXY+PGRpdj5UbyB1bnN1YnNjcmliZSBzZW5kIGFuIGVtYWlsIHRvIDxhIGhyZWY9
+Im1haWx0bzplbGwtbGVhdmVAbGlzdHMuMDEub3JnIj5lbGwtbGVhdmVAbGlzdHMuMDEub3JnPC9h
+Pjxicj48L2Rpdj48L2Jsb2NrcXVvdGU+PGRpdj48YnI+PC9kaXY+PGRpdj48c3Bhbj48L3NwYW4+
+PC9kaXY+PC9ib2R5PjwvaHRtbD4K
+
+--===============7646185385095639792==--
 
