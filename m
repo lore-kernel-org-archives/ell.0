@@ -1,35 +1,35 @@
-Content-Type: multipart/mixed; boundary="===============7019377528258201817=="
+Content-Type: multipart/mixed; boundary="===============5043590851487857682=="
 MIME-Version: 1.0
-From: Simon Maurer <mail at maurer.systems>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: AIO support
-Date: Sun, 19 Sep 2021 17:12:13 +0000
-Message-ID: <61f114ce-ed19-980d-8b97-1eb3b30eee51@maurer.systems>
+Subject: Re: [PATCH 10/12] netconfig: Add l_netconfig_apply_rtnl
+Date: Fri, 11 Mar 2022 10:12:31 -0600
+Message-ID: <13378d53-d8cb-44d4-ace1-b959a77e5686@gmail.com>
+In-Reply-To: 20220307145543.1558788-10-andrew.zaborowski@intel.com
 
---===============7019377528258201817==
+--===============5043590851487857682==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi
-Awesome library! Thank you very much. I'm using it for an embedded linux =
+Hi Andrew,
 
-application with not so strict real time constraints. Problem is, I need =
+On 3/7/22 08:55, Andrew Zaborowski wrote:
+> Add l_netconfig_apply_rtnl and the getters for current lists of routes
+> and addresses for the netconfig user to be able to commit address and
+> route changes.
+> ---
+>   ell/ell.sym     |  3 ++
+>   ell/netconfig.c | 73 +++++++++++++++++++++++++++++++++++++++++++++++++
+>   ell/netconfig.h | 11 ++++++++
+>   3 files changed, 87 insertions(+)
+> =
 
-non blocking file access, because the memory card on my system is quite =
 
-slow. It turns out that this whole non-blocking access doesn't work for =
+Applied, thanks.
 
-files, so now I'm using the POSIX AIO interface and I've integrated it =
+Regards,
+-Denis
 
-into ELL:
-https://github.com/mausys/ell/blob/master/ell/aio.c
-(But needs to be linked against rt)
-This is just a draft and it also works on top of ELL, but maybe other =
-
-applications need this too.
-
-Best regards,
-Simon Maurer
---===============7019377528258201817==--
+--===============5043590851487857682==--
 
