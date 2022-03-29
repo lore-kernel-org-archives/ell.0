@@ -1,317 +1,133 @@
-Content-Type: multipart/mixed; boundary="===============6913235489293539469=="
+Content-Type: multipart/mixed; boundary="===============2359433328197034566=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: wen zhang <zhw2101024 at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 05/13] netconfig: Create routes from Router Advertisements
-Date: Fri, 22 Apr 2022 20:59:44 +0200
-Message-ID: <20220422185952.105279-5-andrew.zaborowski@intel.com>
-In-Reply-To: 20220422185952.105279-1-andrew.zaborowski@intel.com
+Subject: [PATCH]run unit tests on both OpenSSL-1.x and OpenSSL-3.x
+Date: Tue, 29 Mar 2022 13:09:24 +0800
+Message-ID: <CAKjfnjruDgyK0EB4RtqXoHy6CR2SU=iTt11UmfDtGw4AfDZhMw@mail.gmail.com>
 
---===============6913235489293539469==
+--===============2359433328197034566==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-If IPv6 is enabled, create the ICMP6 client and handle Router
-Advertisements received by creating, updating and removing routes per
-the data in the Router Advertisements.  Timeouts aren't handled yet.
----
- ell/netconfig.c | 208 +++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 206 insertions(+), 2 deletions(-)
+Some unit tests are breaking on systems with OpenSSL 3.x.
+This patch detects the OpenSSL version, then if we are building Ell on
+OpenSSL 3.x, the legacy module options will be appended to openssl commands.
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 09c783d..e10d880 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -27,12 +27,16 @@
- #include <linux/types.h>
- #include <netinet/ip.h>
- #include <arpa/inet.h>
-+#include <netinet/icmp6.h>
- =
+--===============2359433328197034566==
+Content-Type: text/html
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="attachment.htm"
 
- #include "private.h"
- #include "useful.h"
- #include "log.h"
- #include "dhcp.h"
- #include "dhcp-private.h"
-+#include "icmp6.h"
-+#include "icmp6-private.h"
-+#include "dhcp6.h"
- #include "netlink.h"
- #include "rtnl.h"
- #include "queue.h"
-@@ -63,6 +67,8 @@ struct l_netconfig {
- 	bool v4_configured;
- 	struct l_dhcp_client *dhcp_client;
- 	bool v6_configured;
-+	struct l_icmp6_client *icmp6_client;
-+	struct l_dhcp6_client *dhcp6_client;
- =
+PGRpdiBkaXI9Imx0ciI+PGRpdj5Tb21lIHVuaXQgdGVzdHMgYXJlIGJyZWFraW5nIG9uIHN5c3Rl
+bXMgd2l0aCBPcGVuU1NMIDMueC48L2Rpdj48ZGl2PlRoaXMgcGF0Y2ggZGV0ZWN0cyB0aGUgT3Bl
+blNTTCB2ZXJzaW9uLCB0aGVuIGlmIHdlIGFyZSBidWlsZGluZyBFbGwgb24gT3BlblNTTCAzLngs
+IHRoZSBsZWdhY3kgbW9kdWxlIG9wdGlvbnMgd2lsbCBiZSBhcHBlbmRlZCB0byBvcGVuc3NsIGNv
+bW1hbmRzLjwvZGl2PjwvZGl2Pgo=
 
- 	/* These objects, if not NULL, are owned by @addresses and @routes */
- 	struct l_rtnl_address *v4_address;
-@@ -351,6 +357,189 @@ static void netconfig_dhcp_event_handler(struct l_dhc=
-p_client *client,
- 	}
- }
- =
+--===============2359433328197034566==
+Content-Type: text/x-patch
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="0001-adjust-cert-tests-to-both-OpenSSL-1.x-and-OpenSSL-3..patch"
 
-+static struct l_rtnl_route *netconfig_find_icmp6_route(
-+						struct l_netconfig *nc,
-+						const uint8_t *gateway,
-+						const struct route_info *dst)
-+{
-+	const struct l_queue_entry *entry;
-+
-+	for (entry =3D l_queue_get_entries(nc->routes.current); entry;
-+			entry =3D entry->next) {
-+		struct l_rtnl_route *route =3D entry->data;
-+		const uint8_t *route_gateway;
-+		const uint8_t *route_dst;
-+		uint8_t route_prefix_len =3D 0;
-+
-+		if (l_rtnl_route_get_family(route) !=3D AF_INET6 ||
-+				l_rtnl_route_get_protocol(route) !=3D RTPROT_RA)
-+			continue;
-+
-+		route_gateway =3D l_rtnl_route_get_gateway_in_addr(route);
-+		if ((gateway || route_gateway) &&
-+				(!gateway || !route_gateway ||
-+				 memcmp(gateway, route_gateway, 16)))
-+			continue;
-+
-+		route_dst =3D l_rtnl_route_get_dst_in_addr(route,
-+							&route_prefix_len);
-+		if ((dst || route_prefix_len) &&
-+				(!dst || !route_prefix_len ||
-+				 dst->prefix_len !=3D route_prefix_len ||
-+				 memcmp(dst->address, route_dst,
-+					 (dst->prefix_len + 7) / 8)))
-+			continue;
-+
-+		return route;
-+	}
-+
-+	return NULL;
-+}
-+
-+static struct l_rtnl_route *netconfig_add_icmp6_route(struct l_netconfig *=
-nc,
-+						const uint8_t *gateway,
-+						const struct route_info *dst,
-+						uint8_t preference)
-+{
-+	struct l_rtnl_route *rt;
-+	char buf1[INET6_ADDRSTRLEN];
-+	char buf2[INET6_ADDRSTRLEN];
-+
-+	if (gateway && !dst)
-+		rt =3D l_rtnl_route_new_gateway(inet_ntop(AF_INET6, gateway,
-+							buf1, sizeof(buf1)));
-+	else if (dst && !gateway)
-+		rt =3D l_rtnl_route_new_prefix(inet_ntop(AF_INET6, dst->address,
-+							buf2, sizeof(buf2)),
-+						dst->prefix_len);
-+	else
-+		rt =3D l_rtnl_route_new_static(inet_ntop(AF_INET6, gateway,
-+							buf1, sizeof(buf1)),
-+						inet_ntop(AF_INET6,
-+							dst->address,
-+							buf2, sizeof(buf2)),
-+						dst->prefix_len);
-+
-+	if (L_WARN_ON(!rt))
-+		return NULL;
-+
-+	l_rtnl_route_set_preference(rt, preference);
-+	l_rtnl_route_set_protocol(rt, RTPROT_RA);
-+	l_rtnl_route_set_priority(rt, nc->route_priority);
-+	l_queue_push_tail(nc->routes.current, rt);
-+	l_queue_push_tail(nc->routes.added, rt);
-+	return rt;
-+}
-+
-+static void netconfig_set_icmp6_route_data(struct l_netconfig *nc,
-+						struct l_rtnl_route *rt,
-+						uint64_t start_time,
-+						uint32_t preferred_lifetime,
-+						uint32_t valid_lifetime,
-+						uint32_t mtu, bool updated)
-+{
-+	uint64_t expiry =3D start_time + valid_lifetime * L_USEC_PER_SEC;
-+
-+	l_rtnl_route_set_mtu(rt, mtu);
-+	l_rtnl_route_set_lifetime(rt, valid_lifetime);
-+	l_rtnl_route_set_expiry(rt, expiry);
-+
-+	if (updated)
-+		l_queue_push_tail(nc->routes.updated, rt);
-+}
-+
-+static void netconfig_remove_icmp6_route(struct l_netconfig *nc,
-+						struct l_rtnl_route *route)
-+{
-+	l_queue_remove(nc->routes.current, route);
-+	l_queue_push_tail(nc->routes.removed, route);
-+}
-+
-+static void netconfig_icmp6_event_handler(struct l_icmp6_client *client,
-+						enum l_icmp6_client_event event,
-+						void *event_data,
-+						void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+	const struct l_icmp6_router *r;
-+	struct l_rtnl_route *default_route;
-+	unsigned int i;
-+
-+	if (event !=3D L_ICMP6_CLIENT_EVENT_ROUTER_FOUND)
-+		return;
-+
-+	r =3D event_data;
-+
-+	/*
-+	 * Note: If this is the first RA received, the l_dhcp6_client
-+	 * will have received the event before us and will be acting
-+	 * on it by now.
-+	 */
-+
-+	if (nc->v4_gateway_override)
-+		return;
-+
-+	/* Process the default gateway information */
-+	default_route =3D netconfig_find_icmp6_route(nc, r->address, NULL);
-+
-+	if (!default_route && r->lifetime) {
-+		default_route =3D netconfig_add_icmp6_route(nc, r->address, NULL,
-+								r->pref);
-+		if (unlikely(!default_route))
-+			return;
-+
-+		netconfig_set_icmp6_route_data(nc, default_route, r->start_time,
-+						r->lifetime, r->lifetime,
-+						r->mtu, false);
-+	} else if (default_route && r->lifetime)
-+		netconfig_set_icmp6_route_data(nc, default_route, r->start_time,
-+						r->lifetime, r->lifetime,
-+						r->mtu, true);
-+	else if (default_route && !r->lifetime)
-+		netconfig_remove_icmp6_route(nc, default_route);
-+
-+	/*
-+	 * Process the onlink and offlink routes, from the Router
-+	 * Advertisement's Prefix Information options and Route
-+	 * Information options respectively.
-+	 */
-+	for (i =3D 0; i < r->n_routes; i++) {
-+		const struct route_info *info =3D &r->routes[i];
-+		const uint8_t *gateway =3D info->onlink ? NULL : r->address;
-+		struct l_rtnl_route *route =3D
-+			netconfig_find_icmp6_route(nc, gateway, info);
-+
-+		if (!route && info->valid_lifetime) {
-+			route =3D netconfig_add_icmp6_route(nc, gateway, info,
-+							info->preference);
-+			if (unlikely(!route))
-+				continue;
-+
-+			netconfig_set_icmp6_route_data(nc, route, r->start_time,
-+						info->preferred_lifetime,
-+						info->valid_lifetime,
-+						gateway ? r->mtu : 0, false);
-+		} else if (route && info->valid_lifetime)
-+			netconfig_set_icmp6_route_data(nc, route, r->start_time,
-+						info->preferred_lifetime,
-+						info->valid_lifetime,
-+						gateway ? r->mtu : 0, true);
-+		else if (route && !info->valid_lifetime)
-+			netconfig_remove_icmp6_route(nc, route);
-+	}
-+
-+	/*
-+	 * Note: we may be emitting this before L_NETCONFIG_EVENT_CONFIGURE.
-+	 * We should probably instead save the affected routes in separate
-+	 * lists and add them to the _CONFIGURE event, suppressing any _UPDATE
-+	 * events while nc->v6_configured is false.
-+	 */
-+	if (!l_queue_isempty(nc->routes.added) ||
-+			!l_queue_isempty(nc->routes.updated) ||
-+			!l_queue_isempty(nc->routes.removed))
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
-+}
-+
- LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
- {
- 	struct l_netconfig *nc;
-@@ -373,6 +562,13 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_=
-t ifindex)
- 					netconfig_dhcp_event_handler,
- 					nc, NULL);
- =
+RnJvbSA4NmZjZTEwODFjZmRlNWI0OTRiZGI5MDA0ZTA4OGI1NTcyMzc0ZTM1IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBaaGFuZ1dlbiA8emh3MjEwMTAyNEBnbWFpbC5jb20+CkRhdGU6
+IFR1ZSwgMjkgTWFyIDIwMjIgMTI6NTE6MzUgKzA4MDAKU3ViamVjdDogW1BBVENIXSBhZGp1c3Qg
+Y2VydCB0ZXN0cyB0byBib3RoIE9wZW5TU0wtMS54IGFuZCBPcGVuU1NMLTMueAoKLS0tCiBNYWtl
+ZmlsZS5hbSAgfCAxNiArKysrKysrKy0tLS0tLS0tCiBjb25maWd1cmUuYWMgfCAgNiArKysrKysK
+IDIgZmlsZXMgY2hhbmdlZCwgMTQgaW5zZXJ0aW9ucygrKSwgOCBkZWxldGlvbnMoLSkKCmRpZmYg
+LS1naXQgYS9NYWtlZmlsZS5hbSBiL01ha2VmaWxlLmFtCmluZGV4IDhjY2IzNWUuLjhmZmRiOTEg
+MTAwNjQ0Ci0tLSBhL01ha2VmaWxlLmFtCisrKyBiL01ha2VmaWxlLmFtCkBAIC00NDMsNyArNDQz
+LDcgQEAgdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczEucGVtOgogCSQoQU1fVl9HRU4pb3BlbnNz
+bCBnZW5yc2EgLW91dCAkQCAkKCQoQU1fVl9QKV9yZWRpcmVjdF9vcGVuc3NsKQogCiB1bml0L2Nl
+cnQtY2xpZW50LWtleS1wa2NzMS1kZXMucGVtOiB1bml0L2NlcnQtY2xpZW50LWtleS1wa2NzMS5w
+ZW0KLQkkKEFNX1ZfR0VOKW9wZW5zc2wgcnNhIC1pbiAkPCAtb3V0ICRAIC1kZXMgLXBhc3NvdXQg
+cGFzczphYmMKKwkkKEFNX1ZfR0VOKW9wZW5zc2wgcnNhIC1pbiAkPCAtb3V0ICRAIC1kZXMgLXBh
+c3NvdXQgcGFzczphYmMgQE9QRU5TU0xfTEVHQUNZX09QVFNACiAKIHVuaXQvY2VydC1jbGllbnQt
+a2V5LXBrY3MxLWRlczMucGVtOiB1bml0L2NlcnQtY2xpZW50LWtleS1wa2NzMS5wZW0KIAkkKEFN
+X1ZfR0VOKW9wZW5zc2wgcnNhIC1pbiAkPCAtb3V0ICRAIC1kZXMzIC1wYXNzb3V0IHBhc3M6YWJj
+CkBAIC00NjIsMTUgKzQ2MiwxNSBAQCB1bml0L2NlcnQtY2xpZW50LWtleS1wa2NzOC5wZW06IHVu
+aXQvY2VydC1jbGllbnQta2V5LXBrY3MxLnBlbQogCiB1bml0L2NlcnQtY2xpZW50LWtleS1wa2Nz
+OC1tZDUtZGVzLnBlbTogdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczgucGVtCiAJJChBTV9WX0dF
+TilvcGVuc3NsIHBrY3M4IC1pbiAkPCAtb3V0ICRAIFwKLQkJCS10b3BrOCAtdjEgUEJFLU1ENS1E
+RVMgLXBhc3NvdXQgcGFzczphYmMKKwkJCS10b3BrOCAtdjEgUEJFLU1ENS1ERVMgLXBhc3NvdXQg
+cGFzczphYmMgQE9QRU5TU0xfTEVHQUNZX09QVFNACiAKIHVuaXQvY2VydC1jbGllbnQta2V5LXBr
+Y3M4LXNoYTEtZGVzLnBlbTogdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczgucGVtCiAJJChBTV9W
+X0dFTilvcGVuc3NsIHBrY3M4IC1pbiAkPCAtb3V0ICRAIFwKLQkJCS10b3BrOCAtdjEgUEJFLVNI
+QTEtREVTIC1wYXNzb3V0IHBhc3M6YWJjCisJCQktdG9wazggLXYxIFBCRS1TSEExLURFUyAtcGFz
+c291dCBwYXNzOmFiYyBAT1BFTlNTTF9MRUdBQ1lfT1BUU0AKIAogdW5pdC9jZXJ0LWNsaWVudC1r
+ZXktcGtjczgtdjItZGVzLnBlbTogdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczgucGVtCiAJJChB
+TV9WX0dFTilvcGVuc3NsIHBrY3M4IC1pbiAkPCAtb3V0ICRAIFwKLQkJCS10b3BrOCAtdjIgZGVz
+LWNiYyAtdjJwcmYgaG1hY1dpdGhTSEExIC1wYXNzb3V0IHBhc3M6YWJjCisJCQktdG9wazggLXYy
+IGRlcy1jYmMgLXYycHJmIGhtYWNXaXRoU0hBMSAtcGFzc291dCBwYXNzOmFiYyBAT1BFTlNTTF9M
+RUdBQ1lfT1BUU0AKIAogdW5pdC9jZXJ0LWNsaWVudC1rZXktcGtjczgtdjItZGVzLWVkZTMucGVt
+OiB1bml0L2NlcnQtY2xpZW50LWtleS1wa2NzOC5wZW0KIAkkKEFNX1ZfR0VOKW9wZW5zc2wgcGtj
+czggLWluICQ8IC1vdXQgJEAgXApAQCAtNTc0LDE5ICs1NzQsMTkgQEAgdW5pdC9jZXJ0LWVudGl0
+eS1wa2NzMTItbm9tYWMucDEyOiB1bml0L2NlcnQtZW50aXR5LWludC1rZXkucGVtIHVuaXQvY2Vy
+dC1lbnRpdHkKIAkkKEFNX1ZfR0VOKW9wZW5zc2wgcGtjczEyIC1pbmtleSAkPCAtaW4gJChidWls
+ZGRpcikvdW5pdC9jZXJ0LWVudGl0eS1pbnQucGVtIC1vdXQgJEAgLWV4cG9ydCAtcGFzc291dCBw
+YXNzOmFiYyAtbm9tYWMgIyBkZWZhdXQgY2lwaGVycwogCiB1bml0L2NlcnQtZW50aXR5LXBrY3Mx
+Mi1yYzItc2hhMS5wMTI6IHVuaXQvY2VydC1lbnRpdHktaW50LWtleS5wZW0gdW5pdC9jZXJ0LWVu
+dGl0eS1pbnQucGVtIHVuaXQvY2VydC1jaGFpbi5wZW0KLQkkKEFNX1ZfR0VOKW9wZW5zc2wgcGtj
+czEyIC1pbmtleSAkPCAtaW4gJChidWlsZGRpcikvdW5pdC9jZXJ0LWVudGl0eS1pbnQucGVtIC1j
+ZXJ0ZmlsZSAkKGJ1aWxkZGlyKS91bml0L2NlcnQtY2hhaW4ucGVtIC1vdXQgJEAgLWV4cG9ydCAt
+cGFzc291dCBwYXNzOmFiYyAtY2VydHBiZSBQQkUtU0hBMS1SQzItNDAgLWtleXBiZSBQQkUtU0hB
+MS1SQzItMTI4IC1tYWNhbGcgc2hhMQorCSQoQU1fVl9HRU4pb3BlbnNzbCBwa2NzMTIgLWlua2V5
+ICQ8IC1pbiAkKGJ1aWxkZGlyKS91bml0L2NlcnQtZW50aXR5LWludC5wZW0gLWNlcnRmaWxlICQo
+YnVpbGRkaXIpL3VuaXQvY2VydC1jaGFpbi5wZW0gLW91dCAkQCAtZXhwb3J0IC1wYXNzb3V0IHBh
+c3M6YWJjIC1jZXJ0cGJlIFBCRS1TSEExLVJDMi00MCAta2V5cGJlIFBCRS1TSEExLVJDMi0xMjgg
+LW1hY2FsZyBzaGExIEBPUEVOU1NMX0xFR0FDWV9PUFRTQAogCiB1bml0L2NlcnQtZW50aXR5LXBr
+Y3MxMi1kZXMtc2hhMjU2LnAxMjogdW5pdC9jZXJ0LWVudGl0eS1pbnQta2V5LnBlbSB1bml0L2Nl
+cnQtZW50aXR5LWludC5wZW0gdW5pdC9jZXJ0LWNoYWluLnBlbQogCSQoQU1fVl9HRU4pb3BlbnNz
+bCBwa2NzMTIgLWlua2V5ICQ8IC1pbiAkKGJ1aWxkZGlyKS91bml0L2NlcnQtZW50aXR5LWludC5w
+ZW0gLWNlcnRmaWxlICQoYnVpbGRkaXIpL3VuaXQvY2VydC1jaGFpbi5wZW0gLW91dCAkQCAtZXhw
+b3J0IC1wYXNzb3V0IHBhc3M6YWJjIC1jZXJ0cGJlIFBCRS1TSEExLTNERVMgLWtleXBiZSBQQkUt
+U0hBMS0yREVTIC1tYWNhbGcgc2hhMjU2CiAKIHVuaXQvY2VydC1lbnRpdHktcGtjczEyLXJjNC1z
+aGEzODQucDEyOiB1bml0L2NlcnQtZW50aXR5LWludC1rZXkucGVtIHVuaXQvY2VydC1lbnRpdHkt
+aW50LnBlbSB1bml0L2NlcnQtY2hhaW4ucGVtCi0JJChBTV9WX0dFTilvcGVuc3NsIHBrY3MxMiAt
+aW5rZXkgJDwgLWluICQoYnVpbGRkaXIpL3VuaXQvY2VydC1lbnRpdHktaW50LnBlbSAtY2VydGZp
+bGUgJChidWlsZGRpcikvdW5pdC9jZXJ0LWNoYWluLnBlbSAtb3V0ICRAIC1leHBvcnQgLXBhc3Nv
+dXQgcGFzczphYmMgLWNlcnRwYmUgUEJFLVNIQTEtUkM0LTEyOCAta2V5cGJlIFBCRS1TSEExLVJD
+Mi00MCAtbWFjYWxnIHNoYTM4NAorCSQoQU1fVl9HRU4pb3BlbnNzbCBwa2NzMTIgLWlua2V5ICQ8
+IC1pbiAkKGJ1aWxkZGlyKS91bml0L2NlcnQtZW50aXR5LWludC5wZW0gLWNlcnRmaWxlICQoYnVp
+bGRkaXIpL3VuaXQvY2VydC1jaGFpbi5wZW0gLW91dCAkQCAtZXhwb3J0IC1wYXNzb3V0IHBhc3M6
+YWJjIC1jZXJ0cGJlIFBCRS1TSEExLVJDNC0xMjggLWtleXBiZSBQQkUtU0hBMS1SQzItNDAgLW1h
+Y2FsZyBzaGEzODQgQE9QRU5TU0xfTEVHQUNZX09QVFNACiAKIHVuaXQvY2VydC1lbnRpdHktcGtj
+czEyLXBrY3M1LXNoYTUxMi5wMTI6IHVuaXQvY2VydC1lbnRpdHktaW50LWtleS5wZW0gdW5pdC9j
+ZXJ0LWVudGl0eS1pbnQucGVtIHVuaXQvY2VydC1jaGFpbi5wZW0KLQkkKEFNX1ZfR0VOKW9wZW5z
+c2wgcGtjczEyIC1pbmtleSAkPCAtaW4gJChidWlsZGRpcikvdW5pdC9jZXJ0LWVudGl0eS1pbnQu
+cGVtIC1jZXJ0ZmlsZSAkKGJ1aWxkZGlyKS91bml0L2NlcnQtY2hhaW4ucGVtIC1vdXQgJEAgLWV4
+cG9ydCAtcGFzc291dCBwYXNzOmFiYyAtY2VydHBiZSBkZXMtY2JjIC1rZXlwYmUgZGVzLWNiYyAt
+bWFjYWxnIHNoYTUxMgorCSQoQU1fVl9HRU4pb3BlbnNzbCBwa2NzMTIgLWlua2V5ICQ8IC1pbiAk
+KGJ1aWxkZGlyKS91bml0L2NlcnQtZW50aXR5LWludC5wZW0gLWNlcnRmaWxlICQoYnVpbGRkaXIp
+L3VuaXQvY2VydC1jaGFpbi5wZW0gLW91dCAkQCAtZXhwb3J0IC1wYXNzb3V0IHBhc3M6YWJjIC1j
+ZXJ0cGJlIGRlcy1jYmMgLWtleXBiZSBkZXMtY2JjIC1tYWNhbGcgc2hhNTEyIEBPUEVOU1NMX0xF
+R0FDWV9PUFRTQAogCiB1bml0L2NlcnQtZW50aXR5LWNvbWJpbmVkLnBlbTogdW5pdC9jZXJ0LWVu
+dGl0eS1wa2NzMTItcmMyLXNoYTEucDEyCi0JJChBTV9WX0dFTilvcGVuc3NsIHBrY3MxMiAtaW4g
+JDwgLW91dCAkQCAtcGFzc2luIHBhc3M6YWJjIC1wYXNzb3V0IHBhc3M6YWJjCisJJChBTV9WX0dF
+TilvcGVuc3NsIHBrY3MxMiAtaW4gJDwgLW91dCAkQCAtcGFzc2luIHBhc3M6YWJjIC1wYXNzb3V0
+IHBhc3M6YWJjIEBPUEVOU1NMX0xFR0FDWV9PUFRTQAogCiB1bml0L2tleS1wbGFpbnRleHQuaDog
+dW5pdC9wbGFpbnRleHQudHh0CiAJJChBTV9WX0dFTil4eGQgLWkgPCAkPCA+ICRACmRpZmYgLS1n
+aXQgYS9jb25maWd1cmUuYWMgYi9jb25maWd1cmUuYWMKaW5kZXggOTM1MGUxNC4uNGIwNzU5ZCAx
+MDA2NDQKLS0tIGEvY29uZmlndXJlLmFjCisrKyBiL2NvbmZpZ3VyZS5hYwpAQCAtMzEsNiArMzEs
+OCBAQCBBQ19DX0JJR0VORElBTihsaXR0bGVfZW5kaWFuPW5vLCBsaXR0bGVfZW5kaWFuPXllcywg
+bGl0dGxlX2VuZGlhbj1ubykKIExUX1BSRVJFUSgyLjIpCiBMVF9JTklUKFtkaXNhYmxlLXN0YXRp
+Y10pCiAKK1BLR19QUk9HX1BLR19DT05GSUcoMC4yOS4yKQorCiBBQ19BUkdfRU5BQkxFKG9wdGlt
+aXphdGlvbiwgQUNfSEVMUF9TVFJJTkcoWy0tZGlzYWJsZS1vcHRpbWl6YXRpb25dLAogCQkJW2Rp
+c2FibGUgY29kZSBvcHRpbWl6YXRpb24gdGhyb3VnaCBjb21waWxlcl0pLCBbCiAJaWYgKHRlc3Qg
+IiR7ZW5hYmxldmFsfSIgPSAibm8iKTsgdGhlbgpAQCAtMTMyLDYgKzEzNCwxMCBAQCBmaQogQU1f
+Q09ORElUSU9OQUwoREJVU19URVNUUywgdGVzdCAiJHtsaXR0bGVfZW5kaWFufSIgPSAieWVzIikK
+IEFNX0NPTkRJVElPTkFMKENFUlRfVEVTVFMsIHRlc3QgIiR7aGF2ZV9vcGVuc3NsfSIgPSAieWVz
+IikKIAorUEtHX0NIRUNLX1ZBUihPUEVOU1NMX0xJQkRJUiwgb3BlbnNzbCA+PSAzLjAsIGxpYmRp
+ciwgT1BFTlNTTF9MRUdBQ1lfT1BUUz0iLXByb3ZpZGVyIGRlZmF1bHQgLXByb3ZpZGVyLXBhdGgg
+JHtPUEVOU1NMX0xJQkRJUn0vb3NzbC1tb2R1bGVzIC1wcm92aWRlciBsZWdhY3kiLAorCQkgICAg
+ICAgICAgIE9QRU5TU0xfTEVHQUNZX09QVFM9IiIpCitBQ19TVUJTVChPUEVOU1NMX0xFR0FDWV9P
+UFRTKQorCiBBQ19DT05GSUdfRklMRVMoTWFrZWZpbGUgZWxsL2VsbC5wYykKIAogQUNfT1VUUFVU
+Ci0tIAoyLjMzLjAuNTE0Lmc5OWM5OWVkODI1Cgo=
 
-+	nc->dhcp6_client =3D l_dhcp6_client_new(ifindex);
-+
-+	nc->icmp6_client =3D l_dhcp6_client_get_icmp6(nc->dhcp6_client);
-+	l_icmp6_client_add_event_handler(nc->icmp6_client,
-+					netconfig_icmp6_event_handler,
-+					nc, NULL);
-+
- 	return nc;
- }
- =
-
-@@ -393,6 +589,7 @@ LIB_EXPORT void l_netconfig_destroy(struct l_netconfig =
-*netconfig)
- 	l_netconfig_set_domain_names_override(netconfig, AF_INET6, NULL);
- =
-
- 	l_dhcp_client_destroy(netconfig->dhcp_client);
-+	l_dhcp6_client_destroy(netconfig->dhcp6_client);
- 	l_netconfig_set_event_handler(netconfig, NULL, NULL, NULL);
- 	l_queue_destroy(netconfig->addresses.current, NULL);
- 	l_queue_destroy(netconfig->addresses.added, NULL);
-@@ -774,16 +971,22 @@ configure_ipv6:
- 	if (!netconfig->v6_enabled)
- 		goto done;
- =
-
--	if (netconfig->v6_static_addr && !netconfig->do_static_work) {
-+	if (netconfig->v6_static_addr) {
- 		/*
- 		 * We're basically ready to configure the interface
- 		 * but do this in an idle callback.
- 		 */
--		netconfig->do_static_work =3D l_idle_create(
-+		if (!netconfig->do_static_work)
-+			netconfig->do_static_work =3D l_idle_create(
- 						netconfig_do_static_config,
- 						netconfig, NULL);
-+
-+		goto done;
- 	}
- =
-
-+	if (!l_dhcp6_client_start(netconfig->dhcp6_client))
-+		return false;
-+
- done:
- 	netconfig->started =3D true;
- 	return true;
-@@ -810,6 +1013,7 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *n=
-etconfig)
- 	netconfig->v6_address =3D NULL;
- =
-
- 	l_dhcp_client_stop(netconfig->dhcp_client);
-+	l_dhcp6_client_stop(netconfig->dhcp6_client);
- }
- =
-
- LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhcp_client(
--- =
-
-2.32.0
-
---===============6913235489293539469==--
+--===============2359433328197034566==--
 
