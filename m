@@ -1,129 +1,54 @@
-Content-Type: multipart/mixed; boundary="===============1691220982576962768=="
+Content-Type: multipart/mixed; boundary="===============2067751260763284843=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Mat Martineau <mathew.j.martineau at linux.intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 09/13] netconfig: Add getters for DNS addresses and domain
- names
-Date: Fri, 22 Apr 2022 20:59:48 +0200
-Message-ID: <20220422185952.105279-9-andrew.zaborowski@intel.com>
-In-Reply-To: 20220422185952.105279-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH]run unit tests on both OpenSSL-1.x and OpenSSL-3.x
+Date: Wed, 06 Apr 2022 15:15:05 -0700
+Message-ID: <139b5e8-97c0-624c-ff3d-eaee4555498e@linux.intel.com>
+In-Reply-To: CAKjfnjruDgyK0EB4RtqXoHy6CR2SU=iTt11UmfDtGw4AfDZhMw@mail.gmail.com
 
---===============1691220982576962768==
+--===============2067751260763284843==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/ell.sym     |  2 ++
- ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++++
- ell/netconfig.h |  2 ++
- 3 files changed, 68 insertions(+)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 0f9f884..0ce604b 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -755,6 +755,8 @@ global:
- 	l_netconfig_apply_rtnl;
- 	l_netconfig_get_addresses;
- 	l_netconfig_get_routes;
-+	l_netconfig_get_dns_list;
-+	l_netconfig_get_domain_names;
- local:
- 	*;
- };
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index b8f5d3f..024977c 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1264,3 +1264,67 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_g=
-et_routes(
- =
+On Tue, 29 Mar 2022, wen zhang wrote:
 
- 	return l_queue_get_entries(netconfig->routes.current);
- }
-+
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_dns_list(struct l_netconfig *netconfig)
-+{
-+	char **ret =3D NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
-+
-+#define CONCAT(dest, src, free)		\
-+	do {				\
-+		char **tmp =3D src;	\
-+		tmp =3D free ? tmp : l_strv_copy(tmp);	\
-+		if (!dest)		\
-+			dest =3D tmp;	\
-+		else if (tmp) {		\
-+			unsigned int destlen =3D l_strv_length(dest);	\
-+			unsigned int srclen =3D l_strv_length(tmp);	\
-+			dest =3D l_realloc(dest, sizeof(char *) *	\
-+				(destlen + srclen + 1));	\
-+			memcpy(dest + destlen, tmp, sizeof(char *) *	\
-+					(srclen + 1));	\
-+			l_free(tmp);	\
-+		}			\
-+	} while (0)
-+
-+	if (netconfig->v4_dns_override)
-+		CONCAT(ret, netconfig->v4_dns_override, false);
-+	else if ((v4_lease =3D
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)))
-+		CONCAT(ret, l_dhcp_lease_get_dns(v4_lease), true);
-+
-+	if (netconfig->v6_dns_override)
-+		CONCAT(ret, netconfig->v6_dns_override, false);
-+	else if ((v6_lease =3D
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		CONCAT(ret, l_dhcp6_lease_get_dns(v6_lease), true);
-+
-+	return ret;
-+}
-+
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_domain_names(struct l_netconfig *netconf=
-ig)
-+{
-+	char **ret =3D NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
-+
-+	if (netconfig->v4_domain_names_override)
-+		CONCAT(ret, netconfig->v4_domain_names_override, false);
-+	else if ((v4_lease =3D
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)) &&
-+			l_dhcp_lease_get_domain_name(v4_lease)) {
-+		ret =3D l_new(char *, 2);
-+		ret[0] =3D l_dhcp_lease_get_domain_name(v4_lease);
-+	}
-+
-+	if (netconfig->v6_dns_override)
-+		CONCAT(ret, netconfig->v6_domain_names_override, false);
-+	else if ((v6_lease =3D
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		CONCAT(ret, l_dhcp6_lease_get_domains(v6_lease), true);
-+
-+	return ret;
-+}
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index 7796a2f..8bb0c0e 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -97,6 +97,8 @@ const struct l_queue_entry *l_netconfig_get_routes(
- 				const struct l_queue_entry **out_added,
- 				const struct l_queue_entry **out_updated,
- 				const struct l_queue_entry **out_removed);
-+char **l_netconfig_get_dns_list(struct l_netconfig *netconfig);
-+char **l_netconfig_get_domain_names(struct l_netconfig *netconfig);
- =
+> Some unit tests are breaking on systems with OpenSSL 3.x.
+> This patch detects the OpenSSL version, then if we are building Ell on
+> OpenSSL 3.x, the legacy module options will be appended to openssl comman=
+ds.
 
- #ifdef __cplusplus
- }
--- =
+Hi Wen Zhang -
 
-2.32.0
+I noticed that ELL is not building the unit tests on the Fedora 36 beta =
 
---===============1691220982576962768==--
+due to this OpenSSL 3 command line issue with the legacy providers.
+
+Unfortunately, your patch didn't work on Fedora 36. I see these lines =
+
+added to the Makefile generated with the bootstrap-configure script:
+
+OPENSSL_LEGACY_OPTS =3D
+OPENSSL_LIBDIR =3D
+
+In addition, the openssl legacy provider options are not included in the =
+
+openssl commands.
+
+
+Also, be sure to send patches using 'git send-email' so they do not use =
+
+HTML or attachments. More patch submission guidelines are here: =
+
+https://git.kernel.org/pub/scm/libs/ell/ell.git/tree/HACKING
+
+
+Thanks,
+
+--
+Mat Martineau
+Intel
+--===============2067751260763284843==--
 
