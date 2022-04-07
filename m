@@ -1,46 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============7501656408228120631=="
+Content-Type: multipart/mixed; boundary="===============7236070813185630865=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH] dhcp6: Switch to BOUND before LEASE_OBTAINED
-Date: Mon, 08 Nov 2021 12:29:01 +0100
-Message-ID: <20211108112901.372486-1-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH] configure: Update to support Autoconf >= 2.69
+Date: Thu, 07 Apr 2022 10:20:27 -0500
+Message-ID: <36243bcd-0fa4-f8cf-f731-2b5a102e0878@gmail.com>
+In-Reply-To: 20220407040007.99836-1-ossama.othman@intel.com
 
---===============7501656408228120631==
+--===============7236070813185630865==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Reorder actions so that when we obtain the lease, we first switch to
-DHCP6_STATE_BOUND and configure the address + emit
-L_DHCP6_CLIENT_EVENT_LEASE_OBTAINED after that.  This allows the event
-handler to use l_dhcp6_client_get_lease().  l_dhcp6_client_get_lease is
-hardwired to return NULL in DHCP6_STATE_REQUESTING.
+Hi Ossama,
 
-Issue reported by T=C3=A9rence Clastres.
----
- ell/dhcp6.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On 4/6/22 23:00, Ossama Othman wrote:
+> Bootstrapping ELL against Autoconf 2.71 triggers warnings about use of
+> the deprecated Autoconf macros.  Replace use of the deprecated
+> AC_HELP_STRING and AC_LANG_C macros with AS_HELP_STRING and
+> AC_LANG([C]), respectively.
+> =
 
-diff --git a/ell/dhcp6.c b/ell/dhcp6.c
-index 67d4628..7dfc664 100644
---- a/ell/dhcp6.c
-+++ b/ell/dhcp6.c
-@@ -1401,8 +1401,8 @@ static void dhcp6_client_rx_message(const void *data,=
- size_t len,
- 	if (r =3D=3D DHCP6_STATE_BOUND) {
- 		l_timeout_remove(client->timeout_send);
- 		client->timeout_send =3D NULL;
--		dhcp6_client_setup_lease(client);
- 		dhcp6_client_new_transaction(client, r);
-+		dhcp6_client_setup_lease(client);
- 		return;
- 	}
- =
+> Bump the Autoconf prerequisite, accordingly, to support the updated
+> macros, from 2.60 to 2.69.  Only require Autoconf 2.69 as a
+> prerequisite since many Linux distributions do not yet ship with
+> Autoconf 2.71.
+> =
 
--- =
+> This also addresses a `configure' script generation error on Fedora 36.
+> ---
+>   configure.ac | 20 ++++++++++----------
+>   1 file changed, 10 insertions(+), 10 deletions(-)
+> =
 
-2.32.0
 
---===============7501656408228120631==--
+Applied, thanks,
+
+Regards,
+-Denis
+
+--===============7236070813185630865==--
 
