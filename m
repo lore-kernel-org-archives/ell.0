@@ -1,88 +1,131 @@
-Content-Type: multipart/mixed; boundary="===============5474598634376704056=="
+Content-Type: multipart/mixed; boundary="===============0884619306659696866=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Ossama Othman <ossama.othman at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 08/13] netconfig: Add l_netconfig_get_{dhcp6,icmp6}_client
-Date: Fri, 06 May 2022 01:15:34 +0200
-Message-ID: <20220505231539.888792-8-andrew.zaborowski@intel.com>
-In-Reply-To: 20220505231539.888792-1-andrew.zaborowski@intel.com
+Subject: [PATCH] configure: Update to support Autoconf >= 2.69
+Date: Wed, 06 Apr 2022 21:00:07 -0700
+Message-ID: <20220407040007.99836-1-ossama.othman@intel.com>
 
---===============5474598634376704056==
+--===============0884619306659696866==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Bootstrapping ELL against Autoconf 2.71 triggers warnings about use of
+the deprecated Autoconf macros.  Replace use of the deprecated
+AC_HELP_STRING and AC_LANG_C macros with AS_HELP_STRING and
+AC_LANG([C]), respectively.
+
+Bump the Autoconf prerequisite, accordingly, to support the updated
+macros, from 2.60 to 2.69.  Only require Autoconf 2.69 as a
+prerequisite since many Linux distributions do not yet ship with
+Autoconf 2.71.
+
+This also addresses a `configure' script generation error on Fedora 36.
 ---
- ell/ell.sym     |  2 ++
- ell/netconfig.c | 18 ++++++++++++++++++
- ell/netconfig.h |  4 ++++
- 3 files changed, 24 insertions(+)
+ configure.ac | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 60dd257..0f9f884 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -749,6 +749,8 @@ global:
- 	l_netconfig_start;
- 	l_netconfig_stop;
- 	l_netconfig_get_dhcp_client;
-+	l_netconfig_get_dhcp6_client;
-+	l_netconfig_get_icmp6_client;
- 	l_netconfig_set_event_handler;
- 	l_netconfig_apply_rtnl;
- 	l_netconfig_get_addresses;
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 19d49db..57b1a04 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1268,6 +1268,24 @@ LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhc=
-p_client(
- 	return netconfig->dhcp_client;
- }
+diff --git a/configure.ac b/configure.ac
+index 9350e14..3bf220b 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1,5 +1,5 @@
+-AC_PREREQ(2.60)
+-AC_INIT(ell, 0.49)
++AC_PREREQ([2.69])
++AC_INIT([ell],[0.49])
  =
 
-+LIB_EXPORT struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
-+						struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return NULL;
-+
-+	return netconfig->dhcp6_client;
-+}
-+
-+LIB_EXPORT struct l_icmp6_client *l_netconfig_get_icmp6_client(
-+						struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return NULL;
-+
-+	return netconfig->icmp6_client;
-+}
-+
- LIB_EXPORT void l_netconfig_set_event_handler(struct l_netconfig *netconfi=
-g,
- 					l_netconfig_event_cb_t handler,
- 					void *user_data,
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index cf11c67..69100a2 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -75,6 +75,10 @@ void l_netconfig_stop(struct l_netconfig *netconfig);
+ AC_CONFIG_HEADERS(config.h)
+ AC_CONFIG_AUX_DIR(build-aux)
+@@ -16,7 +16,7 @@ AC_PREFIX_DEFAULT(/usr/local)
  =
 
- struct l_dhcp_client *l_netconfig_get_dhcp_client(
- 						struct l_netconfig *netconfig);
-+struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
-+						struct l_netconfig *netconfig);
-+struct l_icmp6_client *l_netconfig_get_icmp6_client(
-+						struct l_netconfig *netconfig);
+ COMPILER_FLAGS
  =
 
- void l_netconfig_set_event_handler(struct l_netconfig *netconfig,
- 					l_netconfig_event_cb_t handler,
+-AC_LANG_C
++AC_LANG([C])
+ =
+
+ AC_PROG_CC
+ AC_PROG_CC_PIE
+@@ -31,14 +31,14 @@ AC_C_BIGENDIAN(little_endian=3Dno, little_endian=3Dyes,=
+ little_endian=3Dno)
+ LT_PREREQ(2.2)
+ LT_INIT([disable-static])
+ =
+
+-AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization],
++AC_ARG_ENABLE(optimization, AS_HELP_STRING([--disable-optimization],
+ 			[disable code optimization through compiler]), [
+ 	if (test "${enableval}" =3D "no"); then
+ 		CFLAGS=3D"$CFLAGS -U_FORTIFY_SOURCE -O0"
+ 	fi
+ ])
+ =
+
+-AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
++AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],
+ 			[enable compiling with debugging information]), [
+ 	if (test "${enableval}" =3D "yes" &&
+ 				test "${ac_cv_prog_cc_g}" =3D "yes"); then
+@@ -46,7 +46,7 @@ AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
+ 	fi
+ ])
+ =
+
+-AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
++AC_ARG_ENABLE(pie, AS_HELP_STRING([--enable-pie],
+ 			[enable position independent executables flag]), [
+ 	if (test "${enableval}" =3D "yes" &&
+ 				test "${ac_cv_prog_cc_pie}" =3D "yes"); then
+@@ -59,7 +59,7 @@ save_LIBS=3D$LIBS
+ AC_CHECK_LIB(asan, _init)
+ LIBS=3D$save_LIBS
+ =
+
+-AC_ARG_ENABLE(asan, AC_HELP_STRING([--enable-asan],
++AC_ARG_ENABLE(asan, AS_HELP_STRING([--enable-asan],
+ 			[enable linking with address sanitizer]), [
+ 	if (test "${enableval}" =3D "yes" &&
+ 				test "${ac_cv_lib_asan__init}" =3D "yes" &&
+@@ -73,7 +73,7 @@ save_LIBS=3D$LIBS
+ AC_CHECK_LIB(lsan, _init)
+ LIBS=3D$save_LIBS
+ =
+
+-AC_ARG_ENABLE(lsan, AC_HELP_STRING([--enable-lsan],
++AC_ARG_ENABLE(lsan, AS_HELP_STRING([--enable-lsan],
+ 			[enable linking with leak sanitizer]), [
+ 	if (test "${enableval}" =3D "yes" &&
+ 				test "${ac_cv_lib_lsan__init}" =3D "yes" &&
+@@ -87,7 +87,7 @@ save_LIBS=3D$LIBS
+ AC_CHECK_LIB(ubsan, _init)
+ LIBS=3D$save_LIBS
+ =
+
+-AC_ARG_ENABLE(ubsan, AC_HELP_STRING([--enable-ubsan],
++AC_ARG_ENABLE(ubsan, AS_HELP_STRING([--enable-ubsan],
+ 			[enable linking with undefined behavior sanitizer]), [
+ 	if (test "${enableval}" =3D "yes" &&
+ 				test "${ac_cv_lib_ubsan__init}" =3D "yes" &&
+@@ -111,7 +111,7 @@ AC_CHECK_FUNC(epoll_create, dummy=3Dyes,
+ =
+
+ AC_CHECK_HEADERS(linux/types.h linux/if_alg.h)
+ =
+
+-AC_ARG_ENABLE(glib, AC_HELP_STRING([--enable-glib],
++AC_ARG_ENABLE(glib, AS_HELP_STRING([--enable-glib],
+ 				[enable ell/glib main loop example]),
+ 					[enable_glib=3D${enableval}])
+ =
+
 -- =
 
 2.32.0
 
---===============5474598634376704056==--
+--===============0884619306659696866==--
 
