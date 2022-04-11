@@ -1,45 +1,77 @@
-Content-Type: multipart/mixed; boundary="===============3844966273491451685=="
+Content-Type: multipart/mixed; boundary="===============1217565308216356480=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 07/17] netconfig: Use an internal rtnl socket for
- l_netconfig_apply_rtnl
-Date: Thu, 19 May 2022 13:52:47 +0200
-Message-ID: <CAOq732JFUWwpJpg7BNAWH4JT5CnN-EHNLD_7eDERYEqaRwEqmQ@mail.gmail.com>
-In-Reply-To: 378dbbda-7453-9a67-db2f-e098ba159388@gmail.com
+Subject: [PATCH 05/11] rtnl: Minor cleanup
+Date: Mon, 11 Apr 2022 16:20:50 +0200
+Message-ID: <20220411142056.817784-5-andrew.zaborowski@intel.com>
+In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
 
---===============3844966273491451685==
+--===============1217565308216356480==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+In l_rtnl_route_get_gateway return NULL if route is for an onlink prefix
+(no gateway).  Remove empty lines and use L_IN_SET in one instance.
+---
+ ell/rtnl.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-On Wed, 18 May 2022 at 20:58, Denis Kenzior <denkenz(a)gmail.com> wrote:
-> On 5/13/22 17:47, Andrew Zaborowski wrote:
-> >   LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
-> >   {
-> >       struct l_netconfig *nc;
-> > +     struct l_netlink *rtnl =3D l_netlink_new(NETLINK_ROUTE);
-> > +
-> > +     if (!rtnl)
-> > +             return NULL;
->
-> I'm against this.  We will have multiple netconfig objects in play and ea=
-ch one
-> would be utilizing an fd.  We should be keeping our fd use to a minimum,
-> particularly since we're limited to ~128 right now.  Passing in the rtnl =
-object
-> from outside is preferred.
+diff --git a/ell/rtnl.c b/ell/rtnl.c
+index cbe9b87..58f2eb1 100644
+--- a/ell/rtnl.c
++++ b/ell/rtnl.c
+@@ -469,6 +469,9 @@ LIB_EXPORT bool l_rtnl_route_get_gateway(const struct l=
+_rtnl_route *rt,
+ 	if (unlikely(!rt))
+ 		return false;
+ =
 
-Makes sense.  How about using a global rtnl object for all of the
-l_netconfig objects?  Do you still prefer that it be passed from
-outside?
++	if (address_is_null(rt->family, &rt->gw.in_addr, &rt->gw.in6_addr))
++		return false;
++
+ 	return !address_to_string(rt->family, &rt->gw.in_addr, &rt->gw.in6_addr,
+ 					out_buf);
+ }
+@@ -583,9 +586,8 @@ LIB_EXPORT bool l_rtnl_route_set_preference(struct l_rt=
+nl_route *rt,
+ 	if (unlikely(!rt))
+ 		return false;
+ =
 
-I did this later in patch 11 and maybe should have merged that change
-directly here.  We could also create it only after
-l_netconfig_start().
+-	if (preference !=3D ICMPV6_ROUTER_PREF_LOW &&
+-			preference !=3D ICMPV6_ROUTER_PREF_HIGH &&
+-			preference !=3D ICMPV6_ROUTER_PREF_MEDIUM)
++	if (!L_IN_SET(preference, ICMPV6_ROUTER_PREF_LOW,
++			ICMPV6_ROUTER_PREF_HIGH, ICMPV6_ROUTER_PREF_MEDIUM))
+ 		return false;
+ =
 
-Best regards
---===============3844966273491451685==--
+ 	rt->preference =3D preference;
+@@ -602,7 +604,6 @@ LIB_EXPORT bool l_rtnl_route_get_prefsrc(const struct l=
+_rtnl_route *rt,
+ 					&rt->prefsrc.in6_addr))
+ 		return false;
+ =
+
+-
+ 	return !address_to_string(rt->family, &rt->prefsrc.in_addr,
+ 						&rt->prefsrc.in6_addr,
+ 						out_address);
+@@ -1079,7 +1080,6 @@ LIB_EXPORT void l_rtnl_ifaddr6_extract(const struct i=
+faddrmsg *ifa, int len,
+ =
+
+ 			if (!inet_ntop(AF_INET6, &in6_addr, address,
+ 							INET6_ADDRSTRLEN)) {
+-
+ 				l_error("rtnl: Failed to extract IPv6 address");
+ 				break;
+ 			}
+-- =
+
+2.32.0
+
+--===============1217565308216356480==--
 
