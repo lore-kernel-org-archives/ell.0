@@ -1,131 +1,115 @@
-Content-Type: multipart/mixed; boundary="===============4103390369069015584=="
+Content-Type: multipart/mixed; boundary="===============5568409147933035105=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 11/13] examples: Update l_netconfig_get_{addresses,
- routes} calls
-Date: Fri, 22 Apr 2022 20:59:50 +0200
-Message-ID: <20220422185952.105279-11-andrew.zaborowski@intel.com>
-In-Reply-To: 20220422185952.105279-1-andrew.zaborowski@intel.com
+Subject: [PATCH 04/11] rtnl: Add l_rtnl_route getters for raw address data
+Date: Mon, 11 Apr 2022 16:20:49 +0200
+Message-ID: <20220411142056.817784-4-andrew.zaborowski@intel.com>
+In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
 
---===============4103390369069015584==
+--===============5568409147933035105==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Add l_rtnl_route_get_gateway_in_addr and l_rtnl_route_get_dst_in_addr
+for raw struct in_addr / struct in6_addr addresses, as opposed to string
+representations.  This is to be used to avoid unneeded string
+conversions in both directions.
 ---
- examples/netconfig-test.c | 36 +++++++++++++++++++-----------------
- 1 file changed, 19 insertions(+), 17 deletions(-)
+ ell/ell.sym |  2 ++
+ ell/rtnl.c  | 30 ++++++++++++++++++++++++++++++
+ ell/rtnl.h  |  3 +++
+ 3 files changed, 35 insertions(+)
 
-diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
-index c9d02ab..573bf86 100644
---- a/examples/netconfig-test.c
-+++ b/examples/netconfig-test.c
-@@ -61,16 +61,14 @@ static void signal_handler(uint32_t signo, void *user_d=
-ata)
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 3816e3f..9b3a6e1 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -643,7 +643,9 @@ global:
+ 	l_rtnl_route_free;
+ 	l_rtnl_route_get_family;
+ 	l_rtnl_route_get_gateway;
++	l_rtnl_route_get_gateway_in_addr;
+ 	l_rtnl_route_get_dst;
++	l_rtnl_route_get_dst_in_addr;
+ 	l_rtnl_route_get_lifetime;
+ 	l_rtnl_route_set_lifetime;
+ 	l_rtnl_route_get_expiry;
+diff --git a/ell/rtnl.c b/ell/rtnl.c
+index dbaf97b..cbe9b87 100644
+--- a/ell/rtnl.c
++++ b/ell/rtnl.c
+@@ -473,6 +473,21 @@ LIB_EXPORT bool l_rtnl_route_get_gateway(const struct =
+l_rtnl_route *rt,
+ 					out_buf);
  }
  =
 
- static void log_addresses(const char *af_str, const char *action,
--				struct l_queue *list)
-+				const struct l_queue_entry *entry)
- {
--	const struct l_queue_entry *entry;
--
--	if (l_queue_isempty(list))
-+	if (!entry)
- 		return;
- =
-
- 	l_info("[netconfig%s] Addresses %s:", af_str, action);
- =
-
--	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
-+	for (; entry; entry =3D entry->next) {
- 		struct l_rtnl_address *addr =3D entry->data;
- 		char ip_str[INET6_ADDRSTRLEN];
- =
-
-@@ -83,25 +81,26 @@ static void log_addresses(const char *af_str, const cha=
-r *action,
++LIB_EXPORT const void *l_rtnl_route_get_gateway_in_addr(
++						const struct l_rtnl_route *rt)
++{
++	if (unlikely(!rt))
++		return NULL;
++
++	if (address_is_null(rt->family, &rt->gw.in_addr, &rt->gw.in6_addr))
++		return NULL;
++
++	if (rt->family =3D=3D AF_INET)
++		return &rt->gw.in_addr;
++	else
++		return &rt->gw.in6_addr;
++}
++
+ LIB_EXPORT bool l_rtnl_route_get_dst(const struct l_rtnl_route *rt,
+ 						char *out_buf,
+ 						uint8_t *out_prefix_len)
+@@ -488,6 +503,21 @@ LIB_EXPORT bool l_rtnl_route_get_dst(const struct l_rt=
+nl_route *rt,
+ 	return true;
  }
  =
 
- static void log_routes(const char *af_str, const char *action,
--			struct l_queue *list)
-+			const struct l_queue_entry *entry)
++LIB_EXPORT const void *l_rtnl_route_get_dst_in_addr(
++						const struct l_rtnl_route *rt,
++						uint8_t *out_prefix_len)
++{
++	if (unlikely(!rt))
++		return NULL;
++
++	*out_prefix_len =3D rt->dst_prefix_len;
++
++	if (rt->family =3D=3D AF_INET)
++		return &rt->dst.in_addr;
++	else
++		return &rt->dst.in6_addr;
++}
++
+ LIB_EXPORT uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *r=
+t)
  {
--	const struct l_queue_entry *entry;
--
--	if (l_queue_isempty(list))
-+	if (!entry)
- 		return;
- =
-
- 	l_info("[netconfig%s] Routes %s:", af_str, action);
- =
-
--	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
-+	for (; entry; entry =3D entry->next) {
- 		struct l_rtnl_route *rt =3D entry->data;
--		char subnet_str[INET6_ADDRSTRLEN];
-+		char subnet_str[INET6_ADDRSTRLEN] =3D "unknown";
- 		char gateway_str[INET6_ADDRSTRLEN];
- 		uint8_t prefix_len;
-+		bool onlink;
- =
-
- 		l_rtnl_route_get_dst(rt, subnet_str, &prefix_len);
--		l_rtnl_route_get_gateway(rt, gateway_str);
--		l_info("[netconfig%s] \t%s/%i, gateway %s, orig lifetime %i s",
--			af_str, subnet_str, prefix_len, gateway_str,
-+		onlink =3D !l_rtnl_route_get_gateway(rt, gateway_str);
-+		l_info("[netconfig%s] \t%s/%i, %s%s, orig lifetime %i s",
-+			af_str, subnet_str, prefix_len,
-+			onlink ? "onlink" : "next-hop ",
-+			onlink ? "" : gateway_str,
- 			l_rtnl_route_get_lifetime(rt));
- 	}
- }
-@@ -110,7 +109,7 @@ static void event_handler(struct l_netconfig *netconfig=
-, uint8_t family,
- 				enum l_netconfig_event event, void *user_data)
- {
- 	const char *af_str =3D family =3D=3D AF_INET ? "v4" : "v6";
--	struct l_queue *added, *updated, *removed;
-+	const struct l_queue_entry *added, *updated, *removed, *expired;
- =
-
- 	switch (event) {
- 	case L_NETCONFIG_EVENT_CONFIGURE:
-@@ -128,15 +127,18 @@ static void event_handler(struct l_netconfig *netconf=
-ig, uint8_t family,
- 		return;
- 	}
- =
-
--	l_netconfig_get_addresses(netconfig, &added, &updated, &removed);
-+	l_netconfig_get_addresses(netconfig, &added, &updated,
-+					&removed, &expired);
- 	log_addresses(af_str, "added", added);
- 	log_addresses(af_str, "updated", updated);
- 	log_addresses(af_str, "removed", removed);
-+	log_addresses(af_str, "expired", expired);
- =
-
--	l_netconfig_get_routes(netconfig, &added, &updated, &removed);
-+	l_netconfig_get_routes(netconfig, &added, &updated, &removed, &expired);
- 	log_routes(af_str, "added", added);
- 	log_routes(af_str, "updated", updated);
- 	log_routes(af_str, "removed", removed);
-+	log_routes(af_str, "expired", expired);
- =
-
- 	if (apply)
- 		l_netconfig_apply_rtnl(netconfig, rtnl);
+ 	if (unlikely(!rt))
+diff --git a/ell/rtnl.h b/ell/rtnl.h
+index 55c4997..2617b1c 100644
+--- a/ell/rtnl.h
++++ b/ell/rtnl.h
+@@ -77,8 +77,11 @@ void l_rtnl_route_free(struct l_rtnl_route *rt);
+ DEFINE_CLEANUP_FUNC(l_rtnl_route_free);
+ uint8_t l_rtnl_route_get_family(const struct l_rtnl_route *rt);
+ bool l_rtnl_route_get_gateway(const struct l_rtnl_route *rt, char *out_buf=
+);
++const void *l_rtnl_route_get_gateway_in_addr(const struct l_rtnl_route *rt=
+);
+ bool l_rtnl_route_get_dst(const struct l_rtnl_route *rt, char *out_buf,
+ 				uint8_t *out_prefix_len);
++const void *l_rtnl_route_get_dst_in_addr(const struct l_rtnl_route *rt,
++						uint8_t *out_prefix_len);
+ uint32_t l_rtnl_route_get_lifetime(const struct l_rtnl_route *rt);
+ bool l_rtnl_route_set_lifetime(struct l_rtnl_route *rt, uint32_t lt);
+ uint64_t l_rtnl_route_get_expiry(const struct l_rtnl_route *rt);
 -- =
 
 2.32.0
 
---===============4103390369069015584==--
+--===============5568409147933035105==--
 
