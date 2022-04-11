@@ -1,56 +1,75 @@
-Content-Type: multipart/mixed; boundary="===============1854639028434899567=="
+Content-Type: multipart/mixed; boundary="===============3309241760581898869=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: AIO support
-Date: Sun, 19 Sep 2021 13:00:44 -0500
-Message-ID: <15045604-1991-c85c-5654-2c8f1cfd3c95@gmail.com>
-In-Reply-To: 61f114ce-ed19-980d-8b97-1eb3b30eee51@maurer.systems
+Subject: [PATCH 09/11] netconfig: Exit on errors in
+ netconfig_dhcp_event_handler
+Date: Mon, 11 Apr 2022 16:20:54 +0200
+Message-ID: <20220411142056.817784-9-andrew.zaborowski@intel.com>
+In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
 
---===============1854639028434899567==
+--===============3309241760581898869==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Simon,
+Don't just warn on errors that could cause a crash later in the function
+even though in theory they can't happen.
+---
+ ell/netconfig.c | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
 
-On 9/19/21 12:12 PM, Simon Maurer wrote:
-> Hi
-> Awesome library! Thank you very much. I'm using it for an embedded linux =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 6641398..030b2e1 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -292,28 +292,34 @@ static void netconfig_dhcp_event_handler(struct l_dhc=
+p_client *client,
+ =
 
+ 	switch (event) {
+ 	case L_DHCP_CLIENT_EVENT_IP_CHANGED:
+-		L_WARN_ON(!nc->v4_configured);
++		if (L_WARN_ON(!nc->v4_configured))
++			break;
++
+ 		netconfig_remove_dhcp_address_routes(nc);
+ 		netconfig_add_dhcp_address_routes(nc);
+ 		netconfig_set_dhcp_lifetimes(nc, false);
+ 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_UPDATE);
+ 		break;
+ 	case L_DHCP_CLIENT_EVENT_LEASE_OBTAINED:
+-	{
+-		L_WARN_ON(nc->v4_configured);
++		if (L_WARN_ON(nc->v4_configured))
++			break;
++
+ 		netconfig_add_dhcp_address_routes(nc);
+ 		netconfig_set_dhcp_lifetimes(nc, false);
+ 		nc->v4_configured =3D true;
+ 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
+ 		break;
+-	}
+ 	case L_DHCP_CLIENT_EVENT_LEASE_RENEWED:
+-		L_WARN_ON(!nc->v4_configured);
++		if (L_WARN_ON(!nc->v4_configured))
++			break;
++
+ 		netconfig_set_dhcp_lifetimes(nc, true);
+ 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_UPDATE);
+ 		break;
+ 	case L_DHCP_CLIENT_EVENT_LEASE_EXPIRED:
+-		L_WARN_ON(!nc->v4_configured);
++		if (L_WARN_ON(!nc->v4_configured))
++			break;
++
+ 		netconfig_remove_dhcp_address_routes(nc);
+ 		nc->v4_configured =3D false;
+ =
 
-Glad you like it!
+-- =
 
-> application with not so strict real time constraints. Problem is, I need =
-non =
+2.32.0
 
-> blocking file access, because the memory card on my system is quite slow.=
- It =
-
-> turns out that this whole non-blocking access doesn't work for files, so =
-now I'm =
-
-
-Can you elaborate?  I always thought
-fcntl(fd, F_SETFL, O_NONBLOCK);
-
-would enable non-blocking behavior on files just fine?  Or is this an issue=
- with =
-
-a particular driver?
-
-> using the POSIX AIO interface and I've integrated it into ELL:
-> https://github.com/mausys/ell/blob/master/ell/aio.c
-> (But needs to be linked against rt)
-> This is just a draft and it also works on top of ELL, but maybe other =
-
-> applications need this too.
-> =
-
-
-Thanks, I'll take a peek later during the week.
-
-Regards,
--Denis
---===============1854639028434899567==--
+--===============3309241760581898869==--
 
