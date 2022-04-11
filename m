@@ -1,241 +1,104 @@
-Content-Type: multipart/mixed; boundary="===============5648133505587242717=="
+Content-Type: multipart/mixed; boundary="===============0000048742256427753=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 2/3] genl,netlink: Move extended ACK code to netlink-private
-Date: Sat, 11 Jun 2022 03:45:44 +0200
-Message-ID: <20220611014545.1466270-2-andrew.zaborowski@intel.com>
-In-Reply-To: 20220611014545.1466270-1-andrew.zaborowski@intel.com
+Subject: [PATCH 07/11] icmp6: Emit L_ICMP6_CLIENT_EVENT_ROUTER_FOUND for all
+ RAs
+Date: Mon, 11 Apr 2022 16:20:52 +0200
+Message-ID: <20220411142056.817784-7-andrew.zaborowski@intel.com>
+In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
 
---===============5648133505587242717==
+--===============0000048742256427753==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Since extended ACK parsing can be also useful for rtnl, move it from
-genl.c to netlink.c and declare in netlink-private.h.
+Emit an L_ICMP6_CLIENT_EVENT_ROUTER_FOUND event for ever Router
+Advertisement received instead of only the first one.
 ---
- ell/genl.c            | 61 ++++---------------------------------------
- ell/netlink-private.h | 15 +++++++++++
- ell/netlink.c         | 56 ++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 75 insertions(+), 57 deletions(-)
+ ell/dhcp6.c | 10 +++++++---
+ ell/icmp6.c | 17 ++++++++---------
+ 2 files changed, 15 insertions(+), 12 deletions(-)
 
-diff --git a/ell/genl.c b/ell/genl.c
-index 61b7b3a..c6965db 100644
---- a/ell/genl.c
-+++ b/ell/genl.c
-@@ -33,9 +33,9 @@
- #include "log.h"
- #include "queue.h"
- #include "io.h"
-+#include "private.h"
- #include "netlink-private.h"
- #include "genl.h"
--#include "private.h"
- =
-
- #define MAX_NESTING_LEVEL 4
- #define GENL_DEBUG(fmt, args...)	\
-@@ -722,17 +722,6 @@ static bool match_request_hid(const void *a, const voi=
-d *b)
- 	return request->handle_id =3D=3D id;
- }
- =
-
--#define NLA_OK(nla,len)         ((len) >=3D (int) sizeof(struct nlattr) &&=
- \
--				(nla)->nla_len >=3D sizeof(struct nlattr) && \
--				(nla)->nla_len <=3D (len))
--#define NLA_NEXT(nla,attrlen)	((attrlen) -=3D NLMSG_ALIGN((nla)->nla_len),=
- \
--				(struct nlattr*)(((char*)(nla)) + \
--				NLMSG_ALIGN((nla)->nla_len)))
--
--#define NLA_LENGTH(len)		(NLMSG_ALIGN(sizeof(struct nlattr)) + (len))
--#define NLA_DATA(nla)		((void*)(((char*)(nla)) + NLA_LENGTH(0)))
--#define NLA_PAYLOAD(nla)	((int)((nla)->nla_len) - NLA_LENGTH(0))
--
- static struct l_genl_msg *msg_alloc(uint8_t cmd, uint8_t version, uint32_t=
- size)
+diff --git a/ell/dhcp6.c b/ell/dhcp6.c
+index 424fad0..01d7eb3 100644
+--- a/ell/dhcp6.c
++++ b/ell/dhcp6.c
+@@ -1473,9 +1473,6 @@ static void dhcp6_client_icmp6_event(struct l_icmp6_c=
+lient *icmp6,
  {
- 	struct l_genl_msg *msg;
-@@ -774,52 +763,13 @@ static bool msg_grow(struct l_genl_msg *msg, uint32_t=
- needed)
- static struct l_genl_msg *msg_create(const struct nlmsghdr *nlmsg)
- {
- 	struct l_genl_msg *msg;
-+	const char *error_msg =3D NULL;
+ 	struct l_dhcp6_client *client =3D user_data;
  =
 
- 	msg =3D l_new(struct l_genl_msg, 1);
+-	l_timeout_remove(client->timeout_send);
+-	client->timeout_send =3D NULL;
+-
+ 	switch (event) {
+ 	case L_ICMP6_CLIENT_EVENT_ROUTER_FOUND:
+ 	{
+@@ -1488,6 +1485,13 @@ static void dhcp6_client_icmp6_event(struct l_icmp6_=
+client *icmp6,
+ 				managed ? "yes" : "no",
+ 				other ? "yes" : "no");
  =
 
--	if (nlmsg->nlmsg_type =3D=3D NLMSG_ERROR) {
--		struct nlmsgerr *err =3D NLMSG_DATA(nlmsg);
--		unsigned int offset =3D 0;
--		struct nlattr *nla;
--		int len;
--
--		msg->error =3D err->error;
--
--		if (!(nlmsg->nlmsg_flags & NLM_F_ACK_TLVS))
--			goto done;
--
--		/*
--		 * If the message is capped, then err->msg.nlmsg_len contains
--		 * the length of the original message and thus can't be used
--		 * to calculate the offset
--		 */
--		if (!(nlmsg->nlmsg_flags & NLM_F_CAPPED))
--			offset =3D err->msg.nlmsg_len - sizeof(struct nlmsghdr);
--
--		/*
--		 * Attributes start past struct nlmsgerr.  The offset is 0
--		 * for NLM_F_CAPPED messages.  Otherwise the original message
--		 * is included, and thus the offset takes err->msg.nlmsg_len
--		 * into account
--		 */
--		nla =3D (void *)(err + 1) + offset;
--
--		/* Calculate bytes taken up by header + nlmsgerr contents */
--		offset +=3D sizeof(struct nlmsghdr) + sizeof(struct nlmsgerr);
--		if (nlmsg->nlmsg_len <=3D offset)
--			goto done;
--
--		len =3D nlmsg->nlmsg_len - offset;
--
--		for (; NLA_OK(nla, len); nla =3D NLA_NEXT(nla, len)) {
--			if ((nla->nla_type & NLA_TYPE_MASK) !=3D
--					NLMSGERR_ATTR_MSG)
--				continue;
--
--			msg->error_msg =3D l_strdup(NLA_DATA(nla));
--			goto done;
--		}
--	}
-+	if (netlink_parse_ext_ack(nlmsg, &error_msg, NULL) &&
-+			error_msg)
-+		msg->error_msg =3D l_strdup(error_msg);
++		/* We only process the first RA received for now */
++		if (!client->timeout_send)
++			return;
++
++		l_timeout_remove(client->timeout_send);
++		client->timeout_send =3D NULL;
++
+ 		if (!managed && !other) {
+ 			l_dhcp6_client_stop(client);
+ 			dhcp6_client_event_notify(client,
+diff --git a/ell/icmp6.c b/ell/icmp6.c
+index 4128f01..82ca997 100644
+--- a/ell/icmp6.c
++++ b/ell/icmp6.c
+@@ -378,16 +378,16 @@ static int icmp6_client_handle_message(struct l_icmp6=
+_client *client,
+ 	if (!r)
+ 		return -EBADMSG;
  =
 
- 	msg->data =3D l_memdup(nlmsg, nlmsg->nlmsg_len);
+-	if (!client->ra) {
+-		client->ra =3D r;
+-		icmp6_client_event_notify(client,
++	icmp6_client_event_notify(client,
+ 					L_ICMP6_CLIENT_EVENT_ROUTER_FOUND,
+-					NULL);
++					r);
  =
 
-@@ -833,7 +783,6 @@ static struct l_genl_msg *msg_create(const struct nlmsg=
-hdr *nlmsg)
- 		msg->version =3D genlmsg->version;
+-		/* DHCP6 client may have stopped us */
+-		if (!client->ra)
+-			return -ECANCELED;
++	/* DHCP6 client may have stopped us */
++	if (!client->io)
++		return -ECANCELED;
+ =
+
++	if (!client->ra) {
++		client->ra =3D r;
+ 		icmp6_client_setup_routes(client);
+ 		return 0;
  	}
- =
-
--done:
- 	return l_genl_msg_ref(msg);
+@@ -396,8 +396,7 @@ static int icmp6_client_handle_message(struct l_icmp6_c=
+lient *client,
+ 	 * TODO: Figure out if the RA has updated info and update routes
+ 	 * accordingly.
+ 	 */
+-	_icmp6_router_free(client->ra);
+-	client->ra =3D r;
++	_icmp6_router_free(r);
+ 	return 0;
  }
  =
 
-diff --git a/ell/netlink-private.h b/ell/netlink-private.h
-index fff30af..fab0ab9 100644
---- a/ell/netlink-private.h
-+++ b/ell/netlink-private.h
-@@ -23,3 +23,18 @@
- #ifndef SOL_NETLINK
- #define SOL_NETLINK 270
- #endif
-+
-+#define NLA_OK(nla,len)         ((len) >=3D (int) sizeof(struct nlattr) &&=
- \
-+				(nla)->nla_len >=3D sizeof(struct nlattr) && \
-+				(nla)->nla_len <=3D (len))
-+#define NLA_NEXT(nla,attrlen)	((attrlen) -=3D NLMSG_ALIGN((nla)->nla_len),=
- \
-+				(struct nlattr*)(((char*)(nla)) + \
-+				NLMSG_ALIGN((nla)->nla_len)))
-+
-+#define NLA_LENGTH(len)		(NLMSG_ALIGN(sizeof(struct nlattr)) + (len))
-+#define NLA_DATA(nla)		((void*)(((char*)(nla)) + NLA_LENGTH(0)))
-+#define NLA_PAYLOAD(nla)	((int)((nla)->nla_len) - NLA_LENGTH(0))
-+
-+bool netlink_parse_ext_ack(const struct nlmsghdr *nlmsg,
-+				const char **out_error_msg,
-+				uint32_t *out_error_offset);
-diff --git a/ell/netlink.c b/ell/netlink.c
-index 4b6d800..32d021b 100644
---- a/ell/netlink.c
-+++ b/ell/netlink.c
-@@ -32,9 +32,9 @@
- #include "hashmap.h"
- #include "queue.h"
- #include "io.h"
-+#include "private.h"
- #include "netlink-private.h"
- #include "netlink.h"
--#include "private.h"
- =
-
- struct command {
- 	unsigned int id;
-@@ -611,3 +611,57 @@ LIB_EXPORT bool l_netlink_set_debug(struct l_netlink *=
-netlink,
- =
-
- 	return true;
- }
-+
-+bool netlink_parse_ext_ack(const struct nlmsghdr *nlmsg,
-+				const char **out_error_msg,
-+				uint32_t *out_error_offset)
-+{
-+	const struct nlmsgerr *err;
-+	unsigned int offset =3D 0;
-+	struct nlattr *nla;
-+	int len;
-+
-+	if (nlmsg->nlmsg_type !=3D NLMSG_ERROR ||
-+			!(nlmsg->nlmsg_flags & NLM_F_ACK_TLVS))
-+		return false;
-+
-+	err =3D NLMSG_DATA(nlmsg);
-+
-+	/*
-+	 * If the message is capped, then err->msg.nlmsg_len contains the
-+	 * length of the original message and thus can't be used to
-+	 * calculate the offset.
-+	 */
-+	if (!(nlmsg->nlmsg_flags & NLM_F_CAPPED))
-+		offset =3D err->msg.nlmsg_len - sizeof(struct nlmsghdr);
-+
-+	/*
-+	 * Attributes start past struct nlmsgerr.  The offset is 0 for
-+	 * NLM_F_CAPPED messages.  Otherwise the original message is
-+	 * included, and thus the offset takes err->msg.nlmsg_len into
-+	 * account.
-+	 */
-+	nla =3D (void *)(err + 1) + offset;
-+
-+	/* Calculate bytes taken up by header + nlmsgerr contents */
-+	offset +=3D sizeof(struct nlmsghdr) + sizeof(struct nlmsgerr);
-+	if (nlmsg->nlmsg_len <=3D offset)
-+		return false;
-+
-+	len =3D nlmsg->nlmsg_len - offset;
-+
-+	for (; NLA_OK(nla, len); nla =3D NLA_NEXT(nla, len)) {
-+		switch (nla->nla_type & NLA_TYPE_MASK) {
-+		case NLMSGERR_ATTR_MSG:
-+			if (out_error_msg)
-+				*out_error_msg =3D NLA_DATA(nla);
-+			break;
-+		case NLMSGERR_ATTR_OFFS:
-+			if (out_error_offset)
-+				*out_error_offset =3D l_get_u32(NLA_DATA(nla));
-+			break;
-+		}
-+	}
-+
-+	return true;
-+}
 -- =
 
-2.34.1
+2.32.0
 
---===============5648133505587242717==--
+--===============0000048742256427753==--
 
