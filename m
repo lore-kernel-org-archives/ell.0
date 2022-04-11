@@ -1,54 +1,66 @@
-Content-Type: multipart/mixed; boundary="===============4407670438069533864=="
+Content-Type: multipart/mixed; boundary="===============7113989042423392373=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 5/5] ecc: make l_ecc_point_from_data fully constant time
-Date: Fri, 04 Feb 2022 09:06:02 -0800
-Message-ID: <20220204170603.216439-5-prestwoj@gmail.com>
-In-Reply-To: 20220204170603.216439-1-prestwoj@gmail.com
+Subject: [PATCH 01/11] net: Add l_net_subnet_matches
+Date: Mon, 11 Apr 2022 16:20:46 +0200
+Message-ID: <20220411142056.817784-1-andrew.zaborowski@intel.com>
 
---===============4407670438069533864==
+--===============7113989042423392373==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This was modified earlier to be constant time but there was one
-minor problem with how 'sub' was determined. That logic could short
-circuit which could alter the timing. The change in timing would be
-extremely small, especially compared to the previous fix making
-_vli_mod_sub() execute always but in any case there would be a small
-difference.
-
-This patch uses l_secure_select_byte to select either of the two
-subtraction conditions which depend on the point type.
+Add inline function to check if two IP addresses are in the same subnet.
 ---
- ell/ecc.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ ell/net.h | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-diff --git a/ell/ecc.c b/ell/ecc.c
-index eba9aef..d59b900 100644
---- a/ell/ecc.c
-+++ b/ell/ecc.c
-@@ -562,10 +562,9 @@ LIB_EXPORT struct l_ecc_point *l_ecc_point_from_data(
- 		if (!_ecc_compute_y(curve, p->y, p->x))
- 			goto failed;
+diff --git a/ell/net.h b/ell/net.h
+index c97d9c9..837209c 100644
+--- a/ell/net.h
++++ b/ell/net.h
+@@ -25,6 +25,7 @@
  =
 
--		sub =3D ((type =3D=3D L_ECC_POINT_TYPE_COMPRESSED_BIT0 &&
--				!(p->y[0] & 1)) ||
--				(type =3D=3D L_ECC_POINT_TYPE_COMPRESSED_BIT1 &&
--				(p->y[0] & 1)));
-+		sub =3D l_secure_select_byte(
-+				type =3D=3D L_ECC_POINT_TYPE_COMPRESSED_BIT0,
-+				!(p->y[1] & 1), p->y[0] & 1);
+ #include <stdbool.h>
+ #include <stdint.h>
++#include <string.h>
  =
 
- 		_vli_mod_sub(tmp, curve->p, p->y, curve->p, curve->ndigits);
+ struct in_addr;
+ struct in6_addr;
+@@ -40,6 +41,26 @@ bool l_net_hostname_is_localhost(const char *hostname);
+ bool l_net_get_address(int ifindex, struct in_addr *out);
+ bool l_net_get_link_local_address(int ifindex, struct in6_addr *out);
  =
 
++static inline bool l_net_subnet_matches(const void *a, const void *b,
++					uint8_t prefix_len)
++{
++	uint8_t bytes =3D prefix_len / 8;
++	uint8_t bits =3D prefix_len & 7;
++
++	/*
++	 * @a and @b are network byte order IPv4 or IPv6 addresses.
++	 * We want to check if the initial (top) @prefix_len bits match.
++	 * memcmp the whole bytes, then compare the final byte's top
++	 * bits by anding with a mask.
++	 */
++	if (bytes && memcmp(a, b, bytes))
++		return false;
++
++	return !bits ||
++		((((const uint8_t *) a)[bytes] ^ ((const uint8_t *) b)[bytes]) &
++		 (0xff00u >> bits)) =3D=3D 0;
++}
++
+ #ifdef __cplusplus
+ }
+ #endif
 -- =
 
-2.31.1
+2.32.0
 
---===============4407670438069533864==--
+--===============7113989042423392373==--
 
