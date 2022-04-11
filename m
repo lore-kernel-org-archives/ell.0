@@ -1,194 +1,303 @@
-Content-Type: multipart/mixed; boundary="===============8567684703419123524=="
+Content-Type: multipart/mixed; boundary="===============5798189115714740317=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 08/11] netconfig: Support IPv6 static configurations
-Date: Mon, 11 Apr 2022 16:20:53 +0200
-Message-ID: <20220411142056.817784-8-andrew.zaborowski@intel.com>
+Subject: [PATCH 10/11] netconfig: Create routes from Router Advertisements
+Date: Mon, 11 Apr 2022 16:20:55 +0200
+Message-ID: <20220411142056.817784-10-andrew.zaborowski@intel.com>
 In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
 
---===============8567684703419123524==
+--===============5798189115714740317==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+If IPv6 is enabled, Create the ICMP6 client and handle Router
+Advertisements received by creating, updating and removing routes per
+the data in the Router Advertisements.  Timeouts aren't handled yet.
 ---
- ell/netconfig.c | 92 +++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 90 insertions(+), 2 deletions(-)
+ ell/netconfig.c | 202 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 201 insertions(+), 1 deletion(-)
 
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index d0f87b3..6641398 100644
+index 030b2e1..15eb4ed 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -62,11 +62,13 @@ struct l_netconfig {
- 	struct l_idle *do_static_work;
+@@ -27,12 +27,16 @@
+ #include <linux/types.h>
+ #include <netinet/ip.h>
+ #include <arpa/inet.h>
++#include <netinet/icmp6.h>
+ =
+
+ #include "private.h"
+ #include "useful.h"
+ #include "log.h"
+ #include "dhcp.h"
+ #include "dhcp-private.h"
++#include "icmp6.h"
++#include "icmp6-private.h"
++#include "dhcp6.h"
+ #include "netlink.h"
+ #include "rtnl.h"
+ #include "queue.h"
+@@ -63,6 +67,8 @@ struct l_netconfig {
  	bool v4_configured;
  	struct l_dhcp_client *dhcp_client;
-+	bool v6_configured;
+ 	bool v6_configured;
++	struct l_icmp6_client *icmp6_client;
++	struct l_dhcp6_client *dhcp6_client;
  =
 
  	/* These objects, if not NULL, are owned by @addresses and @routes */
  	struct l_rtnl_address *v4_address;
- 	struct l_rtnl_route *v4_subnet_route;
- 	struct l_rtnl_route *v4_default_route;
-+	struct l_rtnl_address *v6_address;
- =
-
- 	struct {
- 		struct l_queue *current;
-@@ -159,6 +161,50 @@ static void netconfig_add_v4_routes(struct l_netconfig=
- *nc, const char *ip,
- 	l_queue_push_tail(nc->routes.added, nc->v4_default_route);
- }
- =
-
-+static void netconfig_add_v6_static_routes(struct l_netconfig *nc,
-+						const char *ip,
-+						uint8_t prefix_len)
-+{
-+	struct in6_addr in6_addr;
-+	char network[INET6_ADDRSTRLEN];
-+	struct l_rtnl_route *v6_subnet_route;
-+	struct l_rtnl_route *v6_default_route;
-+
-+	/* Subnet route */
-+
-+	if (L_WARN_ON(inet_pton(AF_INET6, ip, &in6_addr) !=3D 1))
-+		return;
-+
-+	/* Zero out host address bits to produce network address */
-+	if (prefix_len & 7)
-+		in6_addr.s6_addr[prefix_len / 8] &=3D 0xff00 >> (prefix_len & 7);
-+
-+	if (prefix_len <=3D 120)
-+		memset(in6_addr.s6_addr + (prefix_len + 7) / 8, 0,
-+			16 - (prefix_len + 7) / 8);
-+
-+	if (L_WARN_ON(!inet_ntop(AF_INET6, &in6_addr, network,
-+					INET6_ADDRSTRLEN)))
-+		return;
-+
-+	v6_subnet_route =3D l_rtnl_route_new_prefix(network, prefix_len);
-+	l_rtnl_route_set_protocol(v6_subnet_route, RTPROT_STATIC);
-+	l_rtnl_route_set_priority(v6_subnet_route, nc->route_priority);
-+	l_queue_push_tail(nc->routes.current, v6_subnet_route);
-+	l_queue_push_tail(nc->routes.added, v6_subnet_route);
-+
-+	/* Gateway route */
-+
-+	if (!nc->v6_gateway_override)
-+		return;
-+
-+	v6_default_route =3D l_rtnl_route_new_gateway(nc->v6_gateway_override);
-+	l_rtnl_route_set_protocol(v6_default_route, RTPROT_STATIC);
-+	L_WARN_ON(!l_rtnl_route_set_prefsrc(v6_default_route, ip));
-+	l_queue_push_tail(nc->routes.current, v6_default_route);
-+	l_queue_push_tail(nc->routes.added, v6_default_route);
-+}
-+
- static void netconfig_add_dhcp_address_routes(struct l_netconfig *nc)
- {
- 	const struct l_dhcp_lease *lease =3D
-@@ -683,7 +729,7 @@ LIB_EXPORT bool l_netconfig_check_config(struct l_netco=
-nfig *netconfig)
- 	return netconfig_check_config(netconfig);
- }
- =
-
--static void netconfig_add_static_address_routes(struct l_netconfig *nc)
-+static void netconfig_add_v4_static_address_routes(struct l_netconfig *nc)
- {
- 	char ip[INET_ADDRSTRLEN];
- 	uint32_t prefix_len;
-@@ -697,6 +743,29 @@ static void netconfig_add_static_address_routes(struct=
- l_netconfig *nc)
- 	netconfig_add_v4_routes(nc, ip, prefix_len, NULL, RTPROT_STATIC);
- }
- =
-
-+/*
-+ * Just mirror the IPv4 behaviour with static IPv6 configuration.  It would
-+ * be more logical to let the user choose between static IPv6 address and
-+ * DHCPv6, and, completely independently, choose between static routes
-+ * (if a static prefix length and/or gateway address is set) and ICMPv6.
-+ * Yet a mechanism identical with IPv4 is easier to understand for a typic=
-al
-+ * user so providing a static address just disables all automatic
-+ * configuration.
-+ */
-+static void netconfig_add_v6_static_address_routes(struct l_netconfig *nc)
-+{
-+	char ip[INET6_ADDRSTRLEN];
-+	uint32_t prefix_len;
-+
-+	nc->v6_address =3D l_rtnl_address_clone(nc->v6_static_addr);
-+	l_queue_push_tail(nc->addresses.current, nc->v6_address);
-+	l_queue_push_tail(nc->addresses.added, nc->v6_address);
-+
-+	l_rtnl_address_get_address(nc->v6_static_addr, ip);
-+	prefix_len =3D l_rtnl_address_get_prefix_length(nc->v6_static_addr);
-+	netconfig_add_v6_static_routes(nc, ip, prefix_len);
-+}
-+
- static void netconfig_do_static_config(struct l_idle *idle, void *user_dat=
-a)
- {
- 	struct l_netconfig *nc =3D user_data;
-@@ -704,10 +773,16 @@ static void netconfig_do_static_config(struct l_idle =
-*idle, void *user_data)
- 	l_idle_remove(l_steal_ptr(nc->do_static_work));
- =
-
- 	if (nc->v4_static_addr && !nc->v4_configured) {
--		netconfig_add_static_address_routes(nc);
-+		netconfig_add_v4_static_address_routes(nc);
- 		nc->v4_configured =3D true;
- 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
+@@ -351,6 +357,188 @@ static void netconfig_dhcp_event_handler(struct l_dhc=
+p_client *client,
  	}
-+
-+	if (nc->v6_static_addr && !nc->v6_configured) {
-+		netconfig_add_v6_static_address_routes(nc);
-+		nc->v6_configured =3D true;
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_CONFIGURE);
-+	}
  }
  =
 
- LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
-@@ -733,6 +808,18 @@ LIB_EXPORT bool l_netconfig_start(struct l_netconfig *=
-netconfig)
- 		}
- 	}
- =
-
-+	if (netconfig->v6_enabled) {
-+		if (netconfig->v6_static_addr && !netconfig->do_static_work) {
-+			/*
-+			 * We're basically ready to configure the interface
-+			 * but do this in an idle callback.
-+			 */
-+			netconfig->do_static_work =3D l_idle_create(
-+						netconfig_do_static_config,
-+						netconfig, NULL);
-+		}
++static struct l_rtnl_route *netconfig_find_icmp6_route(
++						struct l_netconfig *nc,
++						const uint8_t *gateway,
++						const struct route_info *dst)
++{
++	const struct l_queue_entry *entry;
++
++	for (entry =3D l_queue_get_entries(nc->routes.current); entry;
++			entry =3D entry->next) {
++		struct l_rtnl_route *route =3D entry->data;
++		const uint8_t *route_gateway;
++		const uint8_t *route_dst;
++		uint8_t route_prefix_len =3D 0;
++
++		if (l_rtnl_route_get_family(route) !=3D AF_INET6)
++			continue;
++
++		route_gateway =3D l_rtnl_route_get_gateway_in_addr(route);
++		if ((gateway || route_gateway) &&
++				(!gateway || !route_gateway ||
++				 memcmp(gateway, route_gateway, 16)))
++			continue;
++
++		route_dst =3D l_rtnl_route_get_dst_in_addr(route,
++							&route_prefix_len);
++		if ((dst || route_prefix_len) &&
++				(!dst || !route_prefix_len ||
++				 dst->prefix_len !=3D route_prefix_len ||
++				 memcmp(dst->address, route_dst,
++					 (dst->prefix_len + 7) / 8)))
++			continue;
++
++		return route;
 +	}
 +
- 	netconfig->started =3D true;
- 	return true;
++	return NULL;
++}
++
++static struct l_rtnl_route *netconfig_add_icmp6_route(struct l_netconfig *=
+nc,
++						const uint8_t *gateway,
++						const struct route_info *dst,
++						uint8_t preference)
++{
++	struct l_rtnl_route *rt;
++	char buf1[INET6_ADDRSTRLEN];
++	char buf2[INET6_ADDRSTRLEN];
++
++	if (gateway && !dst)
++		rt =3D l_rtnl_route_new_gateway(inet_ntop(AF_INET6, gateway,
++							buf1, sizeof(buf1)));
++	else if (dst && !gateway)
++		rt =3D l_rtnl_route_new_prefix(inet_ntop(AF_INET6, dst->address,
++							buf2, sizeof(buf2)),
++						dst->prefix_len);
++	else
++		rt =3D l_rtnl_route_new_static(inet_ntop(AF_INET6, gateway,
++							buf1, sizeof(buf1)),
++						inet_ntop(AF_INET6,
++							dst->address,
++							buf2, sizeof(buf2)),
++						dst->prefix_len);
++
++	if (L_WARN_ON(!rt))
++		return NULL;
++
++	l_rtnl_route_set_preference(rt, preference);
++	l_rtnl_route_set_protocol(rt, RTPROT_RA);
++	l_rtnl_route_set_priority(rt, nc->route_priority);
++	l_queue_push_tail(nc->routes.current, rt);
++	l_queue_push_tail(nc->routes.added, rt);
++	return rt;
++}
++
++static void netconfig_set_icmp6_route_data(struct l_netconfig *nc,
++						struct l_rtnl_route *rt,
++						uint64_t start_time,
++						uint32_t preferred_lifetime,
++						uint32_t valid_lifetime,
++						uint32_t mtu, bool updated)
++{
++	uint64_t expiry =3D start_time + valid_lifetime * L_USEC_PER_SEC;
++
++	l_rtnl_route_set_mtu(rt, mtu);
++	l_rtnl_route_set_lifetime(rt, valid_lifetime);
++	l_rtnl_route_set_expiry(rt, expiry);
++
++	if (updated)
++		l_queue_push_tail(nc->routes.updated, rt);
++}
++
++static void netconfig_remove_icmp6_route(struct l_netconfig *nc,
++						struct l_rtnl_route *route)
++{
++	l_queue_remove(nc->routes.current, route);
++	l_queue_push_tail(nc->routes.removed, route);
++}
++
++static void netconfig_icmp6_event_handler(struct l_icmp6_client *client,
++						enum l_icmp6_client_event event,
++						void *event_data,
++						void *user_data)
++{
++	struct l_netconfig *nc =3D user_data;
++	const struct l_icmp6_router *r;
++	struct l_rtnl_route *default_route;
++	unsigned int i;
++
++	if (event !=3D L_ICMP6_CLIENT_EVENT_ROUTER_FOUND)
++		return;
++
++	r =3D event_data;
++
++	/*
++	 * Note: If this is the first RA received, the l_dhcp6_client
++	 * will have received the event before us and will be acting
++	 * on it by now.
++	 */
++
++	if (nc->v4_gateway_override)
++		return;
++
++	/* Process the default gateway information */
++	default_route =3D netconfig_find_icmp6_route(nc, r->address, NULL);
++
++	if (!default_route && r->lifetime) {
++		default_route =3D netconfig_add_icmp6_route(nc, r->address, NULL,
++								r->pref);
++		if (unlikely(!default_route))
++			return;
++
++		netconfig_set_icmp6_route_data(nc, default_route, r->start_time,
++						r->lifetime, r->lifetime,
++						r->mtu, false);
++	} else if (default_route && r->lifetime)
++		netconfig_set_icmp6_route_data(nc, default_route, r->start_time,
++						r->lifetime, r->lifetime,
++						r->mtu, true);
++	else if (default_route && !r->lifetime)
++		netconfig_remove_icmp6_route(nc, default_route);
++
++	/*
++	 * Process the onlink and offlink routes, from the Router
++	 * Advertisement's Prefix Information options and Route
++	 * Information options respectively.
++	 */
++	for (i =3D 0; i < r->n_routes; i++) {
++		const struct route_info *info =3D &r->routes[i];
++		const uint8_t *gateway =3D info->onlink ? NULL : r->address;
++		struct l_rtnl_route *route =3D
++			netconfig_find_icmp6_route(nc, gateway, info);
++
++		if (!route && info->valid_lifetime) {
++			route =3D netconfig_add_icmp6_route(nc, gateway, info,
++							info->preference);
++			if (unlikely(!route))
++				continue;
++
++			netconfig_set_icmp6_route_data(nc, route, r->start_time,
++						info->preferred_lifetime,
++						info->valid_lifetime,
++						gateway ? r->mtu : 0, false);
++		} else if (route && info->valid_lifetime)
++			netconfig_set_icmp6_route_data(nc, route, r->start_time,
++						info->preferred_lifetime,
++						info->valid_lifetime,
++						gateway ? r->mtu : 0, true);
++		else if (route && !info->valid_lifetime)
++			netconfig_remove_icmp6_route(nc, route);
++	}
++
++	/*
++	 * Note: we may be emitting this before L_NETCONFIG_EVENT_CONFIGURE.
++	 * We should probably instead save the affected routes in separate
++	 * lists and add them to the _CONFIGURE event, suppressing any _UPDATE
++	 * events while nc->v6_configured is false.
++	 */
++	if (!l_queue_isempty(nc->routes.added) ||
++			!l_queue_isempty(nc->routes.updated) ||
++			!l_queue_isempty(nc->routes.removed))
++		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
++}
++
+ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+ {
+ 	struct l_netconfig *nc;
+@@ -373,6 +561,13 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_=
+t ifindex)
+ 					netconfig_dhcp_event_handler,
+ 					nc, NULL);
+ =
+
++	nc->dhcp6_client =3D l_dhcp6_client_new(ifindex);
++
++	nc->icmp6_client =3D l_dhcp6_client_get_icmp6(nc->dhcp6_client);
++	l_icmp6_client_add_event_handler(nc->icmp6_client,
++					netconfig_icmp6_event_handler,
++					nc, NULL);
++
+ 	return nc;
  }
-@@ -755,6 +842,7 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *ne=
-tconfig)
- 	netconfig->v4_address =3D NULL;
- 	netconfig->v4_subnet_route =3D NULL;
- 	netconfig->v4_default_route =3D NULL;
-+	netconfig->v6_address =3D NULL;
+ =
+
+@@ -393,6 +588,7 @@ LIB_EXPORT void l_netconfig_destroy(struct l_netconfig =
+*netconfig)
+ 	l_netconfig_set_domain_names_override(netconfig, AF_INET6, NULL);
+ =
+
+ 	l_dhcp_client_destroy(netconfig->dhcp_client);
++	l_dhcp6_client_destroy(netconfig->dhcp6_client);
+ 	l_netconfig_set_event_handler(netconfig, NULL, NULL, NULL);
+ 	l_queue_destroy(netconfig->addresses.current, NULL);
+ 	l_queue_destroy(netconfig->addresses.added, NULL);
+@@ -815,7 +1011,10 @@ LIB_EXPORT bool l_netconfig_start(struct l_netconfig =
+*netconfig)
+ 	}
+ =
+
+ 	if (netconfig->v6_enabled) {
+-		if (netconfig->v6_static_addr && !netconfig->do_static_work) {
++		if (!netconfig->v6_static_addr) {
++			if (!l_dhcp6_client_start(netconfig->dhcp6_client))
++				return false;
++		} else if (!netconfig->do_static_work) {
+ 			/*
+ 			 * We're basically ready to configure the interface
+ 			 * but do this in an idle callback.
+@@ -851,6 +1050,7 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *n=
+etconfig)
+ 	netconfig->v6_address =3D NULL;
  =
 
  	l_dhcp_client_stop(netconfig->dhcp_client);
++	l_dhcp6_client_stop(netconfig->dhcp6_client);
  }
+ =
+
+ LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhcp_client(
 -- =
 
 2.32.0
 
---===============8567684703419123524==--
+--===============5798189115714740317==--
 
