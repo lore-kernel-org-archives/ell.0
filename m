@@ -1,53 +1,137 @@
-Content-Type: multipart/mixed; boundary="===============9138502323800957303=="
+Content-Type: multipart/mixed; boundary="===============1297562138958827897=="
 MIME-Version: 1.0
-From: Simon Maurer <mail at maurer.systems>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: AIO support
-Date: Mon, 20 Sep 2021 18:52:36 +0200
-Message-ID: <95e55771-b31e-4abb-8cfd-eff5923f458c@email.android.com>
-In-Reply-To: 0949c1b4-ee95-9dc4-1565-814bef66fb33@gmail.com
+Subject: [PATCH 3/8] netconfig: Avoid returning internal l_queues
+Date: Fri, 15 Apr 2022 20:32:06 +0200
+Message-ID: <20220415183211.987345-3-andrew.zaborowski@intel.com>
+In-Reply-To: 20220415183211.987345-1-andrew.zaborowski@intel.com
 
---===============9138502323800957303==
+--===============1297562138958827897==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Return const struct l_queue_entry pointers instead.
+---
+ ell/netconfig.c | 35 ++++++++++++++++++-----------------
+ ell/netconfig.h | 20 +++++++++++---------
+ 2 files changed, 29 insertions(+), 26 deletions(-)
 
---===============9138502323800957303==
-Content-Type: text/html
-MIME-Version: 1.0
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="attachment.htm"
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 72495ec..eb74aa5 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -1134,37 +1134,38 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
+config *netconfig,
+ 					NULL, NULL, NULL);
+ }
+ =
 
-PGRpdiBkaXI9J2F1dG8nPjxkaXY+SGkgRGVuaXMsPGJyPjxkaXYgY2xhc3M9ImdtYWlsX2V4dHJh
-Ij48YnI+PGRpdiBjbGFzcz0iZ21haWxfcXVvdGUiPkFtIDIwLjA5LjIwMjEgMTg6MzEgc2Nocmll
-YiBEZW5pcyBLZW56aW9yICZsdDtkZW5rZW56QGdtYWlsLmNvbSZndDs6PGJyIHR5cGU9ImF0dHJp
-YnV0aW9uIj48YmxvY2txdW90ZSBjbGFzcz0icXVvdGUiIHN0eWxlPSJtYXJnaW46MCAwIDAgLjhl
-eDtib3JkZXItbGVmdDoxcHggI2NjYyBzb2xpZDtwYWRkaW5nLWxlZnQ6MWV4Ij48cCBkaXI9Imx0
-ciI+SGkgU2ltb24sCjxicj4KCjxicj4KUGxlYXNlIG5vIHRvcC1wb3N0aW5nLjwvcD48L2Jsb2Nr
-cXVvdGU+PC9kaXY+PC9kaXY+PC9kaXY+PGRpdiBkaXI9ImF1dG8iPlNvcnJ5PC9kaXY+PGRpdiBk
-aXI9ImF1dG8iPjxkaXYgY2xhc3M9ImdtYWlsX2V4dHJhIj48ZGl2IGNsYXNzPSJnbWFpbF9xdW90
-ZSI+PGJsb2NrcXVvdGUgY2xhc3M9InF1b3RlIiBzdHlsZT0ibWFyZ2luOjAgMCAwIC44ZXg7Ym9y
-ZGVyLWxlZnQ6MXB4ICNjY2Mgc29saWQ7cGFkZGluZy1sZWZ0OjFleCI+PHAgZGlyPSJsdHIiPgo8
-YnI+Cgo8YnI+Ck9uIDkvMjAvMjEgMTE6MDAgQU0sIFNpbW9uIE1hdXJlciB3cm90ZToKPGJyPgom
-Z3Q7IEhpIERlbmlzLAo8YnI+CiZndDsgCjxicj4KJmd0OyBZZXMgSSBhZ3JlZSwgYnV0IEkgc3Rp
-bGwgbmVlZCB0aGUgdGhlIHN5c2NhbGwgd3JhcHBlcnMsIGJlY2F1c2UgZ2xpYmMgZG9lc24ndCAK
-PGJyPgoKPGJyPgpDYW4ndCB3ZSBzeXNjYWxsKCkgaW4gZWxsLCBsaWtlIHdlIGRvIHdpdGgga2V5
-Y3RsIGluIGtleS5jPwo8YnI+Cgo8L3A+PC9ibG9ja3F1b3RlPjwvZGl2PjwvZGl2PjwvZGl2Pjxk
-aXYgZGlyPSJhdXRvIj48c3BhbiBzdHlsZT0iZm9udC1mYW1pbHk6IHNhbnMtc2VyaWY7Ij5Paywg
-SSB3aWxsIGluY2x1ZGUgZXZlcnl0aGluZyB0aGF0IGlzIG5lZWRlZCBmcm9tIGxpYmFpbyBpbiBh
-aW8uYywgcGx1cyBtYXliZSBhIHByaXZhdGUgaGVhZGVyLiZuYnNwOzwvc3Bhbj48YnI+PC9kaXY+
-PGRpdiBkaXI9ImF1dG8iPjxkaXYgY2xhc3M9ImdtYWlsX2V4dHJhIj48ZGl2IGNsYXNzPSJnbWFp
-bF9xdW90ZSI+PGJsb2NrcXVvdGUgY2xhc3M9InF1b3RlIiBzdHlsZT0ibWFyZ2luOjAgMCAwIC44
-ZXg7Ym9yZGVyLWxlZnQ6MXB4ICNjY2Mgc29saWQ7cGFkZGluZy1sZWZ0OjFleCI+PHAgZGlyPSJs
-dHIiPjxicj4KJmd0OyBwcm92aWRlIHRoZW0uIFNvIGJ1bmRsaW5nIGl0IHdpdGggZWxsIGFuZCBt
-YWtlIGxpYmFpbyBhIHByaXZhdGUgbGlicmFyeSBvZiBlbGwgCjxicj4KJmd0OyBzZWFtcyB0byBi
-ZSBhIGdvb2Qgc29sdXRpb24gZm9yIG1lLgo8YnI+Cgo8YnI+ClRoYXQgd291bGQgbm90IGJlIG91
-ciBmaXJzdCBjaG9pY2UuCjxicj4KCjxicj4KUmVnYXJkcywKPGJyPgotRGVuaXMKPGJyPgpfX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwo8YnI+CmVsbCBtYWls
-aW5nIGxpc3QgLS0gZWxsQGxpc3RzLjAxLm9yZwo8YnI+ClRvIHVuc3Vic2NyaWJlIHNlbmQgYW4g
-ZW1haWwgdG8gZWxsLWxlYXZlQGxpc3RzLjAxLm9yZwo8YnI+CjwvcD4KPC9ibG9ja3F1b3RlPjwv
-ZGl2PlJlZ2FyZHMsPC9kaXY+PGRpdiBjbGFzcz0iZ21haWxfZXh0cmEiIGRpcj0iYXV0byI+U2lt
-b248L2Rpdj48L2Rpdj48L2Rpdj4=
---===============9138502323800957303==--
+-LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
+-						struct l_netconfig *netconfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_addresses(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
+ {
+ 	if (out_added)
+-		*out_added =3D netconfig->addresses.added;
++		*out_added =3D l_queue_get_entries(netconfig->addresses.added);
+ =
+
+ 	if (out_updated)
+-		*out_updated =3D netconfig->addresses.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->addresses.updated);
+ =
+
+ 	if (out_removed)
+-		*out_removed =3D netconfig->addresses.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->addresses.removed);
+ =
+
+-	return netconfig->addresses.current;
++	return l_queue_get_entries(netconfig->addresses.current);
+ }
+ =
+
+-LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
+onfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_routes(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
+ {
+ 	if (out_added)
+-		*out_added =3D netconfig->routes.added;
++		*out_added =3D l_queue_get_entries(netconfig->routes.added);
+ =
+
+ 	if (out_updated)
+-		*out_updated =3D netconfig->routes.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->routes.updated);
+ =
+
+ 	if (out_removed)
+-		*out_removed =3D netconfig->routes.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->routes.removed);
+ =
+
+-	return netconfig->routes.current;
++	return l_queue_get_entries(netconfig->routes.current);
+ }
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index dc56bcb..b94107c 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -33,7 +33,7 @@ struct l_dhcp_client;
+ struct l_dhcp6_client;
+ struct l_icmp6_client;
+ struct l_netlink;
+-struct l_queue;
++struct l_queue_entry;
+ struct l_netconfig;
+ struct l_rtnl_address;
+ struct l_rtnl_route;
+@@ -87,14 +87,16 @@ void l_netconfig_set_event_handler(struct l_netconfig *=
+netconfig,
+ =
+
+ void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
+ 				struct l_netlink *rtnl);
+-struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
+-struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
++const struct l_queue_entry *l_netconfig_get_addresses(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
++const struct l_queue_entry *l_netconfig_get_routes(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
+ =
+
+ #ifdef __cplusplus
+ }
+-- =
+
+2.32.0
+
+--===============1297562138958827897==--
 
