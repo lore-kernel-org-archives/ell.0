@@ -1,109 +1,130 @@
-Content-Type: multipart/mixed; boundary="===============8778848197102123993=="
+Content-Type: multipart/mixed; boundary="===============2691706233849100994=="
 MIME-Version: 1.0
-From: Simon Maurer <mail at maurer.systems>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: AIO support
-Date: Mon, 20 Sep 2021 08:15:17 +0000
-Message-ID: <81f5657e-111b-84ed-48f3-5e90d6bdbf75@maurer.systems>
-In-Reply-To: 3C5C7E56-11E3-4A13-B011-8D61BF746D60@holtmann.org
+Subject: [PATCH 8/8] examples: Update l_netconfig_get_{addresses, routes} calls
+Date: Fri, 15 Apr 2022 20:32:11 +0200
+Message-ID: <20220415183211.987345-8-andrew.zaborowski@intel.com>
+In-Reply-To: 20220415183211.987345-1-andrew.zaborowski@intel.com
 
---===============8778848197102123993==
+--===============2691706233849100994==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Marcel
+---
+ examples/netconfig-test.c | 36 +++++++++++++++++++-----------------
+ 1 file changed, 19 insertions(+), 17 deletions(-)
 
-On 9/19/21 7:59 PM, Marcel Holtmann wrote:
-> Hi Simon,
-> =
+diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
+index c9d02ab..573bf86 100644
+--- a/examples/netconfig-test.c
++++ b/examples/netconfig-test.c
+@@ -61,16 +61,14 @@ static void signal_handler(uint32_t signo, void *user_d=
+ata)
+ }
+ =
 
->>>> Awesome library! Thank you very much. I'm using it for an embedded lin=
-ux
->>> Glad you like it!
->>>> application with not so strict real time constraints. Problem is, I ne=
-ed non blocking file access, because the memory card on my system is quite =
-slow. It turns out that this whole non-blocking access doesn't work for fil=
-es, so now I'm
->>> Can you elaborate?  I always thought
->>> fcntl(fd, F_SETFL, O_NONBLOCK);
->>> would enable non-blocking behavior on files just fine?  Or is this an i=
-ssue with a particular driver?
->>
->> I tested it and never got EAGAIN. I found this in the man page of open f=
-or the flag O_NONBLOCK or O_NDELAY:
->>
->> "Note  that this flag has no effect for regular files and block devices;=
- that is, I/O operations will (briefly) block when device activity is requi=
-red, regardless of whether O_NONBLOCK is set.  Since O_NONBLOCK semantics m=
-ight eventually be implemented, applications should not depend  upon  block=
-ing  behavior  when specifying this flag for regular files and block device=
-s."
->>
->> An alternative could be preadv2 with the flag RWF_NOWAIT. But it is only=
- available since linux 4.14 and we are using an older kernel. Also epoll do=
-esn't wait for preadv2.
-> =
+ static void log_addresses(const char *af_str, const char *action,
+-				struct l_queue *list)
++				const struct l_queue_entry *entry)
+ {
+-	const struct l_queue_entry *entry;
+-
+-	if (l_queue_isempty(list))
++	if (!entry)
+ 		return;
+ =
 
-> I am a bit cautious about aio_write etc. since it requires you to link wi=
-th -lrt according to the manpage. We actually wanted to keep it at just -lc=
- since that helps in case of other C libraries besides glibc.
+ 	l_info("[netconfig%s] Addresses %s:", af_str, action);
+ =
 
-I don't like that either. If I am informed correctly librt is part of =
+-	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
++	for (; entry; entry =3D entry->next) {
+ 		struct l_rtnl_address *addr =3D entry->data;
+ 		char ip_str[INET6_ADDRSTRLEN];
+ =
 
-glibc and in verison 2.34, librt is not needed anymore. MUSL supports =
+@@ -83,25 +81,26 @@ static void log_addresses(const char *af_str, const cha=
+r *action,
+ }
+ =
 
-POSIX AIO, but neither android bionic nor ulibc implemented it. I =
+ static void log_routes(const char *af_str, const char *action,
+-			struct l_queue *list)
++			const struct l_queue_entry *entry)
+ {
+-	const struct l_queue_entry *entry;
+-
+-	if (l_queue_isempty(list))
++	if (!entry)
+ 		return;
+ =
 
-thought of making aio an optional part of ell, and handle the different =
+ 	l_info("[netconfig%s] Routes %s:", af_str, action);
+ =
 
-cases in the configure script.
+-	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
++	for (; entry; entry =3D entry->next) {
+ 		struct l_rtnl_route *rt =3D entry->data;
+-		char subnet_str[INET6_ADDRSTRLEN];
++		char subnet_str[INET6_ADDRSTRLEN] =3D "unknown";
+ 		char gateway_str[INET6_ADDRSTRLEN];
+ 		uint8_t prefix_len;
++		bool onlink;
+ =
 
-> =
+ 		l_rtnl_route_get_dst(rt, subnet_str, &prefix_len);
+-		l_rtnl_route_get_gateway(rt, gateway_str);
+-		l_info("[netconfig%s] \t%s/%i, gateway %s, orig lifetime %i s",
+-			af_str, subnet_str, prefix_len, gateway_str,
++		onlink =3D !l_rtnl_route_get_gateway(rt, gateway_str);
++		l_info("[netconfig%s] \t%s/%i, %s%s, orig lifetime %i s",
++			af_str, subnet_str, prefix_len,
++			onlink ? "onlink" : "next-hop ",
++			onlink ? "" : gateway_str,
+ 			l_rtnl_route_get_lifetime(rt));
+ 	}
+ }
+@@ -110,7 +109,7 @@ static void event_handler(struct l_netconfig *netconfig=
+, uint8_t family,
+ 				enum l_netconfig_event event, void *user_data)
+ {
+ 	const char *af_str =3D family =3D=3D AF_INET ? "v4" : "v6";
+-	struct l_queue *added, *updated, *removed;
++	const struct l_queue_entry *added, *updated, *removed, *expired;
+ =
 
-> That you require signal handling inside the API is something that worries=
- me additionally. Even with signalfd, doing any complex signal handling bes=
-ides SIGTERM is kinda messy. I think that AIO support might be better done =
-outside of ELL.
+ 	switch (event) {
+ 	case L_NETCONFIG_EVENT_CONFIGURE:
+@@ -128,15 +127,18 @@ static void event_handler(struct l_netconfig *netconf=
+ig, uint8_t family,
+ 		return;
+ 	}
+ =
 
-Signal handling in my aio implementation is optional and the signal just =
+-	l_netconfig_get_addresses(netconfig, &added, &updated, &removed);
++	l_netconfig_get_addresses(netconfig, &added, &updated,
++					&removed, &expired);
+ 	log_addresses(af_str, "added", added);
+ 	log_addresses(af_str, "updated", updated);
+ 	log_addresses(af_str, "removed", removed);
++	log_addresses(af_str, "expired", expired);
+ =
 
-triggers l_aio_poll, which checks all outstanding requests. The problem =
+-	l_netconfig_get_routes(netconfig, &added, &updated, &removed);
++	l_netconfig_get_routes(netconfig, &added, &updated, &removed, &expired);
+ 	log_routes(af_str, "added", added);
+ 	log_routes(af_str, "updated", updated);
+ 	log_routes(af_str, "removed", removed);
++	log_routes(af_str, "expired", expired);
+ =
 
-I had with the signalhandling was when multiple requests were completed =
+ 	if (apply)
+ 		l_netconfig_apply_rtnl(netconfig, rtnl);
+-- =
 
-at the same time (between epoll_wait calls), the signal handler was =
+2.32.0
 
-executed only once. My first approach was to send request information =
-
-with the signal but that failed for multiple requests. My patch earlier =
-
-made this information available to the user, but independet of AIO =
-
-handling, I still think it might be a good idea to make siginfo =
-
-available to the user.
-
-> =
-
-> What kind of file-reading or file-writing are you doing that you need AIO=
- support anyway? You can actually poll() a file fd. You just have to do it =
-carefully so it doesn=E2=80=99t become a busy loop. Have you tried just usi=
-ng l_idle to only read/write when we having nothing else going on in our ma=
-inloop?
-> =
-
-> Regards
-> =
-
-> Marcel
-> _______________________________________________
-> ell mailing list -- ell(a)lists.01.org
-> To unsubscribe send an email to ell-leave(a)lists.01.org
-> =
-
-
-Regards
-Simon
---===============8778848197102123993==--
+--===============2691706233849100994==--
 
