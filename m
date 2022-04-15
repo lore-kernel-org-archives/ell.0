@@ -1,37 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============4303006036115959268=="
+Content-Type: multipart/mixed; boundary="===============7490088783260753994=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] dhcp: Use bound_time for retransmission timers
-Date: Wed, 18 May 2022 11:21:45 -0500
-Message-ID: <a1c01d0b-5cb9-9ca6-2da4-c7f99cd1c9ff@gmail.com>
-In-Reply-To: 20220511172855.25992-1-denkenz@gmail.com
+Subject: [PATCH 2/8] util: Use unlikely() for L_WARN_ON() condition
+Date: Fri, 15 Apr 2022 20:32:05 +0200
+Message-ID: <20220415183211.987345-2-andrew.zaborowski@intel.com>
+In-Reply-To: 20220415183211.987345-1-andrew.zaborowski@intel.com
 
---===============4303006036115959268==
+--===============7490088783260753994==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On 5/11/22 12:28, Denis Kenzior wrote:
-> start_t is used to try and calculate the retransmission timeout value
-> when the client enters RENEWING or REBINDING state.  This works fine on
-> the first renewal since the client start timestamp and the lease bound
-> timestamp are very close.  Also, the RENEW request is sent immediately
-> whenever the T1 timer expires and most of the time it succeeds.
-> =
+Any condition used in L_WARN_ON() should be only true in an error or
+trouble situation and thus be unlikely true.   Add unlikely() directly
+in the macro to avoid repeating use of L_WARN_ON(unlikely(condition))
+---
+ ell/util.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> However, if this isn't a first renewal attempt and the RENEW request
-> sent when the T1 timer expires is not successful, then the renewal
-> timeout value could become too large.  Fix that by using the lease
-> bound_time for the retransmission timer calculation (as intended) intead
-> of the client start time (start_t).
-> ---
->   ell/dhcp.c | 11 ++++++-----
->   1 file changed, 6 insertions(+), 5 deletions(-)
-> =
+diff --git a/ell/util.h b/ell/util.h
+index 9d4e36c..db47ae7 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -49,7 +49,7 @@ _Pragma("GCC diagnostic pop")						\
+ =
 
+ #define L_WARN_ON(condition) __extension__ ({				\
+ 		bool r =3D !!(condition);					\
+-		if (r)							\
++		if (unlikely(r))					\
+ 			l_warn("WARNING: %s:%s() condition %s failed",	\
+ 				__FILE__, __func__,			\
+ 				#condition);				\
+-- =
 
-Applied.
+2.32.0
 
---===============4303006036115959268==--
+--===============7490088783260753994==--
 
