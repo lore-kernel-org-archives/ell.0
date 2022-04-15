@@ -1,55 +1,128 @@
-Content-Type: multipart/mixed; boundary="===============6297835392868498307=="
+Content-Type: multipart/mixed; boundary="===============4777885081800906390=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 15/17] netconfig: Set a limit on number of routes from ICMPv6
-Date: Fri, 13 May 2022 16:55:08 +0200
-Message-ID: <20220513145510.1408510-15-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
+Subject: [PATCH 6/8] netconfig: Add getters for DNS addresses and domain names
+Date: Fri, 15 Apr 2022 20:32:09 +0200
+Message-ID: <20220415183211.987345-6-andrew.zaborowski@intel.com>
+In-Reply-To: 20220415183211.987345-1-andrew.zaborowski@intel.com
 
---===============6297835392868498307==
+--===============4777885081800906390==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-While some networks can be configured in a way that prevents rogue
-Router Advertisements from reaching clients, add a very basic mechanism
-to avoid a denial-of-service in such a case by limiting the number of
-routes we track from RAs.  This won't prevent loss of connectivity but
-might prevent a crash or slowdowns.
 ---
- ell/netconfig.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ ell/ell.sym     |  2 ++
+ ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/netconfig.h |  2 ++
+ 3 files changed, 68 insertions(+)
 
+diff --git a/ell/ell.sym b/ell/ell.sym
+index f35bf82..56565a2 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -755,6 +755,8 @@ global:
+ 	l_netconfig_apply_rtnl;
+ 	l_netconfig_get_addresses;
+ 	l_netconfig_get_routes;
++	l_netconfig_get_dns_list;
++	l_netconfig_get_domain_names;
+ local:
+ 	*;
+ };
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 023bcc3..35dea29 100644
+index 2915988..1ae206b 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -134,6 +134,8 @@ static unsigned int rtnl_use_count;
- static struct l_queue *addr_wait_list;
- static unsigned int rtnl_id;
+@@ -1303,3 +1303,67 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_g=
+et_routes(
  =
 
-+static const unsigned int max_icmp6_routes =3D 100;
+ 	return l_queue_get_entries(netconfig->routes.current);
+ }
 +
- static void netconfig_update_cleanup(struct l_netconfig *nc)
- {
- 	l_queue_clear(nc->addresses.added, NULL);
-@@ -731,6 +733,9 @@ static struct netconfig_route_data *netconfig_add_icmp6=
-_route(
- 	struct netconfig_route_data *rd;
- 	struct l_rtnl_route *rt;
++/* Returns a new strv array to be freed by the caller */
++LIB_EXPORT char **l_netconfig_get_dns_list(struct l_netconfig *netconfig)
++{
++	char **ret =3D NULL;
++	const struct l_dhcp_lease *v4_lease;
++	const struct l_dhcp6_lease *v6_lease;
++
++#define CONCAT(dest, src, free)		\
++	do {				\
++		char **tmp =3D src;	\
++		tmp =3D free ? tmp : l_strv_copy(tmp);	\
++		if (!dest)		\
++			dest =3D tmp;	\
++		else if (tmp) {		\
++			unsigned int destlen =3D l_strv_length(dest);	\
++			unsigned int srclen =3D l_strv_length(tmp);	\
++			dest =3D l_realloc(dest, sizeof(char *) *	\
++				(destlen + srclen + 1));	\
++			memcpy(dest + destlen, tmp, sizeof(char *) *	\
++					(srclen + 1));	\
++			l_free(tmp);	\
++		}			\
++	} while (0)
++
++	if (netconfig->v4_dns_override)
++		CONCAT(ret, netconfig->v4_dns_override, false);
++	else if ((v4_lease =3D
++			l_dhcp_client_get_lease(netconfig->dhcp_client)))
++		CONCAT(ret, l_dhcp_lease_get_dns(v4_lease), true);
++
++	if (netconfig->v6_dns_override)
++		CONCAT(ret, netconfig->v6_dns_override, false);
++	else if ((v6_lease =3D
++			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
++		CONCAT(ret, l_dhcp6_lease_get_dns(v6_lease), true);
++
++	return ret;
++}
++
++/* Returns a new strv array to be freed by the caller */
++LIB_EXPORT char **l_netconfig_get_domain_names(struct l_netconfig *netconf=
+ig)
++{
++	char **ret =3D NULL;
++	const struct l_dhcp_lease *v4_lease;
++	const struct l_dhcp6_lease *v6_lease;
++
++	if (netconfig->v4_domain_names_override)
++		CONCAT(ret, netconfig->v4_domain_names_override, false);
++	else if ((v4_lease =3D
++			l_dhcp_client_get_lease(netconfig->dhcp_client)) &&
++			l_dhcp_lease_get_domain_name(v4_lease)) {
++		ret =3D l_new(char *, 2);
++		ret[0] =3D l_dhcp_lease_get_domain_name(v4_lease);
++	}
++
++	if (netconfig->v6_dns_override)
++		CONCAT(ret, netconfig->v6_domain_names_override, false);
++	else if ((v6_lease =3D
++			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
++		CONCAT(ret, l_dhcp6_lease_get_domains(v6_lease), true);
++
++	return ret;
++}
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index b94107c..a1bd7f2 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -97,6 +97,8 @@ const struct l_queue_entry *l_netconfig_get_routes(
+ 				const struct l_queue_entry **out_added,
+ 				const struct l_queue_entry **out_updated,
+ 				const struct l_queue_entry **out_removed);
++char **l_netconfig_get_dns_list(struct l_netconfig *netconfig);
++char **l_netconfig_get_domain_names(struct l_netconfig *netconfig);
  =
 
-+	if (l_queue_length(nc->icmp_route_data) >=3D max_icmp6_routes)
-+		return NULL;	/* TODO: log a warning the first time */
-+
- 	rt =3D netconfig_route_new(nc, AF_INET6, dst->address, dst->prefix_len,
- 					gateway, RTPROT_RA);
- 	if (L_WARN_ON(!rt))
+ #ifdef __cplusplus
+ }
 -- =
 
 2.32.0
 
---===============6297835392868498307==--
+--===============4777885081800906390==--
 
