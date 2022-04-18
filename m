@@ -1,25 +1,29 @@
-Content-Type: multipart/mixed; boundary="===============5963124824861762734=="
+Content-Type: multipart/mixed; boundary="===============3001623879550740344=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] strv: Add l_strv_eq
-Date: Tue, 28 Sep 2021 10:14:05 -0500
-Message-ID: <9677a64f-d767-1ced-fe73-b68fd880f310@gmail.com>
-In-Reply-To: 20210923104046.54286-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 04/11] rtnl: Add l_rtnl_route getters for raw address data
+Date: Mon, 18 Apr 2022 14:21:05 -0500
+Message-ID: <18da3822-f487-d9b5-1695-fb8697630549@gmail.com>
+In-Reply-To: 20220411142056.817784-4-andrew.zaborowski@intel.com
 
---===============5963124824861762734==
+--===============3001623879550740344==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
-On 9/23/21 5:40 AM, Andrew Zaborowski wrote:
+On 4/11/22 09:20, Andrew Zaborowski wrote:
+> Add l_rtnl_route_get_gateway_in_addr and l_rtnl_route_get_dst_in_addr
+> for raw struct in_addr / struct in6_addr addresses, as opposed to string
+> representations.  This is to be used to avoid unneeded string
+> conversions in both directions.
 > ---
->   ell/ell.sym |  1 +
->   ell/strv.c  | 20 ++++++++++++++++++++
->   ell/strv.h  |  1 +
->   3 files changed, 22 insertions(+)
+>   ell/ell.sym |  2 ++
+>   ell/rtnl.c  | 30 ++++++++++++++++++++++++++++++
+>   ell/rtnl.h  |  3 +++
+>   3 files changed, 35 insertions(+)
 > =
 
 
@@ -28,5 +32,5 @@ Applied, thanks.
 Regards,
 -Denis
 
---===============5963124824861762734==--
+--===============3001623879550740344==--
 
