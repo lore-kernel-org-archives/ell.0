@@ -1,17 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============1508495225158624564=="
+Content-Type: multipart/mixed; boundary="===============6691772338773962632=="
 MIME-Version: 1.0
-From: klingeltonemp3.com at gmail.com
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: How to Find Free Ringtones For Mobile
-Date: Tue, 19 Apr 2022 09:14:23 +0000
-Message-ID: <20220419091423.2280.8404@ml01.vlan13.01.org>
-In-Reply-To: 20220316044426.2873.50599@ml01.vlan13.01.org
+Subject: Re: [PATCH 07/11] icmp6: Emit L_ICMP6_CLIENT_EVENT_ROUTER_FOUND for
+ all RAs
+Date: Mon, 18 Apr 2022 16:10:59 -0500
+Message-ID: <a5018523-e400-0bb1-9975-2260fac973d6@gmail.com>
+In-Reply-To: 20220411142056.817784-7-andrew.zaborowski@intel.com
 
---===============1508495225158624564==
+--===============6691772338773962632==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-i think you should try free ringtones at https://klingeltonemp3.com/
---===============1508495225158624564==--
+Hi Andrew,
+
+On 4/11/22 09:20, Andrew Zaborowski wrote:
+> Emit an L_ICMP6_CLIENT_EVENT_ROUTER_FOUND event for ever Router
+> Advertisement received instead of only the first one.
+> ---
+>   ell/dhcp6.c | 10 +++++++---
+>   ell/icmp6.c | 17 ++++++++---------
+>   2 files changed, 15 insertions(+), 12 deletions(-)
+
+Applied, thanks.
+
+Regards,
+-Denis
+
+--===============6691772338773962632==--
 
