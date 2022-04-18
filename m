@@ -1,74 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============3720002168213345536=="
+Content-Type: multipart/mixed; boundary="===============4047984483764572227=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 3/5] settings: add l_settings_remove_embedded_groups
-Date: Fri, 04 Feb 2022 09:06:00 -0800
-Message-ID: <20220204170603.216439-3-prestwoj@gmail.com>
-In-Reply-To: 20220204170603.216439-1-prestwoj@gmail.com
+Subject: Re: [PATCH 1/8] dhcp6-lease: Make getters argument const, cleanup
+Date: Mon, 18 Apr 2022 11:17:46 -0500
+Message-ID: <1ab4a79e-c5b9-c33d-d4f5-332d4dec0b6c@gmail.com>
+In-Reply-To: 20220415183211.987345-1-andrew.zaborowski@intel.com
 
---===============3720002168213345536==
+--===============4047984483764572227==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This removes all embedded groups from a l_settings object
----
- ell/ell.sym    |  1 +
- ell/settings.c | 11 +++++++++++
- ell/settings.h |  1 +
- 3 files changed, 13 insertions(+)
+Hi Andrew,
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 827e68c..96b3a7d 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -490,6 +490,7 @@ global:
- 	l_settings_has_embedded_group;
- 	l_settings_get_embedded_groups;
- 	l_settings_get_embedded_value;
-+	l_settings_remove_embedded_groups;
- 	/* signal */
- 	l_signal_create;
- 	l_signal_remove;
-diff --git a/ell/settings.c b/ell/settings.c
-index a553ec0..6187a46 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -1566,3 +1566,14 @@ LIB_EXPORT const char *l_settings_get_embedded_value(
- =
+On 4/15/22 13:32, Andrew Zaborowski wrote:
+> Add "const" to the lifetime getters argument, drop dhcp6-private.h
+> declarations I probably added/renamed by mistake.
+> ---
+>   ell/dhcp6-lease.c   | 13 +++++++------
+>   ell/dhcp6-private.h |  7 ++-----
+>   ell/dhcp6.h         |  7 ++++---
+>   3 files changed, 13 insertions(+), 14 deletions(-)
+> =
 
- 	return group->data;
- }
-+
-+LIB_EXPORT bool l_settings_remove_embedded_groups(struct l_settings *setti=
-ngs)
-+{
-+	if (unlikely(!settings))
-+		return false;
-+
-+	l_queue_destroy(settings->embedded_groups, embedded_group_destroy);
-+	settings->embedded_groups =3D l_queue_new();
-+
-+	return true;
-+}
-diff --git a/ell/settings.h b/ell/settings.h
-index f094ef5..519014d 100644
---- a/ell/settings.h
-+++ b/ell/settings.h
-@@ -137,6 +137,7 @@ bool l_settings_remove_key(struct l_settings *settings,=
- const char *group_name,
- bool l_settings_remove_group(struct l_settings *settings,
- 				const char *group_name);
- =
 
-+bool l_settings_remove_embedded_groups(struct l_settings *settings);
- char **l_settings_get_embedded_groups(struct l_settings *settings);
- bool l_settings_has_embedded_group(struct l_settings *settings,
- 					const char *group);
--- =
+Patch 1,2 applied, thanks.
 
-2.31.1
+Regards,
+-Denis
 
---===============3720002168213345536==--
+--===============4047984483764572227==--
 
