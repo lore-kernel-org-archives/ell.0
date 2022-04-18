@@ -1,72 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============7900886199507238230=="
+Content-Type: multipart/mixed; boundary="===============8006698020967116557=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 1/3] acd: Emit event as the last statement in handler
-Date: Sat, 11 Jun 2022 03:45:43 +0200
-Message-ID: <20220611014545.1466270-1-andrew.zaborowski@intel.com>
+Subject: Re: [PATCH 05/11] rtnl: Minor cleanup
+Date: Mon, 18 Apr 2022 14:22:10 -0500
+Message-ID: <3425bff6-9ef7-e560-7c59-8b9b31aa0f95@gmail.com>
+In-Reply-To: 20220411142056.817784-5-andrew.zaborowski@intel.com
 
---===============7900886199507238230==
+--===============8006698020967116557==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Move l_acd_stop() to before the call to the event handler for
-L_ACD_EVENT_LOST to allow the handler to free the l_acd instance if
-needed.
----
- ell/acd.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Hi Andrew,
 
-diff --git a/ell/acd.c b/ell/acd.c
-index 2d84843..723ae17 100644
---- a/ell/acd.c
-+++ b/ell/acd.c
-@@ -317,12 +317,12 @@ static bool acd_read_handler(struct l_io *io, void *u=
-ser_data)
- 		if (acd->policy =3D=3D L_ACD_DEFEND_POLICY_NONE) {
- 			ACD_DEBUG("Conflict detected, giving up address");
- =
+On 4/11/22 09:20, Andrew Zaborowski wrote:
+> In l_rtnl_route_get_gateway return NULL if route is for an onlink prefix
+> (no gateway).  Remove empty lines and use L_IN_SET in one instance.
+> ---
+>   ell/rtnl.c | 10 +++++-----
+>   1 file changed, 5 insertions(+), 5 deletions(-)
+> =
 
-+			l_acd_stop(acd);
-+
- 			if (acd->event_func)
- 				acd->event_func(L_ACD_EVENT_LOST,
- 							acd->user_data);
- =
 
--			l_acd_stop(acd);
--
- 			break;
- 		}
- =
+Applied, thanks.
 
-@@ -387,6 +387,8 @@ static bool acd_read_handler(struct l_io *io, void *use=
-r_data)
- 		acd->timeout =3D NULL;
- =
+Regards,
+-Denis
 
- 		ACD_DEBUG("Lost address");
-+		l_acd_stop(acd);
-+
- 		/*
- 		* RFC 5227 Section 2.4(b)
- 		* "if this is not the first conflicting ARP packet the host has seen,
-@@ -398,8 +400,6 @@ static bool acd_read_handler(struct l_io *io, void *use=
-r_data)
- 		if (acd->event_func)
- 			acd->event_func(L_ACD_EVENT_LOST, acd->user_data);
- =
-
--		l_acd_stop(acd);
--
- 		break;
- 	}
- =
-
--- =
-
-2.34.1
-
---===============7900886199507238230==--
+--===============8006698020967116557==--
 
