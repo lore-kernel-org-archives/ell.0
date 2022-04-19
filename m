@@ -1,56 +1,64 @@
-Content-Type: multipart/mixed; boundary="===============4618834304473539786=="
+Content-Type: multipart/mixed; boundary="===============5273162041819928646=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] dhcp,dhcp6,icmp6,time: Convert timestamps to
- CLOCK_BOOTTIME
-Date: Wed, 18 May 2022 09:22:12 -0500
-Message-ID: <199d1841-ae36-3c42-02ac-825f8a98a3a8@gmail.com>
-In-Reply-To: CAOq732KHoZrEbf47m8NSa8suJ-EVV5yFAWWE8f22DFkVyTV-Qw@mail.gmail.com
+Subject: Re: [PATCH 01/11] net: Add l_net_subnet_matches
+Date: Tue, 19 Apr 2022 15:12:20 -0500
+Message-ID: <f705212f-f095-1fd5-d975-dbaf8c292885@gmail.com>
+In-Reply-To: CAOq732LGogmh7t7y81wsiUOmDevHT=ow2P8bvQzv_6XvXQp44w@mail.gmail.com
 
---===============4618834304473539786==
+--===============5273162041819928646==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Andrew,
 
->> By the way, given that you're using struct timespec below, do you want t=
-o use
->> SO_TIMESTAMPNS?
+> With IPv6 Router Advertisements you can have knowledge of multiple
+> on-link prefixes.  The gateway needs to match one of them in exactly
+> the same way as with IPv4.
+
+But netconfig is not doing this matching? The kernel is?  icmp6 simply puts=
+ in =
+
+the default gateway info and the prefix routes into the routing table.  I d=
+on't =
+
+think it is 'our problem' if the prefixes and route info from the RA result=
+s in =
+
+the RA address not being routable.
+
+
+> Well, if that address you're trying to validate (e.g. let's say your
+> DNS IP) is on-link, which you'd find out from the RA, then you don't
+> need to add anything to the routing table because your RA handler will
+> already have added that route.  If it's not and there's no default
+> router, then either it's an error or you might want to implicitly add
+> a route for it.
+
+If there is no gateway and the DNS address is not 'onlink', what 'implicit' =
+
+route can we add that would make any sense?  Isn't the address simply unrea=
+chable?
+
+Why would we be 'validating' the DNS address in the first place?  How would=
+ we =
+
+validate it?
+
 > =
 
-> It doesn't seem that this would simplify the arithmetics in this case.
-> I wonder if we should bother to use the _NEW variant, which makes sure
-> the timestamp is year 2038-proof on 32-bit systems.
-> =
+> But the way you'd find out whether given IP is on-link is by calling
+> l_net_subnet_matches for each prefix.  Their lengths vary from 0 to
+> 128 like the RFC says.
 
+Anyhow, just rename this function l_net_prefix_matches, since that is what =
+you =
 
-Probably might as well.
-
-<snip>
-
->>> +     return ((int64_t) realtime.tv_sec - boottime.tv_sec) * 1000000 +
->>> +             ((int64_t) realtime.tv_nsec - boottime.tv_nsec) / 1000;
->>
->> Lets use the L_USEC_* defines when possible.
-> =
-
-> Ok.  (IIRC this was done for consistency with l_time_now)
-> =
-
-
-Ah, I need to fix that.  The problem is that this function was added before=
- the =
-
-#defines existed.
-
-I have now added commit:
-bd5a2dc26441 ("time: Add converters from struct {timespec|timeval}")
-
-Please review.
+really intend.
 
 Regards,
 -Denis
---===============4618834304473539786==--
+--===============5273162041819928646==--
 
