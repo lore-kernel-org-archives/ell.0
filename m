@@ -1,57 +1,111 @@
-Content-Type: multipart/mixed; boundary="===============1319310323400466362=="
+Content-Type: multipart/mixed; boundary="===============7135816090123847732=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 01/11] net: Add l_net_subnet_matches
-Date: Tue, 19 Apr 2022 09:42:34 +0200
-Message-ID: <CAOq732J0iJ5Vc8de1z_6TbFbj-ZCi+jiZ65X+Gmgx=_yVGaWSg@mail.gmail.com>
-In-Reply-To: d347beb5-ac09-c641-bb62-b919da565d9f@gmail.com
+Subject: Re: [PATCH 06/11] icmp6: Parse extra options
+Date: Tue, 19 Apr 2022 13:37:42 +0200
+Message-ID: <CAOq732+1TU1_79BcjR-+Gw-q8tsqu-q8FgY4yGDDoODCUY5qfA@mail.gmail.com>
+In-Reply-To: f06829ab-4001-2202-523a-1c6ce45dd6b0@gmail.com
 
---===============1319310323400466362==
+--===============7135816090123847732==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 Hi Denis,
 
-On Mon, 18 Apr 2022 at 20:00, Denis Kenzior <denkenz(a)gmail.com> wrote:
-> On 4/18/22 12:21, Andrew Zaborowski wrote:
-> > On Mon, 18 Apr 2022 at 19:04, Denis Kenzior <denkenz(a)gmail.com> wrote:
-> >> On 4/18/22 12:01, Andrew Zaborowski wrote:
-> >>> Do we want to do the array[bytes] access after the !bits check to
-> >>> avoid accessing the byte after the end of the address for weird cases
-> >>> where the prefix_len is exactly the number of bits in the two buffers
-> >>> we received.
-> >>
-> >> Aren't we guaranteed to be operating on 4 byte values?  So unless pref=
-ix_len =3D=3D
-> >> 32, I don't see how we could perform out-of-bounds access?
+On Mon, 18 Apr 2022 at 21:39, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> On 4/11/22 09:20, Andrew Zaborowski wrote:
+> > +                     if (((opts[3] >> 3) & 3) =3D=3D 2)
+> > +                             break;
+>
+> Can we use bit_field() from useful.h instead?
+
+Sure.
+
+>
+> > +
+> > +                     /*
+> > +                      * RFC 4191 Section 3.1:
+> > +                      * "The Router Preference and Lifetime values in =
+a ::/0
+> > +                      * Route Information Option override the preferen=
+ce and
+> > +                      * lifetime values in the Router Advertisement he=
+ader."
+> > +                      *
+> > +                      * Don't count ::/0 routes.
+> > +                      */
+> > +                     if (opts[2] =3D=3D 0)
+> > +                             break;
+> > +
+> > +                     n_routes +=3D 1;
+> >                       break;
+> >               }
 > >
-> > 4 or 16 bytes, in theory yes but I can imagine someone trying to use a
+> > @@ -739,6 +780,10 @@ struct l_icmp6_router *_icmp6_router_parse(const s=
+truct nd_router_advert *ra,
+> >               r->other =3D true;
+> >
+> >       r->pref =3D (ra->nd_ra_flags_reserved >> 3) & 0x3;
+> > +     /*
+> > +      * "If the Reserved (10) value is received, the receiver MUST
+> > +      * treat the value as if it were (00).
+> > +      */
 >
-> IPv6 doesn't really use subnets like IPv4 does though?  I'm not even sure=
- this
-> function would be relevant for IPv6?
+> This might warrant a separate commit
 
-You need it to check if an address is within a subnet prefix?
+Ok.
 
->  Is it?  Looks like we do this for FILS,
-> but I'm not even certain that the check in ie.c in iwd is correct.
 >
-> > buffer of just long enough for the subnet address, or passing a
-> > prefix_len of 32 / 128 for things like a route prefix.
+> >       if (r->pref =3D=3D 0x2) /* If invalid, reset to medium */
+> >               r->pref =3D 0;
+> >
 >
-> Well, prefix_len of 32/128 implies point-to-point routing (and even 31 in=
- IPv4
-> would be special).  So I'm not sure calling this function with such prefi=
-xes
-> even makes sense?
+> <snip>
+>
+> > @@ -765,17 +810,69 @@ struct l_icmp6_router *_icmp6_router_parse(const =
+struct nd_router_advert *ra,
+> >                       break;
+> >               case ND_OPT_PREFIX_INFORMATION:
+> >               {
+> > -                     struct route_info *i =3D &r->prefixes[n_prefixes];
+> > +                     struct route_info *i =3D &r->routes[n_routes];
+> >
+> >                       if (!(opts[3] & ND_OPT_PI_FLAG_ONLINK))
+> >                               break;
+> >
+> >                       i->prefix_len =3D opts[2];
+> > +                     i->onlink =3D true;
+> >                       i->valid_lifetime =3D l_get_be32(opts + 4);
+> >                       i->preferred_lifetime =3D l_get_be32(opts + 8);
+> >                       memcpy(i->address, opts + 16, 16);
+> >
+> > -                     n_prefixes +=3D 1;
+> > +                     n_routes +=3D 1;
+> > +                     break;
+> > +             }
+> > +             case ND_OPT_RTR_ADV_INTERVAL:
+> > +                     if (l < 8)
+> > +                             break;
+> > +
+> > +                     r->max_rtr_adv_interval_ms =3D l_get_be32(opts + =
+4);
+> > +                     break;
+> > +             case ND_OPT_ROUTE_INFORMATION:
+> > +             {
+> > +                     struct route_info *i =3D &r->routes[n_routes++];
+> > +
+> > +                     if (((opts[3] >> 3) & 3) =3D=3D 2)
+>
+> bit_field()?
+>
+> Also, you access this value at least twice below, so maybe just use a var=
+iable
+> and assign it.
 
-While an IPv4 31/32-bit subnet might not be a valid subnet, with IPv6
-I don't know of a reason that single-address prefixes should be
-treated specially.  RFC4191 for example says that an onlink prefix
-length "value ranges from 0 to 128".
+Ok.
 
 Best regards
---===============1319310323400466362==--
+--===============7135816090123847732==--
 
