@@ -1,269 +1,81 @@
-Content-Type: multipart/mixed; boundary="===============8489563357119805357=="
+Content-Type: multipart/mixed; boundary="===============7579235548558881400=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 12/12] examples: Add a netconfig API example/test utility
-Date: Mon, 07 Mar 2022 15:55:43 +0100
-Message-ID: <20220307145543.1558788-12-andrew.zaborowski@intel.com>
-In-Reply-To: 20220307145543.1558788-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 01/11] net: Add l_net_subnet_matches
+Date: Tue, 19 Apr 2022 20:48:36 +0200
+Message-ID: <CAOq732LGogmh7t7y81wsiUOmDevHT=ow2P8bvQzv_6XvXQp44w@mail.gmail.com>
+In-Reply-To: fda11a36-9bd2-77da-4845-15bb62146577@gmail.com
 
---===============8489563357119805357==
+--===============7579235548558881400==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-A test utility that simply starts netconfig on a given interface and
-prints events that occur.  DNS/mdns changes aren't committed to the
-system.
----
- Makefile.am               |   4 +-
- examples/netconfig-test.c | 208 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 211 insertions(+), 1 deletion(-)
- create mode 100644 examples/netconfig-test.c
+On Tue, 19 Apr 2022 at 17:02, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> On 4/19/22 02:42, Andrew Zaborowski wrote:
+> > On Mon, 18 Apr 2022 at 20:00, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> >> IPv6 doesn't really use subnets like IPv4 does though?  I'm not even s=
+ure this
+> >> function would be relevant for IPv6?
+> >
+> > You need it to check if an address is within a subnet prefix?
+> >
+>
+> IPv6 doesn't work the same as IPv4 though.  I'm fairly certain that the g=
+ateway
+> and the static address do not need to be part of the same subnet at all.
 
-diff --git a/Makefile.am b/Makefile.am
-index 8aaefdf..8ccb35e 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -347,7 +347,8 @@ unit_test_data_files =3D unit/settings.test unit/dbus.c=
-onf
- examples =3D examples/dbus-service examples/https-client-test \
- 		examples/https-server-test examples/dbus-client \
- 		examples/dhcp-client examples/dhcp6-client \
--		examples/dhcp-server examples/acd-client
-+		examples/dhcp-server examples/acd-client \
-+		examples/netconfig-test
- =
+Well, I was trying not to concentrate on just one use case since this
+is public API.
 
- if GLIB
- examples +=3D examples/glib-eventloop
-@@ -367,6 +368,7 @@ examples_dhcp_client_LDADD =3D ell/libell-private.la
- examples_dhcp6_client_LDADD =3D ell/libell-private.la
- examples_dhcp_server_LDADD =3D ell/libell-private.la
- examples_acd_client_LDADD =3D ell/libell-private.la
-+examples_netconfig_test_LDADD =3D ell/libell-private.la
- =
+But they kinda do work the same way.  The gateway always needs to be
+in one of the on-link subnets or prefixes.
 
- noinst_PROGRAMS +=3D tools/certchain-verify tools/genl-discover \
- 		   tools/genl-watch tools/genl-request tools/gpio
-diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
-new file mode 100644
-index 0000000..216ee02
---- /dev/null
-+++ b/examples/netconfig-test.c
-@@ -0,0 +1,208 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2022  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#define _GNU_SOURCE
-+#include <stdio.h>
-+#include <unistd.h>
-+#include <stdlib.h>
-+#include <assert.h>
-+#include <signal.h>
-+#include <net/if.h>
-+#include <sys/socket.h>
-+#include <linux/if_arp.h>
-+#include <arpa/inet.h>
-+#include <getopt.h>
-+#include <errno.h>
-+
-+#include <ell/ell.h>
-+
-+static bool apply;
-+static struct l_netlink *rtnl;
-+
-+static void do_debug(const char *str, void *user_data)
-+{
-+	const char *prefix =3D user_data;
-+
-+	l_info("%s%s", prefix, str);
-+}
-+
-+static void signal_handler(uint32_t signo, void *user_data)
-+{
-+	switch (signo) {
-+	case SIGINT:
-+	case SIGTERM:
-+		l_info("Terminate");
-+		l_main_quit();
-+		break;
-+	}
-+}
-+
-+static void log_addresses(const char *af_str, const char *action,
-+				struct l_queue *list)
-+{
-+	const struct l_queue_entry *entry;
-+
-+	if (l_queue_isempty(list))
-+		return;
-+
-+	l_info("[netconfig%s] Addresses %s:", af_str, action);
-+
-+	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
-+		struct l_rtnl_address *addr =3D entry->data;
-+		char ip_str[INET6_ADDRSTRLEN];
-+
-+		l_rtnl_address_get_address(addr, ip_str);
-+		l_info("[netconfig%s] \t%s/%i, orig lifetime %i s", af_str, ip_str,
-+			l_rtnl_address_get_prefix_length(addr),
-+			l_rtnl_address_get_valid_lifetime(addr));
-+	}
-+}
-+
-+static void log_routes(const char *af_str, const char *action,
-+			struct l_queue *list)
-+{
-+	const struct l_queue_entry *entry;
-+
-+	if (l_queue_isempty(list))
-+		return;
-+
-+	l_info("[netconfig%s] Routes %s:", af_str, action);
-+
-+	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
-+		struct l_rtnl_route *rt =3D entry->data;
-+		char subnet_str[INET6_ADDRSTRLEN];
-+		char gateway_str[INET6_ADDRSTRLEN];
-+		uint8_t prefix_len;
-+
-+		l_rtnl_route_get_dst(rt, subnet_str, &prefix_len);
-+		l_rtnl_route_get_gateway(rt, gateway_str);
-+		l_info("[netconfig%s] \t%s/%i, gateway %s, orig lifetime %i s",
-+			af_str, subnet_str, prefix_len, gateway_str,
-+			l_rtnl_route_get_lifetime(rt));
-+	}
-+}
-+
-+static void event_handler(struct l_netconfig *netconfig, uint8_t family,
-+				enum l_netconfig_event event, void *user_data)
-+{
-+	const char *af_str =3D family =3D=3D AF_INET ? "v4" : "v6";
-+	struct l_queue *added, *updated, *removed;
-+
-+	switch (event) {
-+	case L_NETCONFIG_EVENT_CONFIGURE:
-+		l_info("[netconfig%s] Configure", af_str);
-+		break;
-+	case L_NETCONFIG_EVENT_UPDATE:
-+		l_info("[netconfig%s] Update", af_str);
-+		break;
-+	case L_NETCONFIG_EVENT_UNCONFIGURE:
-+		l_info("[netconfig%s] Unconfigure", af_str);
-+		break;
-+	case L_NETCONFIG_EVENT_FAILED:
-+		l_info("[netconfig%s] Failed", af_str);
-+		l_main_quit();
-+		return;
-+	}
-+
-+	l_netconfig_get_addresses(netconfig, &added, &updated, &removed);
-+	log_addresses(af_str, "added", added);
-+	log_addresses(af_str, "updated", updated);
-+	log_addresses(af_str, "removed", removed);
-+
-+	l_netconfig_get_routes(netconfig, &added, &updated, &removed);
-+	log_routes(af_str, "added", added);
-+	log_routes(af_str, "updated", updated);
-+	log_routes(af_str, "removed", removed);
-+
-+	if (apply)
-+		l_netconfig_apply_rtnl(netconfig, rtnl);
-+}
-+
-+static const struct option main_options[] =3D {
-+	{ "apply",	 no_argument,		NULL, 'a' },
-+	{ }
-+};
-+
-+int main(int argc, char *argv[])
-+{
-+	struct l_netconfig *netconfig;
-+	int ifindex;
-+
-+	if (argc < 2) {
-+                printf("Usage: %s <interface> [options]\n", argv[0]);
-+		return EXIT_SUCCESS;
-+        }
-+
-+	ifindex =3D if_nametoindex(argv[1]);
-+	if (!ifindex) {
-+		fprintf(stderr, "if_nametoindex(%s): %s\n", argv[1],
-+			strerror(errno));
-+		return EXIT_FAILURE;
-+	}
-+
-+	for (;;) {
-+		int opt =3D getopt_long(argc - 2, argv + 2, "a", main_options,
-+					NULL);
-+
-+		if (opt < 0)
-+			break;
-+
-+		switch (opt) {
-+		case 'a':
-+			apply =3D true;
-+			break;
-+		}
-+	}
-+
-+	if (!l_main_init())
-+		return EXIT_FAILURE;
-+
-+	if (apply) {
-+		rtnl =3D l_netlink_new(NETLINK_ROUTE);
-+		if (!rtnl) {
-+			fprintf(stderr, "l_netlink_new(NETLINK_ROUTE) error\n");
-+			return EXIT_FAILURE;
-+		}
-+	}
-+
-+	l_log_set_stderr();
-+	l_debug_enable("*");
-+
-+	netconfig =3D l_netconfig_new(ifindex);
-+	l_netconfig_set_event_handler(netconfig, event_handler, NULL, NULL);
-+	l_dhcp_client_set_debug(l_netconfig_get_dhcp_client(netconfig),
-+				do_debug, "[DHCPv4] ", NULL);
-+	l_netconfig_start(netconfig);
-+
-+	l_main_run_with_signal(signal_handler, NULL);
-+
-+	l_netconfig_destroy(netconfig);
-+	l_main_exit();
-+
-+	l_netlink_destroy(rtnl);
-+
-+	return EXIT_SUCCESS;
-+}
--- =
+With static configuration (IPv4 and IPv6) or DHCP v4 you generally
+have one on-link subnet, the one defined by your IP + prefix length.
 
-2.32.0
+With IPv6 Router Advertisements you can have knowledge of multiple
+on-link prefixes.  The gateway needs to match one of them in exactly
+the same way as with IPv4.
 
---===============8489563357119805357==--
+>
+> >>   Is it?  Looks like we do this for FILS,
+> >> but I'm not even certain that the check in ie.c in iwd is correct.
+> >>
+> >>> buffer of just long enough for the subnet address, or passing a
+> >>> prefix_len of 32 / 128 for things like a route prefix.
+> >>
+> >> Well, prefix_len of 32/128 implies point-to-point routing (and even 31=
+ in IPv4
+> >> would be special).  So I'm not sure calling this function with such pr=
+efixes
+> >> even makes sense?
+> >
+> > While an IPv4 31/32-bit subnet might not be a valid subnet, with IPv6
+> > I don't know of a reason that single-address prefixes should be
+> > treated specially.  RFC4191 for example says that an onlink prefix
+> > length "value ranges from 0 to 128".
+>
+> Sure, but I still don't see how this figures into the subnet validation?
+>
+> An on-link with a prefix 128 just means that the host is on the local lin=
+k.  You
+> simply add it to the routing table and treat it as directly reachable (no=
+t via
+> the default gateway).  I don't think there would be anything to validate?
+
+Well, if that address you're trying to validate (e.g. let's say your
+DNS IP) is on-link, which you'd find out from the RA, then you don't
+need to add anything to the routing table because your RA handler will
+already have added that route.  If it's not and there's no default
+router, then either it's an error or you might want to implicitly add
+a route for it.
+
+But the way you'd find out whether given IP is on-link is by calling
+l_net_subnet_matches for each prefix.  Their lengths vary from 0 to
+128 like the RFC says.
+
+Best regards
+--===============7579235548558881400==--
 
