@@ -1,59 +1,129 @@
-Content-Type: multipart/mixed; boundary="===============2909290420641179682=="
+Content-Type: multipart/mixed; boundary="===============2140161085135712751=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH v2 1/2] base64: refactor l_base64_decode and validate
- bytes consumed
-Date: Thu, 17 Feb 2022 15:56:22 -0600
-Message-ID: <fcadf4f9-fb4c-7227-def5-24ae64a21666@gmail.com>
-In-Reply-To: 20220217201305.2065223-1-prestwoj@gmail.com
+Subject: [PATCH 09/11] netconfig: Add getters for DNS addresses and domain
+ names
+Date: Thu, 21 Apr 2022 00:10:22 +0200
+Message-ID: <20220420221024.1276317-9-andrew.zaborowski@intel.com>
+In-Reply-To: 20220420221024.1276317-1-andrew.zaborowski@intel.com
 
---===============2909290420641179682==
+--===============2140161085135712751==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+---
+ ell/ell.sym     |  2 ++
+ ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/netconfig.h |  2 ++
+ 3 files changed, 68 insertions(+)
 
-On 2/17/22 14:13, James Prestwood wrote:
-> The way the base64 data was being validated was accurate, but included a
-> second loop to iterate the padding. There was nothing wrong with this but
-> for more concise/readable code the padding can be calculated and validated
-> all after the first loop by incrementing pad_len when '=3D' is found rath=
-er
-> than breaking out. The valid base64 character check did need a slight
-> modification to also check that pad_len has not been incremented, which
-> ensures there is no data after the padding (prior this was done by the
-> second, pad checking, loop).
-> =
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 0f9f884..0ce604b 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -755,6 +755,8 @@ global:
+ 	l_netconfig_apply_rtnl;
+ 	l_netconfig_get_addresses;
+ 	l_netconfig_get_routes;
++	l_netconfig_get_dns_list;
++	l_netconfig_get_domain_names;
+ local:
+ 	*;
+ };
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index bc573d7..6bad38e 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -1244,3 +1244,67 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_g=
+et_routes(
+ =
 
-> Then, after the loop, pad_len has been calculated and can be checked agai=
-nst
-> what was expected based on the valid base64 characters found.
-> =
+ 	return l_queue_get_entries(netconfig->routes.current);
+ }
++
++/* Returns a new strv array to be freed by the caller */
++LIB_EXPORT char **l_netconfig_get_dns_list(struct l_netconfig *netconfig)
++{
++	char **ret =3D NULL;
++	const struct l_dhcp_lease *v4_lease;
++	const struct l_dhcp6_lease *v6_lease;
++
++#define CONCAT(dest, src, free)		\
++	do {				\
++		char **tmp =3D src;	\
++		tmp =3D free ? tmp : l_strv_copy(tmp);	\
++		if (!dest)		\
++			dest =3D tmp;	\
++		else if (tmp) {		\
++			unsigned int destlen =3D l_strv_length(dest);	\
++			unsigned int srclen =3D l_strv_length(tmp);	\
++			dest =3D l_realloc(dest, sizeof(char *) *	\
++				(destlen + srclen + 1));	\
++			memcpy(dest + destlen, tmp, sizeof(char *) *	\
++					(srclen + 1));	\
++			l_free(tmp);	\
++		}			\
++	} while (0)
++
++	if (netconfig->v4_dns_override)
++		CONCAT(ret, netconfig->v4_dns_override, false);
++	else if ((v4_lease =3D
++			l_dhcp_client_get_lease(netconfig->dhcp_client)))
++		CONCAT(ret, l_dhcp_lease_get_dns(v4_lease), true);
++
++	if (netconfig->v6_dns_override)
++		CONCAT(ret, netconfig->v6_dns_override, false);
++	else if ((v6_lease =3D
++			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
++		CONCAT(ret, l_dhcp6_lease_get_dns(v6_lease), true);
++
++	return ret;
++}
++
++/* Returns a new strv array to be freed by the caller */
++LIB_EXPORT char **l_netconfig_get_domain_names(struct l_netconfig *netconf=
+ig)
++{
++	char **ret =3D NULL;
++	const struct l_dhcp_lease *v4_lease;
++	const struct l_dhcp6_lease *v6_lease;
++
++	if (netconfig->v4_domain_names_override)
++		CONCAT(ret, netconfig->v4_domain_names_override, false);
++	else if ((v4_lease =3D
++			l_dhcp_client_get_lease(netconfig->dhcp_client)) &&
++			l_dhcp_lease_get_domain_name(v4_lease)) {
++		ret =3D l_new(char *, 2);
++		ret[0] =3D l_dhcp_lease_get_domain_name(v4_lease);
++	}
++
++	if (netconfig->v6_dns_override)
++		CONCAT(ret, netconfig->v6_domain_names_override, false);
++	else if ((v6_lease =3D
++			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
++		CONCAT(ret, l_dhcp6_lease_get_domains(v6_lease), true);
++
++	return ret;
++}
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index 7796a2f..8bb0c0e 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -97,6 +97,8 @@ const struct l_queue_entry *l_netconfig_get_routes(
+ 				const struct l_queue_entry **out_added,
+ 				const struct l_queue_entry **out_updated,
+ 				const struct l_queue_entry **out_removed);
++char **l_netconfig_get_dns_list(struct l_netconfig *netconfig);
++char **l_netconfig_get_domain_names(struct l_netconfig *netconfig);
+ =
 
-> This refactoring also makes checking the bytes consumed much easier since
-> the first loop iterates until the very end of the base64 data (including
-> padding).
-> ---
->   ell/base64.c | 41 ++++++++++++++++++++++-------------------
->   1 file changed, 22 insertions(+), 19 deletions(-)
-> =
+ #ifdef __cplusplus
+ }
+-- =
 
-> v2:
->   * Fix issue in calculating the end of the base64 data (caused test-pem =
-to
->     fail). This was because whitespace was not taken into account which
->     could exist between the base64 and padding. Instead the end of the
->     base64 data is now saved when the first pad byte is found. This allows
->     the second loop to use this as its end condition.
-> =
+2.32.0
 
-
-Applied, thanks.
-
-Regards,
--Denis
-
---===============2909290420641179682==--
+--===============2140161085135712751==--
 
