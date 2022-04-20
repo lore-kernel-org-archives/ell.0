@@ -1,67 +1,137 @@
-Content-Type: multipart/mixed; boundary="===============0341292004251059376=="
+Content-Type: multipart/mixed; boundary="===============4622624109822358125=="
 MIME-Version: 1.0
-From: Simon Maurer <mail at maurer.systems>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: AIO support
-Date: Mon, 20 Sep 2021 10:22:30 +0000
-Message-ID: <df76867b-8820-a7f5-5f7b-1d5f09e133d6@maurer.systems>
-In-Reply-To: F69C075D-F359-4924-822A-0F5457F31B03@holtmann.org
+Subject: [PATCH 07/11] netconfig: Avoid returning internal l_queues
+Date: Thu, 21 Apr 2022 00:10:20 +0200
+Message-ID: <20220420221024.1276317-7-andrew.zaborowski@intel.com>
+In-Reply-To: 20220420221024.1276317-1-andrew.zaborowski@intel.com
 
---===============0341292004251059376==
+--===============4622624109822358125==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Marcel,
+Return const struct l_queue_entry pointers instead.
+---
+ ell/netconfig.c | 35 ++++++++++++++++++-----------------
+ ell/netconfig.h | 20 +++++++++++---------
+ 2 files changed, 29 insertions(+), 26 deletions(-)
 
-No, because I don't believe it will work. I think the underlying problem =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 0419b0f..fdd2705 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -1076,37 +1076,38 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
+config *netconfig,
+ 					NULL, NULL, NULL);
+ }
+ =
 
-is the difference between streams and files. When a process creates a =
+-LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
+-						struct l_netconfig *netconfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_addresses(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
+ {
+ 	if (out_added)
+-		*out_added =3D netconfig->addresses.added;
++		*out_added =3D l_queue_get_entries(netconfig->addresses.added);
+ =
 
-stream (e.g. socket), the kernel creates a buffer and can start =
+ 	if (out_updated)
+-		*out_updated =3D netconfig->addresses.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->addresses.updated);
+ =
 
-receiving data from an external source. This buffer can be accessed =
+ 	if (out_removed)
+-		*out_removed =3D netconfig->addresses.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->addresses.removed);
+ =
 
-non-blocking from the process and the kernel can signal to the process =
+-	return netconfig->addresses.current;
++	return l_queue_get_entries(netconfig->addresses.current);
+ }
+ =
 
-when data was received. If the process opens a file, the kernel doesn't =
+-LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
+onfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_routes(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
+ {
+ 	if (out_added)
+-		*out_added =3D netconfig->routes.added;
++		*out_added =3D l_queue_get_entries(netconfig->routes.added);
+ =
 
-know what the process will do next (read or write, offset of the file, =
+ 	if (out_updated)
+-		*out_updated =3D netconfig->routes.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->routes.updated);
+ =
 
-transfer size). So the kernel doesn't read/write any bytes unless the =
+ 	if (out_removed)
+-		*out_removed =3D netconfig->routes.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->routes.removed);
+ =
 
-process sends a command to the kernel. And the POSIX read/write =
+-	return netconfig->routes.current;
++	return l_queue_get_entries(netconfig->routes.current);
+ }
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index a50a895..7796a2f 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -33,7 +33,7 @@ struct l_dhcp_client;
+ struct l_dhcp6_client;
+ struct l_icmp6_client;
+ struct l_netlink;
+-struct l_queue;
++struct l_queue_entry;
+ struct l_netconfig;
+ struct l_rtnl_address;
+ struct l_rtnl_route;
+@@ -87,14 +87,16 @@ void l_netconfig_set_event_handler(struct l_netconfig *=
+netconfig,
+ =
 
-functions on files are always blocking. That leaves us with using =
+ void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
+ 				struct l_netlink *rtnl);
+-struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
+-struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
++const struct l_queue_entry *l_netconfig_get_addresses(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
++const struct l_queue_entry *l_netconfig_get_routes(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
+ =
 
-multi-threading (POSIX AIO) or other linux specific syscalls (libaio, =
+ #ifdef __cplusplus
+ }
+-- =
 
-preadv2).
+2.32.0
 
-Regards
-Simon
-
-On 9/20/21 9:20 AM, Marcel Holtmann wrote:
-> Hi Simon,
-> =
-
->> I'm looking now into libaio. POSIX AIO is implemented in libc with user =
-threads, while libaio uses linux native syscalls. Maybe I can also get rid =
-of signal usage. IMHO non-blocking file access / async IO is quite importan=
-t for embedded applications and it would be nice to have this feature in el=
-l.
-> =
-
-> have you looked into using l_idle for providing async read/write callback=
-s that way. I have the feeling that AIO is total overkill for embedded appl=
-ications.
-> =
-
-> Regards
-> =
-
-> Marcel
->=20
-
---===============0341292004251059376==--
+--===============4622624109822358125==--
 
