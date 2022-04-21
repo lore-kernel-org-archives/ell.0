@@ -1,24 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============5620653877886095211=="
+Content-Type: multipart/mixed; boundary="===============8862082140462607798=="
 MIME-Version: 1.0
-From: Simon Maurer <mail at maurer.systems>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: AIO support
-Date: Mon, 20 Sep 2021 15:23:27 +0000
-Message-ID: <2971a78b-4b0c-de53-2653-5c9494592890@maurer.systems>
-In-Reply-To: df76867b-8820-a7f5-5f7b-1d5f09e133d6@maurer.systems
+Subject: [PATCH 12/12] rtnl: Fix l_rtnl_route_get_protocol
+Date: Thu, 21 Apr 2022 17:45:25 +0200
+Message-ID: <20220421154525.1416984-12-andrew.zaborowski@intel.com>
+In-Reply-To: 20220421154525.1416984-1-andrew.zaborowski@intel.com
 
---===============5620653877886095211==
+--===============8862082140462607798==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-I wrote a little "proof of concept" for using ell with libaio:
-https://github.com/mausys/ellaio/blob/main/aio.c
-No more signals and threads. Also libaio is LGPL too, so it could be =
+---
+ ell/rtnl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-bundled with ell.
+diff --git a/ell/rtnl.c b/ell/rtnl.c
+index 126fb9d..5464872 100644
+--- a/ell/rtnl.c
++++ b/ell/rtnl.c
+@@ -648,7 +648,7 @@ LIB_EXPORT uint8_t l_rtnl_route_get_protocol(const stru=
+ct l_rtnl_route *rt)
+ 	if (unlikely(!rt))
+ 		return RTPROT_UNSPEC;
+ =
 
-Regards
-Simon
---===============5620653877886095211==--
+-	return rt->scope;
++	return rt->protocol;
+ }
+ =
+
+ LIB_EXPORT bool l_rtnl_route_set_protocol(struct l_rtnl_route *rt,
+-- =
+
+2.32.0
+
+--===============8862082140462607798==--
 
