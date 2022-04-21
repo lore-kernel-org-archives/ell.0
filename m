@@ -1,111 +1,129 @@
-Content-Type: multipart/mixed; boundary="===============7135816090123847732=="
+Content-Type: multipart/mixed; boundary="===============7225754553071685175=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 06/11] icmp6: Parse extra options
-Date: Tue, 19 Apr 2022 13:37:42 +0200
-Message-ID: <CAOq732+1TU1_79BcjR-+Gw-q8tsqu-q8FgY4yGDDoODCUY5qfA@mail.gmail.com>
-In-Reply-To: f06829ab-4001-2202-523a-1c6ce45dd6b0@gmail.com
+Subject: [PATCH 09/12] netconfig: Add getters for DNS addresses and domain
+ names
+Date: Thu, 21 Apr 2022 17:45:22 +0200
+Message-ID: <20220421154525.1416984-9-andrew.zaborowski@intel.com>
+In-Reply-To: 20220421154525.1416984-1-andrew.zaborowski@intel.com
 
---===============7135816090123847732==
+--===============7225754553071685175==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+---
+ ell/ell.sym     |  2 ++
+ ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/netconfig.h |  2 ++
+ 3 files changed, 68 insertions(+)
 
-On Mon, 18 Apr 2022 at 21:39, Denis Kenzior <denkenz(a)gmail.com> wrote:
-> On 4/11/22 09:20, Andrew Zaborowski wrote:
-> > +                     if (((opts[3] >> 3) & 3) =3D=3D 2)
-> > +                             break;
->
-> Can we use bit_field() from useful.h instead?
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 0f9f884..0ce604b 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -755,6 +755,8 @@ global:
+ 	l_netconfig_apply_rtnl;
+ 	l_netconfig_get_addresses;
+ 	l_netconfig_get_routes;
++	l_netconfig_get_dns_list;
++	l_netconfig_get_domain_names;
+ local:
+ 	*;
+ };
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index d242375..e757103 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -1325,3 +1325,67 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_g=
+et_routes(
+ =
 
-Sure.
+ 	return l_queue_get_entries(netconfig->routes.current);
+ }
++
++/* Returns a new strv array to be freed by the caller */
++LIB_EXPORT char **l_netconfig_get_dns_list(struct l_netconfig *netconfig)
++{
++	char **ret =3D NULL;
++	const struct l_dhcp_lease *v4_lease;
++	const struct l_dhcp6_lease *v6_lease;
++
++#define CONCAT(dest, src, free)		\
++	do {				\
++		char **tmp =3D src;	\
++		tmp =3D free ? tmp : l_strv_copy(tmp);	\
++		if (!dest)		\
++			dest =3D tmp;	\
++		else if (tmp) {		\
++			unsigned int destlen =3D l_strv_length(dest);	\
++			unsigned int srclen =3D l_strv_length(tmp);	\
++			dest =3D l_realloc(dest, sizeof(char *) *	\
++				(destlen + srclen + 1));	\
++			memcpy(dest + destlen, tmp, sizeof(char *) *	\
++					(srclen + 1));	\
++			l_free(tmp);	\
++		}			\
++	} while (0)
++
++	if (netconfig->v4_dns_override)
++		CONCAT(ret, netconfig->v4_dns_override, false);
++	else if ((v4_lease =3D
++			l_dhcp_client_get_lease(netconfig->dhcp_client)))
++		CONCAT(ret, l_dhcp_lease_get_dns(v4_lease), true);
++
++	if (netconfig->v6_dns_override)
++		CONCAT(ret, netconfig->v6_dns_override, false);
++	else if ((v6_lease =3D
++			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
++		CONCAT(ret, l_dhcp6_lease_get_dns(v6_lease), true);
++
++	return ret;
++}
++
++/* Returns a new strv array to be freed by the caller */
++LIB_EXPORT char **l_netconfig_get_domain_names(struct l_netconfig *netconf=
+ig)
++{
++	char **ret =3D NULL;
++	const struct l_dhcp_lease *v4_lease;
++	const struct l_dhcp6_lease *v6_lease;
++
++	if (netconfig->v4_domain_names_override)
++		CONCAT(ret, netconfig->v4_domain_names_override, false);
++	else if ((v4_lease =3D
++			l_dhcp_client_get_lease(netconfig->dhcp_client)) &&
++			l_dhcp_lease_get_domain_name(v4_lease)) {
++		ret =3D l_new(char *, 2);
++		ret[0] =3D l_dhcp_lease_get_domain_name(v4_lease);
++	}
++
++	if (netconfig->v6_dns_override)
++		CONCAT(ret, netconfig->v6_domain_names_override, false);
++	else if ((v6_lease =3D
++			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
++		CONCAT(ret, l_dhcp6_lease_get_domains(v6_lease), true);
++
++	return ret;
++}
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index 7796a2f..8bb0c0e 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -97,6 +97,8 @@ const struct l_queue_entry *l_netconfig_get_routes(
+ 				const struct l_queue_entry **out_added,
+ 				const struct l_queue_entry **out_updated,
+ 				const struct l_queue_entry **out_removed);
++char **l_netconfig_get_dns_list(struct l_netconfig *netconfig);
++char **l_netconfig_get_domain_names(struct l_netconfig *netconfig);
+ =
 
->
-> > +
-> > +                     /*
-> > +                      * RFC 4191 Section 3.1:
-> > +                      * "The Router Preference and Lifetime values in =
-a ::/0
-> > +                      * Route Information Option override the preferen=
-ce and
-> > +                      * lifetime values in the Router Advertisement he=
-ader."
-> > +                      *
-> > +                      * Don't count ::/0 routes.
-> > +                      */
-> > +                     if (opts[2] =3D=3D 0)
-> > +                             break;
-> > +
-> > +                     n_routes +=3D 1;
-> >                       break;
-> >               }
-> >
-> > @@ -739,6 +780,10 @@ struct l_icmp6_router *_icmp6_router_parse(const s=
-truct nd_router_advert *ra,
-> >               r->other =3D true;
-> >
-> >       r->pref =3D (ra->nd_ra_flags_reserved >> 3) & 0x3;
-> > +     /*
-> > +      * "If the Reserved (10) value is received, the receiver MUST
-> > +      * treat the value as if it were (00).
-> > +      */
->
-> This might warrant a separate commit
+ #ifdef __cplusplus
+ }
+-- =
 
-Ok.
+2.32.0
 
->
-> >       if (r->pref =3D=3D 0x2) /* If invalid, reset to medium */
-> >               r->pref =3D 0;
-> >
->
-> <snip>
->
-> > @@ -765,17 +810,69 @@ struct l_icmp6_router *_icmp6_router_parse(const =
-struct nd_router_advert *ra,
-> >                       break;
-> >               case ND_OPT_PREFIX_INFORMATION:
-> >               {
-> > -                     struct route_info *i =3D &r->prefixes[n_prefixes];
-> > +                     struct route_info *i =3D &r->routes[n_routes];
-> >
-> >                       if (!(opts[3] & ND_OPT_PI_FLAG_ONLINK))
-> >                               break;
-> >
-> >                       i->prefix_len =3D opts[2];
-> > +                     i->onlink =3D true;
-> >                       i->valid_lifetime =3D l_get_be32(opts + 4);
-> >                       i->preferred_lifetime =3D l_get_be32(opts + 8);
-> >                       memcpy(i->address, opts + 16, 16);
-> >
-> > -                     n_prefixes +=3D 1;
-> > +                     n_routes +=3D 1;
-> > +                     break;
-> > +             }
-> > +             case ND_OPT_RTR_ADV_INTERVAL:
-> > +                     if (l < 8)
-> > +                             break;
-> > +
-> > +                     r->max_rtr_adv_interval_ms =3D l_get_be32(opts + =
-4);
-> > +                     break;
-> > +             case ND_OPT_ROUTE_INFORMATION:
-> > +             {
-> > +                     struct route_info *i =3D &r->routes[n_routes++];
-> > +
-> > +                     if (((opts[3] >> 3) & 3) =3D=3D 2)
->
-> bit_field()?
->
-> Also, you access this value at least twice below, so maybe just use a var=
-iable
-> and assign it.
-
-Ok.
-
-Best regards
---===============7135816090123847732==--
+--===============7225754553071685175==--
 
