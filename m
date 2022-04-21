@@ -1,320 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============6432633193991983426=="
+Content-Type: multipart/mixed; boundary="===============4838911060029490954=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 11/17] netconfig: Wait for link-local address before DHCPv6
-Date: Sat, 14 May 2022 00:47:07 +0200
-Message-ID: <20220513224713.1447773-11-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 01/11] net: Add l_net_subnet_matches
+Date: Thu, 21 Apr 2022 13:02:01 +0200
+Message-ID: <CAOq732LP7Gsfsgoq463zMSpJKiiG3BNu7V1nm+Upx=WW1yrbfQ@mail.gmail.com>
+In-Reply-To: 07a346d3-574e-b1e8-15a6-0a04784d4b38@gmail.com
 
---===============6432633193991983426==
+--===============4838911060029490954==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Keep one global rtnl instance instead of one per interface so that we
-can have just one RTM_NEWADDR listener.  On l_netconfig_start dump
-existing IPv6 addresses and wait until a link-local address is added so
-it can be used as the source address for our DHCPv6 frames.
----
- ell/netconfig.c | 178 ++++++++++++++++++++++++++++++++++++++++++++----
- 1 file changed, 163 insertions(+), 15 deletions(-)
+Hi Denis,
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 60962ce..c6a5c8e 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -64,7 +64,7 @@ struct l_netconfig {
- 	char **v6_dns_override;
- 	char **v6_domain_names_override;
- =
+On Thu, 21 Apr 2022 at 04:37, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> > I put the following comment in one of the patches:
+> >
+> > +        * TODO: check if we have a prefix route covering the IP,
+> > +        * l_dhcp6_client doesn't guarantee that the received IP is in
+> > +        * on of the subnets marked as on-link in the RA.
+> >
+>
+> You keep repeating this, but I still don't believe this is true.  You cou=
+ld have
+> RA gateway address being link-local, or subnet C.  The prefix info in the=
+ RA
+> could be subnet B and the DHCPv6 address obtained could be in subnet A wi=
+th no
+> overlap.  Why would you want to? Who knows ;)
 
--	struct l_netlink *rtnl;
-+	unsigned int ifaddr6_dump_cmd_id;
- 	bool started;
- 	struct l_idle *do_static_work;
- 	bool v4_configured;
-@@ -115,6 +115,11 @@ union netconfig_addr {
- 	struct in6_addr v6;
- };
- =
+However complicated the setup is, you have access to all the routes on
+the interface so it's not a problem.
 
-+static struct l_netlink *rtnl;
-+static unsigned int rtnl_use_count;
-+static struct l_queue *addr_wait_list;
-+static unsigned int rtnl_id;
-+
- static void netconfig_update_cleanup(struct l_netconfig *nc)
- {
- 	l_queue_clear(nc->addresses.added, NULL);
-@@ -848,13 +853,17 @@ static void netconfig_icmp6_event_handler(struct l_ic=
-mp6_client *client,
- LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
- {
- 	struct l_netconfig *nc;
--	struct l_netlink *rtnl =3D l_netlink_new(NETLINK_ROUTE);
- =
+But the point really is that whoever implements a check like this, and
+other possible scenarios, if they choose to use ell they might end up
+with an out of bounds access.
 
--	if (!rtnl)
--		return NULL;
-+	if (!rtnl) {
-+		rtnl =3D l_netlink_new(NETLINK_ROUTE);
-+
-+		if (!rtnl)
-+			return NULL;
-+	}
-+
-+	rtnl_use_count++;
- =
-
- 	nc =3D l_new(struct l_netconfig, 1);
--	nc->rtnl =3D rtnl;
- 	nc->ifindex =3D ifindex;
- 	nc->v4_enabled =3D true;
- =
-
-@@ -912,8 +921,12 @@ LIB_EXPORT void l_netconfig_destroy(struct l_netconfig=
- *netconfig)
- 	l_queue_destroy(netconfig->routes.added, NULL);
- 	l_queue_destroy(netconfig->routes.updated, NULL);
- 	l_queue_destroy(netconfig->routes.removed, NULL);
--	l_netlink_destroy(netconfig->rtnl);
- 	l_free(netconfig);
-+
-+	rtnl_use_count--;
-+
-+	if (!rtnl_use_count)
-+		l_netlink_destroy(l_steal_ptr(rtnl));
- }
- =
-
- /*
-@@ -1208,6 +1221,115 @@ static void netconfig_do_static_config(struct l_idl=
-e *idle, void *user_data)
- 	}
- }
- =
-
-+static void netconfig_rtnl_unregister(void *user_data)
-+{
-+	if (!addr_wait_list || !l_queue_isempty(addr_wait_list))
-+		return;
-+
-+	l_queue_destroy(l_steal_ptr(addr_wait_list), NULL);
-+	l_netlink_unregister(rtnl, rtnl_id);
-+	rtnl_id =3D 0;
-+}
-+
-+static void netconfig_addr_wait_unregister(struct l_netconfig *nc,
-+						bool in_notify)
-+{
-+	if (nc->ifaddr6_dump_cmd_id) {
-+		unsigned int cmd_id =3D nc->ifaddr6_dump_cmd_id;
-+
-+		nc->ifaddr6_dump_cmd_id =3D 0;
-+		l_netlink_cancel(rtnl, cmd_id);
-+	}
-+
-+	if (!l_queue_remove(addr_wait_list, nc))
-+		return;
-+
-+	if (!l_queue_isempty(addr_wait_list))
-+		return;
-+
-+	/* We can't do l_netlink_unregister() inside a notification */
-+	if (in_notify)
-+		l_idle_oneshot(netconfig_rtnl_unregister, NULL, NULL);
-+	else
-+		netconfig_rtnl_unregister(NULL);
-+}
-+
-+static void netconfig_ifaddr_ipv6_added(struct l_netconfig *nc,
-+					const struct ifaddrmsg *ifa,
-+					uint32_t len)
-+{
-+	struct in6_addr in6;
-+	_auto_(l_free) char *ip =3D NULL;
-+
-+	if (ifa->ifa_flags & IFA_F_TENTATIVE)
-+		return;
-+
-+	if (!nc->started)
-+		return;
-+
-+	l_rtnl_ifaddr6_extract(ifa, len, &ip);
-+	inet_pton(AF_INET6, ip, &in6);
-+
-+	if (!IN6_IS_ADDR_LINKLOCAL(&in6))
-+		return;
-+
-+	netconfig_addr_wait_unregister(nc, true);
-+
-+	l_dhcp6_client_set_link_local_address(nc->dhcp6_client, ip);
-+
-+	/*
-+	 * Only now that we have a link-local address start actual DHCPv6
-+	 * setup.
-+	 */
-+	if (l_dhcp6_client_start(nc->dhcp6_client))
-+		return;
-+
-+	netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
-+}
-+
-+static void netconfig_ifaddr_ipv6_notify(uint16_t type, const void *data,
-+						uint32_t len, void *user_data)
-+{
-+	const struct ifaddrmsg *ifa =3D data;
-+	uint32_t bytes =3D len - NLMSG_ALIGN(sizeof(struct ifaddrmsg));
-+	const struct l_queue_entry *entry, *next;
-+
-+	switch (type) {
-+	case RTM_NEWADDR:
-+		/* Iterate safely since elements may be removed */
-+		for (entry =3D l_queue_get_entries(addr_wait_list); entry;
-+				entry =3D next) {
-+			struct l_netconfig *nc =3D entry->data;
-+
-+			next =3D entry->next;
-+			netconfig_ifaddr_ipv6_added(nc, ifa, bytes);
-+		}
-+
-+		break;
-+	}
-+}
-+
-+static void netconfig_ifaddr_ipv6_dump_cb(int error, uint16_t type,
-+						const void *data, uint32_t len,
-+						void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+
-+	if (!nc->ifaddr6_dump_cmd_id || !nc->started)
-+		return;
-+
-+	if (error) {
-+		netconfig_addr_wait_unregister(nc, false);
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
-+		return;
-+	}
-+
-+	if (type !=3D RTM_NEWADDR)
-+		return;
-+
-+	netconfig_ifaddr_ipv6_notify(type, data, len, user_data);
-+}
-+
- LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
- {
- 	if (unlikely(!netconfig || netconfig->started))
-@@ -1250,14 +1372,38 @@ configure_ipv6:
- 		goto done;
- 	}
- =
-
--	if (!l_dhcp6_client_start(netconfig->dhcp6_client))
--		goto stop_ipv4;
-+	/*
-+	 * We only care about being on addr_wait_list if we're waiting for
-+	 * the link-local address for DHCP6.  Add ourself to the list here
-+	 * before we start the dump, instead of after it ends, to eliminate
-+	 * the possibility of missing an RTM_NEWADDR between the end of
-+	 * the dump command and registering for the events.
-+	 */
-+	if (!addr_wait_list) {
-+		addr_wait_list =3D l_queue_new();
-+
-+		rtnl_id =3D l_netlink_register(rtnl, RTNLGRP_IPV6_IFADDR,
-+						netconfig_ifaddr_ipv6_notify,
-+						netconfig, NULL);
-+		if (!rtnl_id)
-+			goto unregister;
-+	}
-+
-+	netconfig->ifaddr6_dump_cmd_id =3D l_rtnl_ifaddr6_dump(rtnl,
-+						netconfig_ifaddr_ipv6_dump_cb,
-+						netconfig, NULL);
-+	if (!netconfig->ifaddr6_dump_cmd_id)
-+		goto unregister;
-+
-+	l_queue_push_tail(addr_wait_list, netconfig);
- =
-
- done:
- 	netconfig->started =3D true;
- 	return true;
- =
-
--stop_ipv4:
-+unregister:
-+	netconfig_addr_wait_unregister(netconfig, false);
-+
- 	if (netconfig->v4_enabled) {
- 		if (netconfig->v4_static_addr)
- 			l_idle_remove(l_steal_ptr(netconfig->do_static_work));
-@@ -1281,6 +1427,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
-netconfig)
- 	if (netconfig->signal_expired_work)
- 		l_idle_remove(l_steal_ptr(netconfig->signal_expired_work));
- =
-
-+	netconfig_addr_wait_unregister(netconfig, false);
-+
- 	netconfig_update_cleanup(netconfig);
- 	l_queue_clear(netconfig->routes.current,
- 			(l_queue_destroy_func_t) l_rtnl_route_free);
-@@ -1344,34 +1492,34 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
-config *netconfig)
- =
-
- 	for (entry =3D l_queue_get_entries(netconfig->addresses.removed); entry;
- 			entry =3D entry->next)
--		l_rtnl_ifaddr_delete(netconfig->rtnl, netconfig->ifindex,
-+		l_rtnl_ifaddr_delete(rtnl, netconfig->ifindex,
- 					entry->data, NULL, NULL, NULL);
- =
-
- 	for (entry =3D l_queue_get_entries(netconfig->addresses.added); entry;
- 			entry =3D entry->next)
--		l_rtnl_ifaddr_add(netconfig->rtnl, netconfig->ifindex,
-+		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex,
- 					entry->data, NULL, NULL, NULL);
- =
-
- 	/* We can use l_rtnl_ifaddr_add here since that uses NLM_F_REPLACE */
- 	for (entry =3D l_queue_get_entries(netconfig->addresses.updated); entry;
- 			entry =3D entry->next)
--		l_rtnl_ifaddr_add(netconfig->rtnl, netconfig->ifindex,
-+		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex,
- 					entry->data, NULL, NULL, NULL);
- =
-
- 	for (entry =3D l_queue_get_entries(netconfig->routes.removed); entry;
- 			entry =3D entry->next)
--		l_rtnl_route_delete(netconfig->rtnl, netconfig->ifindex,
-+		l_rtnl_route_delete(rtnl, netconfig->ifindex,
- 					entry->data, NULL, NULL, NULL);
- =
-
- 	for (entry =3D l_queue_get_entries(netconfig->routes.added); entry;
- 			entry =3D entry->next)
--		l_rtnl_route_add(netconfig->rtnl, netconfig->ifindex,
-+		l_rtnl_route_add(rtnl, netconfig->ifindex,
- 					entry->data, NULL, NULL, NULL);
- =
-
- 	/* We can use l_rtnl_route_add here since that uses NLM_F_REPLACE */
- 	for (entry =3D l_queue_get_entries(netconfig->routes.updated); entry;
- 			entry =3D entry->next)
--		l_rtnl_route_add(netconfig->rtnl, netconfig->ifindex,
-+		l_rtnl_route_add(rtnl, netconfig->ifindex,
- 					entry->data, NULL, NULL, NULL);
- }
- =
-
--- =
-
-2.32.0
-
---===============6432633193991983426==--
+Best regards
+--===============4838911060029490954==--
 
