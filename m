@@ -1,33 +1,88 @@
-Content-Type: multipart/mixed; boundary="===============4719511672383739714=="
+Content-Type: multipart/mixed; boundary="===============4588162216970451274=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH v2 1/2] uintset: add l_uintset_size
-Date: Tue, 30 Nov 2021 12:08:58 -0600
-Message-ID: <5b38ae8d-0eee-cf30-d2e8-ec4711826ebb@gmail.com>
-In-Reply-To: 20211130181252.428774-1-prestwoj@gmail.com
+Subject: [PATCH 06/13] netconfig: Add l_netconfig_get_{dhcp6,icmp6}_client
+Date: Fri, 22 Apr 2022 20:59:45 +0200
+Message-ID: <20220422185952.105279-6-andrew.zaborowski@intel.com>
+In-Reply-To: 20220422185952.105279-1-andrew.zaborowski@intel.com
 
---===============4719511672383739714==
+--===============4588162216970451274==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+---
+ ell/ell.sym     |  2 ++
+ ell/netconfig.c | 18 ++++++++++++++++++
+ ell/netconfig.h |  4 ++++
+ 3 files changed, 24 insertions(+)
 
-On 11/30/21 12:12 PM, James Prestwood wrote:
-> This counts the number of set elements
-> ---
->   ell/ell.sym   |  1 +
->   ell/uintset.c | 24 ++++++++++++++++++++++++
->   ell/uintset.h |  1 +
->   3 files changed, 26 insertions(+)
-> =
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 60dd257..0f9f884 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -749,6 +749,8 @@ global:
+ 	l_netconfig_start;
+ 	l_netconfig_stop;
+ 	l_netconfig_get_dhcp_client;
++	l_netconfig_get_dhcp6_client;
++	l_netconfig_get_icmp6_client;
+ 	l_netconfig_set_event_handler;
+ 	l_netconfig_apply_rtnl;
+ 	l_netconfig_get_addresses;
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index e10d880..1581ea9 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -1025,6 +1025,24 @@ LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhc=
+p_client(
+ 	return netconfig->dhcp_client;
+ }
+ =
 
++LIB_EXPORT struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
++						struct l_netconfig *netconfig)
++{
++	if (unlikely(!netconfig))
++		return NULL;
++
++	return netconfig->dhcp6_client;
++}
++
++LIB_EXPORT struct l_icmp6_client *l_netconfig_get_icmp6_client(
++						struct l_netconfig *netconfig)
++{
++	if (unlikely(!netconfig))
++		return NULL;
++
++	return netconfig->icmp6_client;
++}
++
+ LIB_EXPORT void l_netconfig_set_event_handler(struct l_netconfig *netconfi=
+g,
+ 					l_netconfig_event_cb_t handler,
+ 					void *user_data,
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index f90ec81..a50a895 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -75,6 +75,10 @@ void l_netconfig_stop(struct l_netconfig *netconfig);
+ =
 
-Both applied, thanks.
+ struct l_dhcp_client *l_netconfig_get_dhcp_client(
+ 						struct l_netconfig *netconfig);
++struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
++						struct l_netconfig *netconfig);
++struct l_icmp6_client *l_netconfig_get_icmp6_client(
++						struct l_netconfig *netconfig);
+ =
 
-Regards,
--Denis
+ void l_netconfig_set_event_handler(struct l_netconfig *netconfig,
+ 					l_netconfig_event_cb_t handler,
+-- =
 
---===============4719511672383739714==--
+2.32.0
+
+--===============4588162216970451274==--
 
