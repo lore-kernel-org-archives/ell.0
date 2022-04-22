@@ -1,32 +1,40 @@
-Content-Type: multipart/mixed; boundary="===============7196799667913756130=="
+Content-Type: multipart/mixed; boundary="===============8604863383832846679=="
 MIME-Version: 1.0
-From: Ossama Othman <ossama.othman at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 3/3] Makefile: Bump library 'current' version.
-Date: Wed, 10 Nov 2021 09:56:37 -0800
-Message-ID: <CAE+88WPW63yrsBz5gcYCDBTHBYVjARwWc0Z5x7sCVRWcCNFZzQ@mail.gmail.com>
-In-Reply-To: 1F9E641A-022D-4E02-87CC-83EFA4AA0599@holtmann.org
+Subject: [PATCH 12/13] rtnl: Fix l_rtnl_route_get_protocol
+Date: Fri, 22 Apr 2022 20:59:51 +0200
+Message-ID: <20220422185952.105279-12-andrew.zaborowski@intel.com>
+In-Reply-To: 20220422185952.105279-1-andrew.zaborowski@intel.com
 
---===============7196799667913756130==
+--===============8604863383832846679==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Marcel,
+---
+ ell/rtnl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On Tue, Nov 9, 2021 at 9:58 PM Marcel Holtmann <marcel(a)holtmann.org> wrot=
-e:
-> > -ELL_CURRENT =3D 0
-> > -ELL_REVISION =3D 2
-> > +ELL_CURRENT =3D 1
-> > +ELL_REVISION =3D 0
-> > ELL_AGE =3D 0
->
-> actually we have bothered changing this as long as we are still 0.x and n=
-ot stable. So I rather skip this for now.
+diff --git a/ell/rtnl.c b/ell/rtnl.c
+index 41b34d7..690fe7c 100644
+--- a/ell/rtnl.c
++++ b/ell/rtnl.c
+@@ -651,7 +651,7 @@ LIB_EXPORT uint8_t l_rtnl_route_get_protocol(const stru=
+ct l_rtnl_route *rt)
+ 	if (unlikely(!rt))
+ 		return RTPROT_UNSPEC;
+ =
 
-Okay, sounds good.
+-	return rt->scope;
++	return rt->protocol;
+ }
+ =
 
--Ossama
---===============7196799667913756130==--
+ LIB_EXPORT bool l_rtnl_route_set_protocol(struct l_rtnl_route *rt,
+-- =
+
+2.32.0
+
+--===============8604863383832846679==--
 
