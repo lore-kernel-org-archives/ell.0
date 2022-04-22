@@ -1,52 +1,95 @@
-Content-Type: multipart/mixed; boundary="===============6106883307955924612=="
+Content-Type: multipart/mixed; boundary="===============6175719749585880324=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH v3] ecc: make l_ecc_point_from_data fully constant time
-Date: Fri, 04 Feb 2022 12:33:40 -0800
-Message-ID: <20220204203340.326241-1-prestwoj@gmail.com>
+Subject: Re: [PATCH 03/12] netconfig: Add DHCP override and static IP API
+Date: Fri, 22 Apr 2022 20:38:37 +0200
+Message-ID: <CAOq732KGxcn7y6GMc8uc-B45RgmzdMxkpqJ+c3K3zHoPXsEyZA@mail.gmail.com>
+In-Reply-To: c3a07449-ba00-4e89-7153-c4c2f8f998d9@gmail.com
 
---===============6106883307955924612==
+--===============6175719749585880324==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This was modified earlier to be constant time but there was one
-minor problem with how 'sub' was determined. That logic could short
-circuit which could alter the timing. The change in timing would be
-extremely small, especially compared to the previous fix making
-_vli_mod_sub() execute always but in any case there would be a small
-difference.
+Hi Denis,
 
-This patch uses l_secure_select_byte to select either of the two
-subtraction conditions which depend on the point type.
----
- ell/ecc.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+On Thu, 21 Apr 2022 at 21:47, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> On 4/21/22 10:45, Andrew Zaborowski wrote:
+> > +LIB_EXPORT bool l_netconfig_set_static_addr(struct l_netconfig *netcon=
+fig,
+> > +                                     uint8_t family,
+> > +                                     const struct l_rtnl_address *addr)
+> > +{
+> > +     if (unlikely(!netconfig || netconfig->started))
+> > +             return false;
+> > +
+> > +     if (addr && l_rtnl_address_get_family(addr) !=3D family)
+> > +             return false;
+> > +
+>
+> switch (family) {
+> case AF_INET:
+>         ptr =3D &netconfig->v4_static_addr;
+>         break;
+> case AF_INET6:
+>         ptr =3D &netconfig->v6_static_addr;
+>         break;
+> default:
+>         return false;
+> }
+>
+> l_rtnl_address_free(*ptr);
+> *ptr =3D NULL;
 
-diff --git a/ell/ecc.c b/ell/ecc.c
-index eba9aef..ad7628a 100644
---- a/ell/ecc.c
-+++ b/ell/ecc.c
-@@ -562,10 +562,8 @@ LIB_EXPORT struct l_ecc_point *l_ecc_point_from_data(
- 		if (!_ecc_compute_y(curve, p->y, p->x))
- 			goto failed;
- =
+Ok.
 
--		sub =3D ((type =3D=3D L_ECC_POINT_TYPE_COMPRESSED_BIT0 &&
--				!(p->y[0] & 1)) ||
--				(type =3D=3D L_ECC_POINT_TYPE_COMPRESSED_BIT1 &&
--				(p->y[0] & 1)));
-+		sub =3D secure_select(type =3D=3D L_ECC_POINT_TYPE_COMPRESSED_BIT0,
-+					!(p->y[1] & 1), p->y[0] & 1);
- =
+> > +     /*
+> > +      * If using a static IP, we can validate right now that the gatew=
+ay is
+> > +      * in the local subnet.
+> > +      */
+> > +     if (netconfig->v4_static_addr && netconfig->v4_gateway_override)
+> > +             if (!l_net_prefix_matches(&local, &gateway, prefix_len))
+> > +                     return false;
+> > +
+>
+> I know you're trying to be nice, but we should not be doing this.  Static
+> configuration is for expert users, and if they want to shoot themselves i=
+n the
+> foot, then I say let them.
 
- 		_vli_mod_sub(tmp, curve->p, p->y, curve->p, curve->ndigits);
- =
+Ok.
 
--- =
+>
+> Besides, such policy enforcement should not be done by netconfig itself. =
+ That
+> should be done by a layer above, or you should provide a policy enforceme=
+nt
+> abstraction that the caller could provide to netconfig.  Not something we=
+ care
+> about at the moment.
+>
+> > +     /*
+> > +      * If using a static IP and there's no gateway all the DNSes must=
+ be on
+> > +      * the local subnet too.
+> > +      */
+> > +     if (netconfig->v4_static_addr && !netconfig->v4_gateway_override =
+&&
+> > +                     netconfig->v4_dns_override) {
+> > +             unsigned int i;
+> > +
+> > +             for (i =3D 0; i < dns_num; i++)
+> > +                     if (!l_net_prefix_matches(&local, &dns_list[i],
+> > +                                                     prefix_len))
+> > +                             return false;
+> > +     }
+>
+> As above here
 
-2.31.1
+Ok, dropping the checks then.
 
---===============6106883307955924612==--
+Best regards
+--===============6175719749585880324==--
 
