@@ -1,45 +1,37 @@
-Content-Type: multipart/mixed; boundary="===============2088424089905364023=="
+Content-Type: multipart/mixed; boundary="===============3797901159465428344=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH] dhcp: Make sure lease bound_time is in BOOTTIME
-Date: Fri, 13 May 2022 11:29:24 -0500
-Message-ID: <20220513162924.27587-1-denkenz@gmail.com>
+Subject: [PATCH 01/13] net: Rename l_net_subnet_matches to l_net_prefix_matches
+Date: Fri, 22 Apr 2022 20:59:40 +0200
+Message-ID: <20220422185952.105279-1-andrew.zaborowski@intel.com>
 
---===============2088424089905364023==
+--===============3797901159465428344==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The timestamp obtained from the kernel is always in CLOCK_REALTIME, not
-CLOCK_BOOTTIME.  For bound_time, we expected CLOCK_BOOTTIME.
-
-Fixes: c78ad1bb6d7e ("dhcp: Set lease expiry based on frame reception times=
-")
 ---
- ell/dhcp.c | 2 +-
+ ell/net.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index 01900f3b1d38..8418825c6c81 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -922,7 +922,7 @@ static void dhcp_client_rx_message(const void *data, si=
-ze_t len, void *userdata,
+diff --git a/ell/net.h b/ell/net.h
+index eaaf14c..0521d75 100644
+--- a/ell/net.h
++++ b/ell/net.h
+@@ -41,7 +41,7 @@ bool l_net_hostname_is_localhost(const char *hostname);
+ bool l_net_get_address(int ifindex, struct in_addr *out);
+ bool l_net_get_link_local_address(int ifindex, struct in6_addr *out);
  =
 
- 		dhcp_client_event_notify(client, r);
- =
-
--		client->lease->bound_time =3D timestamp;
-+		client->lease->bound_time =3D l_time_now();
- =
-
- 		/*
- 		 * Start T1, once it expires we will start the T2 timer.  If
+-static inline bool l_net_subnet_matches(const void *a, const void *b,
++static inline bool l_net_prefix_matches(const void *a, const void *b,
+ 					uint8_t prefix_len)
+ {
+ 	uint8_t bytes =3D prefix_len / 8;
 -- =
 
 2.32.0
 
---===============2088424089905364023==--
+--===============3797901159465428344==--
 
