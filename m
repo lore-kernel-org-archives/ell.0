@@ -1,38 +1,71 @@
-Content-Type: multipart/mixed; boundary="===============0744259478253302667=="
+Content-Type: multipart/mixed; boundary="===============2316862920045883398=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [ANNOUNCE] ELL switching to new mailing list
-Date: Wed, 15 Jun 2022 16:52:21 -0700
-Message-ID: <5f4906917eee2844614fba727965050c19cf757f.camel@gmail.com>
+Subject: Re: [PATCH 04/13] netconfig: Support IPv6 static configurations
+Date: Wed, 27 Apr 2022 09:47:59 -0500
+Message-ID: <9e537ed3-5fde-db84-0401-caa445a81c42@gmail.com>
+In-Reply-To: CAOq732+5r43LtLMGJe21sMWDhk9LXZLR8FDvOWq-3G8ZGhtOQQ@mail.gmail.com
 
---===============0744259478253302667==
+--===============2316862920045883398==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hello All,
+Hi Andrew,
 
-ELL is swiching to a new mailing list: ell(a)lists.linux.dev. This list
-is currently active and ready so any future patches, questions, or
-comments can be sent there!
+>> However, the more general question here is why do we want to store and c=
+ompute
+>> the prefix route separately?  Is the assumption here that all addresses =
+use the
+>> noprefixroute flag?  Wouldn't it be simpler to just have the kernel hand=
+le this?
+> =
 
-You might be wondering, why is this being done? The reason for this
-change is to enable an automated CI for ELL to catch regressions, build
-breaks, or any other issues which previously required manual testing.
-You will see the CI results from you're changes in patchwork:
+> So I think we can do that if we're committing the addresses to the
+> kernel ourselves.  If we have to delegate it to NM we still need this
+> code.  In the end I think it's easier to have just one branch here.
 
-https://patchwork.kernel.org/project/ell/list/
+Explain?  NM doesn't understand the noprefixroute flag?  Just curious.  I t=
+hink =
 
-Note the CI is still in a trial stage, so email notifications have been
-disabled. You will not receive any notifications about test results but
-know that maintainers are checking the results and will point you to
-any problems that are found.
+we do indeed need to do it as you propose.  See below.
 
-If you have any questions please don't hesitate to ask.
+> =
 
-Thanks,
-James
+> Having the kernel handle the subnet routes is even more obvious for
+> IPv4 because it works for static as well as DHCP.  For some reason the
+> IWD code always sets this flag for both IPv4 and IPv6.
+> =
 
---===============0744259478253302667==--
+
+I don't recall exactly why we originally added the connected route separate=
+ly. =
+
+I'm pretty sure this resulted in two prefix routes in the routing table unt=
+il I =
+
+introduced the noprefixroute flag to ell.
+
+But I *think* the reason we add a separate connected route, in icmp6 at lea=
+st, =
+
+is to make sure the metric is applied properly.  If noprefixroute flag isn'=
+t =
+
+set, the kernel will automagically create a new connected route when the ad=
+dress =
+
+is installed.  But the metric used for this route is the default.
+
+I don't think we found a way to affect the connected route's metric without =
+
+resorting to the noprefixroute flag and adding the route separately.  Maybe=
+ it =
+
+is possible?  Would save us a round trip.
+
+Regards,
+-Denis
+--===============2316862920045883398==--
 
