@@ -1,181 +1,171 @@
-Content-Type: multipart/mixed; boundary="===============6496106617148635267=="
+Content-Type: multipart/mixed; boundary="===============7343190331183787485=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 5/8] netconfig: Handle DHCPv6 events
-Date: Fri, 15 Apr 2022 20:32:08 +0200
-Message-ID: <20220415183211.987345-5-andrew.zaborowski@intel.com>
-In-Reply-To: 20220415183211.987345-1-andrew.zaborowski@intel.com
+Subject: [PATCH 12/13] examples: Update netconfig method calls
+Date: Fri, 06 May 2022 01:15:38 +0200
+Message-ID: <20220505231539.888792-12-andrew.zaborowski@intel.com>
+In-Reply-To: 20220505231539.888792-1-andrew.zaborowski@intel.com
 
---===============6496106617148635267==
+--===============7343190331183787485==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Use l_dhcp6_client to support IPv6 address assignment through DHCPv6.
 ---
- ell/netconfig.c | 133 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 133 insertions(+)
+ examples/netconfig-test.c | 49 ++++++++++++++++-----------------------
+ 1 file changed, 20 insertions(+), 29 deletions(-)
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 5db159d..2915988 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -357,6 +357,136 @@ static void netconfig_dhcp_event_handler(struct l_dhc=
-p_client *client,
- 	}
+diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
+index c9d02ab..77ad74c 100644
+--- a/examples/netconfig-test.c
++++ b/examples/netconfig-test.c
+@@ -40,7 +40,6 @@
+ #include <ell/ell.h>
+ =
+
+ static bool apply;
+-static struct l_netlink *rtnl;
+ =
+
+ static void do_debug(const char *str, void *user_data)
+ {
+@@ -61,16 +60,14 @@ static void signal_handler(uint32_t signo, void *user_d=
+ata)
  }
  =
 
-+static void netconfig_add_dhcp6_address(struct l_netconfig *nc)
-+{
-+	const struct l_dhcp6_lease *lease =3D
-+		l_dhcp6_client_get_lease(nc->dhcp6_client);
-+	_auto_(l_free) char *ip =3D NULL;
-+	uint32_t prefix_len;
-+
-+	if (L_WARN_ON(!lease))
-+		return;
-+
-+	ip =3D l_dhcp6_lease_get_address(lease);
-+	prefix_len =3D l_dhcp6_lease_get_prefix_length(lease);
-+	nc->v6_address =3D l_rtnl_address_new(ip, prefix_len);
-+
-+	if (L_WARN_ON(!nc->v6_address))
-+		return;
-+
-+	/*
-+	 * TODO: check if we have a prefix route covering the IP,
-+	 * l_dhcp6_client doesn't guarantee that the received IP is in
-+	 * on of the subnets marked as on-link in the RA.  If it isn't,
-+	 * maybe warn and set the below to false.  Or create a route using
-+	 * the prefix length from lease, set RTPROT_DHCP to distinguish it
-+	 * from other routes.
-+	 */
-+	l_rtnl_address_set_noprefixroute(nc->v6_address, true);
-+
-+	l_queue_push_tail(nc->addresses.current, nc->v6_address);
-+	l_queue_push_tail(nc->addresses.added, nc->v6_address);
-+}
-+
-+static void netconfig_set_dhcp6_address_lifetimes(struct l_netconfig *nc,
-+							bool updated)
-+{
-+	const struct l_dhcp6_lease *lease =3D
-+		l_dhcp6_client_get_lease(nc->dhcp6_client);
-+	uint32_t p, v;
-+	uint64_t start_time;
-+
-+	if (L_WARN_ON(!lease))
-+		return;
-+
-+	p =3D l_dhcp6_lease_get_preferred_lifetime(lease);
-+	v =3D l_dhcp6_lease_get_valid_lifetime(lease);
-+	start_time =3D l_dhcp6_lease_get_start_time(lease);
-+
-+	l_rtnl_address_set_lifetimes(nc->v6_address, p, v);
-+	l_rtnl_address_set_expiry(nc->v6_address,
-+					start_time + p * L_USEC_PER_SEC,
-+					start_time + v * L_USEC_PER_SEC);
-+
-+	if (updated)
-+		l_queue_push_tail(nc->addresses.updated, nc->v6_address);
-+}
-+
-+static void netconfig_remove_dhcp6_address(struct l_netconfig *nc)
-+{
-+	l_queue_remove(nc->addresses.current, nc->v6_address);
-+	l_queue_push_tail(nc->addresses.removed, nc->v6_address);
-+	nc->v6_address =3D NULL;
-+}
-+
-+static void netconfig_dhcp6_event_handler(struct l_dhcp6_client *client,
-+						enum l_dhcp6_client_event event,
-+						void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+
-+	switch (event) {
-+	case L_DHCP6_CLIENT_EVENT_LEASE_OBTAINED:
-+		if (L_WARN_ON(nc->v6_configured))
-+			break;
-+
-+		netconfig_add_dhcp6_address(nc);
-+		netconfig_set_dhcp6_address_lifetimes(nc, false);
-+		nc->v6_configured =3D true;
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_CONFIGURE);
-+		break;
-+	case L_DHCP6_CLIENT_EVENT_IP_CHANGED:
-+		if (L_WARN_ON(!nc->v6_configured))
-+			break;
-+
-+		netconfig_remove_dhcp6_address(nc);
-+		netconfig_add_dhcp6_address(nc);
-+		netconfig_set_dhcp6_address_lifetimes(nc, false);
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
-+		break;
-+	case L_DHCP6_CLIENT_EVENT_LEASE_EXPIRED:
-+		if (L_WARN_ON(!nc->v6_configured))
-+			break;
-+
-+		netconfig_remove_dhcp6_address(nc);
-+		nc->v6_configured =3D false;
-+
-+		if (l_dhcp6_client_start(nc->dhcp6_client))
-+			/* TODO: also start a new timeout */
-+			netconfig_emit_event(nc, AF_INET6,
-+						L_NETCONFIG_EVENT_UNCONFIGURE);
-+		else
-+			netconfig_emit_event(nc, AF_INET6,
-+						L_NETCONFIG_EVENT_FAILED);
-+
-+		break;
-+	case L_DHCP6_CLIENT_EVENT_LEASE_RENEWED:
-+		if (L_WARN_ON(!nc->v6_configured))
-+			break;
-+
-+		netconfig_set_dhcp6_address_lifetimes(nc, true);
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
-+		break;
-+	case L_DHCP6_CLIENT_EVENT_NO_LEASE:
-+		if (L_WARN_ON(nc->v6_configured))
-+			break;
-+
-+		/*
-+		 * The requested address is no longer available, try to restart
-+		 * the client.
-+		 *
-+		 * TODO: this may need to be delayed so we don't flood the
-+		 * network with SOLICITs and DECLINEs.  Also add a retry limit
-+		 * or better yet a configurable timeout.
-+		 */
-+		if (!l_dhcp6_client_start(nc->dhcp6_client))
-+			netconfig_emit_event(nc, AF_INET6,
-+						L_NETCONFIG_EVENT_FAILED);
-+
-+		break;
-+	}
-+}
-+
- static struct l_rtnl_route *netconfig_find_icmp6_route(
- 						struct l_netconfig *nc,
- 						const uint8_t *gateway,
-@@ -563,6 +693,9 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
- ifindex)
- 					nc, NULL);
+ static void log_addresses(const char *af_str, const char *action,
+-				struct l_queue *list)
++				const struct l_queue_entry *entry)
+ {
+-	const struct l_queue_entry *entry;
+-
+-	if (l_queue_isempty(list))
++	if (!entry)
+ 		return;
  =
 
- 	nc->dhcp6_client =3D l_dhcp6_client_new(ifindex);
-+	l_dhcp6_client_set_event_handler(nc->dhcp6_client,
-+					netconfig_dhcp6_event_handler,
-+					nc, NULL);
+ 	l_info("[netconfig%s] Addresses %s:", af_str, action);
  =
 
- 	nc->icmp6_client =3D l_dhcp6_client_get_icmp6(nc->dhcp6_client);
- 	l_icmp6_client_add_event_handler(nc->icmp6_client,
+-	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
++	for (; entry; entry =3D entry->next) {
+ 		struct l_rtnl_address *addr =3D entry->data;
+ 		char ip_str[INET6_ADDRSTRLEN];
+ =
+
+@@ -83,25 +80,26 @@ static void log_addresses(const char *af_str, const cha=
+r *action,
+ }
+ =
+
+ static void log_routes(const char *af_str, const char *action,
+-			struct l_queue *list)
++			const struct l_queue_entry *entry)
+ {
+-	const struct l_queue_entry *entry;
+-
+-	if (l_queue_isempty(list))
++	if (!entry)
+ 		return;
+ =
+
+ 	l_info("[netconfig%s] Routes %s:", af_str, action);
+ =
+
+-	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
++	for (; entry; entry =3D entry->next) {
+ 		struct l_rtnl_route *rt =3D entry->data;
+-		char subnet_str[INET6_ADDRSTRLEN];
++		char subnet_str[INET6_ADDRSTRLEN] =3D "unknown";
+ 		char gateway_str[INET6_ADDRSTRLEN];
+ 		uint8_t prefix_len;
++		bool onlink;
+ =
+
+ 		l_rtnl_route_get_dst(rt, subnet_str, &prefix_len);
+-		l_rtnl_route_get_gateway(rt, gateway_str);
+-		l_info("[netconfig%s] \t%s/%i, gateway %s, orig lifetime %i s",
+-			af_str, subnet_str, prefix_len, gateway_str,
++		onlink =3D !l_rtnl_route_get_gateway(rt, gateway_str);
++		l_info("[netconfig%s] \t%s/%i, %s%s, orig lifetime %i s",
++			af_str, subnet_str, prefix_len,
++			onlink ? "onlink" : "next-hop ",
++			onlink ? "" : gateway_str,
+ 			l_rtnl_route_get_lifetime(rt));
+ 	}
+ }
+@@ -110,7 +108,7 @@ static void event_handler(struct l_netconfig *netconfig=
+, uint8_t family,
+ 				enum l_netconfig_event event, void *user_data)
+ {
+ 	const char *af_str =3D family =3D=3D AF_INET ? "v4" : "v6";
+-	struct l_queue *added, *updated, *removed;
++	const struct l_queue_entry *added, *updated, *removed, *expired;
+ =
+
+ 	switch (event) {
+ 	case L_NETCONFIG_EVENT_CONFIGURE:
+@@ -128,18 +126,21 @@ static void event_handler(struct l_netconfig *netconf=
+ig, uint8_t family,
+ 		return;
+ 	}
+ =
+
+-	l_netconfig_get_addresses(netconfig, &added, &updated, &removed);
++	l_netconfig_get_addresses(netconfig, &added, &updated,
++					&removed, &expired);
+ 	log_addresses(af_str, "added", added);
+ 	log_addresses(af_str, "updated", updated);
+ 	log_addresses(af_str, "removed", removed);
++	log_addresses(af_str, "expired", expired);
+ =
+
+-	l_netconfig_get_routes(netconfig, &added, &updated, &removed);
++	l_netconfig_get_routes(netconfig, &added, &updated, &removed, &expired);
+ 	log_routes(af_str, "added", added);
+ 	log_routes(af_str, "updated", updated);
+ 	log_routes(af_str, "removed", removed);
++	log_routes(af_str, "expired", expired);
+ =
+
+ 	if (apply)
+-		l_netconfig_apply_rtnl(netconfig, rtnl);
++		l_netconfig_apply_rtnl(netconfig);
+ }
+ =
+
+ static const struct option main_options[] =3D {
+@@ -181,14 +182,6 @@ int main(int argc, char *argv[])
+ 	if (!l_main_init())
+ 		return EXIT_FAILURE;
+ =
+
+-	if (apply) {
+-		rtnl =3D l_netlink_new(NETLINK_ROUTE);
+-		if (!rtnl) {
+-			fprintf(stderr, "l_netlink_new(NETLINK_ROUTE) error\n");
+-			return EXIT_FAILURE;
+-		}
+-	}
+-
+ 	l_log_set_stderr();
+ 	l_debug_enable("*");
+ =
+
+@@ -203,7 +196,5 @@ int main(int argc, char *argv[])
+ 	l_netconfig_destroy(netconfig);
+ 	l_main_exit();
+ =
+
+-	l_netlink_destroy(rtnl);
+-
+ 	return EXIT_SUCCESS;
+ }
 -- =
 
 2.32.0
 
---===============6496106617148635267==--
+--===============7343190331183787485==--
 
