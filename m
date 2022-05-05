@@ -1,43 +1,141 @@
-Content-Type: multipart/mixed; boundary="===============1931604473480487042=="
+Content-Type: multipart/mixed; boundary="===============1036954386678993549=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 5/6] netconfig: Add l_netconfig_apply_rtnl
-Date: Tue, 08 Feb 2022 12:31:03 -0600
-Message-ID: <957cac35-0017-babd-7ec3-8dc9d4d3ac77@gmail.com>
-In-Reply-To: CAOq732+SYSuUpUCVtNiuSt-FFbX9zY7K00CAdkSd91WY6Uro1A@mail.gmail.com
+Subject: [PATCH 11/13] netconfig: Write /proc/sys/net files to enable IPv6
+Date: Fri, 06 May 2022 01:15:37 +0200
+Message-ID: <20220505231539.888792-11-andrew.zaborowski@intel.com>
+In-Reply-To: 20220505231539.888792-1-andrew.zaborowski@intel.com
 
---===============1931604473480487042==
+--===============1036954386678993549==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Write the accept_ra setting to 0.  On l_netconfig_start if the existing
+address dump command finds no link-local address then also try resetting
+disable_ipv6 and toggling addr_gen_mode to trigger the kernel to
+generate a link-local address.
+---
+ ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 62 insertions(+), 2 deletions(-)
 
->>> I wonder if we can use const l_queue_entry * instead.  Or maybe some so=
-rt of
->>> iterator concept?  Returning a pointer to the internal data structure is
->>> something we should only do as a last resort.
->>
->> "const l_queue_entry *" would work.  We can also just transfer the
->> ownership of those three lists to the caller and drop our references
->> to those three lists when we return them.  They're actually temporary,
->> I just used l_queue_clear instead of destroying and recreating them.
-> =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index beb19f4..ad41c9a 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -28,6 +28,12 @@
+ #include <netinet/ip.h>
+ #include <arpa/inet.h>
+ #include <netinet/icmp6.h>
++#include <net/if.h>
++#include <errno.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <unistd.h>
+ =
 
-> (This doesn't apply to the complete list of addresses/routes that we
-> also return, you're right that we'd need to return an iterator.
-> struct l_queue_entry is pretty much an iterator except that the
-> .next/.data members are public)
-> =
+ #include "private.h"
+ #include "useful.h"
+@@ -824,6 +830,30 @@ static void netconfig_icmp6_event_handler(struct l_icm=
+p6_client *client,
+ 		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
+ }
+ =
 
++static int netconfig_proc_write_ipv6_setting(struct l_netconfig *nc,
++						const char *setting,
++						const char *value)
++{
++	char ifname[IF_NAMESIZE];
++	_auto_(l_free) char *filename =3D NULL;
++	int fd;
++	int r;
++
++	if (unlikely(!if_indextoname(nc->ifindex, ifname)))
++		return -errno;
++
++	filename =3D l_strdup_printf("/proc/sys/net/ipv6/conf/%s/%s",
++					ifname, setting);
++
++	fd =3D L_TFR(open(filename, O_WRONLY));
++	if (unlikely(fd < 0))
++		return -errno;
++
++	r =3D L_TFR(write(fd, value, strlen(value)));
++	L_TFR(close(fd));
++	return r;
++}
++
+ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+ {
+ 	struct l_netconfig *nc;
+@@ -865,6 +895,9 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
+ ifindex)
+ 					netconfig_icmp6_event_handler,
+ 					nc, NULL);
+ =
 
-Okay.  See what you can come up with.  If l_queue_entry works, that would l=
-ikely =
++	/* Disable in-kernel autoconfiguration for the interface */
++	netconfig_proc_write_ipv6_setting(nc, "accept_ra", "0");
++
+ 	return nc;
+ }
+ =
 
-be the easiest approach.
+@@ -1304,6 +1337,32 @@ static void netconfig_ifaddr_ipv6_dump_cb(int error,=
+ uint16_t type,
+ 	netconfig_ifaddr_ipv6_notify(type, data, len, user_data);
+ }
+ =
 
-Regards,
--Denis
---===============1931604473480487042==--
++static void netconfig_ifaddr_ipv6_dump_done_cb(void *user_data)
++{
++	struct l_netconfig *nc =3D user_data;
++
++	/*
++	 * Handle the case of no link-local address having been found during
++	 * the dump.  If nc->ifaddr6_dump_cmd_id is 0, we have found one or
++	 * the dump is being cancelled.  Otherwise try disabing the
++	 * "disable_ipv6" setting for the interface since it may have been
++	 * enabled.  Also write "addr_gen_mode" which triggers regerating
++	 * the link-local addresss on the interface in the kernel if it
++	 * was previously removed.
++	 */
++	if (!nc->ifaddr6_dump_cmd_id || !nc->started)
++		return;
++
++	nc->ifaddr6_dump_cmd_id =3D 0;
++
++	/* "do no generate a link-local address" */
++	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "1");
++	/* "generate address based on EUI64 (default)" */
++	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "0");
++	/* "enable IPv6 operation" */
++	netconfig_proc_write_ipv6_setting(nc, "disable_ipv6", "0");
++}
++
+ LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
+ {
+ 	if (unlikely(!netconfig || netconfig->started))
+@@ -1364,8 +1423,9 @@ configure_ipv6:
+ 	}
+ =
+
+ 	netconfig->ifaddr6_dump_cmd_id =3D l_rtnl_ifaddr6_dump(rtnl,
+-						netconfig_ifaddr_ipv6_dump_cb,
+-						netconfig, NULL);
++					netconfig_ifaddr_ipv6_dump_cb,
++					netconfig,
++					netconfig_ifaddr_ipv6_dump_done_cb);
+ 	if (!netconfig->ifaddr6_dump_cmd_id)
+ 		goto unregister;
+ =
+
+-- =
+
+2.32.0
+
+--===============1036954386678993549==--
 
