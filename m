@@ -1,40 +1,88 @@
-Content-Type: multipart/mixed; boundary="===============0227927299344472487=="
+Content-Type: multipart/mixed; boundary="===============5474598634376704056=="
 MIME-Version: 1.0
-From: Michael Johnson <mjohnson459 at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH v2 3/3] unit: Pass in max logging level for dhcp
-Date: Tue, 17 May 2022 17:56:38 +0100
-Message-ID: <20220517165638.139029-3-mjohnson459@gmail.com>
-In-Reply-To: 20220517165638.139029-1-mjohnson459@gmail.com
+Subject: [PATCH 08/13] netconfig: Add l_netconfig_get_{dhcp6,icmp6}_client
+Date: Fri, 06 May 2022 01:15:34 +0200
+Message-ID: <20220505231539.888792-8-andrew.zaborowski@intel.com>
+In-Reply-To: 20220505231539.888792-1-andrew.zaborowski@intel.com
 
---===============0227927299344472487==
+--===============5474598634376704056==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
 ---
- unit/test-dhcp.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ ell/ell.sym     |  2 ++
+ ell/netconfig.c | 18 ++++++++++++++++++
+ ell/netconfig.h |  4 ++++
+ 3 files changed, 24 insertions(+)
 
-diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
-index e734e03..3c340fc 100644
---- a/unit/test-dhcp.c
-+++ b/unit/test-dhcp.c
-@@ -811,7 +811,7 @@ static struct l_dhcp_client *client_init(const uint8_t =
-*mac)
- 				event_handler_lease_obtained, NULL, NULL));
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 60dd257..0f9f884 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -749,6 +749,8 @@ global:
+ 	l_netconfig_start;
+ 	l_netconfig_stop;
+ 	l_netconfig_get_dhcp_client;
++	l_netconfig_get_dhcp6_client;
++	l_netconfig_get_icmp6_client;
+ 	l_netconfig_set_event_handler;
+ 	l_netconfig_apply_rtnl;
+ 	l_netconfig_get_addresses;
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 19d49db..57b1a04 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -1268,6 +1268,24 @@ LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhc=
+p_client(
+ 	return netconfig->dhcp_client;
+ }
  =
 
- 	if (verbose)
--		l_dhcp_client_set_debug(client, do_debug, "[DHCP1] ", NULL);
-+		l_dhcp_client_set_debug(client, do_debug, "[DHCP1] ", NULL, L_LOG_DEBUG);
++LIB_EXPORT struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
++						struct l_netconfig *netconfig)
++{
++	if (unlikely(!netconfig))
++		return NULL;
++
++	return netconfig->dhcp6_client;
++}
++
++LIB_EXPORT struct l_icmp6_client *l_netconfig_get_icmp6_client(
++						struct l_netconfig *netconfig)
++{
++	if (unlikely(!netconfig))
++		return NULL;
++
++	return netconfig->icmp6_client;
++}
++
+ LIB_EXPORT void l_netconfig_set_event_handler(struct l_netconfig *netconfi=
+g,
+ 					l_netconfig_event_cb_t handler,
+ 					void *user_data,
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index cf11c67..69100a2 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -75,6 +75,10 @@ void l_netconfig_stop(struct l_netconfig *netconfig);
  =
 
- 	transport->send =3D fake_transport_send;
- 	transport->l2_send =3D fake_transport_l2_send;
+ struct l_dhcp_client *l_netconfig_get_dhcp_client(
+ 						struct l_netconfig *netconfig);
++struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
++						struct l_netconfig *netconfig);
++struct l_icmp6_client *l_netconfig_get_icmp6_client(
++						struct l_netconfig *netconfig);
+ =
+
+ void l_netconfig_set_event_handler(struct l_netconfig *netconfig,
+ 					l_netconfig_event_cb_t handler,
 -- =
 
-2.25.1
+2.32.0
 
---===============0227927299344472487==--
+--===============5474598634376704056==--
 
