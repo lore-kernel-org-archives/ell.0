@@ -1,32 +1,137 @@
-Content-Type: multipart/mixed; boundary="===============6968172128909366052=="
+Content-Type: multipart/mixed; boundary="===============7202751029231233343=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] unit: add compressed point test
-Date: Tue, 15 Feb 2022 11:54:10 -0600
-Message-ID: <fc3a57d7-2376-8478-4997-8251155d05f0@gmail.com>
-In-Reply-To: 20220215175451.1265748-1-prestwoj@gmail.com
+Subject: [PATCH 05/13] netconfig: Avoid returning internal l_queues
+Date: Fri, 06 May 2022 01:15:31 +0200
+Message-ID: <20220505231539.888792-5-andrew.zaborowski@intel.com>
+In-Reply-To: 20220505231539.888792-1-andrew.zaborowski@intel.com
 
---===============6968172128909366052==
+--===============7202751029231233343==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Return const struct l_queue_entry pointers instead.
+---
+ ell/netconfig.c | 35 ++++++++++++++++++-----------------
+ ell/netconfig.h | 20 +++++++++++---------
+ 2 files changed, 29 insertions(+), 26 deletions(-)
 
-On 2/15/22 11:54, James Prestwood wrote:
-> This tests the 4 different ways a compressed point can be computed:
-> The two compressed point types with and without subtraction.
-> ---
->   unit/test-ecc.c | 61 +++++++++++++++++++++++++++++++++++++++++++++++++
->   1 file changed, 61 insertions(+)
-> =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 482049a..2c5d4ef 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -1208,37 +1208,38 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
+config *netconfig,
+ 					NULL, NULL, NULL);
+ }
+ =
 
+-LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
+-						struct l_netconfig *netconfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_addresses(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
+ {
+ 	if (out_added)
+-		*out_added =3D netconfig->addresses.added;
++		*out_added =3D l_queue_get_entries(netconfig->addresses.added);
+ =
 
-Applied, thanks.
+ 	if (out_updated)
+-		*out_updated =3D netconfig->addresses.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->addresses.updated);
+ =
 
-Regards,
--Denis
+ 	if (out_removed)
+-		*out_removed =3D netconfig->addresses.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->addresses.removed);
+ =
 
---===============6968172128909366052==--
+-	return netconfig->addresses.current;
++	return l_queue_get_entries(netconfig->addresses.current);
+ }
+ =
+
+-LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
+onfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_routes(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
+ {
+ 	if (out_added)
+-		*out_added =3D netconfig->routes.added;
++		*out_added =3D l_queue_get_entries(netconfig->routes.added);
+ =
+
+ 	if (out_updated)
+-		*out_updated =3D netconfig->routes.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->routes.updated);
+ =
+
+ 	if (out_removed)
+-		*out_removed =3D netconfig->routes.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->routes.removed);
+ =
+
+-	return netconfig->routes.current;
++	return l_queue_get_entries(netconfig->routes.current);
+ }
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index f90ec81..d58dda1 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -33,7 +33,7 @@ struct l_dhcp_client;
+ struct l_dhcp6_client;
+ struct l_icmp6_client;
+ struct l_netlink;
+-struct l_queue;
++struct l_queue_entry;
+ struct l_netconfig;
+ struct l_rtnl_address;
+ struct l_rtnl_route;
+@@ -83,14 +83,16 @@ void l_netconfig_set_event_handler(struct l_netconfig *=
+netconfig,
+ =
+
+ void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
+ 				struct l_netlink *rtnl);
+-struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
+-struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
++const struct l_queue_entry *l_netconfig_get_addresses(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
++const struct l_queue_entry *l_netconfig_get_routes(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
+ =
+
+ #ifdef __cplusplus
+ }
+-- =
+
+2.32.0
+
+--===============7202751029231233343==--
 
