@@ -1,71 +1,53 @@
-Received: from host50.godigital.gr (host50.godigital.gr [135.181.115.39])
+Received: from gregdf.com (gregdf.com [152.228.171.180])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 929E633DE
-	for <ell@lists.linux.dev>; Mon, 25 Apr 2022 23:43:11 +0000 (UTC)
-Comment: DKIM? See http://www.dkim.org
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=monodomiki.gr; s=default; x=1651534991; h=Comment:
-	DomainKey-Signature:Received:To:From:Reply-To:Subject:Date:
-	MIME-Version:Content-Type:Content-Transfer-Encoding:Message-ID;
-	bh=yd0Z4b6AnLq8HZr5ot++SHpLuokHk4KWINFnAb6eHlQ=; b=A3C41teoSrtFe
-	j495mDmztA6fv8+XY7UgFDE7lcvXtX1HKEJT899jnVhDbjBdu7hOlA7lusxd+mVk
-	IYpSTM7/3aSA54okeaGEmzwjTnlyZjItprz5FVPGn3cWdgm0ItCyTqyCHHIalOOE
-	IjoTB/EJoJ6Hc7dtbHmjmZgTdNGBZ4=
-Comment: DomainKeys? See http://antispam.yahoo.com/domainkeys
-DomainKey-Signature: a=rsa-sha1; q=dns; c=nofws;
-	s=default; d=monodomiki.gr;
-	h=Received:Return-Path:To:From:Reply-To:Subject:Date:X-LibVersion:MIME-Version:Content-Type:Content-Transfer-Encoding:Message-ID;
-	b=dW7OFSlWiyc9gFyKno25Ez4CuHGHXmAxa+3o8If7XztFGpi3Q0i/H8cNWU89Jh
-	BWem19MoTZBm1B+LRXdVSpfPwYkSJE1T9tikEnI3Td50DmI4xWDyEJuU9o1osvGB
-	QB9x5KA4mbvNUt+90GChq0f15HGyUMXsMauv5odGEnzqw=;
-Received: (qmail 7764 invoked by uid 0); 25 Apr 2022 23:36:28 -0000
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9ED6E3D9D
+	for <ell@lists.linux.dev>; Sun,  8 May 2022 00:00:23 +0000 (UTC)
+Received: from localhost.localdomain (unknown [37.167.202.147])
+	by gregdf.com (Postfix) with ESMTPSA id B3C2D796F40;
+	Sun,  8 May 2022 01:49:33 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gregdf.com; s=mail;
+	t=1651967374; bh=wznD7WNT8+0b+9LntRTHA1HAXzL+b8R6BARGm0URa9s=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=KY4XEKIGfpU5OeKO4gp+gqXqAB0eQpJoEAx3DFnP6DyGYtvKIj2mtRTtBRfAYpiCY
+	 JHr/ttnVSRsT5isZFK5BXGfq0KdUB8FMwmlbv2loToxgGg7V8b2VvUc/7LWGXudG9Y
+	 Rc7h+TIDZ8UbhAdhknLCSYm+ftAgLBsq2fjXGYLk=
+From: Greg Depoire--Ferrer <greg@gregdf.com>
 To: ell@lists.linux.dev
-From: monodomiki.gr <mailer@monodomiki.gr>
-Reply-To: monodomiki.gr <mailer@monodomiki.gr>
-Subject: =?utf-8?Q?=CE=9D=CE=AD=CE=BF_=CE=BC=CE=AD=CE=BB=CE=BF=CF=82_-?=
- =?utf-8?Q?_=CE=A3=CF=84=CE=BF=CE=B9=CF=87=CE=B5=CE=AF=CE=B1?=
- =?utf-8?Q?_=CE=B5=CE=B3=CE=B3=CF=81=CE=B1=CF=86=CE=AE=CF=82?=
-Date: Tue, 26 Apr 2022 02:36:28 +0300
-X-LibVersion: 3.2.4_4
+Cc: Greg Depoire--Ferrer <greg@gregdf.com>
+Subject: [PATCH 3/3] dhcp-transport: Initialize the udp_fd field
+Date: Sun,  8 May 2022 01:54:34 +0200
+Message-Id: <20220507235434.11693-4-greg@gregdf.com>
+X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220507235434.11693-1-greg@gregdf.com>
+References: <20220507235434.11693-1-greg@gregdf.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 8bit
-Message-ID: <20220425233628.10097.229542464.swift@www.monodomiki.gr>
 
-ell@lists.linux.dev,
+Initialize the udp_fd field to -1 in _dhcp_default_transport_new to
+prevent future mistakes where a random FD is closed when the transport
+is closed before the field is initialized.
+---
+ ell/dhcp-transport.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Καλώς ορίσατε. Ακολουθούν οι πληροφορίες του λογαριασμού σας.
+diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
+index d73930b..8ab6327 100644
+--- a/ell/dhcp-transport.c
++++ b/ell/dhcp-transport.c
+@@ -550,6 +550,7 @@ struct dhcp_transport *_dhcp_default_transport_new(uint32_t ifindex,
+ 	transport->super.ifindex = ifindex;
+ 	l_strlcpy(transport->ifname, ifname, IFNAMSIZ);
+ 	transport->port = port;
++	transport->udp_fd = -1;
+ 
+ 	return &transport->super;
+ }
+-- 
+2.35.1
 
-
-Όνομα: ell@lists.linux.dev
-Συνθηματικό: o37PN65gObmY
-Όνομα: <p><a href=\"http://camerounlink.com/newsextern.php?url=%68%74%74%70%73%3a%2f%2f%6c%6f%63%61%6c%67%69%72%6c%70%6c%61%63%65%2e%6c%69%66%65%2f%3f%75%3d%32%76%74%70%64%30%64%26%6f%3d%79%77%75%67%75%75%39%26%6d%3d%31%26%32%38%79&id=135704__\"><img src=\"http://insta-sex.com/app/img/offers/tube/chat.png\"></a></p>
-Επώνυμο: p8n9qli
-Τηλέφωνο: 492933789686
-Κινητό: eoiohu9p
-Διεύθυνση: hfhtie
-Περιοχή: a2tl82j
-Πόλη: ku5ohr
-Τ.Κ.: 41039
-Εταιρία: 8mgqw8
-Επάγγελμα: r565f6
-Α.Φ.Μ.: h1i3rqmb
-ΔΟΥ: bo1r21c
-Διεύθυνση εταιρίας: n8zd6qa
-Τηλέφωνο Εταιρίας: 492933789686
-Νομός: Χανίων
-NEWSLETTER: Ναι
-
-
-Ο λογαριασμό σας είναι προσωρινά απενεργοποιημένος. Παρακάτω ακολουθούν οι οδηγίες για την ενεργοποίηση του λογαριασμού σας.
-
-
-Για την ενεργοποίηση του λογαριασμού σας κάντε κλίκ στο ακόλουθο link.
-
-https://www.monodomiki.gr/activate.php?id=ad769c06c8fac7d03151d4679f94ddef
