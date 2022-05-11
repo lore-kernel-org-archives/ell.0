@@ -1,564 +1,90 @@
-Content-Type: multipart/mixed; boundary="===============7721013771990669180=="
+Content-Type: multipart/mixed; boundary="===============1080623972430220335=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 09/12] netconfig: Add netconfig API
-Date: Mon, 07 Mar 2022 15:55:40 +0100
-Message-ID: <20220307145543.1558788-9-andrew.zaborowski@intel.com>
-In-Reply-To: 20220307145543.1558788-1-andrew.zaborowski@intel.com
+Subject: [PATCH 1/2] netconfig: Write gateway MAC from DHCP to ARP cache
+Date: Thu, 12 May 2022 00:43:15 +0200
+Message-ID: <20220511224316.1283868-1-andrew.zaborowski@intel.com>
 
---===============7721013771990669180==
+--===============1080623972430220335==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This adds the netconfig class that will encapsulate static IP
-configuration, DHCP, DHCP6, ICMP6, SLAAC logic and free the user of
-manually handling DHCP/DHCP6 events to implement netconfig policies.
-The user will still need to handle committing received DNS and mdns
-information.
-
-In this patch only IPv4 DHCP is implemented and no configurable settings
-are added.
-
-When events are emitted for address and/or route changes, the changes
-are split into "added", "updated" and "removed" lists so that the user
-can decide apply those changes without first removing all addresses and
-routes from the interface and the re-adding the complete new list.
-They can also decide to let another entity apply the changes.  The
-obvious downside is the proliferation of lists.
+Write the MAC directly to the ARP table to save an ARP query for the
+gateway's MAC when it is known from the freshly obtained lease.  For
+practical reasons do this outside of l_netconfig_apply_rtnl().
 ---
- Makefile.am     |   6 +-
- ell/ell.h       |   1 +
- ell/ell.sym     |   7 +
- ell/netconfig.c | 377 ++++++++++++++++++++++++++++++++++++++++++++++++
- ell/netconfig.h |  72 +++++++++
- 5 files changed, 461 insertions(+), 2 deletions(-)
- create mode 100644 ell/netconfig.c
- create mode 100644 ell/netconfig.h
+This applies on top of the earlier netconfig patches.
 
-diff --git a/Makefile.am b/Makefile.am
-index 4e650c9..8aaefdf 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -60,7 +60,8 @@ pkginclude_HEADERS =3D ell/ell.h \
- 			ell/icmp6.h \
- 			ell/acd.h \
- 			ell/tester.h \
--			ell/cleanup.h
-+			ell/cleanup.h \
-+			ell/netconfig.h
- =
+ ell/netconfig.c | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
- lib_LTLIBRARIES =3D ell/libell.la
- =
-
-@@ -146,7 +147,8 @@ ell_libell_la_SOURCES =3D $(linux_headers) \
- 			ell/icmp6.c \
- 			ell/icmp6-private.h \
- 			ell/acd.c \
--			ell/tester.c
-+			ell/tester.c \
-+			ell/netconfig.c
- =
-
- ell_libell_la_LDFLAGS =3D -Wl,--no-undefined \
- 			-Wl,--version-script=3D$(top_srcdir)/ell/ell.sym \
-diff --git a/ell/ell.h b/ell/ell.h
-index d47d5cf..d4489ac 100644
---- a/ell/ell.h
-+++ b/ell/ell.h
-@@ -65,3 +65,4 @@
- #include <ell/path.h>
- #include <ell/acd.h>
- #include <ell/tester.h>
-+#include <ell/netconfig.h>
-diff --git a/ell/ell.sym b/ell/ell.sym
-index e2a278f..1dcee15 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -732,6 +732,13 @@ global:
- 	l_tester_post_teardown_complete;
- 	l_tester_post_teardown_failed;
- 	l_tester_wait;
-+	/* netconfig */
-+	l_netconfig_new;
-+	l_netconfig_destroy;
-+	l_netconfig_start;
-+	l_netconfig_stop;
-+	l_netconfig_get_dhcp_client;
-+	l_netconfig_set_event_handler;
- local:
- 	*;
- };
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-new file mode 100644
-index 0000000..8927aa8
---- /dev/null
+index ad41c9a..d495da2 100644
+--- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -0,0 +1,377 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2022  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <linux/types.h>
-+#include <netinet/ip.h>
-+#include <arpa/inet.h>
-+
-+#include "private.h"
-+#include "useful.h"
-+#include "log.h"
-+#include "dhcp.h"
-+#include "dhcp-private.h"
-+#include "netlink.h"
-+#include "rtnl.h"
-+#include "queue.h"
-+#include "time.h"
-+#include "netconfig.h"
-+
-+struct l_netconfig {
-+	uint32_t ifindex;
-+	bool v4_enabled;
-+	uint32_t route_priority;
-+
-+	bool v4_configured;
-+	struct l_dhcp_client *dhcp_client;
-+	/* These objects, if not NULL, are owned by @addresses and @routes */
-+	struct l_rtnl_address *v4_address;
-+	struct l_rtnl_route *v4_subnet_route;
-+	struct l_rtnl_route *v4_default_route;
-+
-+	struct {
-+		struct l_queue *current;
-+
-+		/*
-+		 * Temporary lists for use by the UPDATED handler to avoid
-+		 * having to remove all entries on the interface and re-add
-+		 * them from @current.  Entries in @updated are those that
-+		 * RTM_NEWADDR/RTM_NEWROUTE will correctly identify as
-+		 * existing objects and replace (with NLM_F_REPLACE) or
-+		 * error out (without it) rather than create duplicates,
-+		 * for example those that only have their lifetime updated.
-+		 *
-+		 * Any entries in @added and @updated are owned by @current.
-+		 */
-+		struct l_queue *added;
-+		struct l_queue *updated;
-+		struct l_queue *removed;
-+	} addresses, routes;
-+
-+	struct {
-+		l_netconfig_event_cb_t callback;
-+		void *user_data;
-+		l_netconfig_destroy_cb_t destroy;
-+	} handler;
-+};
-+
-+static void netconfig_update_cleanup(struct l_netconfig *nc)
+@@ -25,6 +25,7 @@
+ #endif
+ =
+
+ #include <linux/types.h>
++#include <linux/if_ether.h>
+ #include <netinet/ip.h>
+ #include <arpa/inet.h>
+ #include <netinet/icmp6.h>
+@@ -360,6 +361,37 @@ static void netconfig_remove_dhcp_address_routes(struc=
+t l_netconfig *nc,
+ 	}
+ }
+ =
+
++static void netconfig_set_neighbor_entry_cb(int error,
++						uint16_t type, const void *data,
++						uint32_t len, void *user_data)
 +{
-+	l_queue_clear(nc->addresses.added, NULL);
-+	l_queue_clear(nc->addresses.updated, NULL);
-+	l_queue_clear(nc->addresses.removed,
-+			(l_queue_destroy_func_t) l_rtnl_address_free);
-+	l_queue_clear(nc->routes.added, NULL);
-+	l_queue_clear(nc->routes.updated, NULL);
-+	l_queue_clear(nc->routes.removed,
-+			(l_queue_destroy_func_t) l_rtnl_route_free);
++	/* Not critical.  TODO: log warning */
 +}
 +
-+static void netconfig_emit_event(struct l_netconfig *nc, uint8_t family,
-+					enum l_netconfig_event event)
-+{
-+	if (!nc->handler.callback)
-+		return;
-+
-+	nc->handler.callback(nc, family, event, nc->handler.user_data);
-+
-+	if (L_IN_SET(event, L_NETCONFIG_EVENT_UPDATE,
-+			L_NETCONFIG_EVENT_CONFIGURE,
-+			L_NETCONFIG_EVENT_UNCONFIGURE))
-+		netconfig_update_cleanup(nc);
-+}
-+
-+static void netconfig_add_v4_routes(struct l_netconfig *nc, const char *ip,
-+					uint8_t prefix_len, const char *gateway,
-+					uint8_t rtm_protocol)
-+{
-+	struct in_addr in_addr;
-+	char network[INET_ADDRSTRLEN];
-+
-+	/* Subnet route */
-+
-+	if (L_WARN_ON(inet_pton(AF_INET, ip, &in_addr) !=3D 1))
-+		return;
-+
-+	in_addr.s_addr &=3D htonl(0xfffffffflu << (32 - prefix_len));
-+	if (L_WARN_ON(!inet_ntop(AF_INET, &in_addr, network, INET_ADDRSTRLEN)))
-+		return;
-+
-+	nc->v4_subnet_route =3D l_rtnl_route_new_prefix(network, prefix_len);
-+	l_rtnl_route_set_protocol(nc->v4_subnet_route, rtm_protocol);
-+	l_rtnl_route_set_priority(nc->v4_subnet_route, nc->route_priority);
-+	l_queue_push_tail(nc->routes.current, nc->v4_subnet_route);
-+	l_queue_push_tail(nc->routes.added, nc->v4_subnet_route);
-+
-+	/* Gateway route */
-+
-+	if (!gateway)
-+		return;
-+
-+	nc->v4_default_route =3D l_rtnl_route_new_gateway(gateway);
-+	l_rtnl_route_set_protocol(nc->v4_default_route, rtm_protocol);
-+	L_WARN_ON(!l_rtnl_route_set_prefsrc(nc->v4_default_route, ip));
-+	l_queue_push_tail(nc->routes.current, nc->v4_default_route);
-+	l_queue_push_tail(nc->routes.added, nc->v4_default_route);
-+}
-+
-+static void netconfig_add_dhcp_address_routes(struct l_netconfig *nc)
++static int netconfig_dhcp_gateway_to_arp(struct l_netconfig *nc)
 +{
 +	const struct l_dhcp_lease *lease =3D
 +		l_dhcp_client_get_lease(nc->dhcp_client);
-+	_auto_(l_free) char *ip =3D NULL;
-+	_auto_(l_free) char *broadcast =3D NULL;
-+	_auto_(l_free) char *gateway =3D NULL;
-+	uint32_t prefix_len;
++	_auto_(l_free) char *server_id =3D l_dhcp_lease_get_server_id(lease);
++	_auto_(l_free) char *gw =3D l_dhcp_lease_get_gateway(lease);
++	const uint8_t *server_mac =3D l_dhcp_lease_get_server_mac(lease);
++	struct in_addr in_gw;
 +
-+	ip =3D l_dhcp_lease_get_address(lease);
-+	broadcast =3D l_dhcp_lease_get_broadcast(lease);
++	if (!gw || strcmp(server_id, gw) || !server_mac)
++		return -ENOENT;
 +
-+	prefix_len =3D l_dhcp_lease_get_prefix_length(lease);
-+	if (!prefix_len)
-+		prefix_len =3D 24;
++	/* Gateway MAC is known, write it into ARP cache to save ARP traffic */
++	in_gw.s_addr =3D l_dhcp_lease_get_gateway_u32(lease);
 +
-+	nc->v4_address =3D l_rtnl_address_new(ip, prefix_len);
-+	if (L_WARN_ON(!nc->v4_address))
-+		return;
++	if (!l_rtnl_neighbor_set_hwaddr(rtnl, nc->ifindex, AF_INET, &in_gw,
++					server_mac, ETH_ALEN,
++					netconfig_set_neighbor_entry_cb, nc,
++					NULL))
++		return -EIO;
 +
-+	l_rtnl_address_set_noprefixroute(nc->v4_address, true);
-+
-+	if (broadcast)
-+		l_rtnl_address_set_broadcast(nc->v4_address, broadcast);
-+
-+	l_queue_push_tail(nc->addresses.current, nc->v4_address);
-+	l_queue_push_tail(nc->addresses.added, nc->v4_address);
-+
-+	gateway =3D l_dhcp_lease_get_gateway(lease);
-+	netconfig_add_v4_routes(nc, ip, prefix_len, gateway, RTPROT_DHCP);
++	return 0;
 +}
 +
-+static void netconfig_set_dhcp_lifetimes(struct l_netconfig *nc, bool upda=
-ted)
-+{
-+	const struct l_dhcp_lease *lease =3D
-+		l_dhcp_client_get_lease(nc->dhcp_client);
-+	uint32_t lifetime =3D l_dhcp_lease_get_lifetime(lease);
-+	uint64_t expiry =3D l_dhcp_lease_get_start_time(lease) +
-+		lifetime * L_USEC_PER_SEC;
-+
-+	l_rtnl_address_set_lifetimes(nc->v4_address, 0, lifetime);
-+	l_rtnl_address_set_expiry(nc->v4_address, 0, expiry);
-+
-+	if (updated)
-+		l_queue_push_tail(nc->addresses.updated, nc->v4_address);
-+
-+	l_rtnl_route_set_lifetime(nc->v4_subnet_route, lifetime);
-+	l_rtnl_route_set_expiry(nc->v4_subnet_route, expiry);
-+
-+	if (updated)
-+		l_queue_push_tail(nc->routes.updated, nc->v4_subnet_route);
-+
-+	if (!nc->v4_default_route)
-+		return;
-+
-+	l_rtnl_route_set_lifetime(nc->v4_default_route, lifetime);
-+	l_rtnl_route_set_expiry(nc->v4_default_route, expiry);
-+
-+	if (updated)
-+		l_queue_push_tail(nc->routes.updated, nc->v4_default_route);
-+}
-+
-+static void netconfig_remove_dhcp_address_routes(struct l_netconfig *nc)
-+{
-+	l_queue_remove(nc->addresses.current, nc->v4_address);
-+	l_queue_push_tail(nc->addresses.removed, nc->v4_address);
-+	nc->v4_address =3D NULL;
-+
-+	l_queue_remove(nc->routes.current, nc->v4_subnet_route);
-+	l_queue_push_tail(nc->routes.removed, nc->v4_subnet_route);
-+	nc->v4_subnet_route =3D NULL;
-+
-+	if (nc->v4_default_route) {
-+		l_queue_remove(nc->routes.current, nc->v4_default_route);
-+		l_queue_push_tail(nc->routes.removed, nc->v4_default_route);
-+		nc->v4_default_route =3D NULL;
-+	}
-+}
-+
-+static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
-+						enum l_dhcp_client_event event,
-+						void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+
-+	switch (event) {
-+	case L_DHCP_CLIENT_EVENT_IP_CHANGED:
-+		L_WARN_ON(!nc->v4_configured);
-+		netconfig_remove_dhcp_address_routes(nc);
-+		netconfig_add_dhcp_address_routes(nc);
-+		netconfig_set_dhcp_lifetimes(nc, false);
-+		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_UPDATE);
-+		break;
-+	case L_DHCP_CLIENT_EVENT_LEASE_OBTAINED:
-+	{
-+		L_WARN_ON(nc->v4_configured);
-+		netconfig_add_dhcp_address_routes(nc);
-+		netconfig_set_dhcp_lifetimes(nc, false);
-+		nc->v4_configured =3D true;
-+		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
-+		break;
-+	}
-+	case L_DHCP_CLIENT_EVENT_LEASE_RENEWED:
-+		L_WARN_ON(!nc->v4_configured);
-+		netconfig_set_dhcp_lifetimes(nc, true);
-+		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_UPDATE);
-+		break;
-+	case L_DHCP_CLIENT_EVENT_LEASE_EXPIRED:
-+		L_WARN_ON(!nc->v4_configured);
-+		netconfig_remove_dhcp_address_routes(nc);
-+		nc->v4_configured =3D false;
-+
-+		if (l_dhcp_client_start(nc->dhcp_client))
-+			/* TODO: also start a new timeout */
-+			netconfig_emit_event(nc, AF_INET,
-+						L_NETCONFIG_EVENT_UNCONFIGURE);
-+		else
-+			netconfig_emit_event(nc, AF_INET,
-+						L_NETCONFIG_EVENT_FAILED);
-+
-+		break;
-+	case L_DHCP_CLIENT_EVENT_NO_LEASE:
-+		L_WARN_ON(nc->v4_configured);
-+
-+		/*
-+		 * The requested address is no longer available, try to restart
-+		 * the client.
-+		 *
-+		 * TODO: this may need to be delayed so we don't flood the
-+		 * network with DISCOVERs and NAKs.  Also add a retry limit or
-+		 * better yet a configurable timeout.
-+		 */
-+		if (!l_dhcp_client_start(nc->dhcp_client))
-+			netconfig_emit_event(nc, AF_INET,
-+						L_NETCONFIG_EVENT_FAILED);
-+
-+		break;
-+	}
-+}
-+
-+LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
-+{
-+	struct l_netconfig *nc;
-+
-+	nc =3D l_new(struct l_netconfig, 1);
-+	nc->ifindex =3D ifindex;
-+	nc->v4_enabled =3D true;
-+
-+	nc->addresses.current =3D l_queue_new();
-+	nc->addresses.added =3D l_queue_new();
-+	nc->addresses.updated =3D l_queue_new();
-+	nc->addresses.removed =3D l_queue_new();
-+	nc->routes.current =3D l_queue_new();
-+	nc->routes.added =3D l_queue_new();
-+	nc->routes.updated =3D l_queue_new();
-+	nc->routes.removed =3D l_queue_new();
-+
-+	nc->dhcp_client =3D l_dhcp_client_new(ifindex);
-+	l_dhcp_client_set_event_handler(nc->dhcp_client,
-+					netconfig_dhcp_event_handler,
-+					nc, NULL);
-+
-+	return nc;
-+}
-+
-+LIB_EXPORT void l_netconfig_destroy(struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return;
-+
-+	l_netconfig_stop(netconfig);
-+
-+	l_dhcp_client_destroy(netconfig->dhcp_client);
-+	l_netconfig_set_event_handler(netconfig, NULL, NULL, NULL);
-+	l_queue_destroy(netconfig->addresses.current, NULL);
-+	l_queue_destroy(netconfig->addresses.added, NULL);
-+	l_queue_destroy(netconfig->addresses.updated, NULL);
-+	l_queue_destroy(netconfig->addresses.removed, NULL);
-+	l_queue_destroy(netconfig->routes.current, NULL);
-+	l_queue_destroy(netconfig->routes.added, NULL);
-+	l_queue_destroy(netconfig->routes.updated, NULL);
-+	l_queue_destroy(netconfig->routes.removed, NULL);
-+	l_free(netconfig);
-+}
-+
-+LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return false;
-+
-+	if (netconfig->v4_enabled &&
-+			!l_dhcp_client_start(netconfig->dhcp_client))
-+		return false;
-+
-+	return true;
-+}
-+
-+LIB_EXPORT void l_netconfig_stop(struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig || !netconfig->started))
-+		return;
-+
-+	netconfig_update_cleanup(netconfig);
-+	l_queue_clear(netconfig->routes.current,
-+			(l_queue_destroy_func_t) l_rtnl_route_free);
-+	l_queue_clear(netconfig->addresses.current,
-+			(l_queue_destroy_func_t) l_rtnl_address_free);
-+	netconfig->v4_address =3D NULL;
-+	netconfig->v4_subnet_route =3D NULL;
-+	netconfig->v4_default_route =3D NULL;
-+
-+	l_dhcp_client_stop(netconfig->dhcp_client);
-+}
-+
-+LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhcp_client(
-+						struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return NULL;
-+
-+	return netconfig->dhcp_client;
-+}
-+
-+LIB_EXPORT void l_netconfig_set_event_handler(struct l_netconfig *netconfi=
-g,
-+					l_netconfig_event_cb_t handler,
-+					void *user_data,
-+					l_netconfig_destroy_cb_t destroy)
-+{
-+	if (unlikely(!netconfig))
-+		return;
-+
-+	if (netconfig->handler.destroy)
-+		netconfig->handler.destroy(netconfig->handler.user_data);
-+
-+	netconfig->handler.callback =3D handler;
-+	netconfig->handler.user_data =3D user_data;
-+	netconfig->handler.destroy =3D destroy;
-+}
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-new file mode 100644
-index 0000000..7773885
---- /dev/null
-+++ b/ell/netconfig.h
-@@ -0,0 +1,72 @@
-+/*
-+ *
-+ *  Embedded Linux library
-+ *
-+ *  Copyright (C) 2022  Intel Corporation. All rights reserved.
-+ *
-+ *  This library is free software; you can redistribute it and/or
-+ *  modify it under the terms of the GNU Lesser General Public
-+ *  License as published by the Free Software Foundation; either
-+ *  version 2.1 of the License, or (at your option) any later version.
-+ *
-+ *  This library is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ *  Lesser General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU Lesser General Public
-+ *  License along with this library; if not, write to the Free Software
-+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 =
- USA
-+ *
-+ */
-+
-+#ifndef __ELL_NETCONFIG_H
-+#define __ELL_NETCONFIG_H
-+
-+#ifdef __cplusplus
-+extern "C" {
-+#endif
-+
-+#include <stdbool.h>
-+
-+struct l_dhcp_client;
-+struct l_dhcp6_client;
-+struct l_icmp6_client;
-+struct l_netlink;
-+struct l_queue;
-+struct l_netconfig;
-+struct l_rtnl_address;
-+struct l_rtnl_route;
-+
-+enum l_netconfig_event {
-+	L_NETCONFIG_EVENT_CONFIGURE,
-+	L_NETCONFIG_EVENT_UPDATE,
-+	L_NETCONFIG_EVENT_UNCONFIGURE,
-+	L_NETCONFIG_EVENT_FAILED,
-+};
-+
-+typedef void (*l_netconfig_event_cb_t)(struct l_netconfig *netconfig,
-+					uint8_t family,
-+					enum l_netconfig_event event,
-+					void *user_data);
-+typedef void (*l_netconfig_destroy_cb_t)(void *user_data);
-+
-+struct l_netconfig *l_netconfig_new(uint32_t ifindex);
-+void l_netconfig_destroy(struct l_netconfig *netconfig);
-+
-+bool l_netconfig_start(struct l_netconfig *netconfig);
-+void l_netconfig_stop(struct l_netconfig *netconfig);
-+
-+struct l_dhcp_client *l_netconfig_get_dhcp_client(
-+						struct l_netconfig *netconfig);
-+
-+void l_netconfig_set_event_handler(struct l_netconfig *netconfig,
-+					l_netconfig_event_cb_t handler,
-+					void *user_data,
-+					l_netconfig_destroy_cb_t destroy);
-+
-+#ifdef __cplusplus
-+}
-+#endif
-+
-+#endif /* __ELL_NETCONFIG_H */
+ static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
+ 						enum l_dhcp_client_event event,
+ 						void *user_data)
+@@ -384,6 +416,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
+client *client,
+ 		netconfig_set_dhcp_lifetimes(nc, false);
+ 		nc->v4_configured =3D true;
+ 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
++		netconfig_dhcp_gateway_to_arp(nc);
+ 		break;
+ 	case L_DHCP_CLIENT_EVENT_LEASE_RENEWED:
+ 		if (L_WARN_ON(!nc->v4_configured))
 -- =
 
 2.32.0
 
---===============7721013771990669180==--
+--===============1080623972430220335==--
 
