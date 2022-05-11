@@ -1,137 +1,78 @@
-Content-Type: multipart/mixed; boundary="===============0176059178267266094=="
+Content-Type: multipart/mixed; boundary="===============1156743296253460702=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 07/12] netconfig: Avoid returning internal l_queues
-Date: Thu, 21 Apr 2022 17:45:20 +0200
-Message-ID: <20220421154525.1416984-7-andrew.zaborowski@intel.com>
-In-Reply-To: 20220421154525.1416984-1-andrew.zaborowski@intel.com
+Subject: [PATCH] dhcp: Use bound_time for retransmission timers
+Date: Wed, 11 May 2022 12:28:55 -0500
+Message-ID: <20220511172855.25992-1-denkenz@gmail.com>
 
---===============0176059178267266094==
+--===============1156743296253460702==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Return const struct l_queue_entry pointers instead.
+start_t is used to try and calculate the retransmission timeout value
+when the client enters RENEWING or REBINDING state.  This works fine on
+the first renewal since the client start timestamp and the lease bound
+timestamp are very close.  Also, the RENEW request is sent immediately
+whenever the T1 timer expires and most of the time it succeeds.
+
+However, if this isn't a first renewal attempt and the RENEW request
+sent when the T1 timer expires is not successful, then the renewal
+timeout value could become too large.  Fix that by using the lease
+bound_time for the retransmission timer calculation (as intended) intead
+of the client start time (start_t).
 ---
- ell/netconfig.c | 35 ++++++++++++++++++-----------------
- ell/netconfig.h | 20 +++++++++++---------
- 2 files changed, 29 insertions(+), 26 deletions(-)
+ ell/dhcp.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 783c6a2..8ad2cc0 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1158,37 +1158,38 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
-config *netconfig,
- 					NULL, NULL, NULL);
- }
- =
-
--LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
--						struct l_netconfig *netconfig,
--						struct l_queue **out_added,
--						struct l_queue **out_updated,
--						struct l_queue **out_removed)
-+LIB_EXPORT const struct l_queue_entry *l_netconfig_get_addresses(
-+					struct l_netconfig *netconfig,
-+					const struct l_queue_entry **out_added,
-+					const struct l_queue_entry **out_updated,
-+					const struct l_queue_entry **out_removed)
+diff --git a/ell/dhcp.c b/ell/dhcp.c
+index 2d049005a135..01900f3b1d38 100644
+--- a/ell/dhcp.c
++++ b/ell/dhcp.c
+@@ -520,6 +520,7 @@ static void dhcp_client_timeout_resend(struct l_timeout=
+ *timeout,
+ 								void *user_data)
  {
- 	if (out_added)
--		*out_added =3D netconfig->addresses.added;
-+		*out_added =3D l_queue_get_entries(netconfig->addresses.added);
+ 	struct l_dhcp_client *client =3D user_data;
++	struct l_dhcp_lease *lease =3D client->lease;
+ 	unsigned int next_timeout =3D 0;
+ 	int r;
  =
 
- 	if (out_updated)
--		*out_updated =3D netconfig->addresses.updated;
-+		*out_updated =3D l_queue_get_entries(netconfig->addresses.updated);
+@@ -555,12 +556,12 @@ static void dhcp_client_timeout_resend(struct l_timeo=
+ut *timeout,
  =
 
- 	if (out_removed)
--		*out_removed =3D netconfig->addresses.removed;
-+		*out_removed =3D l_queue_get_entries(netconfig->addresses.removed);
+ 	switch (client->state) {
+ 	case DHCP_STATE_RENEWING:
+-		next_timeout =3D dhcp_rebind_renew_retry_time(client->start_t,
+-							client->lease->t2);
++		next_timeout =3D dhcp_rebind_renew_retry_time(lease->bound_time,
++								lease->t2);
+ 		break;
+ 	case DHCP_STATE_REBINDING:
+-		next_timeout =3D dhcp_rebind_renew_retry_time(client->start_t,
+-						client->lease->lifetime);
++		next_timeout =3D dhcp_rebind_renew_retry_time(lease->bound_time,
++							lease->lifetime);
+ 		break;
+ 	case DHCP_STATE_REQUESTING:
+ 	case DHCP_STATE_SELECTING:
+@@ -642,7 +643,7 @@ static void dhcp_client_t1_expired(struct l_timeout *ti=
+meout, void *user_data)
+ 	l_timeout_set_callback(client->timeout_lease, dhcp_client_t2_expired,
+ 				client, NULL);
  =
 
--	return netconfig->addresses.current;
-+	return l_queue_get_entries(netconfig->addresses.current);
- }
- =
-
--LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
-onfig,
--						struct l_queue **out_added,
--						struct l_queue **out_updated,
--						struct l_queue **out_removed)
-+LIB_EXPORT const struct l_queue_entry *l_netconfig_get_routes(
-+					struct l_netconfig *netconfig,
-+					const struct l_queue_entry **out_added,
-+					const struct l_queue_entry **out_updated,
-+					const struct l_queue_entry **out_removed)
- {
- 	if (out_added)
--		*out_added =3D netconfig->routes.added;
-+		*out_added =3D l_queue_get_entries(netconfig->routes.added);
- =
-
- 	if (out_updated)
--		*out_updated =3D netconfig->routes.updated;
-+		*out_updated =3D l_queue_get_entries(netconfig->routes.updated);
- =
-
- 	if (out_removed)
--		*out_removed =3D netconfig->routes.removed;
-+		*out_removed =3D l_queue_get_entries(netconfig->routes.removed);
- =
-
--	return netconfig->routes.current;
-+	return l_queue_get_entries(netconfig->routes.current);
- }
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index a50a895..7796a2f 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -33,7 +33,7 @@ struct l_dhcp_client;
- struct l_dhcp6_client;
- struct l_icmp6_client;
- struct l_netlink;
--struct l_queue;
-+struct l_queue_entry;
- struct l_netconfig;
- struct l_rtnl_address;
- struct l_rtnl_route;
-@@ -87,14 +87,16 @@ void l_netconfig_set_event_handler(struct l_netconfig *=
-netconfig,
- =
-
- void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
- 				struct l_netlink *rtnl);
--struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
--					struct l_queue **out_added,
--					struct l_queue **out_updated,
--					struct l_queue **out_removed);
--struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
--					struct l_queue **out_added,
--					struct l_queue **out_updated,
--					struct l_queue **out_removed);
-+const struct l_queue_entry *l_netconfig_get_addresses(
-+				struct l_netconfig *netconfig,
-+				const struct l_queue_entry **out_added,
-+				const struct l_queue_entry **out_updated,
-+				const struct l_queue_entry **out_removed);
-+const struct l_queue_entry *l_netconfig_get_routes(
-+				struct l_netconfig *netconfig,
-+				const struct l_queue_entry **out_added,
-+				const struct l_queue_entry **out_updated,
-+				const struct l_queue_entry **out_removed);
- =
-
- #ifdef __cplusplus
- }
+-	next_timeout =3D dhcp_rebind_renew_retry_time(client->start_t,
++	next_timeout =3D dhcp_rebind_renew_retry_time(client->lease->bound_time,
+ 							client->lease->t2);
+ 	client->timeout_resend =3D
+ 		l_timeout_create_ms(dhcp_fuzz_secs(next_timeout),
 -- =
 
 2.32.0
 
---===============0176059178267266094==--
+--===============1156743296253460702==--
 
