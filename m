@@ -1,37 +1,68 @@
-Content-Type: multipart/mixed; boundary="===============4277153327525715945=="
+Content-Type: multipart/mixed; boundary="===============2486686211411731938=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 3/5] settings: add l_settings_remove_embedded_groups
-Date: Fri, 04 Feb 2022 11:33:04 -0600
-Message-ID: <cfaccee8-b4f5-8fa1-a44f-452f5a5a371b@gmail.com>
-In-Reply-To: 20220204170603.216439-3-prestwoj@gmail.com
+Subject: Re: [PATCH 01/13] net: Add l_net_clear_host_bits utility
+Date: Thu, 12 May 2022 11:02:34 -0500
+Message-ID: <9ebeb857-4ac0-9d3f-e47f-182b1758ebf9@gmail.com>
+In-Reply-To: 20220505231539.888792-1-andrew.zaborowski@intel.com
 
---===============4277153327525715945==
+--===============2486686211411731938==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Hi Andrew,
 
-<snip>
+On 5/5/22 18:15, Andrew Zaborowski wrote:
+> Add function that zeros bits after prefix_len'th bit in an address.  Put
+> it in net.h so it can be use by both netconfig.c and icmp6.c,
+> potentially others.
+> ---
+>   ell/net.h | 13 +++++++++++++
+>   1 file changed, 13 insertions(+)
+> =
 
-> +LIB_EXPORT bool l_settings_remove_embedded_groups(struct l_settings *set=
-tings)
+> diff --git a/ell/net.h b/ell/net.h
+> index 0521d75..e193eef 100644
+> --- a/ell/net.h
+> +++ b/ell/net.h
+> @@ -61,6 +61,19 @@ static inline bool l_net_prefix_matches(const void *a,=
+ const void *b,
+>   	return !bits || ((left ^ right) & (0xff00u >> bits)) =3D=3D 0;
+>   }
+>   =
+
+> +static inline void l_net_clear_host_bits(uint8_t *address, uint8_t prefi=
+x_len,
+> +						uint8_t bytes)
+
+I'm not super excited about the naming.  What about l_net_prefix_from_addre=
+ss()? =
+
+  Alternatively, we do have net-private.h where we can stuff this for now a=
+nd =
+
+not expose it to public API.
+
 > +{
-> +	if (unlikely(!settings))
-> +		return false;
+> +	uint8_t last_byte =3D prefix_len / 8;
 > +
-> +	l_queue_destroy(settings->embedded_groups, embedded_group_destroy);
-> +	settings->embedded_groups =3D l_queue_new();
-
-l_queue_clear() might be cleaner here.
-
+> +	if (prefix_len & 7) {
+> +		address[last_byte] &=3D 0xff00 >> (prefix_len & 7);
+> +		last_byte++;
+> +	}
 > +
-> +	return true;
+> +	memset(address + last_byte, 0, bytes - last_byte);
 > +}
+> +
+>   #ifdef __cplusplus
+>   }
+>   #endif
+> =
+
 
 Regards,
 -Denis
---===============4277153327525715945==--
+--===============2486686211411731938==--
 
