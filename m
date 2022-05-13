@@ -1,47 +1,89 @@
-Content-Type: multipart/mixed; boundary="===============5432869203415265357=="
+Content-Type: multipart/mixed; boundary="===============2175990568101198516=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] dhcp: Use bound_time for retransmission timers
-Date: Fri, 13 May 2022 11:23:52 -0500
-Message-ID: <8b5ce99b-55ad-53cf-fe82-4930735b420c@gmail.com>
-In-Reply-To: CACsRnHUuH6+BvLi3bm9F3eY_3t80bosroXYig9Dpg9O2eo+0aw@mail.gmail.com
+Subject: [PATCH 13/17] netconfig: Write gateway MAC from DHCP to ARP cache
+Date: Fri, 13 May 2022 16:55:06 +0200
+Message-ID: <20220513145510.1408510-13-andrew.zaborowski@intel.com>
+In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
 
---===============5432869203415265357==
+--===============2175990568101198516==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Michael,
+Write the MAC directly to the ARP table to save an ARP query for the
+gateway's MAC when it is known from the freshly obtained lease.  For
+practical reasons do this outside of l_netconfig_apply_rtnl().
+---
+ ell/netconfig.c | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
-On 5/13/22 10:40, Michael Johnson wrote:
-> Sorry, I put the log for the t2 retry. Putting it in the right place
-> gives us our problem though
-> =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 085ad9b..6e6f199 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -25,6 +25,7 @@
+ #endif
+ =
 
-> ```
-> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4] dhcp_client_t1_expired:630
-> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4]
-> dhcp_client_t1_expired:632 Entering state: DHCP_STATE_RENEWING
-> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4] dhcp_client_send_request:397
-> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4]
-> dhcp_client_t1_expired:642 next_timeout t2: 225
-> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4]
-> dhcp_client_t1_expired:651 next_timeout t1 retry: 896458022
+ #include <linux/types.h>
++#include <linux/if_ether.h>
+ #include <netinet/ip.h>
+ #include <arpa/inet.h>
+ #include <netinet/icmp6.h>
+@@ -401,6 +402,37 @@ static void netconfig_remove_dhcp_address_routes(struc=
+t l_netconfig *nc,
+ 	}
+ }
+ =
 
-Ugh, looks like commit:
-c78ad1bb6d7e ("dhcp: Set lease expiry based on frame reception times")
++static void netconfig_set_neighbor_entry_cb(int error,
++						uint16_t type, const void *data,
++						uint32_t len, void *user_data)
++{
++	/* Not critical.  TODO: log warning */
++}
++
++static int netconfig_dhcp_gateway_to_arp(struct l_netconfig *nc)
++{
++	const struct l_dhcp_lease *lease =3D
++		l_dhcp_client_get_lease(nc->dhcp_client);
++	_auto_(l_free) char *server_id =3D l_dhcp_lease_get_server_id(lease);
++	_auto_(l_free) char *gw =3D l_dhcp_lease_get_gateway(lease);
++	const uint8_t *server_mac =3D l_dhcp_lease_get_server_mac(lease);
++	struct in_addr in_gw;
++
++	if (!gw || strcmp(server_id, gw) || !server_mac)
++		return -ENOENT;
++
++	/* Gateway MAC is known, write it into ARP cache to save ARP traffic */
++	in_gw.s_addr =3D l_dhcp_lease_get_gateway_u32(lease);
++
++	if (!l_rtnl_neighbor_set_hwaddr(rtnl, nc->ifindex, AF_INET, &in_gw,
++					server_mac, ETH_ALEN,
++					netconfig_set_neighbor_entry_cb, nc,
++					NULL))
++		return -EIO;
++
++	return 0;
++}
++
+ static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
+ 						enum l_dhcp_client_event event,
+ 						void *user_data)
+@@ -425,6 +457,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
+client *client,
+ 		netconfig_set_dhcp_lifetimes(nc, false);
+ 		nc->v4_configured =3D true;
+ 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
++		netconfig_dhcp_gateway_to_arp(nc);
+ 		break;
+ 	case L_DHCP_CLIENT_EVENT_LEASE_RENEWED:
+ 		if (L_WARN_ON(!nc->v4_configured))
+-- =
 
-broke this.  It is mixing up SO_TIMESTAMP which is from CLOCK_REALTIME and =
-our =
+2.32.0
 
-bound_time which is supposed to be in CLOCK_BOOTTIME.
-
-No wonder the timeout way too long :)
-
-Let me send another fixup patch.
-
-Regards,
--Denis
---===============5432869203415265357==--
+--===============2175990568101198516==--
 
