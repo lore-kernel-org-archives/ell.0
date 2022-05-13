@@ -1,50 +1,180 @@
-Content-Type: multipart/mixed; boundary="===============0777661572562451339=="
+Content-Type: multipart/mixed; boundary="===============3351240631262966228=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] log: Set retain attribute on __ell_debug
-Date: Thu, 11 Nov 2021 12:47:58 -0600
-Message-ID: <8ee36d26-5741-43bd-57ad-5429f2c9c9dd@gmail.com>
-In-Reply-To: 20211111030742.2005152-1-i@maskray.me
+Subject: [PATCH 05/17] netconfig: Handle DHCPv6 events
+Date: Sat, 14 May 2022 00:47:01 +0200
+Message-ID: <20220513224713.1447773-5-andrew.zaborowski@intel.com>
+In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
 
---===============0777661572562451339==
+--===============3351240631262966228==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Fangrui,
+Use l_dhcp6_client to support IPv6 address assignment through DHCPv6.
+---
+ ell/netconfig.c | 132 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 132 insertions(+)
 
-On 11/10/21 9:07 PM, Fangrui Song wrote:
-> LLD 13 and GNU ld 2.37 support -z start-stop-gc which allows garbage
-> collection of C identifier name sections despite the __start_/__stop_
-> references. GNU ld before 2015-10 had the behavior as well. Simply set
-> the retain attribute so that GCC 11 (if configure-time binutils is 2.36
-> or newer)/Clang 13 will set the SHF_GNU_RETAIN section attribute to
-> prevent garbage collection.
-> =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 6ad6394..990b166 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -400,6 +400,135 @@ static void netconfig_dhcp_event_handler(struct l_dhc=
+p_client *client,
+ 	}
+ }
+ =
 
-> Without the patch, there are linker errors with -z start-stop-gc (LLD def=
-ault):
-> =
++static void netconfig_add_dhcp6_address(struct l_netconfig *nc)
++{
++	const struct l_dhcp6_lease *lease =3D
++		l_dhcp6_client_get_lease(nc->dhcp6_client);
++	_auto_(l_free) char *ip =3D NULL;
++	uint32_t prefix_len;
++
++	if (L_WARN_ON(!lease))
++		return;
++
++	ip =3D l_dhcp6_lease_get_address(lease);
++	prefix_len =3D l_dhcp6_lease_get_prefix_length(lease);
++	nc->v6_address =3D l_rtnl_address_new(ip, prefix_len);
++
++	if (L_WARN_ON(!nc->v6_address))
++		return;
++
++	/*
++	 * Assume we already have a route from a Router Advertisement
++	 * covering the address from DHCPv6 + prefix length from DHCPv6.
++	 * We might want to emit a warning of some sort or
++	 * L_NETCONFIG_EVENT_FAILED if we don't since this would
++	 * basically be fatal for IPv6 connectivity.
++	 */
++	l_rtnl_address_set_noprefixroute(nc->v6_address, true);
++
++	l_queue_push_tail(nc->addresses.current, nc->v6_address);
++	l_queue_push_tail(nc->addresses.added, nc->v6_address);
++}
++
++static void netconfig_set_dhcp6_address_lifetimes(struct l_netconfig *nc,
++							bool updated)
++{
++	const struct l_dhcp6_lease *lease =3D
++		l_dhcp6_client_get_lease(nc->dhcp6_client);
++	uint32_t p, v;
++	uint64_t start_time;
++
++	if (L_WARN_ON(!lease))
++		return;
++
++	p =3D l_dhcp6_lease_get_preferred_lifetime(lease);
++	v =3D l_dhcp6_lease_get_valid_lifetime(lease);
++	start_time =3D l_dhcp6_lease_get_start_time(lease);
++
++	l_rtnl_address_set_lifetimes(nc->v6_address, p, v);
++	l_rtnl_address_set_expiry(nc->v6_address,
++					start_time + p * L_USEC_PER_SEC,
++					start_time + v * L_USEC_PER_SEC);
++
++	if (updated)
++		l_queue_push_tail(nc->addresses.updated, nc->v6_address);
++}
++
++static void netconfig_remove_dhcp6_address(struct l_netconfig *nc)
++{
++	l_queue_remove(nc->addresses.current, nc->v6_address);
++	l_queue_push_tail(nc->addresses.removed, nc->v6_address);
++	nc->v6_address =3D NULL;
++}
++
++static void netconfig_dhcp6_event_handler(struct l_dhcp6_client *client,
++						enum l_dhcp6_client_event event,
++						void *user_data)
++{
++	struct l_netconfig *nc =3D user_data;
++
++	switch (event) {
++	case L_DHCP6_CLIENT_EVENT_LEASE_OBTAINED:
++		if (L_WARN_ON(nc->v6_configured))
++			break;
++
++		netconfig_add_dhcp6_address(nc);
++		netconfig_set_dhcp6_address_lifetimes(nc, false);
++		nc->v6_configured =3D true;
++		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_CONFIGURE);
++		break;
++	case L_DHCP6_CLIENT_EVENT_IP_CHANGED:
++		if (L_WARN_ON(!nc->v6_configured))
++			break;
++
++		netconfig_remove_dhcp6_address(nc);
++		netconfig_add_dhcp6_address(nc);
++		netconfig_set_dhcp6_address_lifetimes(nc, false);
++		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
++		break;
++	case L_DHCP6_CLIENT_EVENT_LEASE_EXPIRED:
++		if (L_WARN_ON(!nc->v6_configured))
++			break;
++
++		netconfig_remove_dhcp6_address(nc);
++		nc->v6_configured =3D false;
++
++		if (l_dhcp6_client_start(nc->dhcp6_client))
++			/* TODO: also start a new timeout */
++			netconfig_emit_event(nc, AF_INET6,
++						L_NETCONFIG_EVENT_UNCONFIGURE);
++		else
++			netconfig_emit_event(nc, AF_INET6,
++						L_NETCONFIG_EVENT_FAILED);
++
++		break;
++	case L_DHCP6_CLIENT_EVENT_LEASE_RENEWED:
++		if (L_WARN_ON(!nc->v6_configured))
++			break;
++
++		netconfig_set_dhcp6_address_lifetimes(nc, true);
++		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
++		break;
++	case L_DHCP6_CLIENT_EVENT_NO_LEASE:
++		if (L_WARN_ON(nc->v6_configured))
++			break;
++
++		/*
++		 * The requested address is no longer available, try to restart
++		 * the client.
++		 *
++		 * TODO: this may need to be delayed so we don't flood the
++		 * network with SOLICITs and DECLINEs.  Also add a retry limit
++		 * or better yet a configurable timeout.
++		 */
++		if (!l_dhcp6_client_start(nc->dhcp6_client))
++			netconfig_emit_event(nc, AF_INET6,
++						L_NETCONFIG_EVENT_FAILED);
++
++		break;
++	}
++}
++
+ static struct l_rtnl_route *netconfig_find_icmp6_route(
+ 						struct l_netconfig *nc,
+ 						const uint8_t *gateway,
+@@ -621,6 +750,9 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
+ ifindex)
+ 					nc, NULL);
+ =
 
-> ```
-> ld.lld: error: undefined symbol: __start___ell_debug
->>>> referenced by log.c
->>>>                log.o:(register_debug_section) in archive ell/.libs/lib=
-ell-private.a
-> ```
-> ---
->   ell/log.h | 8 +++++++-
->   1 file changed, 7 insertions(+), 1 deletion(-)
-> =
+ 	nc->dhcp6_client =3D l_dhcp6_client_new(ifindex);
++	l_dhcp6_client_set_event_handler(nc->dhcp6_client,
++					netconfig_dhcp6_event_handler,
++					nc, NULL);
+ =
 
+ 	nc->icmp6_client =3D l_dhcp6_client_get_icmp6(nc->dhcp6_client);
+ 	l_icmp6_client_add_event_handler(nc->icmp6_client,
+-- =
 
-We do not use C++ style comments, so I just changed those over to C-style /=
-* */ =
+2.32.0
 
-block.  Applied, thanks!
-
-Regards,
--Denis
---===============0777661572562451339==--
+--===============3351240631262966228==--
 
