@@ -1,66 +1,89 @@
-Content-Type: multipart/mixed; boundary="===============8960186625651925987=="
+Content-Type: multipart/mixed; boundary="===============1746809871664084861=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH v2] dhcp: handle multiple offers from the same server
-Date: Thu, 03 Feb 2022 09:54:14 -0600
-Message-ID: <3fc625c7-8c8c-ee72-bac3-c182b9ff8e51@gmail.com>
-In-Reply-To: 20220131220350.3984579-1-prestwoj@gmail.com
+Subject: [PATCH 13/17] netconfig: Write gateway MAC from DHCP to ARP cache
+Date: Sat, 14 May 2022 00:47:09 +0200
+Message-ID: <20220513224713.1447773-13-andrew.zaborowski@intel.com>
+In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
 
---===============8960186625651925987==
+--===============1746809871664084861==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Write the MAC directly to the ARP table to save an ARP query for the
+gateway's MAC when it is known from the freshly obtained lease.  For
+practical reasons do this outside of l_netconfig_apply_rtnl().
+---
+ ell/netconfig.c | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
-On 1/31/22 16:03, James Prestwood wrote:
-> It was found that some DHCP servers send multiple offers on occation. Whe=
-ther
-> this is a bug or not its been seen in products and ELL should handle this
-> gracefully.
-> =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index bdd67cc..7745d36 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -25,6 +25,7 @@
+ #endif
+ =
 
-> The issue comes down to these DHCP servers expecting a request associated=
- with
-> the last offer they send. The existing behavior in ELL is to ignore all o=
-ffers
-> after the initial, and continue resending requests for the original offer=
-. When
-> this happens the DHCP server never responds with an ACK.
-> =
+ #include <linux/types.h>
++#include <linux/if_ether.h>
+ #include <netinet/ip.h>
+ #include <arpa/inet.h>
+ #include <netinet/icmp6.h>
+@@ -406,6 +407,37 @@ static void netconfig_remove_dhcp_address_routes(struc=
+t l_netconfig *nc,
+ 	}
+ }
+ =
 
-> The spec briefly outlines multiple DHCP offers but in the context of mult=
-iple
-> DHCP servers rather than multiple offers from the same DHCP server. In any
-> case its left up to the DHCP client to choose whatever offer it wants, so=
- this
-> is what ELL will do.
-> =
++static void netconfig_set_neighbor_entry_cb(int error,
++						uint16_t type, const void *data,
++						uint32_t len, void *user_data)
++{
++	/* Not critical.  TODO: log warning */
++}
++
++static int netconfig_dhcp_gateway_to_arp(struct l_netconfig *nc)
++{
++	const struct l_dhcp_lease *lease =3D
++		l_dhcp_client_get_lease(nc->dhcp_client);
++	_auto_(l_free) char *server_id =3D l_dhcp_lease_get_server_id(lease);
++	_auto_(l_free) char *gw =3D l_dhcp_lease_get_gateway(lease);
++	const uint8_t *server_mac =3D l_dhcp_lease_get_server_mac(lease);
++	struct in_addr in_gw;
++
++	if (!gw || strcmp(server_id, gw) || !server_mac)
++		return -ENOENT;
++
++	/* Gateway MAC is known, write it into ARP cache to save ARP traffic */
++	in_gw.s_addr =3D l_dhcp_lease_get_gateway_u32(lease);
++
++	if (!l_rtnl_neighbor_set_hwaddr(rtnl, nc->ifindex, AF_INET, &in_gw,
++					server_mac, ETH_ALEN,
++					netconfig_set_neighbor_entry_cb, nc,
++					NULL))
++		return -EIO;
++
++	return 0;
++}
++
+ static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
+ 						enum l_dhcp_client_event event,
+ 						void *user_data)
+@@ -430,6 +462,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
+client *client,
+ 		netconfig_set_dhcp_lifetimes(nc, false);
+ 		nc->v4_configured =3D true;
+ 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
++		netconfig_dhcp_gateway_to_arp(nc);
+ 		break;
+ 	case L_DHCP_CLIENT_EVENT_LEASE_RENEWED:
+ 		if (L_WARN_ON(!nc->v4_configured))
+-- =
 
-> Now only the last offer will be used while in the REQUESTING state. If an=
-other
-> offer comes in before the ACK, that offer will be used and a new request =
-will
-> be sent out. Note this is only the case when the offers contain the same
-> server ID as the first offer sent (this eliminates the multi DHCP server =
-case
-> and will maintain existing behavior, where the first offer is selected al=
-ways).
-> ---
->   ell/dhcp.c | 62 ++++++++++++++++++++++++++++++++++++++++++------------
->   1 file changed, 49 insertions(+), 13 deletions(-)
-> =
+2.32.0
 
-> v2:
->   - Added a debug print in the multiple offer case
-> =
-
-
-I modified the commit description a bit and applied, thanks.
-
-Regards,
--Denis
-
---===============8960186625651925987==--
+--===============1746809871664084861==--
 
