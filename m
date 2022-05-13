@@ -1,43 +1,77 @@
-Content-Type: multipart/mixed; boundary="===============3035120261195622346=="
+Content-Type: multipart/mixed; boundary="===============2953971531823872896=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 01/15] netconfig: Add missing NULL check for routes from RA
-Date: Fri, 20 May 2022 17:43:24 +0200
-Message-ID: <20220520154338.2056273-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 17/17] icmp6: Ignore bad prefixes per RFC4862
+Date: Fri, 13 May 2022 16:55:10 +0200
+Message-ID: <20220513145510.1408510-17-andrew.zaborowski@intel.com>
+In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
 
---===============3035120261195622346==
+--===============2953971531823872896==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Fixes: 7a137bcac31e ("netconfig: Create routes from Router Advertisements")
+"Silently ignore" Prefix Information options with a preferred time
+longer than valid time and those matching the link-local prefix as
+mandated by RFC4862 Section 5.5.3.  These prefixes are also invalid
+according to RFC4861.
 ---
- ell/netconfig.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ ell/icmp6.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index f39f88f..8026c81 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -573,8 +573,9 @@ static struct l_rtnl_route *netconfig_add_icmp6_route(s=
-truct l_netconfig *nc,
- {
- 	struct l_rtnl_route *rt;
+diff --git a/ell/icmp6.c b/ell/icmp6.c
+index ab2fe9c..57cdd1b 100644
+--- a/ell/icmp6.c
++++ b/ell/icmp6.c
+@@ -819,6 +819,26 @@ struct l_icmp6_router *_icmp6_router_parse(const struc=
+t nd_router_advert *ra,
+ 			i->preferred_lifetime =3D l_get_be32(opts + 8);
+ 			memcpy(i->address, opts + 16, 16);
  =
 
--	rt =3D netconfig_route_new(nc, AF_INET6, dst->address, dst->prefix_len,
--					gateway, RTPROT_RA);
-+	rt =3D netconfig_route_new(nc, AF_INET6, dst ? dst->address : NULL,
-+					dst ? dst->prefix_len : 0, gateway,
-+					RTPROT_RA);
- 	if (L_WARN_ON(!rt))
- 		return NULL;
++			/*
++			 * Only the initial Prefix Length bits of the prefix
++			 * are valid.  The remaining bits "MUST" be ignored
++			 * by the receiver.
++			 */
++			l_net_mask_prefix(i->address, i->prefix_len, 16);
++
++			/*
++			 * For SLAAC (RFC4862) we need to "silently ignore"
++			 * routes with a preferred lifetime longer than valid
++			 * lifetime, and those with the link-local prefix.
++			 * Since it makes sense, do it regardless of SLAAC.
++			 */
++			if (i->preferred_lifetime > i->valid_lifetime)
++				break;
++
++			if (i->prefix_len >=3D 10 &&
++					IN6_IS_ADDR_LINKLOCAL(i->address))
++				break;
++
+ 			n_routes +=3D 1;
+ 			break;
+ 		}
+@@ -871,6 +891,13 @@ struct l_icmp6_router *_icmp6_router_parse(const struc=
+t nd_router_advert *ra,
+ 			i->valid_lifetime =3D l_get_be32(opts + 4);
+ 			memcpy(i->address, opts + 8, (i->prefix_len + 7) / 8);
  =
 
++			/*
++			 * Only the initial Prefix Length bits of the prefix
++			 * are valid.  The remaining bits "MUST" be ignored
++			 * by the receiver.
++			 */
++			l_net_clear_host_bits(i->address, i->prefix_len, 16);
++
+ 			n_routes +=3D 1;
+ 			break;
+ 		}
 -- =
 
 2.32.0
 
---===============3035120261195622346==--
+--===============2953971531823872896==--
 
