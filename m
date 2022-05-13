@@ -1,93 +1,141 @@
-Content-Type: multipart/mixed; boundary="===============1253497250062591662=="
+Content-Type: multipart/mixed; boundary="===============6352575220273091271=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 4/5] icmp6: Track routers and prefix routes from multiple
- RAs
-Date: Fri, 07 Jan 2022 13:48:15 -0600
-Message-ID: <3c2b5013-b08b-cb3c-de1a-884b27154bea@gmail.com>
-In-Reply-To: CAOq732KU1JUn+jMrrzXARPqFy1pb7OOyng0BY_m9xbPM8+N76Q@mail.gmail.com
+Subject: [PATCH 12/17] netconfig: Write /proc/sys/net files to enable IPv6
+Date: Fri, 13 May 2022 16:55:05 +0200
+Message-ID: <20220513145510.1408510-12-andrew.zaborowski@intel.com>
+In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
 
---===============1253497250062591662==
+--===============6352575220273091271==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Write the accept_ra setting to 0.  On l_netconfig_start if the existing
+address dump command finds no link-local address then also try resetting
+disable_ipv6 and toggling addr_gen_mode to trigger the kernel to
+generate a link-local address.
+---
+ ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 62 insertions(+), 2 deletions(-)
 
-> I found that some network stacks document exactly how they process
-> router advertisements (also which options they support etc.), e.g.
-> Cisco and z/OS document this.  They seem to follow the RFC exactly,
-> but it being explicitly explained in their docs should help admins be
-> clear in how those things should be configured.
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 6badb00..085ad9b 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -28,6 +28,12 @@
+ #include <netinet/ip.h>
+ #include <arpa/inet.h>
+ #include <netinet/icmp6.h>
++#include <net/if.h>
++#include <errno.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <unistd.h>
+ =
 
-Do you have some links handy?
+ #include "private.h"
+ #include "useful.h"
+@@ -845,6 +851,30 @@ static void netconfig_icmp6_event_handler(struct l_icm=
+p6_client *client,
+ 		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
+ }
+ =
 
->> Also, some of these events are somewhat useless if icmp6 is responsible =
-for
->> setting the routes into the kernel.  Maybe they shouldn't even be fired =
-in this
->> case.
-> =
++static int netconfig_proc_write_ipv6_setting(struct l_netconfig *nc,
++						const char *setting,
++						const char *value)
++{
++	char ifname[IF_NAMESIZE];
++	_auto_(l_free) char *filename =3D NULL;
++	int fd;
++	int r;
++
++	if (unlikely(!if_indextoname(nc->ifindex, ifname)))
++		return -errno;
++
++	filename =3D l_strdup_printf("/proc/sys/net/ipv6/conf/%s/%s",
++					ifname, setting);
++
++	fd =3D L_TFR(open(filename, O_WRONLY));
++	if (unlikely(fd < 0))
++		return -errno;
++
++	r =3D L_TFR(write(fd, value, strlen(value)));
++	L_TFR(close(fd));
++	return r;
++}
++
+ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+ {
+ 	struct l_netconfig *nc;
+@@ -886,6 +916,9 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
+ ifindex)
+ 					netconfig_icmp6_event_handler,
+ 					nc, NULL);
+ =
 
-> Right, we could do this but we wouldn't be saving a lot of cycles and
-> it sounds like a hack.
++	/* Disable in-kernel autoconfiguration for the interface */
++	netconfig_proc_write_ipv6_setting(nc, "accept_ra", "0");
++
+ 	return nc;
+ }
+ =
 
-How so?  We in theory have two use cases:
+@@ -1325,6 +1358,32 @@ static void netconfig_ifaddr_ipv6_dump_cb(int error,=
+ uint16_t type,
+ 	netconfig_ifaddr_ipv6_notify(type, data, len, user_data);
+ }
+ =
 
-1. iwd managing an ipv6 interface.
-2. info is sent out via IP configuration events over D-Bus.
++static void netconfig_ifaddr_ipv6_dump_done_cb(void *user_data)
++{
++	struct l_netconfig *nc =3D user_data;
++
++	/*
++	 * Handle the case of no link-local address having been found during
++	 * the dump.  If nc->ifaddr6_dump_cmd_id is 0, we have found one or
++	 * the dump is being cancelled.  Otherwise try disabing the
++	 * "disable_ipv6" setting for the interface since it may have been
++	 * enabled.  Also write "addr_gen_mode" which triggers regerating
++	 * the link-local addresss on the interface in the kernel if it
++	 * was previously removed.
++	 */
++	if (!nc->ifaddr6_dump_cmd_id || !nc->started)
++		return;
++
++	nc->ifaddr6_dump_cmd_id =3D 0;
++
++	/* "do no generate a link-local address" */
++	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "1");
++	/* "generate address based on EUI64 (default)" */
++	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "0");
++	/* "enable IPv6 operation" */
++	netconfig_proc_write_ipv6_setting(nc, "disable_ipv6", "0");
++}
++
+ LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
+ {
+ 	if (unlikely(!netconfig || netconfig->started))
+@@ -1385,8 +1444,9 @@ configure_ipv6:
+ 	}
+ =
 
-In case of 1, none of these events are really useful since iwd would just l=
-et =
+ 	netconfig->ifaddr6_dump_cmd_id =3D l_rtnl_ifaddr6_dump(rtnl,
+-						netconfig_ifaddr_ipv6_dump_cb,
+-						netconfig, NULL);
++					netconfig_ifaddr_ipv6_dump_cb,
++					netconfig,
++					netconfig_ifaddr_ipv6_dump_done_cb);
+ 	if (!netconfig->ifaddr6_dump_cmd_id)
+ 		goto unregister;
+ =
 
-icmp6/dhcp6_client manage this completely.
+-- =
 
-In case of 2, the client just wants a snapshot of what the settings should =
-be, =
+2.32.0
 
-not get notified that each individual route has changed.
-
-Or do you have something else in mind?
-
->> This is another part that seriously concerns me right now.  I actually w=
-onder
->> why we would need to use timeouts at all?  If we set the lifetime into t=
-he
->> kernel, then it can take care of removing these routes (assuming it does=
-n't just
->> leave them in there with lifetime 0).
-> =
-
-> So when we receive a new RA we need to know whether we already have
-> this router/prefix to know how to process it.  For a lot of things we
-> can instead save an expiration timestamp and next time we look at the
-> data we ignore it if it's expired.  But would couldn't emit events.
-
-I suppose we do need at least a single timer for case 2 above.  But having =
-a =
-
-timer for each route seems excessive.
-
->>
->> One thing to keep in mind is that for us, the 99% use case is a single r=
-outer
->> that keeps sending the same RA message every several seconds.  The net e=
-ffect is
->> that the same route info keeps getting re-uploaded to the kernel every f=
-ew
->> seconds.  I think this is pointless and we need to optimize that.
-> =
-
-> What we could do is not set lifetimes on the RTNL routes and delete
-> them ourselves, then we wouldn't have to update their lifetimes.
-
-Yes, we could do that since you're not passing lifetimes in the proposed iw=
-d =
-
-API.  But is that intended or an oversight?
-
-Regards,
--Denis
---===============1253497250062591662==--
+--===============6352575220273091271==--
 
