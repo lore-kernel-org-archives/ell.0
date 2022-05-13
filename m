@@ -1,55 +1,137 @@
-Content-Type: multipart/mixed; boundary="===============1439564489737133799=="
+Content-Type: multipart/mixed; boundary="===============3068727571620207803=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 14/15] netconfig: Set a limit on number of routes from ICMPv6
-Date: Fri, 20 May 2022 17:43:37 +0200
-Message-ID: <20220520154338.2056273-14-andrew.zaborowski@intel.com>
-In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
+Subject: [PATCH 06/17] netconfig: Avoid returning internal l_queues
+Date: Fri, 13 May 2022 16:54:59 +0200
+Message-ID: <20220513145510.1408510-6-andrew.zaborowski@intel.com>
+In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
 
---===============1439564489737133799==
+--===============3068727571620207803==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-While some networks can be configured in a way that prevents rogue
-Router Advertisements from reaching clients, add a very basic mechanism
-to avoid a denial-of-service in such a case by limiting the number of
-routes we track from RAs.  This won't prevent the loss of routing but
-might prevent OOM crashes or slowdowns.
+Return const struct l_queue_entry pointers instead.
 ---
- ell/netconfig.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ ell/netconfig.c | 35 ++++++++++++++++++-----------------
+ ell/netconfig.h | 20 +++++++++++---------
+ 2 files changed, 29 insertions(+), 26 deletions(-)
 
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index af85f71..f86fcfb 100644
+index 9c58781..aee56a2 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -134,6 +134,8 @@ union netconfig_addr {
- static struct l_queue *addr_wait_list;
- static unsigned int rtnl_id;
+@@ -1226,37 +1226,38 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
+config *netconfig,
+ 					NULL, NULL, NULL);
+ }
  =
 
-+static const unsigned int max_icmp6_routes =3D 100;
-+
- static void netconfig_update_cleanup(struct l_netconfig *nc)
+-LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
+-						struct l_netconfig *netconfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_addresses(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
  {
- 	l_queue_clear(nc->addresses.added, NULL);
-@@ -734,6 +736,9 @@ static struct netconfig_route_data *netconfig_add_icmp6=
-_route(
- 	struct netconfig_route_data *rd;
- 	struct l_rtnl_route *rt;
+ 	if (out_added)
+-		*out_added =3D netconfig->addresses.added;
++		*out_added =3D l_queue_get_entries(netconfig->addresses.added);
  =
 
-+	if (l_queue_length(nc->icmp_route_data) >=3D max_icmp6_routes)
-+		return NULL;	/* TODO: log a warning the first time */
-+
- 	rt =3D netconfig_route_new(nc, AF_INET6, dst ? dst->address : NULL,
- 					dst ? dst->prefix_len : 0, gateway,
- 					RTPROT_RA);
+ 	if (out_updated)
+-		*out_updated =3D netconfig->addresses.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->addresses.updated);
+ =
+
+ 	if (out_removed)
+-		*out_removed =3D netconfig->addresses.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->addresses.removed);
+ =
+
+-	return netconfig->addresses.current;
++	return l_queue_get_entries(netconfig->addresses.current);
+ }
+ =
+
+-LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
+onfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_routes(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
+ {
+ 	if (out_added)
+-		*out_added =3D netconfig->routes.added;
++		*out_added =3D l_queue_get_entries(netconfig->routes.added);
+ =
+
+ 	if (out_updated)
+-		*out_updated =3D netconfig->routes.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->routes.updated);
+ =
+
+ 	if (out_removed)
+-		*out_removed =3D netconfig->routes.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->routes.removed);
+ =
+
+-	return netconfig->routes.current;
++	return l_queue_get_entries(netconfig->routes.current);
+ }
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index f90ec81..d58dda1 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -33,7 +33,7 @@ struct l_dhcp_client;
+ struct l_dhcp6_client;
+ struct l_icmp6_client;
+ struct l_netlink;
+-struct l_queue;
++struct l_queue_entry;
+ struct l_netconfig;
+ struct l_rtnl_address;
+ struct l_rtnl_route;
+@@ -83,14 +83,16 @@ void l_netconfig_set_event_handler(struct l_netconfig *=
+netconfig,
+ =
+
+ void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
+ 				struct l_netlink *rtnl);
+-struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
+-struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
++const struct l_queue_entry *l_netconfig_get_addresses(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
++const struct l_queue_entry *l_netconfig_get_routes(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
+ =
+
+ #ifdef __cplusplus
+ }
 -- =
 
 2.32.0
 
---===============1439564489737133799==--
+--===============3068727571620207803==--
 
