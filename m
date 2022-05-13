@@ -1,157 +1,445 @@
-Content-Type: multipart/mixed; boundary="===============0542832733278743735=="
+Content-Type: multipart/mixed; boundary="===============7873411325004915804=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] dhcp,dhcp6,icmp6,time: Convert timestamps to
- CLOCK_BOOTTIME
-Date: Tue, 17 May 2022 09:37:06 -0500
-Message-ID: <bc24661a-7fcb-01f7-62de-da38f82b9e34@gmail.com>
-In-Reply-To: 20220516213153.1612039-1-andrew.zaborowski@intel.com
+Subject: [PATCH 14/17] netconfig: Ratelimit route lifetime updates
+Date: Fri, 13 May 2022 16:55:07 +0200
+Message-ID: <20220513145510.1408510-14-andrew.zaborowski@intel.com>
+In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
 
---===============0542832733278743735==
+--===============7873411325004915804==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Optimize away prefix route updates when the expiry time is far enough
+in the future that we expect to receive at least 10 Router
+Advertisements before then.  For that purpose start keeping an extra
+record for each route where we save the last time this route was
+included in an RA and the maximum interval between two RAs with this
+route seen so far.  By working with the maximum intervals we avoid
+worrying about different RA content policies where some routes may be
+skipped in some RAs and there even might be multiple routers sending
+RAs with subsets of the same prefixes.
 
-On 5/16/22 16:31, Andrew Zaborowski wrote:
-> The frame reception timestamps obtained for DHCPv4, DHCPv6 and ICMPv6
-> frames from the kernel are based on CLOCK_REALTIME, there's no option to
-> switch them to CLOCK_BOOTTIME, which we use across our retransmission and
-> renew logic.  Add a time-private.h utility to get the offset between the
-> two clocks and offset the timestamps right where read them from recvmsg()
-> to produce CLOCK_BOOTTIME based times.  This isn't 100% bulletproof
-> because the offset between the two clocks can vary between the moment the
-> frame was received by the kernel and the time we read the offset.  The
-> probability is very low though and we have no better solution at this
-> time other than fixing it in the kernel.  Using CLOCK_REALTIME for frame
-> reception timestamps seems to only create potential for problems in the
-> common usages.
-> =
+This new mechanism can be made configurable if desired but it's always
+enabled for now.
+---
+There's some renaming in this patch that makes it much bigger.
 
-> Fixes: c78ad1bb6d7e ("dhcp: Set lease expiry based on frame reception tim=
-es")
-> ---
->   ell/dhcp-transport.c  |  8 +++++++-
->   ell/dhcp6-transport.c | 12 +++++++++---
->   ell/icmp6.c           |  7 ++++++-
->   ell/time-private.h    |  1 +
->   ell/time.c            | 17 +++++++++++++++++
->   5 files changed, 40 insertions(+), 5 deletions(-)
-> =
+ ell/netconfig.c | 183 ++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 122 insertions(+), 61 deletions(-)
 
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 6e6f199..023bcc3 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -79,6 +79,7 @@ struct l_netconfig {
+ 	struct l_icmp6_client *icmp6_client;
+ 	struct l_dhcp6_client *dhcp6_client;
+ 	struct l_idle *signal_expired_work;
++	struct l_queue *icmp_route_data;
+ =
 
-Makes sense to me, just minor comments:
+ 	/* These objects, if not NULL, are owned by @addresses and @routes */
+ 	struct l_rtnl_address *v4_address;
+@@ -116,6 +117,13 @@ struct l_netconfig {
+ 	} handler;
+ };
+ =
 
-> diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
-> index 52da2db..ba1423f 100644
-> --- a/ell/dhcp-transport.c
-> +++ b/ell/dhcp-transport.c
-> @@ -45,6 +45,7 @@
->   #include "util.h"
->   #include "private.h"
->   #include "time.h"
-> +#include "time-private.h"
->   #include "dhcp-private.h"
->   =
++struct netconfig_route_data {
++	struct l_rtnl_route *route;
++	uint64_t last_ra_time;
++	uint64_t kernel_expiry;
++	uint64_t max_ra_interval;
++};
++
+ union netconfig_addr {
+ 	struct in_addr v4;
+ 	struct in6_addr v6;
+@@ -642,10 +650,9 @@ static uint64_t now;
+ static bool netconfig_check_route_expired(void *data, void *user_data)
+ {
+ 	struct l_netconfig *nc =3D user_data;
+-	struct l_rtnl_route *route =3D data;
+-	uint64_t expiry_time =3D l_rtnl_route_get_expiry(route);
++	struct netconfig_route_data *rd =3D data;
+ =
 
->   struct dhcp_default_transport {
-> @@ -170,7 +171,12 @@ static bool _dhcp_default_transport_read_handler(str=
-uct l_io *io,
->   				CMSG_LEN(sizeof(struct timeval))) {
->   			const struct timeval *tv =3D (void *) CMSG_DATA(cmsg);
->   =
+-	if (!expiry_time || now < expiry_time)
++	if (!rd->kernel_expiry || now < rd->kernel_expiry)
+ 		return false;
+ =
 
-> -			timestamp =3D tv->tv_sec * L_USEC_PER_SEC + tv->tv_usec;
-> +			/*
-> +			 * Not ideal but this is our best approximation of the
-> +			 * CLOCK_BOOTTIME-based Rx time.
-> +			 */
-> +			timestamp =3D tv->tv_sec * L_USEC_PER_SEC + tv->tv_usec -
-> +				_time_get_realtime_boottime_offset();
+ 	/*
+@@ -659,11 +666,12 @@ static bool netconfig_check_route_expired(void *data,=
+ void *user_data)
+ 	 * If for some reason the route is still on the added list, drop it
+ 	 * from there and there's nothing to notify the user of.
+ 	 */
+-	if (!l_queue_remove(nc->routes.added, route))
+-		l_queue_push_tail(nc->routes.expired, route);
++	if (!l_queue_remove(nc->routes.added, rd->route))
++		l_queue_push_tail(nc->routes.expired, rd->route);
+ =
 
-Can we actually just send the timestamp as a 'struct timeval' to the privat=
-e =
+-	l_queue_remove(nc->routes.updated, route);
+-	l_queue_remove(nc->routes.removed, route);
++	l_queue_remove(nc->routes.current, rd->route);
++	l_queue_remove(nc->routes.updated, rd->route);
++	l_queue_remove(nc->routes.removed, rd->route);
+ 	return true;
+ }
+ =
 
-function?  Instead of duplicating the conversion calculation everywhere?
+@@ -671,7 +679,7 @@ static void netconfig_expire_routes(struct l_netconfig =
+*nc)
+ {
+ 	now =3D l_time_now();
+ =
 
->   		}
->   	}
->   =
+-	if (l_queue_foreach_remove(nc->routes.current,
++	if (l_queue_foreach_remove(nc->icmp_route_data,
+ 					netconfig_check_route_expired, nc) &&
+ 			!l_queue_isempty(nc->routes.expired) &&
+ 			!nc->signal_expired_work)
+@@ -680,31 +688,27 @@ static void netconfig_expire_routes(struct l_netconfi=
+g *nc)
+ 						nc, NULL);
+ }
+ =
 
+-static struct l_rtnl_route *netconfig_find_icmp6_route(
++static struct netconfig_route_data *netconfig_find_icmp6_route(
+ 						struct l_netconfig *nc,
+ 						const uint8_t *gateway,
+ 						const struct route_info *dst)
+ {
+ 	const struct l_queue_entry *entry;
+ =
 
-<snip>
+-	for (entry =3D l_queue_get_entries(nc->routes.current); entry;
++	for (entry =3D l_queue_get_entries(nc->icmp_route_data); entry;
+ 			entry =3D entry->next) {
+-		struct l_rtnl_route *route =3D entry->data;
++		struct netconfig_route_data *rd =3D entry->data;
+ 		const uint8_t *route_gateway;
+ 		const uint8_t *route_dst;
+ 		uint8_t route_prefix_len =3D 0;
+ =
 
-> diff --git a/ell/time.c b/ell/time.c
-> index d02dabe..cda09be 100644
-> --- a/ell/time.c
-> +++ b/ell/time.c
-> @@ -105,3 +105,20 @@ uint64_t _time_fuzz_secs(uint32_t secs, uint32_t max=
-_offset)
->   =
+-		if (l_rtnl_route_get_family(route) !=3D AF_INET6 ||
+-				l_rtnl_route_get_protocol(route) !=3D RTPROT_RA)
+-			continue;
+-
+-		route_gateway =3D l_rtnl_route_get_gateway_in_addr(route);
++		route_gateway =3D l_rtnl_route_get_gateway_in_addr(rd->route);
+ 		if ((gateway || route_gateway) &&
+ 				(!gateway || !route_gateway ||
+ 				 memcmp(gateway, route_gateway, 16)))
+ 			continue;
+ =
 
->   	return ms;
->   }
-> +
-> +/*
-> + * Get approximate difference between CLOCK_REALTIME and CLOCK_BOOTTIME,
-> + * for converting recent timestamps from one to the other.  The value can
-> + * change at any time.
-> + */
-> +int64_t _time_get_realtime_boottime_offset(void)
+-		route_dst =3D l_rtnl_route_get_dst_in_addr(route,
++		route_dst =3D l_rtnl_route_get_dst_in_addr(rd->route,
+ 							&route_prefix_len);
+ 		if ((dst || route_prefix_len) &&
+ 				(!dst || !route_prefix_len ||
+@@ -712,17 +716,19 @@ static struct l_rtnl_route *netconfig_find_icmp6_rout=
+e(
+ 				 memcmp(dst->address, route_dst, 16)))
+ 			continue;
+ =
 
-So I would avoid signed integers for these calculations.  We already have =
+-		return route;
++		return rd;
+ 	}
+ =
 
-l_time_before/l_time_after.  And l_time_offset takes care of overflows.  Le=
-ts =
+ 	return NULL;
+ }
+ =
 
-use those to implement this.  You also need to consider potential underflow=
-, =
+-static struct l_rtnl_route *netconfig_add_icmp6_route(struct l_netconfig *=
+nc,
++static struct netconfig_route_data *netconfig_add_icmp6_route(
++						struct l_netconfig *nc,
+ 						const uint8_t *gateway,
+ 						const struct route_info *dst,
+ 						uint8_t preference)
+ {
++	struct netconfig_route_data *rd;
+ 	struct l_rtnl_route *rt;
+ =
 
-though it is probably astronomically unlikely.
+ 	rt =3D netconfig_route_new(nc, AF_INET6, dst->address, dst->prefix_len,
+@@ -733,25 +739,73 @@ static struct l_rtnl_route *netconfig_add_icmp6_route=
+(struct l_netconfig *nc,
+ 	l_rtnl_route_set_preference(rt, preference);
+ 	l_queue_push_tail(nc->routes.current, rt);
+ 	l_queue_push_tail(nc->routes.added, rt);
+-	return rt;
++
++	rd =3D l_new(struct netconfig_route_data, 1);
++	rd->route =3D rt;
++	l_queue_push_tail(nc->icmp_route_data, rd);
++	return rd;
++}
++
++static bool netconfig_check_route_need_update(
++					const struct netconfig_route_data *rd,
++					const struct l_icmp6_router *ra,
++					uint64_t new_expiry,
++					uint64_t old_expiry)
++{
++	/*
++	 * Decide whether the route is close enough to its expiry time that,
++	 * based on the expected Router Advertisement frequency, we should
++	 * notify the user and have them update the route's lifetime in the
++	 * kernel.  This is an optimization to avoid triggering a syscall and
++	 * potentially multiple context-switches in case we expect to have
++	 * many more opportunities to update the lifetime before we even get
++	 * close to the last expiry time we passed to the kernel.  Without
++	 * this we might be wasting a lot of cycles over time if the RAs are
++	 * frequent.
++	 *
++	 * Always update if we have no RA interval information or if the
++	 * expiry is moved forward.
++	 */
++	if (!rd->max_ra_interval || new_expiry < rd->kernel_expiry)
++		return true;
++
++	return rd->kernel_expiry < ra->start_time + rd->max_ra_interval * 10;
+ }
+ =
 
-I'd name this something like:
+ static void netconfig_set_icmp6_route_data(struct l_netconfig *nc,
+-						struct l_rtnl_route *rt,
+-						uint64_t start_time,
++						struct netconfig_route_data *rd,
++						const struct l_icmp6_router *ra,
+ 						uint32_t preferred_lifetime,
+ 						uint32_t valid_lifetime,
+ 						uint32_t mtu, bool updated)
+ {
+-	uint64_t expiry =3D start_time + valid_lifetime * L_USEC_PER_SEC;
+-	uint64_t old_expiry =3D l_rtnl_route_get_expiry(rt);
++	uint64_t expiry =3D ra->start_time + valid_lifetime * L_USEC_PER_SEC;
++	uint64_t old_expiry =3D l_rtnl_route_get_expiry(rd->route);
+ 	bool differs =3D false;
+ =
 
-uint64_t _time_realtime_to_boottime(const struct timeval *ts)
+-	if (mtu !=3D l_rtnl_route_get_mtu(rt)) {
+-		l_rtnl_route_set_mtu(rt, mtu);
++	if (mtu !=3D l_rtnl_route_get_mtu(rd->route)) {
++		l_rtnl_route_set_mtu(rd->route, mtu);
+ 		differs =3D true;
+ 	}
+ =
 
-By the way, given that you're using struct timespec below, do you want to u=
-se =
++	/*
++	 * The route's lifetime is pretty useless on its own but keep it
++	 * updated with the value from the last RA.  Routers can send the same
++	 * lifetime in every RA, keep decreasing the lifetimes linearly or
++	 * implement any other policy, regardless of whether the resulting
++	 * expiry time varies or not.
++	 */
++	l_rtnl_route_set_lifetime(rd->route, valid_lifetime);
++
++	if (rd->last_ra_time) {
++		uint64_t interval =3D ra->start_time - rd->last_ra_time;
++
++		if (interval > rd->max_ra_interval)
++			rd->max_ra_interval =3D interval;
++	}
++
++	rd->last_ra_time =3D ra->start_time;
++
+ 	/*
+ 	 * valid_lifetime of 0 from a route_info means the route is being
+ 	 * removed so we wouldn't be here.  valid_lifetime of 0xffffffff
+@@ -772,23 +826,29 @@ static void netconfig_set_icmp6_route_data(struct l_n=
+etconfig *nc,
+ 	if ((expiry || old_expiry) &&
+ 			(!expiry || !old_expiry ||
+ 			 l_time_diff(expiry, old_expiry) > L_USEC_PER_SEC)) {
+-		l_rtnl_route_set_lifetime(rt, valid_lifetime);
+-		l_rtnl_route_set_expiry(rt, expiry);
+-		differs =3D true;
++		l_rtnl_route_set_expiry(rd->route, expiry);
++
++		differs =3D differs || !expiry || !old_expiry ||
++			netconfig_check_route_need_update(rd, ra,
++							expiry, old_expiry);
+ 	}
+ =
 
-SO_TIMESTAMPNS?
+-	if (updated && differs && !netconfig_route_exists(nc->routes.added, rt))
+-		l_queue_push_tail(nc->routes.updated, rt);
++	if (updated && differs && !netconfig_route_exists(nc->routes.added,
++								rd->route)) {
++		l_queue_push_tail(nc->routes.updated, rd->route);
++		rd->kernel_expiry =3D expiry;
++	}
+ }
+ =
 
-> +{
-> +	struct timespec boottime;
-> +	struct timespec realtime;
-> +
-> +	clock_gettime(CLOCK_BOOTTIME, &boottime);
-> +	clock_gettime(CLOCK_REALTIME, &realtime);
-> +
+ static void netconfig_remove_icmp6_route(struct l_netconfig *nc,
+-						struct l_rtnl_route *route)
++						struct netconfig_route_data *rd)
+ {
+-	l_queue_remove(nc->routes.current, route);
+-	l_queue_remove(nc->routes.updated, route);
++	l_queue_remove(nc->icmp_route_data, rd);
++	l_queue_remove(nc->routes.current, rd->route);
++	l_queue_remove(nc->routes.updated, rd->route);
+ =
 
-Then here do something like:
+-	if (!l_queue_remove(nc->routes.added, route))
+-		l_queue_push_tail(nc->routes.removed, route);
++	if (!l_queue_remove(nc->routes.added, rd->route))
++		l_queue_push_tail(nc->routes.removed, rd->route);
+ }
+ =
 
-offset =3D l_time_diff(ts, now_realtime);
+ static void netconfig_icmp6_event_handler(struct l_icmp6_client *client,
+@@ -798,7 +858,7 @@ static void netconfig_icmp6_event_handler(struct l_icmp=
+6_client *client,
+ {
+ 	struct l_netconfig *nc =3D user_data;
+ 	const struct l_icmp6_router *r;
+-	struct l_rtnl_route *default_route;
++	struct netconfig_route_data *default_rd;
+ 	unsigned int i;
+ =
 
-/* most likely case, timestamp in the past */
-if (l_time_before(ts, now_realtime)) {
-	if (offset > now_boot)
-		return 0;
+ 	if (event !=3D L_ICMP6_CLIENT_EVENT_ROUTER_FOUND)
+@@ -818,12 +878,12 @@ static void netconfig_icmp6_event_handler(struct l_ic=
+mp6_client *client,
+ 	netconfig_expire_routes(nc);
+ =
 
-	return now_boot - offset;
-}
+ 	/* Process the default gateway information */
+-	default_route =3D netconfig_find_icmp6_route(nc, r->address, NULL);
++	default_rd =3D netconfig_find_icmp6_route(nc, r->address, NULL);
+ =
 
-return l_time_offset(now_boot, offset);
+-	if (!default_route && r->lifetime) {
+-		default_route =3D netconfig_add_icmp6_route(nc, r->address, NULL,
++	if (!default_rd && r->lifetime) {
++		default_rd =3D netconfig_add_icmp6_route(nc, r->address, NULL,
+ 								r->pref);
+-		if (unlikely(!default_route))
++		if (unlikely(!default_rd))
+ 			return;
+ =
 
-> +	return ((int64_t) realtime.tv_sec - boottime.tv_sec) * 1000000 +
-> +		((int64_t) realtime.tv_nsec - boottime.tv_nsec) / 1000;
+ 		/*
+@@ -831,15 +891,13 @@ static void netconfig_icmp6_event_handler(struct l_ic=
+mp6_client *client,
+ 		 * confused for the special 0xffffffff value in
+ 		 * netconfig_set_icmp6_route_data.
+ 		 */
+-		netconfig_set_icmp6_route_data(nc, default_route, r->start_time,
+-						r->lifetime, r->lifetime,
+-						r->mtu, false);
+-	} else if (default_route && r->lifetime)
+-		netconfig_set_icmp6_route_data(nc, default_route, r->start_time,
+-						r->lifetime, r->lifetime,
+-						r->mtu, true);
+-	else if (default_route && !r->lifetime)
+-		netconfig_remove_icmp6_route(nc, default_route);
++		netconfig_set_icmp6_route_data(nc, default_rd, r, r->lifetime,
++						r->lifetime, r->mtu, false);
++	} else if (default_rd && r->lifetime)
++		netconfig_set_icmp6_route_data(nc, default_rd, r, r->lifetime,
++						r->lifetime, r->mtu, true);
++	else if (default_rd && !r->lifetime)
++		netconfig_remove_icmp6_route(nc, default_rd);
+ =
 
-Lets use the L_USEC_* defines when possible.
+ 	/*
+ 	 * Process the onlink and offlink routes, from the Router
+@@ -849,26 +907,26 @@ static void netconfig_icmp6_event_handler(struct l_ic=
+mp6_client *client,
+ 	for (i =3D 0; i < r->n_routes; i++) {
+ 		const struct route_info *info =3D &r->routes[i];
+ 		const uint8_t *gateway =3D info->onlink ? NULL : r->address;
+-		struct l_rtnl_route *route =3D
++		struct netconfig_route_data *rd =3D
+ 			netconfig_find_icmp6_route(nc, gateway, info);
+ =
 
-> +}
-> =
+-		if (!route && info->valid_lifetime) {
+-			route =3D netconfig_add_icmp6_route(nc, gateway, info,
++		if (!rd && info->valid_lifetime) {
++			rd =3D netconfig_add_icmp6_route(nc, gateway, info,
+ 							info->preference);
+-			if (unlikely(!route))
++			if (unlikely(!rd))
+ 				continue;
+ =
 
+-			netconfig_set_icmp6_route_data(nc, route, r->start_time,
++			netconfig_set_icmp6_route_data(nc, rd, r,
+ 						info->preferred_lifetime,
+ 						info->valid_lifetime,
+ 						gateway ? r->mtu : 0, false);
+-		} else if (route && info->valid_lifetime)
+-			netconfig_set_icmp6_route_data(nc, route, r->start_time,
++		} else if (rd && info->valid_lifetime)
++			netconfig_set_icmp6_route_data(nc, rd, r,
+ 						info->preferred_lifetime,
+ 						info->valid_lifetime,
+ 						gateway ? r->mtu : 0, true);
+-		else if (route && !info->valid_lifetime)
+-			netconfig_remove_icmp6_route(nc, route);
++		else if (rd && !info->valid_lifetime)
++			netconfig_remove_icmp6_route(nc, rd);
+ 	}
+ =
 
-Regards,
--Denis
---===============0542832733278743735==--
+ 	/*
+@@ -933,6 +991,7 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
+ ifindex)
+ 	nc->routes.added =3D l_queue_new();
+ 	nc->routes.updated =3D l_queue_new();
+ 	nc->routes.removed =3D l_queue_new();
++	nc->icmp_route_data =3D l_queue_new();
+ =
+
+ 	nc->dhcp_client =3D l_dhcp_client_new(ifindex);
+ 	l_dhcp_client_set_event_handler(nc->dhcp_client,
+@@ -982,6 +1041,7 @@ LIB_EXPORT void l_netconfig_destroy(struct l_netconfig=
+ *netconfig)
+ 	l_queue_destroy(netconfig->routes.added, NULL);
+ 	l_queue_destroy(netconfig->routes.updated, NULL);
+ 	l_queue_destroy(netconfig->routes.removed, NULL);
++	l_queue_destroy(netconfig->icmp_route_data, NULL);
+ 	l_free(netconfig);
+ =
+
+ 	rtnl_use_count--;
+@@ -1518,10 +1578,11 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig=
+ *netconfig)
+ 	netconfig_addr_wait_unregister(netconfig, false);
+ =
+
+ 	netconfig_update_cleanup(netconfig);
+-	l_queue_clear(netconfig->routes.current,
+-			(l_queue_destroy_func_t) l_rtnl_route_free);
+ 	l_queue_clear(netconfig->addresses.current,
+ 			(l_queue_destroy_func_t) l_rtnl_address_free);
++	l_queue_clear(netconfig->routes.current,
++			(l_queue_destroy_func_t) l_rtnl_route_free);
++	l_queue_clear(netconfig->icmp_route_data, l_free);
+ 	netconfig->v4_address =3D NULL;
+ 	netconfig->v4_subnet_route =3D NULL;
+ 	netconfig->v4_default_route =3D NULL;
+-- =
+
+2.32.0
+
+--===============7873411325004915804==--
 
