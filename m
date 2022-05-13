@@ -1,134 +1,47 @@
-Content-Type: multipart/mixed; boundary="===============0458544762393425995=="
+Content-Type: multipart/mixed; boundary="===============5432869203415265357=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 05/15] netconfig: Use an internal rtnl socket for
- l_netconfig_apply_rtnl
-Date: Fri, 20 May 2022 17:43:28 +0200
-Message-ID: <20220520154338.2056273-5-andrew.zaborowski@intel.com>
-In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH] dhcp: Use bound_time for retransmission timers
+Date: Fri, 13 May 2022 11:23:52 -0500
+Message-ID: <8b5ce99b-55ad-53cf-fe82-4930735b420c@gmail.com>
+In-Reply-To: CACsRnHUuH6+BvLi3bm9F3eY_3t80bosroXYig9Dpg9O2eo+0aw@mail.gmail.com
 
---===============0458544762393425995==
+--===============5432869203415265357==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Since we'll need to keep an internal RTNL socket for DHCPv6
-functionality anyway, change l_netconfig_apply_rtnl's signature to not
-require an rtnl parameter.
----
- ell/netconfig.c | 24 ++++++++++++++++--------
- ell/netconfig.h |  3 +--
- 2 files changed, 17 insertions(+), 10 deletions(-)
+Hi Michael,
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 2a1b3ed..f1cbbb9 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -64,6 +64,7 @@ struct l_netconfig {
- 	char **v6_dns_override;
- 	char **v6_domain_names_override;
- =
+On 5/13/22 10:40, Michael Johnson wrote:
+> Sorry, I put the log for the t2 retry. Putting it in the right place
+> gives us our problem though
+> =
 
-+	struct l_netlink *rtnl;
- 	bool started;
- 	struct l_idle *do_static_work;
- 	bool v4_configured;
-@@ -1166,6 +1167,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
-netconfig)
- =
+> ```
+> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4] dhcp_client_t1_expired:630
+> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4]
+> dhcp_client_t1_expired:632 Entering state: DHCP_STATE_RENEWING
+> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4] dhcp_client_send_request:397
+> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4]
+> dhcp_client_t1_expired:642 next_timeout t2: 225
+> May 13 15:38:34 r2-19006 iwd[39610]: [DHCPv4]
+> dhcp_client_t1_expired:651 next_timeout t1 retry: 896458022
 
- 	l_dhcp_client_stop(netconfig->dhcp_client);
- 	l_dhcp6_client_stop(netconfig->dhcp6_client);
-+
-+	l_rtnl_put(&netconfig->rtnl);
- }
- =
+Ugh, looks like commit:
+c78ad1bb6d7e ("dhcp: Set lease expiry based on frame reception times")
 
- LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhcp_client(
-@@ -1211,41 +1214,46 @@ LIB_EXPORT void l_netconfig_set_event_handler(struc=
-t l_netconfig *netconfig,
- 	netconfig->handler.destroy =3D destroy;
- }
- =
+broke this.  It is mixing up SO_TIMESTAMP which is from CLOCK_REALTIME and =
+our =
 
--LIB_EXPORT void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
--					struct l_netlink *rtnl)
-+LIB_EXPORT void l_netconfig_apply_rtnl(struct l_netconfig *netconfig)
- {
- 	const struct l_queue_entry *entry;
- =
+bound_time which is supposed to be in CLOCK_BOOTTIME.
 
- 	for (entry =3D l_queue_get_entries(netconfig->addresses.removed); entry;
- 			entry =3D entry->next)
--		l_rtnl_ifaddr_delete(rtnl, netconfig->ifindex, entry->data,
-+		l_rtnl_ifaddr_delete(l_rtnl_get(&netconfig->rtnl),
-+					netconfig->ifindex, entry->data,
- 					NULL, NULL, NULL);
- =
+No wonder the timeout way too long :)
 
- 	for (entry =3D l_queue_get_entries(netconfig->addresses.added); entry;
- 			entry =3D entry->next)
--		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
-+		l_rtnl_ifaddr_add(l_rtnl_get(&netconfig->rtnl),
-+					netconfig->ifindex, entry->data,
- 					NULL, NULL, NULL);
- =
+Let me send another fixup patch.
 
- 	/* We can use l_rtnl_ifaddr_add here since that uses NLM_F_REPLACE */
- 	for (entry =3D l_queue_get_entries(netconfig->addresses.updated); entry;
- 			entry =3D entry->next)
--		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
-+		l_rtnl_ifaddr_add(l_rtnl_get(&netconfig->rtnl),
-+					netconfig->ifindex, entry->data,
- 					NULL, NULL, NULL);
- =
-
- 	for (entry =3D l_queue_get_entries(netconfig->routes.removed); entry;
- 			entry =3D entry->next)
--		l_rtnl_route_delete(rtnl, netconfig->ifindex, entry->data,
-+		l_rtnl_route_delete(l_rtnl_get(&netconfig->rtnl),
-+					netconfig->ifindex, entry->data,
- 					NULL, NULL, NULL);
- =
-
- 	for (entry =3D l_queue_get_entries(netconfig->routes.added); entry;
- 			entry =3D entry->next)
--		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
-+		l_rtnl_route_add(l_rtnl_get(&netconfig->rtnl),
-+					netconfig->ifindex, entry->data,
- 					NULL, NULL, NULL);
- =
-
- 	/* We can use l_rtnl_route_add here since that uses NLM_F_REPLACE */
- 	for (entry =3D l_queue_get_entries(netconfig->routes.updated); entry;
- 			entry =3D entry->next)
--		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
-+		l_rtnl_route_add(l_rtnl_get(&netconfig->rtnl),
-+					netconfig->ifindex, entry->data,
- 					NULL, NULL, NULL);
- }
- =
-
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index 7796a2f..fddbac1 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -85,8 +85,7 @@ void l_netconfig_set_event_handler(struct l_netconfig *ne=
-tconfig,
- 					void *user_data,
- 					l_netconfig_destroy_cb_t destroy);
- =
-
--void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
--				struct l_netlink *rtnl);
-+void l_netconfig_apply_rtnl(struct l_netconfig *netconfig);
- const struct l_queue_entry *l_netconfig_get_addresses(
- 				struct l_netconfig *netconfig,
- 				const struct l_queue_entry **out_added,
--- =
-
-2.32.0
-
---===============0458544762393425995==--
+Regards,
+-Denis
+--===============5432869203415265357==--
 
