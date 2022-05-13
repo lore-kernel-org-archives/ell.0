@@ -1,45 +1,34 @@
-Content-Type: multipart/mixed; boundary="===============8766894527640264409=="
+Content-Type: multipart/mixed; boundary="===============4615381814816100046=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 3/4] icmp6: Respect lifetime values in a RA
-Date: Wed, 05 Jan 2022 15:30:34 +0100
-Message-ID: <CAOq732+CXpXbPxzKJTd77_rf8dFHCquCp_C81DGQ4+5qWB1h3g@mail.gmail.com>
-In-Reply-To: 13e7bc94-5030-085f-a084-4672950c568b@gmail.com
+Subject: Re: [PATCH 03/13] netconfig: Create routes from Router Advertisements
+Date: Fri, 13 May 2022 08:39:48 -0500
+Message-ID: <c5cc45af-3e21-f783-2bd6-115ef3cde673@gmail.com>
+In-Reply-To: CAOq732JpUSNHdFaOE=0eXbXd-a+sP0RT0cftP3w17usBQ8dmEQ@mail.gmail.com
 
---===============8766894527640264409==
+--===============4615381814816100046==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, 3 Jan 2022 at 20:01, Denis Kenzior <denkenz(a)gmail.com> wrote:
-> On 1/3/22 08:18, Andrew Zaborowski wrote:
-> > "A value of zero indicates that the router is not to be used as a
-> > default router."
-> >
->
-> You may want to put this into the code directly.
+Hi Andrew,
 
-Ok, for some reason we don't quote the RFC in this file.
+>> Ugh, can we use l_queue_get_entries loop directly or a helper function i=
+nstead?
+> =
 
->
-> > Also set the lifetime values on the routes to those received so that the
-> > user of, say, l_icmp6_client_get_router(), can also determine whether
-> > there is a default router.
->
-> Note that we do not re-upload the routes to the kernel on every RA receiv=
-ed.
-> See the TODO comment in icmp6_client_handle_message().  Once lifetime exp=
-ires,
-> the route will be removed -> internet is broke.  Please at least sanity t=
-est the
-> changes you're sending out or label them as RFC if you haven't done so.
+> Ok.  We could also add a l_queue_match_ptr in queue.h since IIRC we
+> also have a copy in IWD.
+> =
 
-Ok, I've dropped the l_icmp6_client_set_rtnl() use locally in IWD so
-this wouldn't have shown up even if the router had set a short
-lifetime.  But I need some way for the user to check if there's a
-default gateway.
 
-Best regards
---===============8766894527640264409==--
+I don't like the idea of adding a matching function for comparing pointers.=
+  How =
+
+about l_queue_find_ptr() instead?
+
+Regards,
+-Denis
+--===============4615381814816100046==--
 
