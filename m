@@ -1,65 +1,171 @@
-Content-Type: multipart/mixed; boundary="===============1208998892176338686=="
+Content-Type: multipart/mixed; boundary="===============1268605716615588711=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 01/13] net: Add l_net_clear_host_bits utility
-Date: Fri, 13 May 2022 09:15:45 -0500
-Message-ID: <913bb777-2b72-47e8-7b57-de3de66b3af4@gmail.com>
-In-Reply-To: CAOq732+eiU7dB=8ZDrej9BkaiTKv_U_18Y5gz=2=UYUxosYWYA@mail.gmail.com
+Subject: [PATCH 16/17] examples: Update netconfig method calls
+Date: Sat, 14 May 2022 00:47:12 +0200
+Message-ID: <20220513224713.1447773-16-andrew.zaborowski@intel.com>
+In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
 
---===============1208998892176338686==
+--===============1268605716615588711==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+---
+ examples/netconfig-test.c | 49 ++++++++++++++++-----------------------
+ 1 file changed, 20 insertions(+), 29 deletions(-)
 
->>> +static inline void l_net_clear_host_bits(uint8_t *address, uint8_t pre=
-fix_len,
->>> +                                             uint8_t bytes)
->>
->> I'm not super excited about the naming.  What about l_net_prefix_from_ad=
-dress()?
-> =
+diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
+index c9d02ab..77ad74c 100644
+--- a/examples/netconfig-test.c
++++ b/examples/netconfig-test.c
+@@ -40,7 +40,6 @@
+ #include <ell/ell.h>
+ =
 
-> Ok, I guess host mask is an IPv4 term with the v6 term being interface
-> ID.  l_net_prefix_from_address sounds good, or how about
+ static bool apply;
+-static struct l_netlink *rtnl;
+ =
 
-You could also add a separate v4/v6 version instead?  Your set only uses th=
-is =
+ static void do_debug(const char *str, void *user_data)
+ {
+@@ -61,16 +60,14 @@ static void signal_handler(uint32_t signo, void *user_d=
+ata)
+ }
+ =
 
-for v6 right now, and you'd be able to drop the bytes parameter?  You could=
- also =
+ static void log_addresses(const char *af_str, const char *action,
+-				struct l_queue *list)
++				const struct l_queue_entry *entry)
+ {
+-	const struct l_queue_entry *entry;
+-
+-	if (l_queue_isempty(list))
++	if (!entry)
+ 		return;
+ =
 
-use a static buffer for the return value (or simply a uint32 for the v4 ver=
-sion) =
+ 	l_info("[netconfig%s] Addresses %s:", af_str, action);
+ =
 
-and make address in-only instead of in-out.
+-	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
++	for (; entry; entry =3D entry->next) {
+ 		struct l_rtnl_address *addr =3D entry->data;
+ 		char ip_str[INET6_ADDRSTRLEN];
+ =
 
-> l_net_mask_prefix?
+@@ -83,25 +80,26 @@ static void log_addresses(const char *af_str, const cha=
+r *action,
+ }
+ =
 
-The use of l_net_prefix_from_address() would make it very clear what is =
+ static void log_routes(const char *af_str, const char *action,
+-			struct l_queue *list)
++			const struct l_queue_entry *entry)
+ {
+-	const struct l_queue_entry *entry;
+-
+-	if (l_queue_isempty(list))
++	if (!entry)
+ 		return;
+ =
 
-happening in netconfig_add_v6_static_address_routes().  l_net_mask_prefix b=
-etter =
+ 	l_info("[netconfig%s] Routes %s:", af_str, action);
+ =
 
-suites the usage in patch 13, though your original naming also works well h=
-ere.
+-	for (entry =3D l_queue_get_entries(list); entry; entry =3D entry->next) {
++	for (; entry; entry =3D entry->next) {
+ 		struct l_rtnl_route *rt =3D entry->data;
+-		char subnet_str[INET6_ADDRSTRLEN];
++		char subnet_str[INET6_ADDRSTRLEN] =3D "unknown";
+ 		char gateway_str[INET6_ADDRSTRLEN];
+ 		uint8_t prefix_len;
++		bool onlink;
+ =
 
-Question is, if you're already sanitizing & dropping the address portion in =
+ 		l_rtnl_route_get_dst(rt, subnet_str, &prefix_len);
+-		l_rtnl_route_get_gateway(rt, gateway_str);
+-		l_info("[netconfig%s] \t%s/%i, gateway %s, orig lifetime %i s",
+-			af_str, subnet_str, prefix_len, gateway_str,
++		onlink =3D !l_rtnl_route_get_gateway(rt, gateway_str);
++		l_info("[netconfig%s] \t%s/%i, %s%s, orig lifetime %i s",
++			af_str, subnet_str, prefix_len,
++			onlink ? "onlink" : "next-hop ",
++			onlink ? "" : gateway_str,
+ 			l_rtnl_route_get_lifetime(rt));
+ 	}
+ }
+@@ -110,7 +108,7 @@ static void event_handler(struct l_netconfig *netconfig=
+, uint8_t family,
+ 				enum l_netconfig_event event, void *user_data)
+ {
+ 	const char *af_str =3D family =3D=3D AF_INET ? "v4" : "v6";
+-	struct l_queue *added, *updated, *removed;
++	const struct l_queue_entry *added, *updated, *removed, *expired;
+ =
 
-netconfig_add_v6_static_routes(), do you even need the use of =
+ 	switch (event) {
+ 	case L_NETCONFIG_EVENT_CONFIGURE:
+@@ -128,18 +126,21 @@ static void event_handler(struct l_netconfig *netconf=
+ig, uint8_t family,
+ 		return;
+ 	}
+ =
 
-l_net_clear_host_bits in patch 13?
+-	l_netconfig_get_addresses(netconfig, &added, &updated, &removed);
++	l_netconfig_get_addresses(netconfig, &added, &updated,
++					&removed, &expired);
+ 	log_addresses(af_str, "added", added);
+ 	log_addresses(af_str, "updated", updated);
+ 	log_addresses(af_str, "removed", removed);
++	log_addresses(af_str, "expired", expired);
+ =
 
-Anyhow, maybe the outcome from this discussion is to just put this into =
+-	l_netconfig_get_routes(netconfig, &added, &updated, &removed);
++	l_netconfig_get_routes(netconfig, &added, &updated, &removed, &expired);
+ 	log_routes(af_str, "added", added);
+ 	log_routes(af_str, "updated", updated);
+ 	log_routes(af_str, "removed", removed);
++	log_routes(af_str, "expired", expired);
+ =
 
-net-private.h for now and we can agree on the name later if this function n=
-eeds =
+ 	if (apply)
+-		l_netconfig_apply_rtnl(netconfig, rtnl);
++		l_netconfig_apply_rtnl(netconfig);
+ }
+ =
 
-to be exposed into public API.
+ static const struct option main_options[] =3D {
+@@ -181,14 +182,6 @@ int main(int argc, char *argv[])
+ 	if (!l_main_init())
+ 		return EXIT_FAILURE;
+ =
 
-Regards,
--Denis
---===============1208998892176338686==--
+-	if (apply) {
+-		rtnl =3D l_netlink_new(NETLINK_ROUTE);
+-		if (!rtnl) {
+-			fprintf(stderr, "l_netlink_new(NETLINK_ROUTE) error\n");
+-			return EXIT_FAILURE;
+-		}
+-	}
+-
+ 	l_log_set_stderr();
+ 	l_debug_enable("*");
+ =
+
+@@ -203,7 +196,5 @@ int main(int argc, char *argv[])
+ 	l_netconfig_destroy(netconfig);
+ 	l_main_exit();
+ =
+
+-	l_netlink_destroy(rtnl);
+-
+ 	return EXIT_SUCCESS;
+ }
+-- =
+
+2.32.0
+
+--===============1268605716615588711==--
 
