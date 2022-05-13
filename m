@@ -1,13 +1,13 @@
-Content-Type: multipart/mixed; boundary="===============3902293625617028756=="
+Content-Type: multipart/mixed; boundary="===============6432633193991983426=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
 Subject: [PATCH 11/17] netconfig: Wait for link-local address before DHCPv6
-Date: Fri, 13 May 2022 16:55:04 +0200
-Message-ID: <20220513145510.1408510-11-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
+Date: Sat, 14 May 2022 00:47:07 +0200
+Message-ID: <20220513224713.1447773-11-andrew.zaborowski@intel.com>
+In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
 
---===============3902293625617028756==
+--===============6432633193991983426==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
@@ -21,10 +21,10 @@ it can be used as the source address for our DHCPv6 frames.
  1 file changed, 163 insertions(+), 15 deletions(-)
 
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 4d11c75..6badb00 100644
+index 60962ce..c6a5c8e 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -63,7 +63,7 @@ struct l_netconfig {
+@@ -64,7 +64,7 @@ struct l_netconfig {
  	char **v6_dns_override;
  	char **v6_domain_names_override;
  =
@@ -34,7 +34,7 @@ index 4d11c75..6badb00 100644
  	bool started;
  	struct l_idle *do_static_work;
  	bool v4_configured;
-@@ -114,6 +114,11 @@ union netconfig_addr {
+@@ -115,6 +115,11 @@ union netconfig_addr {
  	struct in6_addr v6;
  };
  =
@@ -47,7 +47,7 @@ index 4d11c75..6badb00 100644
  static void netconfig_update_cleanup(struct l_netconfig *nc)
  {
  	l_queue_clear(nc->addresses.added, NULL);
-@@ -843,13 +848,17 @@ static void netconfig_icmp6_event_handler(struct l_ic=
+@@ -848,13 +853,17 @@ static void netconfig_icmp6_event_handler(struct l_ic=
 mp6_client *client,
  LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
  {
@@ -73,7 +73,7 @@ mp6_client *client,
  	nc->v4_enabled =3D true;
  =
 
-@@ -907,8 +916,12 @@ LIB_EXPORT void l_netconfig_destroy(struct l_netconfig=
+@@ -912,8 +921,12 @@ LIB_EXPORT void l_netconfig_destroy(struct l_netconfig=
  *netconfig)
  	l_queue_destroy(netconfig->routes.added, NULL);
  	l_queue_destroy(netconfig->routes.updated, NULL);
@@ -89,7 +89,7 @@ mp6_client *client,
  =
 
  /*
-@@ -1203,6 +1216,115 @@ static void netconfig_do_static_config(struct l_idl=
+@@ -1208,6 +1221,115 @@ static void netconfig_do_static_config(struct l_idl=
 e *idle, void *user_data)
  	}
  }
@@ -207,7 +207,7 @@ e *idle, void *user_data)
  LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
  {
  	if (unlikely(!netconfig || netconfig->started))
-@@ -1245,14 +1367,38 @@ configure_ipv6:
+@@ -1250,14 +1372,38 @@ configure_ipv6:
  		goto done;
  	}
  =
@@ -252,7 +252,7 @@ e *idle, void *user_data)
  	if (netconfig->v4_enabled) {
  		if (netconfig->v4_static_addr)
  			l_idle_remove(l_steal_ptr(netconfig->do_static_work));
-@@ -1276,6 +1422,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
+@@ -1281,6 +1427,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
 netconfig)
  	if (netconfig->signal_expired_work)
  		l_idle_remove(l_steal_ptr(netconfig->signal_expired_work));
@@ -263,7 +263,7 @@ netconfig)
  	netconfig_update_cleanup(netconfig);
  	l_queue_clear(netconfig->routes.current,
  			(l_queue_destroy_func_t) l_rtnl_route_free);
-@@ -1339,34 +1487,34 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
+@@ -1344,34 +1492,34 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
 config *netconfig)
  =
 
@@ -316,5 +316,5 @@ config *netconfig)
 
 2.32.0
 
---===============3902293625617028756==--
+--===============6432633193991983426==--
 
