@@ -1,41 +1,54 @@
-Content-Type: multipart/mixed; boundary="===============1958610683428286280=="
+Content-Type: multipart/mixed; boundary="===============0389878507793986382=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 1/2] cert-crypto: pragma false positive
- (-Wmaybe-uninitialized)
-Date: Fri, 10 Jun 2022 12:16:11 -0500
-Message-ID: <1ea3b31f-13d9-ba52-6ba7-48ee4535d09e@gmail.com>
-In-Reply-To: 20220610171132.334641-1-prestwoj@gmail.com
+Subject: Re: [PATCH] dhcp: Use bound_time for retransmission timers
+Date: Fri, 13 May 2022 09:30:49 -0500
+Message-ID: <75266a95-e0b2-e375-3175-d45e605ed7c6@gmail.com>
+In-Reply-To: CACsRnHW6LNDMxhrZB-_7JAH3h3Q54D9vUqf-YJhfEg4FgBC-gA@mail.gmail.com
 
---===============1958610683428286280==
+--===============0389878507793986382==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+Hi Michael,
 
-On 6/10/22 12:11, James Prestwood wrote:
-> On musl-gcc 'bmpstring' was detected as maybe uninitialized. This
-> is actually a false positive since the usage is guarded by
-> if (p_len) but the compiler isn't aware. Pragma to ignore this
-> warning.
+On 5/13/22 08:53, Michael Johnson wrote:
+> Hi Denis,
 > =
 
-> ell/cert-crypto.c: In function 'cert_pkcs12_pbkdf':
-> ell/cert-crypto.c:246:17: error: 'bmpstring' may be used uninitialized in=
- this function [-Werror=3Dmaybe-uninitialized]
->    246 |                 explicit_bzero(bmpstring, passwd_len);
-> ---
->   ell/cert-crypto.c | 3 +++
->   1 file changed, 3 insertions(+)
-> =
+> I've been running this patch for the day and I don't think it's
+> actually fixed the retry. I have set a low lease time and then block
+> the DHCP server for the ACK and I can see that the retry still doesn't
+> happen.
 
+I suspect it does fix one bug, but not another...  I'm not near my test box =
 
-Both applied, thanks.
+right now, so debugging this is a bit painful.
+
+Could you debug-print the 'next_timeout' we calculate in =
+
+dhcp_client_t1_expired() here:
+
+         next_timeout =3D dhcp_rebind_renew_retry_time(client->start_t,
+                                                         client->lease->t2);
+
+And also put in
+         L_WARN_ON(!client->timeout_resend);
+
+after the timeout_resend timer is created?
+
+ From your 'other' bug report yesterday, we calculate the t1 timer correctl=
+y, =
+
+but the timer still doesn't fire.
+It almost feels like the timers are just not being created.  Is there anyth=
+ing =
+
+suspicious in the kernel logs?
 
 Regards,
 -Denis
-
---===============1958610683428286280==--
+--===============0389878507793986382==--
 
