@@ -1,77 +1,42 @@
-Content-Type: multipart/mixed; boundary="===============2953971531823872896=="
+Content-Type: multipart/mixed; boundary="===============4831254649238514913=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Michael Johnson <mjohnson459 at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 17/17] icmp6: Ignore bad prefixes per RFC4862
-Date: Fri, 13 May 2022 16:55:10 +0200
-Message-ID: <20220513145510.1408510-17-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH v2 1/3] dhcp: Add priority to logging
+Date: Tue, 17 May 2022 18:10:52 +0100
+Message-ID: <CACsRnHWWsTdoi11pfTmisgpyW9Vz9yrSLjoHUX76kYUtkZwEYw@mail.gmail.com>
+In-Reply-To: b8567e94-89b2-8954-4063-c31484993a43@gmail.com
 
---===============2953971531823872896==
+--===============4831254649238514913==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-"Silently ignore" Prefix Information options with a preferred time
-longer than valid time and those matching the link-local prefix as
-mandated by RFC4862 Section 5.5.3.  These prefixes are also invalid
-according to RFC4861.
----
- ell/icmp6.c | 27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+Hi Denis,
 
-diff --git a/ell/icmp6.c b/ell/icmp6.c
-index ab2fe9c..57cdd1b 100644
---- a/ell/icmp6.c
-+++ b/ell/icmp6.c
-@@ -819,6 +819,26 @@ struct l_icmp6_router *_icmp6_router_parse(const struc=
-t nd_router_advert *ra,
- 			i->preferred_lifetime =3D l_get_be32(opts + 8);
- 			memcpy(i->address, opts + 16, 16);
- =
+Sorry about that, I thought I caught them all.
 
-+			/*
-+			 * Only the initial Prefix Length bits of the prefix
-+			 * are valid.  The remaining bits "MUST" be ignored
-+			 * by the receiver.
-+			 */
-+			l_net_mask_prefix(i->address, i->prefix_len, 16);
-+
-+			/*
-+			 * For SLAAC (RFC4862) we need to "silently ignore"
-+			 * routes with a preferred lifetime longer than valid
-+			 * lifetime, and those with the link-local prefix.
-+			 * Since it makes sense, do it regardless of SLAAC.
-+			 */
-+			if (i->preferred_lifetime > i->valid_lifetime)
-+				break;
-+
-+			if (i->prefix_len >=3D 10 &&
-+					IN6_IS_ADDR_LINKLOCAL(i->address))
-+				break;
-+
- 			n_routes +=3D 1;
- 			break;
- 		}
-@@ -871,6 +891,13 @@ struct l_icmp6_router *_icmp6_router_parse(const struc=
-t nd_router_advert *ra,
- 			i->valid_lifetime =3D l_get_be32(opts + 4);
- 			memcpy(i->address, opts + 8, (i->prefix_len + 7) / 8);
- =
+Michael
 
-+			/*
-+			 * Only the initial Prefix Length bits of the prefix
-+			 * are valid.  The remaining bits "MUST" be ignored
-+			 * by the receiver.
-+			 */
-+			l_net_clear_host_bits(i->address, i->prefix_len, 16);
-+
- 			n_routes +=3D 1;
- 			break;
- 		}
--- =
-
-2.32.0
-
---===============2953971531823872896==--
+On Tue, 17 May 2022 at 18:03, Denis Kenzior <denkenz(a)gmail.com> wrote:
+>
+> Hi Michael,
+>
+> On 5/17/22 11:56, Michael Johnson wrote:
+> > Most dhcp clients have some logging to show what state the lease is in
+> > so this just makes iwd more in line with them. The logging won't be
+> > enabled by default but requires a max logging level to be passed in when
+> > logging is set up.
+> > ---
+> >   ell/dhcp.c | 48 +++++++++++++++++++++++++++++-------------------
+> >   ell/dhcp.h |  2 +-
+> >   2 files changed, 30 insertions(+), 20 deletions(-)
+>
+> All applied, thanks!  I did amend patch 1 & 3 slightly to break up lines =
+that
+> were > 80 chars.
+>
+> Regards,
+> -Denis
+--===============4831254649238514913==--
 
