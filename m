@@ -1,48 +1,53 @@
-Content-Type: multipart/mixed; boundary="===============5376453240485539930=="
+Content-Type: multipart/mixed; boundary="===============7345360280021020038=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Michael Johnson <mjohnson459 at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 01/13] net: Add l_net_clear_host_bits utility
-Date: Fri, 13 May 2022 14:26:26 +0200
-Message-ID: <CAOq732+eiU7dB=8ZDrej9BkaiTKv_U_18Y5gz=2=UYUxosYWYA@mail.gmail.com>
-In-Reply-To: 9ebeb857-4ac0-9d3f-e47f-182b1758ebf9@gmail.com
+Subject: [PATCH v2 2/3] examples: Pass in max logging level
+Date: Tue, 17 May 2022 17:56:37 +0100
+Message-ID: <20220517165638.139029-2-mjohnson459@gmail.com>
+In-Reply-To: 20220517165638.139029-1-mjohnson459@gmail.com
 
---===============5376453240485539930==
+--===============7345360280021020038==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+---
+ examples/dhcp-client.c    | 2 +-
+ examples/netconfig-test.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-On Thu, 12 May 2022 at 18:02, Denis Kenzior <denkenz(a)gmail.com> wrote:
-> On 5/5/22 18:15, Andrew Zaborowski wrote:
-> > Add function that zeros bits after prefix_len'th bit in an address.  Put
-> > it in net.h so it can be use by both netconfig.c and icmp6.c,
-> > potentially others.
-> > ---
-> >   ell/net.h | 13 +++++++++++++
-> >   1 file changed, 13 insertions(+)
-> >
-> > diff --git a/ell/net.h b/ell/net.h
-> > index 0521d75..e193eef 100644
-> > --- a/ell/net.h
-> > +++ b/ell/net.h
-> > @@ -61,6 +61,19 @@ static inline bool l_net_prefix_matches(const void *=
-a, const void *b,
-> >       return !bits || ((left ^ right) & (0xff00u >> bits)) =3D=3D 0;
-> >   }
-> >
-> > +static inline void l_net_clear_host_bits(uint8_t *address, uint8_t pre=
-fix_len,
-> > +                                             uint8_t bytes)
->
-> I'm not super excited about the naming.  What about l_net_prefix_from_add=
-ress()?
+diff --git a/examples/dhcp-client.c b/examples/dhcp-client.c
+index 0a16ce4..9dcea57 100644
+--- a/examples/dhcp-client.c
++++ b/examples/dhcp-client.c
+@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
+ 	client =3D l_dhcp_client_new(ifindex);
+ 	l_dhcp_client_set_address(client, ARPHRD_ETHER, mac, 6);
+ 	l_dhcp_client_set_event_handler(client, event_handler, NULL, NULL);
+-	l_dhcp_client_set_debug(client, do_debug, "[DHCP] ", NULL);
++	l_dhcp_client_set_debug(client, do_debug, "[DHCP] ", NULL, L_LOG_DEBUG);
+ 	l_dhcp_client_start(client);
+ =
 
-Ok, I guess host mask is an IPv4 term with the v6 term being interface
-ID.  l_net_prefix_from_address sounds good, or how about
-l_net_mask_prefix?
+ 	l_main_run_with_signal(signal_handler, NULL);
+diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
+index c9d02ab..d75e4ad 100644
+--- a/examples/netconfig-test.c
++++ b/examples/netconfig-test.c
+@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
+ 	netconfig =3D l_netconfig_new(ifindex);
+ 	l_netconfig_set_event_handler(netconfig, event_handler, NULL, NULL);
+ 	l_dhcp_client_set_debug(l_netconfig_get_dhcp_client(netconfig),
+-				do_debug, "[DHCPv4] ", NULL);
++				do_debug, "[DHCPv4] ", NULL, L_LOG_DEBUG);
+ 	l_netconfig_start(netconfig);
+ =
 
-Best regards
---===============5376453240485539930==--
+ 	l_main_run_with_signal(signal_handler, NULL);
+-- =
+
+2.25.1
+
+--===============7345360280021020038==--
 
