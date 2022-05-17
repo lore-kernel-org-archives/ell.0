@@ -1,180 +1,157 @@
-Content-Type: multipart/mixed; boundary="===============8040210134501626003=="
+Content-Type: multipart/mixed; boundary="===============0542832733278743735=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 05/17] netconfig: Handle DHCPv6 events
-Date: Fri, 13 May 2022 16:54:58 +0200
-Message-ID: <20220513145510.1408510-5-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH] dhcp,dhcp6,icmp6,time: Convert timestamps to
+ CLOCK_BOOTTIME
+Date: Tue, 17 May 2022 09:37:06 -0500
+Message-ID: <bc24661a-7fcb-01f7-62de-da38f82b9e34@gmail.com>
+In-Reply-To: 20220516213153.1612039-1-andrew.zaborowski@intel.com
 
---===============8040210134501626003==
+--===============0542832733278743735==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Use l_dhcp6_client to support IPv6 address assignment through DHCPv6.
----
- ell/netconfig.c | 132 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 132 insertions(+)
+Hi Andrew,
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 243ecd8..9c58781 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -395,6 +395,135 @@ static void netconfig_dhcp_event_handler(struct l_dhc=
-p_client *client,
- 	}
- }
- =
+On 5/16/22 16:31, Andrew Zaborowski wrote:
+> The frame reception timestamps obtained for DHCPv4, DHCPv6 and ICMPv6
+> frames from the kernel are based on CLOCK_REALTIME, there's no option to
+> switch them to CLOCK_BOOTTIME, which we use across our retransmission and
+> renew logic.  Add a time-private.h utility to get the offset between the
+> two clocks and offset the timestamps right where read them from recvmsg()
+> to produce CLOCK_BOOTTIME based times.  This isn't 100% bulletproof
+> because the offset between the two clocks can vary between the moment the
+> frame was received by the kernel and the time we read the offset.  The
+> probability is very low though and we have no better solution at this
+> time other than fixing it in the kernel.  Using CLOCK_REALTIME for frame
+> reception timestamps seems to only create potential for problems in the
+> common usages.
+> =
 
-+static void netconfig_add_dhcp6_address(struct l_netconfig *nc)
-+{
-+	const struct l_dhcp6_lease *lease =3D
-+		l_dhcp6_client_get_lease(nc->dhcp6_client);
-+	_auto_(l_free) char *ip =3D NULL;
-+	uint32_t prefix_len;
-+
-+	if (L_WARN_ON(!lease))
-+		return;
-+
-+	ip =3D l_dhcp6_lease_get_address(lease);
-+	prefix_len =3D l_dhcp6_lease_get_prefix_length(lease);
-+	nc->v6_address =3D l_rtnl_address_new(ip, prefix_len);
-+
-+	if (L_WARN_ON(!nc->v6_address))
-+		return;
-+
-+	/*
-+	 * Assume we already have a route from a Router Advertisement
-+	 * covering the address from DHCPv6 + prefix length from DHCPv6.
-+	 * We might want to emit a warning of some sort or
-+	 * L_NETCONFIG_EVENT_FAILED if we don't since this would
-+	 * basically be fatal for IPv6 connectivity.
-+	 */
-+	l_rtnl_address_set_noprefixroute(nc->v6_address, true);
-+
-+	l_queue_push_tail(nc->addresses.current, nc->v6_address);
-+	l_queue_push_tail(nc->addresses.added, nc->v6_address);
-+}
-+
-+static void netconfig_set_dhcp6_address_lifetimes(struct l_netconfig *nc,
-+							bool updated)
-+{
-+	const struct l_dhcp6_lease *lease =3D
-+		l_dhcp6_client_get_lease(nc->dhcp6_client);
-+	uint32_t p, v;
-+	uint64_t start_time;
-+
-+	if (L_WARN_ON(!lease))
-+		return;
-+
-+	p =3D l_dhcp6_lease_get_preferred_lifetime(lease);
-+	v =3D l_dhcp6_lease_get_valid_lifetime(lease);
-+	start_time =3D l_dhcp6_lease_get_start_time(lease);
-+
-+	l_rtnl_address_set_lifetimes(nc->v6_address, p, v);
-+	l_rtnl_address_set_expiry(nc->v6_address,
-+					start_time + p * L_USEC_PER_SEC,
-+					start_time + v * L_USEC_PER_SEC);
-+
-+	if (updated)
-+		l_queue_push_tail(nc->addresses.updated, nc->v6_address);
-+}
-+
-+static void netconfig_remove_dhcp6_address(struct l_netconfig *nc)
-+{
-+	l_queue_remove(nc->addresses.current, nc->v6_address);
-+	l_queue_push_tail(nc->addresses.removed, nc->v6_address);
-+	nc->v6_address =3D NULL;
-+}
-+
-+static void netconfig_dhcp6_event_handler(struct l_dhcp6_client *client,
-+						enum l_dhcp6_client_event event,
-+						void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+
-+	switch (event) {
-+	case L_DHCP6_CLIENT_EVENT_LEASE_OBTAINED:
-+		if (L_WARN_ON(nc->v6_configured))
-+			break;
-+
-+		netconfig_add_dhcp6_address(nc);
-+		netconfig_set_dhcp6_address_lifetimes(nc, false);
-+		nc->v6_configured =3D true;
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_CONFIGURE);
-+		break;
-+	case L_DHCP6_CLIENT_EVENT_IP_CHANGED:
-+		if (L_WARN_ON(!nc->v6_configured))
-+			break;
-+
-+		netconfig_remove_dhcp6_address(nc);
-+		netconfig_add_dhcp6_address(nc);
-+		netconfig_set_dhcp6_address_lifetimes(nc, false);
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
-+		break;
-+	case L_DHCP6_CLIENT_EVENT_LEASE_EXPIRED:
-+		if (L_WARN_ON(!nc->v6_configured))
-+			break;
-+
-+		netconfig_remove_dhcp6_address(nc);
-+		nc->v6_configured =3D false;
-+
-+		if (l_dhcp6_client_start(nc->dhcp6_client))
-+			/* TODO: also start a new timeout */
-+			netconfig_emit_event(nc, AF_INET6,
-+						L_NETCONFIG_EVENT_UNCONFIGURE);
-+		else
-+			netconfig_emit_event(nc, AF_INET6,
-+						L_NETCONFIG_EVENT_FAILED);
-+
-+		break;
-+	case L_DHCP6_CLIENT_EVENT_LEASE_RENEWED:
-+		if (L_WARN_ON(!nc->v6_configured))
-+			break;
-+
-+		netconfig_set_dhcp6_address_lifetimes(nc, true);
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
-+		break;
-+	case L_DHCP6_CLIENT_EVENT_NO_LEASE:
-+		if (L_WARN_ON(nc->v6_configured))
-+			break;
-+
-+		/*
-+		 * The requested address is no longer available, try to restart
-+		 * the client.
-+		 *
-+		 * TODO: this may need to be delayed so we don't flood the
-+		 * network with SOLICITs and DECLINEs.  Also add a retry limit
-+		 * or better yet a configurable timeout.
-+		 */
-+		if (!l_dhcp6_client_start(nc->dhcp6_client))
-+			netconfig_emit_event(nc, AF_INET6,
-+						L_NETCONFIG_EVENT_FAILED);
-+
-+		break;
-+	}
-+}
-+
- static struct l_rtnl_route *netconfig_find_icmp6_route(
- 						struct l_netconfig *nc,
- 						const uint8_t *gateway,
-@@ -616,6 +745,9 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
- ifindex)
- 					nc, NULL);
- =
+> Fixes: c78ad1bb6d7e ("dhcp: Set lease expiry based on frame reception tim=
+es")
+> ---
+>   ell/dhcp-transport.c  |  8 +++++++-
+>   ell/dhcp6-transport.c | 12 +++++++++---
+>   ell/icmp6.c           |  7 ++++++-
+>   ell/time-private.h    |  1 +
+>   ell/time.c            | 17 +++++++++++++++++
+>   5 files changed, 40 insertions(+), 5 deletions(-)
+> =
 
- 	nc->dhcp6_client =3D l_dhcp6_client_new(ifindex);
-+	l_dhcp6_client_set_event_handler(nc->dhcp6_client,
-+					netconfig_dhcp6_event_handler,
-+					nc, NULL);
- =
 
- 	nc->icmp6_client =3D l_dhcp6_client_get_icmp6(nc->dhcp6_client);
- 	l_icmp6_client_add_event_handler(nc->icmp6_client,
--- =
+Makes sense to me, just minor comments:
 
-2.32.0
+> diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
+> index 52da2db..ba1423f 100644
+> --- a/ell/dhcp-transport.c
+> +++ b/ell/dhcp-transport.c
+> @@ -45,6 +45,7 @@
+>   #include "util.h"
+>   #include "private.h"
+>   #include "time.h"
+> +#include "time-private.h"
+>   #include "dhcp-private.h"
+>   =
 
---===============8040210134501626003==--
+>   struct dhcp_default_transport {
+> @@ -170,7 +171,12 @@ static bool _dhcp_default_transport_read_handler(str=
+uct l_io *io,
+>   				CMSG_LEN(sizeof(struct timeval))) {
+>   			const struct timeval *tv =3D (void *) CMSG_DATA(cmsg);
+>   =
+
+> -			timestamp =3D tv->tv_sec * L_USEC_PER_SEC + tv->tv_usec;
+> +			/*
+> +			 * Not ideal but this is our best approximation of the
+> +			 * CLOCK_BOOTTIME-based Rx time.
+> +			 */
+> +			timestamp =3D tv->tv_sec * L_USEC_PER_SEC + tv->tv_usec -
+> +				_time_get_realtime_boottime_offset();
+
+Can we actually just send the timestamp as a 'struct timeval' to the privat=
+e =
+
+function?  Instead of duplicating the conversion calculation everywhere?
+
+>   		}
+>   	}
+>   =
+
+
+<snip>
+
+> diff --git a/ell/time.c b/ell/time.c
+> index d02dabe..cda09be 100644
+> --- a/ell/time.c
+> +++ b/ell/time.c
+> @@ -105,3 +105,20 @@ uint64_t _time_fuzz_secs(uint32_t secs, uint32_t max=
+_offset)
+>   =
+
+>   	return ms;
+>   }
+> +
+> +/*
+> + * Get approximate difference between CLOCK_REALTIME and CLOCK_BOOTTIME,
+> + * for converting recent timestamps from one to the other.  The value can
+> + * change at any time.
+> + */
+> +int64_t _time_get_realtime_boottime_offset(void)
+
+So I would avoid signed integers for these calculations.  We already have =
+
+l_time_before/l_time_after.  And l_time_offset takes care of overflows.  Le=
+ts =
+
+use those to implement this.  You also need to consider potential underflow=
+, =
+
+though it is probably astronomically unlikely.
+
+I'd name this something like:
+
+uint64_t _time_realtime_to_boottime(const struct timeval *ts)
+
+By the way, given that you're using struct timespec below, do you want to u=
+se =
+
+SO_TIMESTAMPNS?
+
+> +{
+> +	struct timespec boottime;
+> +	struct timespec realtime;
+> +
+> +	clock_gettime(CLOCK_BOOTTIME, &boottime);
+> +	clock_gettime(CLOCK_REALTIME, &realtime);
+> +
+
+Then here do something like:
+
+offset =3D l_time_diff(ts, now_realtime);
+
+/* most likely case, timestamp in the past */
+if (l_time_before(ts, now_realtime)) {
+	if (offset > now_boot)
+		return 0;
+
+	return now_boot - offset;
+}
+
+return l_time_offset(now_boot, offset);
+
+> +	return ((int64_t) realtime.tv_sec - boottime.tv_sec) * 1000000 +
+> +		((int64_t) realtime.tv_nsec - boottime.tv_nsec) / 1000;
+
+Lets use the L_USEC_* defines when possible.
+
+> +}
+> =
+
+
+Regards,
+-Denis
+--===============0542832733278743735==--
 
