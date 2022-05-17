@@ -1,38 +1,85 @@
-Content-Type: multipart/mixed; boundary="===============3817168404344149613=="
+Content-Type: multipart/mixed; boundary="===============7404077904431697796=="
 MIME-Version: 1.0
 From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] dhcp6: Switch to BOUND before LEASE_OBTAINED
-Date: Mon, 08 Nov 2021 08:42:39 -0600
-Message-ID: <3027c204-e320-ce5f-458f-d6fa63ed7644@gmail.com>
-In-Reply-To: 20211108112901.372486-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 1/3] dhcp: Add priority to logging
+Date: Tue, 17 May 2022 11:40:14 -0500
+Message-ID: <e1a8c1c0-b206-ee69-130a-a13aff9e290a@gmail.com>
+In-Reply-To: 20220517161831.126597-1-mjohnson459@gmail.com
 
---===============3817168404344149613==
+--===============7404077904431697796==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Hi Michael,
 
-On 11/8/21 5:29 AM, Andrew Zaborowski wrote:
-> Reorder actions so that when we obtain the lease, we first switch to
-> DHCP6_STATE_BOUND and configure the address + emit
-> L_DHCP6_CLIENT_EVENT_LEASE_OBTAINED after that.  This allows the event
-> handler to use l_dhcp6_client_get_lease().  l_dhcp6_client_get_lease is
-> hardwired to return NULL in DHCP6_STATE_REQUESTING.
-> =
-
-> Issue reported by T=C3=A9rence Clastres.
+On 5/17/22 11:18, Michael Johnson wrote:
+> Most dhcp clients have some logging to show what state the lease is in
+> so this just makes iwd more in line with them. The logging won't be
+> enabled by default but requires a max logging level to be passed in when
+> logging is set up.
 > ---
->   ell/dhcp6.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
+>   ell/dhcp.c | 64 +++++++++++++++++++++++++++++-------------------------
+>   ell/dhcp.h |  2 +-
+>   2 files changed, 35 insertions(+), 31 deletions(-)
 > =
 
 
-Applied, thanks.
+<snip>
+
+Looks good to me.  I have a few nits below, which I can probably fix myself=
+ if =
+
+you feel lazy :)
+
+Do you want to send a patch for iwd as well?
+
+>   =
+
+> -#define CLIENT_DEBUG(fmt, args...)					\
+> -	l_util_debug(client->debug_handler, client->debug_data,		\
+> -			"%s:%i " fmt, __func__, __LINE__, ## args)
+> +#define CLIENT_DEBUG(priority, fmt, args...)					\
+> +	if (priority <=3D client->debug_level)		\
+> +		l_util_debug(client->debug_handler, client->debug_data,		\
+> +				"%s:%i " fmt, __func__, __LINE__, ## args)
+
+Looks like there's one tab too many before all the '\'.
+
+>   #define CLIENT_ENTER_STATE(s)						\
+>   	l_util_debug(client->debug_handler, client->debug_data,		\
+>   			"%s:%i Entering state: " #s,			\
+
+<snip>
+
+> @@ -425,14 +428,14 @@ static int dhcp_client_send_request(struct l_dhcp_c=
+lient *client)
+>   		if (!_dhcp_message_builder_append(&builder,
+>   					L_DHCP_OPTION_SERVER_IDENTIFIER,
+>   					4, &client->lease->server_address)) {
+> -			CLIENT_DEBUG("Failed to append server ID");
+> +			CLIENT_DEBUG(L_LOG_WARNING, "Failed to append server ID");
+
+Can we split this to multiple lines to avoid lines that are >80 chars? =
+
+Something like
+	CLIENT_DEBUG(L_LOG_WARNING,\n
+			"<Message to print>",
+			arg1, .. argn);
+
+See doc/coding-style.txt item M4.
+
+For strings that don't fit on a single line, it is fine to go over 80 chars.
+
+Alternatively we could add CLIENT_WARN, CLIENT_INFO, etc
+
+>   			return -EINVAL;
+>   		}
+>   =
+
 
 Regards,
 -Denis
-
---===============3817168404344149613==--
+--===============7404077904431697796==--
 
