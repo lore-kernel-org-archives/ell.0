@@ -1,103 +1,53 @@
-Content-Type: multipart/mixed; boundary="===============2669034487620592888=="
+Content-Type: multipart/mixed; boundary="===============2373169043533182878=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Michael Johnson <mjohnson459 at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 03/11] rtnl: Add l_rtnl_route_new_static
-Date: Mon, 11 Apr 2022 16:20:48 +0200
-Message-ID: <20220411142056.817784-3-andrew.zaborowski@intel.com>
-In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
+Subject: [PATCH 2/3] examples: Pass in max logging level
+Date: Tue, 17 May 2022 17:18:30 +0100
+Message-ID: <20220517161831.126597-2-mjohnson459@gmail.com>
+In-Reply-To: 20220517161831.126597-1-mjohnson459@gmail.com
 
---===============2669034487620592888==
+--===============2373169043533182878==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add a constructor for prefix routes through a specific gateway/router.
 ---
-Name follows suggestion in
-https://lists.01.org/hyperkitty/list/ell(a)lists.01.org/message/ZPJRBKRROCG=
-ZFVLLFUCL6GYHHG2JQZLW/
----
- ell/ell.sym |  1 +
- ell/rtnl.c  | 31 +++++++++++++++++++++++++++++++
- ell/rtnl.h  |  2 ++
- 3 files changed, 34 insertions(+)
+ examples/dhcp-client.c    | 2 +-
+ examples/netconfig-test.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index ec995fc..3816e3f 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -639,6 +639,7 @@ global:
- 	l_rtnl_address_set_scope;
- 	l_rtnl_route_new_gateway;
- 	l_rtnl_route_new_prefix;
-+	l_rtnl_route_new_static;
- 	l_rtnl_route_free;
- 	l_rtnl_route_get_family;
- 	l_rtnl_route_get_gateway;
-diff --git a/ell/rtnl.c b/ell/rtnl.c
-index afbff9d..dbaf97b 100644
---- a/ell/rtnl.c
-+++ b/ell/rtnl.c
-@@ -419,6 +419,37 @@ LIB_EXPORT struct l_rtnl_route *l_rtnl_route_new_prefi=
-x(const char *ip,
- 	return rt;
- }
+diff --git a/examples/dhcp-client.c b/examples/dhcp-client.c
+index 0a16ce4..9dcea57 100644
+--- a/examples/dhcp-client.c
++++ b/examples/dhcp-client.c
+@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
+ 	client =3D l_dhcp_client_new(ifindex);
+ 	l_dhcp_client_set_address(client, ARPHRD_ETHER, mac, 6);
+ 	l_dhcp_client_set_event_handler(client, event_handler, NULL, NULL);
+-	l_dhcp_client_set_debug(client, do_debug, "[DHCP] ", NULL);
++	l_dhcp_client_set_debug(client, do_debug, "[DHCP] ", NULL, L_LOG_DEBUG);
+ 	l_dhcp_client_start(client);
  =
 
-+LIB_EXPORT struct l_rtnl_route *l_rtnl_route_new_static(const char *gw,
-+							const char *ip,
-+							uint8_t prefix_len)
-+{
-+	struct in_addr gw_addr4;
-+	struct in6_addr gw_addr6;
-+	struct in_addr dst_addr4;
-+	struct in6_addr dst_addr6;
-+	int family;
-+	struct l_rtnl_route *rt;
-+
-+	if ((family =3D address_get(gw, &gw_addr4, &gw_addr6)) < 0)
-+		return NULL;
-+
-+	if (address_get(ip, &dst_addr4, &dst_addr6) !=3D family)
-+		return NULL;
-+
-+	if (prefix_len =3D=3D 0 || prefix_len > (family =3D=3D AF_INET ? 32 : 128=
-))
-+		return NULL;
-+
-+	rt =3D l_rtnl_route_new_gateway(gw);
-+	rt->dst_prefix_len =3D prefix_len;
-+
-+	if (family =3D=3D AF_INET6)
-+		memcpy(&rt->dst.in6_addr, &dst_addr6, sizeof(dst_addr6));
-+	else
-+		memcpy(&rt->dst.in_addr, &dst_addr4, sizeof(dst_addr4));
-+
-+	return rt;
-+}
-+
- LIB_EXPORT void l_rtnl_route_free(struct l_rtnl_route *rt)
- {
- 	l_free(rt);
-diff --git a/ell/rtnl.h b/ell/rtnl.h
-index bbd410e..55c4997 100644
---- a/ell/rtnl.h
-+++ b/ell/rtnl.h
-@@ -71,6 +71,8 @@ bool l_rtnl_address_set_scope(struct l_rtnl_address *addr=
-, uint8_t scope);
- struct l_rtnl_route *l_rtnl_route_new_gateway(const char *gw);
- struct l_rtnl_route *l_rtnl_route_new_prefix(const char *ip,
- 							uint8_t prefix_len);
-+struct l_rtnl_route *l_rtnl_route_new_static(const char *gw, const char *i=
-p,
-+							uint8_t prefix_len);
- void l_rtnl_route_free(struct l_rtnl_route *rt);
- DEFINE_CLEANUP_FUNC(l_rtnl_route_free);
- uint8_t l_rtnl_route_get_family(const struct l_rtnl_route *rt);
+ 	l_main_run_with_signal(signal_handler, NULL);
+diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
+index c9d02ab..d75e4ad 100644
+--- a/examples/netconfig-test.c
++++ b/examples/netconfig-test.c
+@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
+ 	netconfig =3D l_netconfig_new(ifindex);
+ 	l_netconfig_set_event_handler(netconfig, event_handler, NULL, NULL);
+ 	l_dhcp_client_set_debug(l_netconfig_get_dhcp_client(netconfig),
+-				do_debug, "[DHCPv4] ", NULL);
++				do_debug, "[DHCPv4] ", NULL, L_LOG_DEBUG);
+ 	l_netconfig_start(netconfig);
+ =
+
+ 	l_main_run_with_signal(signal_handler, NULL);
 -- =
 
-2.32.0
+2.25.1
 
---===============2669034487620592888==--
+--===============2373169043533182878==--
 
