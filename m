@@ -1,23 +1,35 @@
-Content-Type: multipart/mixed; boundary="===============3797121294452279747=="
+Content-Type: multipart/mixed; boundary="===============2107314686842915149=="
 MIME-Version: 1.0
-From: Simon Maurer <mail at maurer.systems>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: Re: AIO support
-Date: Wed, 22 Sep 2021 13:46:47 +0200
-Message-ID: <ed43abad-1289-e3e6-ee65-a5b1891be1f2@maurer.systems>
-In-Reply-To: 3bf043e4-b24a-a2f1-265a-2e71224d6c31@gmail.com
+Subject: Re: [PATCH v2 1/3] dhcp: Add priority to logging
+Date: Tue, 17 May 2022 12:02:58 -0500
+Message-ID: <b8567e94-89b2-8954-4063-c31484993a43@gmail.com>
+In-Reply-To: 20220517165638.139029-1-mjohnson459@gmail.com
 
---===============3797121294452279747==
+--===============2107314686842915149==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-I have a first draft of the complete aio API. l_aio_cancel doesn't work =
+Hi Michael,
 
-as expected and also timeout adjustment has not yet been implemented.
+On 5/17/22 11:56, Michael Johnson wrote:
+> Most dhcp clients have some logging to show what state the lease is in
+> so this just makes iwd more in line with them. The logging won't be
+> enabled by default but requires a max logging level to be passed in when
+> logging is set up.
+> ---
+>   ell/dhcp.c | 48 +++++++++++++++++++++++++++++-------------------
+>   ell/dhcp.h |  2 +-
+>   2 files changed, 30 insertions(+), 20 deletions(-)
+
+All applied, thanks!  I did amend patch 1 & 3 slightly to break up lines th=
+at =
+
+were > 80 chars.
 
 Regards,
-Simon
-
---===============3797121294452279747==--
+-Denis
+--===============2107314686842915149==--
 
