@@ -1,89 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============1746809871664084861=="
+Content-Type: multipart/mixed; boundary="===============8775930946002825786=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 13/17] netconfig: Write gateway MAC from DHCP to ARP cache
-Date: Sat, 14 May 2022 00:47:09 +0200
-Message-ID: <20220513224713.1447773-13-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH 09/17] netconfig: Add l_netconfig_get_{dhcp6, icmp6}_client
+Date: Wed, 18 May 2022 14:01:33 -0500
+Message-ID: <2e7400fc-c8e6-5968-f429-57fe22a38f37@gmail.com>
+In-Reply-To: 20220513224713.1447773-9-andrew.zaborowski@intel.com
 
---===============1746809871664084861==
+--===============8775930946002825786==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Write the MAC directly to the ARP table to save an ARP query for the
-gateway's MAC when it is known from the freshly obtained lease.  For
-practical reasons do this outside of l_netconfig_apply_rtnl().
----
- ell/netconfig.c | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+Hi Andrew,
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index bdd67cc..7745d36 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -25,6 +25,7 @@
- #endif
- =
+On 5/13/22 17:47, Andrew Zaborowski wrote:
+> ---
+>   ell/ell.sym     |  2 ++
+>   ell/netconfig.c | 18 ++++++++++++++++++
+>   ell/netconfig.h |  4 ++++
+>   3 files changed, 24 insertions(+)
+> =
 
- #include <linux/types.h>
-+#include <linux/if_ether.h>
- #include <netinet/ip.h>
- #include <arpa/inet.h>
- #include <netinet/icmp6.h>
-@@ -406,6 +407,37 @@ static void netconfig_remove_dhcp_address_routes(struc=
-t l_netconfig *nc,
- 	}
- }
- =
 
-+static void netconfig_set_neighbor_entry_cb(int error,
-+						uint16_t type, const void *data,
-+						uint32_t len, void *user_data)
-+{
-+	/* Not critical.  TODO: log warning */
-+}
-+
-+static int netconfig_dhcp_gateway_to_arp(struct l_netconfig *nc)
-+{
-+	const struct l_dhcp_lease *lease =3D
-+		l_dhcp_client_get_lease(nc->dhcp_client);
-+	_auto_(l_free) char *server_id =3D l_dhcp_lease_get_server_id(lease);
-+	_auto_(l_free) char *gw =3D l_dhcp_lease_get_gateway(lease);
-+	const uint8_t *server_mac =3D l_dhcp_lease_get_server_mac(lease);
-+	struct in_addr in_gw;
-+
-+	if (!gw || strcmp(server_id, gw) || !server_mac)
-+		return -ENOENT;
-+
-+	/* Gateway MAC is known, write it into ARP cache to save ARP traffic */
-+	in_gw.s_addr =3D l_dhcp_lease_get_gateway_u32(lease);
-+
-+	if (!l_rtnl_neighbor_set_hwaddr(rtnl, nc->ifindex, AF_INET, &in_gw,
-+					server_mac, ETH_ALEN,
-+					netconfig_set_neighbor_entry_cb, nc,
-+					NULL))
-+		return -EIO;
-+
-+	return 0;
-+}
-+
- static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
- 						enum l_dhcp_client_event event,
- 						void *user_data)
-@@ -430,6 +462,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
-client *client,
- 		netconfig_set_dhcp_lifetimes(nc, false);
- 		nc->v4_configured =3D true;
- 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
-+		netconfig_dhcp_gateway_to_arp(nc);
- 		break;
- 	case L_DHCP_CLIENT_EVENT_LEASE_RENEWED:
- 		if (L_WARN_ON(!nc->v4_configured))
--- =
+Applied, thanks.
 
-2.32.0
+Regards,
+-Denis
 
---===============1746809871664084861==--
+--===============8775930946002825786==--
 
