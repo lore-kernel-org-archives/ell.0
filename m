@@ -1,58 +1,65 @@
-Content-Type: multipart/mixed; boundary="===============3906468535813523714=="
+Content-Type: multipart/mixed; boundary="===============8078761236558702365=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH] ecc: enforce strict length with l_ecc_point_from_data
-Date: Fri, 21 Jan 2022 08:45:32 -0800
-Message-ID: <20220121164532.2528621-1-prestwoj@gmail.com>
+Subject: Re: [PATCH 04/17] netconfig: Create routes from Router Advertisements
+Date: Wed, 18 May 2022 13:42:41 -0500
+Message-ID: <75baec0d-b940-5fd0-2250-99907c641968@gmail.com>
+In-Reply-To: 20220513224713.1447773-4-andrew.zaborowski@intel.com
 
---===============3906468535813523714==
+--===============8078761236558702365==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This add some extra convenience to users of l_ecc_point_from_data
-allowing the exact length to be verified in addition to creating
-the point.
----
- ell/ecc.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Hi Andrew,
 
-diff --git a/ell/ecc.c b/ell/ecc.c
-index a16b1c0..f1adcc4 100644
---- a/ell/ecc.c
-+++ b/ell/ecc.c
-@@ -538,8 +538,11 @@ LIB_EXPORT struct l_ecc_point *l_ecc_point_from_data(
- 	if (!data)
- 		return NULL;
- =
+On 5/13/22 17:47, Andrew Zaborowski wrote:
+> If IPv6 is enabled, create the ICMP6 client and handle Router
+> Advertisements received by creating, updating and removing routes per
+> the data in the Router Advertisements.  Timeouts aren't handled yet.
+> ---
+>   ell/netconfig.c | 293 +++++++++++++++++++++++++++++++++++++++++++++---
+>   1 file changed, 278 insertions(+), 15 deletions(-)
+> =
 
--	/* In all cases there should be an X coordinate in data */
--	if (len < bytes)
-+	/* Verify the data length matches a full point or X coordinate */
-+	if (type =3D=3D L_ECC_POINT_TYPE_FULL) {
-+		if (len !=3D bytes * 2)
-+			return NULL;
-+	} else if (len !=3D bytes)
- 		return NULL;
- =
 
- 	p =3D l_ecc_point_new(curve);
-@@ -570,9 +573,6 @@ LIB_EXPORT struct l_ecc_point *l_ecc_point_from_data(
- =
+<snip>
 
- 		break;
- 	case L_ECC_POINT_TYPE_FULL:
--		if (len < bytes * 2)
--			goto failed;
--
- 		_ecc_be2native(p->y, (void *) data + bytes, curve->ndigits);
- =
+> +static void netconfig_icmp6_event_handler(struct l_icmp6_client *client,
+> +						enum l_icmp6_client_event event,
+> +						void *event_data,
+> +						void *user_data)
+> +{
+> +	struct l_netconfig *nc =3D user_data;
+> +	const struct l_icmp6_router *r;
+> +	struct l_rtnl_route *default_route;
+> +	unsigned int i;
+> +
+> +	if (event !=3D L_ICMP6_CLIENT_EVENT_ROUTER_FOUND)
+> +		return;
+> +
+> +	r =3D event_data;
+> +
+> +	/*
+> +	 * Note: If this is the first RA received, the l_dhcp6_client
+> +	 * will have received the event before us and will be acting
+> +	 * on it by now.
+> +	 */
+> +
+> +	if (nc->v4_gateway_override)
+> +		return;
+> +
 
- 		if (!ecc_valid_point(p))
--- =
+So I think you meant v6_gateway_override here and I fixed this up according=
+ly. =
 
-2.31.1
+Send a fix if this wasn't correct.
 
---===============3906468535813523714==--
+Patches 1-4 applied, thanks.
+
+Regards,
+-Denis
+
+--===============8078761236558702365==--
 
