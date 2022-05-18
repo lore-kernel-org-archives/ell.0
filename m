@@ -1,43 +1,50 @@
-Content-Type: multipart/mixed; boundary="===============4108067717210437064=="
+Content-Type: multipart/mixed; boundary="===============6369535164601574762=="
 MIME-Version: 1.0
-From: Ossama Othman <ossama.othman at gmail.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH 3/3] Makefile: Bump library 'current' version.
-Date: Tue, 09 Nov 2021 16:14:48 -0800
-Message-ID: <20211110001448.175980-4-ossama.othman@intel.com>
-In-Reply-To: 20211110001448.175980-1-ossama.othman@intel.com
+Subject: Re: [PATCH] dhcp,dhcp6,icmp6,time: Convert timestamps to
+ CLOCK_BOOTTIME
+Date: Wed, 18 May 2022 09:19:30 -0500
+Message-ID: <11b132ac-4069-88a6-ddfb-e68a570b810f@gmail.com>
+In-Reply-To: 20220518003523.1717565-1-andrew.zaborowski@intel.com
 
---===============4108067717210437064==
+--===============6369535164601574762==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-The l_rtnl interface changed.  Bump the "current" ELL library version
-number accordingly.
----
- Makefile.am | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Hi Andrew,
 
-diff --git a/Makefile.am b/Makefile.am
-index 4e650c9..73f5298 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -8,8 +8,8 @@ ACLOCAL_AMFLAGS =3D -I build-aux
- # Interfaces added:		CURRENT++ REVISION=3D0 AGE++
- # Interfaces removed:		CURRENT++ REVISION=3D0 AGE=3D0
- =
+On 5/17/22 19:35, Andrew Zaborowski wrote:
+> The frame reception timestamps obtained for DHCPv4, DHCPv6 and ICMPv6
+> frames from the kernel are based on CLOCK_REALTIME, there's no option to
+> switch them to CLOCK_BOOTTIME, which we use across our retransmission and
+> renew logic.  Add a time-private.h utility to convert the timestamps
+> right where we read them from recvmsg() to produce CLOCK_BOOTTIME based
+> times.  This isn't 100% bulletproof because the offset between the two
+> clocks can vary between the time the frame was received by the kernel and
+> the time we read the offset.  The probability is very low though and we
+> have no better solution at this time other than fixing it in the kernel.
+> Using CLOCK_REALTIME for frame reception timestamps seems to mainly
+> create potential for problems in the common usages.
+> =
 
--ELL_CURRENT =3D 0
--ELL_REVISION =3D 2
-+ELL_CURRENT =3D 1
-+ELL_REVISION =3D 0
- ELL_AGE =3D 0
- =
+> Fixes: c78ad1bb6d7e ("dhcp: Set lease expiry based on frame reception tim=
+es")
+> ---
+>   ell/dhcp-transport.c  |  3 ++-
+>   ell/dhcp6-transport.c |  5 +++--
+>   ell/icmp6.c           |  2 +-
+>   ell/time-private.h    |  1 +
+>   ell/time.c            | 34 ++++++++++++++++++++++++++++++++++
+>   6 files changed, 44 insertions(+), 6 deletions(-)
+> =
 
- linux_headers =3D linux/gpio.h
--- =
 
-2.32.0
+Applied, thanks.
 
---===============4108067717210437064==--
+Regards,
+-Denis
+
+--===============6369535164601574762==--
 
