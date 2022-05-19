@@ -1,60 +1,45 @@
-Content-Type: multipart/mixed; boundary="===============5665892417560230119=="
+Content-Type: multipart/mixed; boundary="===============3844966273491451685=="
 MIME-Version: 1.0
-From: Simon Maurer <mail at maurer.systems>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: AIO support
-Date: Sat, 25 Sep 2021 19:37:16 +0200
-Message-ID: <cfbb7a4a-120f-2429-0ca1-5edeaee9e495@maurer.systems>
-In-Reply-To: f07404c6-ab34-c7f8-77fe-9b01a7839bc1@gmail.com
+Subject: Re: [PATCH 07/17] netconfig: Use an internal rtnl socket for
+ l_netconfig_apply_rtnl
+Date: Thu, 19 May 2022 13:52:47 +0200
+Message-ID: <CAOq732JFUWwpJpg7BNAWH4JT5CnN-EHNLD_7eDERYEqaRwEqmQ@mail.gmail.com>
+In-Reply-To: 378dbbda-7453-9a67-db2f-e098ba159388@gmail.com
 
---===============5665892417560230119==
+--===============3844966273491451685==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis
+Hi Denis,
 
-On 9/24/21 4:21 PM, Denis Kenzior wrote:
+On Wed, 18 May 2022 at 20:58, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> On 5/13/22 17:47, Andrew Zaborowski wrote:
+> >   LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+> >   {
+> >       struct l_netconfig *nc;
+> > +     struct l_netlink *rtnl =3D l_netlink_new(NETLINK_ROUTE);
+> > +
+> > +     if (!rtnl)
+> > +             return NULL;
+>
+> I'm against this.  We will have multiple netconfig objects in play and ea=
+ch one
+> would be utilizing an fd.  We should be keeping our fd use to a minimum,
+> particularly since we're limited to ~128 right now.  Passing in the rtnl =
+object
+> from outside is preferred.
 
->> I started testing the aio interface for ell and it seems to work, =
+Makes sense.  How about using a global rtnl object for all of the
+l_netconfig objects?  Do you still prefer that it be passed from
+outside?
 
->> except it's not asynchronous. Turns out libaio works only under =
+I did this later in patch 11 and maybe should have merged that change
+directly here.  We could also create it only after
+l_netconfig_start().
 
->> certain circumstances:
->> http://lse.sourceforge.net/io/aio.html
-> =
-
-> yes, this was a widely reported criticism.=C2=A0 I assume O_DIRECT is not =
-
-> applicable to your use case?
-
-I tried to open the file with O_DIRECT, but still got no asynchronous =
-
-operations. I don't know what the problem was, NVMe, btrfs, ... also I =
-
-tried it on an usb stick with FAT32. Anyway, if it's only working under =
-
-certain conditions it's useless and dangerous for real time =
-
-applications. I can't expect the user of my aio interface to be an =
-
-expert in Linux filesystems and knowing all the restrictions of aio.
-
-> =
-
-> Honestly, for ell, io_uring would be much more interesting to support.  =
-
-> With maybe a fallback to aio or a threaded/blocking implementation for =
-
-> older kernels.
-
-I might write an io_uring implementation in the future. But since =
-
-io_uring is not available on my target system, I have to stick with =
-
-POSIX AIO. A lot of Linux BSPs are only available for outdated kernel.
-
-Regards,
-Simon
---===============5665892417560230119==--
+Best regards
+--===============3844966273491451685==--
 
