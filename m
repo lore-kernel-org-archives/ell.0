@@ -1,95 +1,62 @@
-Content-Type: multipart/mixed; boundary="===============6175719749585880324=="
+Content-Type: multipart/mixed; boundary="===============6779428143639357119=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 03/12] netconfig: Add DHCP override and static IP API
-Date: Fri, 22 Apr 2022 20:38:37 +0200
-Message-ID: <CAOq732KGxcn7y6GMc8uc-B45RgmzdMxkpqJ+c3K3zHoPXsEyZA@mail.gmail.com>
-In-Reply-To: c3a07449-ba00-4e89-7153-c4c2f8f998d9@gmail.com
+Subject: Re: [PATCH 07/17] netconfig: Use an internal rtnl socket for
+ l_netconfig_apply_rtnl
+Date: Thu, 19 May 2022 23:38:59 +0200
+Message-ID: <CAOq732LhennE6fXjZf2xoWBRtpeegpfZZBKGwij9=28zek42sg@mail.gmail.com>
+In-Reply-To: 522021c7-6b24-674c-f139-832624217ff0@gmail.com
 
---===============6175719749585880324==
+--===============6779428143639357119==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
-
-On Thu, 21 Apr 2022 at 21:47, Denis Kenzior <denkenz(a)gmail.com> wrote:
-> On 4/21/22 10:45, Andrew Zaborowski wrote:
-> > +LIB_EXPORT bool l_netconfig_set_static_addr(struct l_netconfig *netcon=
-fig,
-> > +                                     uint8_t family,
-> > +                                     const struct l_rtnl_address *addr)
-> > +{
-> > +     if (unlikely(!netconfig || netconfig->started))
-> > +             return false;
-> > +
-> > +     if (addr && l_rtnl_address_get_family(addr) !=3D family)
-> > +             return false;
-> > +
+On Thu, 19 May 2022 at 23:28, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> On 5/19/22 15:53, Andrew Zaborowski wrote:
+> > On Thu, 19 May 2022 at 22:28, Denis Kenzior <denkenz(a)gmail.com> wrote:
+> >>> Makes sense.  How about using a global rtnl object for all of the
+> >>> l_netconfig objects?  Do you still prefer that it be passed from
+> >>> outside?
+> >>
+> >> I have no real preference on whether it is passed in from the outside =
+vs not.
+> >> But, there's another thing to consider here.  Today the call to l_foo_=
+set_rtnl
+> >> is used determine whether the dhcp/icmp/dhcp6 object should set everyt=
+hing up
+> >> directly vs letting the outside layer do this.  With l_netconfig I don=
+'t think
+> >> this is a problem per se, but you should consider the other classes wh=
+en you
+> >> design this.
+> >
+> > Right but with l_netconfig you make this choice by either calling
+> > l_netconfig_apply_rtnl or not, and you shouldn't call l_foo_set_rtnl
+> > on the underlying dhcp/icmp objects.
+> >
 >
-> switch (family) {
-> case AF_INET:
->         ptr =3D &netconfig->v4_static_addr;
->         break;
-> case AF_INET6:
->         ptr =3D &netconfig->v6_static_addr;
->         break;
-> default:
->         return false;
-> }
+> Sure, but are you assuming we will not have any further classes using rtnl
+> besides netconfig?
 >
-> l_rtnl_address_free(*ptr);
-> *ptr =3D NULL;
-
-Ok.
-
-> > +     /*
-> > +      * If using a static IP, we can validate right now that the gatew=
-ay is
-> > +      * in the local subnet.
-> > +      */
-> > +     if (netconfig->v4_static_addr && netconfig->v4_gateway_override)
-> > +             if (!l_net_prefix_matches(&local, &gateway, prefix_len))
-> > +                     return false;
-> > +
+> >>
+> >> We can start by trying to come up with a nice ell API for obtaining the
+> >> singleton rtnl object and go from there.
+> >
+> > The global rtnl object I meant is to be used only by l_netconfig
+> > instances so there's no need for a getter, or I'm misunderstanding
+> > what you're saying.
+> >
 >
-> I know you're trying to be nice, but we should not be doing this.  Static
-> configuration is for expert users, and if they want to shoot themselves i=
-n the
-> foot, then I say let them.
+> We use rtnl all over the place in iwd, like netdev, p2p, ap, etc.  All th=
+ese +
+> netconfig should share the same one.
 
-Ok.
+That's different than what I did in patch 11/17 but it would work.
+I'll put it in rtnl.c then, with a _get() and a _put() since we have
+no generic refcounting for l_netlink.
 
->
-> Besides, such policy enforcement should not be done by netconfig itself. =
- That
-> should be done by a layer above, or you should provide a policy enforceme=
-nt
-> abstraction that the caller could provide to netconfig.  Not something we=
- care
-> about at the moment.
->
-> > +     /*
-> > +      * If using a static IP and there's no gateway all the DNSes must=
- be on
-> > +      * the local subnet too.
-> > +      */
-> > +     if (netconfig->v4_static_addr && !netconfig->v4_gateway_override =
-&&
-> > +                     netconfig->v4_dns_override) {
-> > +             unsigned int i;
-> > +
-> > +             for (i =3D 0; i < dns_num; i++)
-> > +                     if (!l_net_prefix_matches(&local, &dns_list[i],
-> > +                                                     prefix_len))
-> > +                             return false;
-> > +     }
->
-> As above here
-
-Ok, dropping the checks then.
-
-Best regards
---===============6175719749585880324==--
+Best refards
+--===============6779428143639357119==--
 
