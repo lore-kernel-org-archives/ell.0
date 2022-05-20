@@ -1,65 +1,64 @@
-Content-Type: multipart/mixed; boundary="===============8078761236558702365=="
+Content-Type: multipart/mixed; boundary="===============0904249675756439944=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 04/17] netconfig: Create routes from Router Advertisements
-Date: Wed, 18 May 2022 13:42:41 -0500
-Message-ID: <75baec0d-b940-5fd0-2250-99907c641968@gmail.com>
-In-Reply-To: 20220513224713.1447773-4-andrew.zaborowski@intel.com
+Subject: [PATCH 08/15] examples: Update netconfig method calls
+Date: Fri, 20 May 2022 17:43:31 +0200
+Message-ID: <20220520154338.2056273-8-andrew.zaborowski@intel.com>
+In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
 
---===============8078761236558702365==
+--===============0904249675756439944==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+---
+ examples/netconfig-test.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-On 5/13/22 17:47, Andrew Zaborowski wrote:
-> If IPv6 is enabled, create the ICMP6 client and handle Router
-> Advertisements received by creating, updating and removing routes per
-> the data in the Router Advertisements.  Timeouts aren't handled yet.
-> ---
->   ell/netconfig.c | 293 +++++++++++++++++++++++++++++++++++++++++++++---
->   1 file changed, 278 insertions(+), 15 deletions(-)
-> =
+diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
+index 39b6fa4..45455dc 100644
+--- a/examples/netconfig-test.c
++++ b/examples/netconfig-test.c
+@@ -108,7 +108,7 @@ static void event_handler(struct l_netconfig *netconfig=
+, uint8_t family,
+ 				enum l_netconfig_event event, void *user_data)
+ {
+ 	const char *af_str =3D family =3D=3D AF_INET ? "v4" : "v6";
+-	const struct l_queue_entry *added, *updated, *removed;
++	const struct l_queue_entry *added, *updated, *removed, *expired;
+ =
 
+ 	switch (event) {
+ 	case L_NETCONFIG_EVENT_CONFIGURE:
+@@ -126,15 +126,18 @@ static void event_handler(struct l_netconfig *netconf=
+ig, uint8_t family,
+ 		return;
+ 	}
+ =
 
-<snip>
+-	l_netconfig_get_addresses(netconfig, &added, &updated, &removed);
++	l_netconfig_get_addresses(netconfig, &added, &updated,
++					&removed, &expired);
+ 	log_addresses(af_str, "added", added);
+ 	log_addresses(af_str, "updated", updated);
+ 	log_addresses(af_str, "removed", removed);
++	log_addresses(af_str, "expired", expired);
+ =
 
-> +static void netconfig_icmp6_event_handler(struct l_icmp6_client *client,
-> +						enum l_icmp6_client_event event,
-> +						void *event_data,
-> +						void *user_data)
-> +{
-> +	struct l_netconfig *nc =3D user_data;
-> +	const struct l_icmp6_router *r;
-> +	struct l_rtnl_route *default_route;
-> +	unsigned int i;
-> +
-> +	if (event !=3D L_ICMP6_CLIENT_EVENT_ROUTER_FOUND)
-> +		return;
-> +
-> +	r =3D event_data;
-> +
-> +	/*
-> +	 * Note: If this is the first RA received, the l_dhcp6_client
-> +	 * will have received the event before us and will be acting
-> +	 * on it by now.
-> +	 */
-> +
-> +	if (nc->v4_gateway_override)
-> +		return;
-> +
+-	l_netconfig_get_routes(netconfig, &added, &updated, &removed);
++	l_netconfig_get_routes(netconfig, &added, &updated, &removed, &expired);
+ 	log_routes(af_str, "added", added);
+ 	log_routes(af_str, "updated", updated);
+ 	log_routes(af_str, "removed", removed);
++	log_routes(af_str, "expired", expired);
+ =
 
-So I think you meant v6_gateway_override here and I fixed this up according=
-ly. =
+ 	if (apply)
+ 		l_netconfig_apply_rtnl(netconfig);
+-- =
 
-Send a fix if this wasn't correct.
+2.32.0
 
-Patches 1-4 applied, thanks.
-
-Regards,
--Denis
-
---===============8078761236558702365==--
+--===============0904249675756439944==--
 
