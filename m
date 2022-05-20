@@ -1,89 +1,89 @@
-Content-Type: multipart/mixed; boundary="===============3283954034931568364=="
+Content-Type: multipart/mixed; boundary="===============3386263774697482797=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 01/11] net: Add l_net_subnet_matches
-Date: Mon, 18 Apr 2022 11:34:36 -0500
-Message-ID: <04db266e-cc38-0832-b19f-d9f8c22a1c56@gmail.com>
-In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
+Subject: [PATCH 12/15] netconfig: Write gateway MAC from DHCP to ARP cache
+Date: Fri, 20 May 2022 17:43:35 +0200
+Message-ID: <20220520154338.2056273-12-andrew.zaborowski@intel.com>
+In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
 
---===============3283954034931568364==
+--===============3386263774697482797==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+Write the MAC directly to the ARP table to save an ARP query for the
+gateway's MAC when it is known from the freshly obtained lease.  For
+practical reasons do this outside of l_netconfig_apply_rtnl().
+---
+ ell/netconfig.c | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
-On 4/11/22 09:20, Andrew Zaborowski wrote:
-> Add inline function to check if two IP addresses are in the same subnet.
-> ---
->   ell/net.h | 21 +++++++++++++++++++++
->   1 file changed, 21 insertions(+)
-> =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index ef3227b..3277f5c 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -25,6 +25,7 @@
+ #endif
+ =
 
-> diff --git a/ell/net.h b/ell/net.h
-> index c97d9c9..837209c 100644
-> --- a/ell/net.h
-> +++ b/ell/net.h
-> @@ -25,6 +25,7 @@
->   =
+ #include <linux/types.h>
++#include <linux/if_ether.h>
+ #include <netinet/ip.h>
+ #include <arpa/inet.h>
+ #include <netinet/icmp6.h>
+@@ -404,6 +405,37 @@ static void netconfig_remove_dhcp_address_routes(struc=
+t l_netconfig *nc,
+ 	}
+ }
+ =
 
->   #include <stdbool.h>
->   #include <stdint.h>
-> +#include <string.h>
->   =
++static void netconfig_set_neighbor_entry_cb(int error,
++						uint16_t type, const void *data,
++						uint32_t len, void *user_data)
++{
++	/* Not critical.  TODO: log warning */
++}
++
++static int netconfig_dhcp_gateway_to_arp(struct l_netconfig *nc)
++{
++	const struct l_dhcp_lease *lease =3D
++		l_dhcp_client_get_lease(nc->dhcp_client);
++	_auto_(l_free) char *server_id =3D l_dhcp_lease_get_server_id(lease);
++	_auto_(l_free) char *gw =3D l_dhcp_lease_get_gateway(lease);
++	const uint8_t *server_mac =3D l_dhcp_lease_get_server_mac(lease);
++	struct in_addr in_gw;
++
++	if (!gw || strcmp(server_id, gw) || !server_mac)
++		return -ENOENT;
++
++	/* Gateway MAC is known, write it into ARP cache to save ARP traffic */
++	in_gw.s_addr =3D l_dhcp_lease_get_gateway_u32(lease);
++
++	if (!l_rtnl_neighbor_set_hwaddr(l_rtnl_get(&nc->rtnl), nc->ifindex,
++					AF_INET, &in_gw, server_mac, ETH_ALEN,
++					netconfig_set_neighbor_entry_cb, nc,
++					NULL))
++		return -EIO;
++
++	return 0;
++}
++
+ static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
+ 						enum l_dhcp_client_event event,
+ 						void *user_data)
+@@ -428,6 +460,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
+client *client,
+ 		netconfig_set_dhcp_lifetimes(nc, false);
+ 		nc->v4_configured =3D true;
+ 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
++		netconfig_dhcp_gateway_to_arp(nc);
+ 		break;
+ 	case L_DHCP_CLIENT_EVENT_LEASE_RENEWED:
+ 		if (L_WARN_ON(!nc->v4_configured))
+-- =
 
->   struct in_addr;
->   struct in6_addr;
-> @@ -40,6 +41,26 @@ bool l_net_hostname_is_localhost(const char *hostname);
->   bool l_net_get_address(int ifindex, struct in_addr *out);
->   bool l_net_get_link_local_address(int ifindex, struct in6_addr *out);
->   =
+2.32.0
 
-> +static inline bool l_net_subnet_matches(const void *a, const void *b,
-> +					uint8_t prefix_len)
-> +{
-> +	uint8_t bytes =3D prefix_len / 8;
-> +	uint8_t bits =3D prefix_len & 7;
-> +
-> +	/*
-> +	 * @a and @b are network byte order IPv4 or IPv6 addresses.
-> +	 * We want to check if the initial (top) @prefix_len bits match.
-> +	 * memcmp the whole bytes, then compare the final byte's top
-> +	 * bits by anding with a mask.
-> +	 */
-> +	if (bytes && memcmp(a, b, bytes))
-
-It looks like memcmp with a zero length is indeed guaranteed to return 0.  =
-So =
-
-this was simplified to if (memcmp(..))
-
-> +		return false;
-> +
-> +	return !bits ||
-> +		((((const uint8_t *) a)[bytes] ^ ((const uint8_t *) b)[bytes]) &
-> +		 (0xff00u >> bits)) =3D=3D 0;
-
-There were a bit too many '()' for my liking.  I moved the casts to the var=
-iable =
-
-declaration block above which ended up being the same number of lines and l=
-ooked =
-
-a bit cleaner.  Please double check that I didn't screw anything up.
-
-> +}
-> +
->   #ifdef __cplusplus
->   }
->   #endif
-> =
-
-
-Applied, thanks.
-
-Regards,
--Denis
---===============3283954034931568364==--
+--===============3386263774697482797==--
 
