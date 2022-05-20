@@ -1,76 +1,43 @@
-Content-Type: multipart/mixed; boundary="===============0245017808739960825=="
+Content-Type: multipart/mixed; boundary="===============3035120261195622346=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH v2 3/5] settings: add l_settings_remove_embedded_groups
-Date: Fri, 04 Feb 2022 09:46:12 -0800
-Message-ID: <20220204174614.261669-3-prestwoj@gmail.com>
-In-Reply-To: 20220204174614.261669-1-prestwoj@gmail.com
+Subject: [PATCH 01/15] netconfig: Add missing NULL check for routes from RA
+Date: Fri, 20 May 2022 17:43:24 +0200
+Message-ID: <20220520154338.2056273-1-andrew.zaborowski@intel.com>
 
---===============0245017808739960825==
+--===============3035120261195622346==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-This removes all embedded groups from a l_settings object
+Fixes: 7a137bcac31e ("netconfig: Create routes from Router Advertisements")
 ---
- ell/ell.sym    |  1 +
- ell/settings.c | 10 ++++++++++
- ell/settings.h |  1 +
- 3 files changed, 12 insertions(+)
+ ell/netconfig.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-v2:
- * Use l_queue_clear(). Not sure how I didn't notice this API existed.
-
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 827e68c..96b3a7d 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -490,6 +490,7 @@ global:
- 	l_settings_has_embedded_group;
- 	l_settings_get_embedded_groups;
- 	l_settings_get_embedded_value;
-+	l_settings_remove_embedded_groups;
- 	/* signal */
- 	l_signal_create;
- 	l_signal_remove;
-diff --git a/ell/settings.c b/ell/settings.c
-index 31d23fe..ac4259c 100644
---- a/ell/settings.c
-+++ b/ell/settings.c
-@@ -1561,3 +1561,13 @@ LIB_EXPORT const char *l_settings_get_embedded_value(
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index f39f88f..8026c81 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -573,8 +573,9 @@ static struct l_rtnl_route *netconfig_add_icmp6_route(s=
+truct l_netconfig *nc,
+ {
+ 	struct l_rtnl_route *rt;
  =
 
- 	return group->data;
- }
-+
-+LIB_EXPORT bool l_settings_remove_embedded_groups(struct l_settings *setti=
-ngs)
-+{
-+	if (unlikely(!settings))
-+		return false;
-+
-+	l_queue_clear(settings->embedded_groups, embedded_group_destroy);
-+
-+	return true;
-+}
-diff --git a/ell/settings.h b/ell/settings.h
-index f094ef5..519014d 100644
---- a/ell/settings.h
-+++ b/ell/settings.h
-@@ -137,6 +137,7 @@ bool l_settings_remove_key(struct l_settings *settings,=
- const char *group_name,
- bool l_settings_remove_group(struct l_settings *settings,
- 				const char *group_name);
+-	rt =3D netconfig_route_new(nc, AF_INET6, dst->address, dst->prefix_len,
+-					gateway, RTPROT_RA);
++	rt =3D netconfig_route_new(nc, AF_INET6, dst ? dst->address : NULL,
++					dst ? dst->prefix_len : 0, gateway,
++					RTPROT_RA);
+ 	if (L_WARN_ON(!rt))
+ 		return NULL;
  =
 
-+bool l_settings_remove_embedded_groups(struct l_settings *settings);
- char **l_settings_get_embedded_groups(struct l_settings *settings);
- bool l_settings_has_embedded_group(struct l_settings *settings,
- 					const char *group);
 -- =
 
-2.31.1
+2.32.0
 
---===============0245017808739960825==--
+--===============3035120261195622346==--
 
