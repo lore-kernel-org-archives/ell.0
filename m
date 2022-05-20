@@ -1,131 +1,55 @@
-Content-Type: multipart/mixed; boundary="===============0884619306659696866=="
+Content-Type: multipart/mixed; boundary="===============1439564489737133799=="
 MIME-Version: 1.0
-From: Ossama Othman <ossama.othman at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH] configure: Update to support Autoconf >= 2.69
-Date: Wed, 06 Apr 2022 21:00:07 -0700
-Message-ID: <20220407040007.99836-1-ossama.othman@intel.com>
+Subject: [PATCH 14/15] netconfig: Set a limit on number of routes from ICMPv6
+Date: Fri, 20 May 2022 17:43:37 +0200
+Message-ID: <20220520154338.2056273-14-andrew.zaborowski@intel.com>
+In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
 
---===============0884619306659696866==
+--===============1439564489737133799==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Bootstrapping ELL against Autoconf 2.71 triggers warnings about use of
-the deprecated Autoconf macros.  Replace use of the deprecated
-AC_HELP_STRING and AC_LANG_C macros with AS_HELP_STRING and
-AC_LANG([C]), respectively.
-
-Bump the Autoconf prerequisite, accordingly, to support the updated
-macros, from 2.60 to 2.69.  Only require Autoconf 2.69 as a
-prerequisite since many Linux distributions do not yet ship with
-Autoconf 2.71.
-
-This also addresses a `configure' script generation error on Fedora 36.
+While some networks can be configured in a way that prevents rogue
+Router Advertisements from reaching clients, add a very basic mechanism
+to avoid a denial-of-service in such a case by limiting the number of
+routes we track from RAs.  This won't prevent the loss of routing but
+might prevent OOM crashes or slowdowns.
 ---
- configure.ac | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ ell/netconfig.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/configure.ac b/configure.ac
-index 9350e14..3bf220b 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -1,5 +1,5 @@
--AC_PREREQ(2.60)
--AC_INIT(ell, 0.49)
-+AC_PREREQ([2.69])
-+AC_INIT([ell],[0.49])
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index af85f71..f86fcfb 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -134,6 +134,8 @@ union netconfig_addr {
+ static struct l_queue *addr_wait_list;
+ static unsigned int rtnl_id;
  =
 
- AC_CONFIG_HEADERS(config.h)
- AC_CONFIG_AUX_DIR(build-aux)
-@@ -16,7 +16,7 @@ AC_PREFIX_DEFAULT(/usr/local)
++static const unsigned int max_icmp6_routes =3D 100;
++
+ static void netconfig_update_cleanup(struct l_netconfig *nc)
+ {
+ 	l_queue_clear(nc->addresses.added, NULL);
+@@ -734,6 +736,9 @@ static struct netconfig_route_data *netconfig_add_icmp6=
+_route(
+ 	struct netconfig_route_data *rd;
+ 	struct l_rtnl_route *rt;
  =
 
- COMPILER_FLAGS
- =
-
--AC_LANG_C
-+AC_LANG([C])
- =
-
- AC_PROG_CC
- AC_PROG_CC_PIE
-@@ -31,14 +31,14 @@ AC_C_BIGENDIAN(little_endian=3Dno, little_endian=3Dyes,=
- little_endian=3Dno)
- LT_PREREQ(2.2)
- LT_INIT([disable-static])
- =
-
--AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization],
-+AC_ARG_ENABLE(optimization, AS_HELP_STRING([--disable-optimization],
- 			[disable code optimization through compiler]), [
- 	if (test "${enableval}" =3D "no"); then
- 		CFLAGS=3D"$CFLAGS -U_FORTIFY_SOURCE -O0"
- 	fi
- ])
- =
-
--AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
-+AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],
- 			[enable compiling with debugging information]), [
- 	if (test "${enableval}" =3D "yes" &&
- 				test "${ac_cv_prog_cc_g}" =3D "yes"); then
-@@ -46,7 +46,7 @@ AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
- 	fi
- ])
- =
-
--AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
-+AC_ARG_ENABLE(pie, AS_HELP_STRING([--enable-pie],
- 			[enable position independent executables flag]), [
- 	if (test "${enableval}" =3D "yes" &&
- 				test "${ac_cv_prog_cc_pie}" =3D "yes"); then
-@@ -59,7 +59,7 @@ save_LIBS=3D$LIBS
- AC_CHECK_LIB(asan, _init)
- LIBS=3D$save_LIBS
- =
-
--AC_ARG_ENABLE(asan, AC_HELP_STRING([--enable-asan],
-+AC_ARG_ENABLE(asan, AS_HELP_STRING([--enable-asan],
- 			[enable linking with address sanitizer]), [
- 	if (test "${enableval}" =3D "yes" &&
- 				test "${ac_cv_lib_asan__init}" =3D "yes" &&
-@@ -73,7 +73,7 @@ save_LIBS=3D$LIBS
- AC_CHECK_LIB(lsan, _init)
- LIBS=3D$save_LIBS
- =
-
--AC_ARG_ENABLE(lsan, AC_HELP_STRING([--enable-lsan],
-+AC_ARG_ENABLE(lsan, AS_HELP_STRING([--enable-lsan],
- 			[enable linking with leak sanitizer]), [
- 	if (test "${enableval}" =3D "yes" &&
- 				test "${ac_cv_lib_lsan__init}" =3D "yes" &&
-@@ -87,7 +87,7 @@ save_LIBS=3D$LIBS
- AC_CHECK_LIB(ubsan, _init)
- LIBS=3D$save_LIBS
- =
-
--AC_ARG_ENABLE(ubsan, AC_HELP_STRING([--enable-ubsan],
-+AC_ARG_ENABLE(ubsan, AS_HELP_STRING([--enable-ubsan],
- 			[enable linking with undefined behavior sanitizer]), [
- 	if (test "${enableval}" =3D "yes" &&
- 				test "${ac_cv_lib_ubsan__init}" =3D "yes" &&
-@@ -111,7 +111,7 @@ AC_CHECK_FUNC(epoll_create, dummy=3Dyes,
- =
-
- AC_CHECK_HEADERS(linux/types.h linux/if_alg.h)
- =
-
--AC_ARG_ENABLE(glib, AC_HELP_STRING([--enable-glib],
-+AC_ARG_ENABLE(glib, AS_HELP_STRING([--enable-glib],
- 				[enable ell/glib main loop example]),
- 					[enable_glib=3D${enableval}])
- =
-
++	if (l_queue_length(nc->icmp_route_data) >=3D max_icmp6_routes)
++		return NULL;	/* TODO: log a warning the first time */
++
+ 	rt =3D netconfig_route_new(nc, AF_INET6, dst ? dst->address : NULL,
+ 					dst ? dst->prefix_len : 0, gateway,
+ 					RTPROT_RA);
 -- =
 
 2.32.0
 
---===============0884619306659696866==--
+--===============1439564489737133799==--
 
