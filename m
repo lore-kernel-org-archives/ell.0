@@ -1,66 +1,137 @@
-Content-Type: multipart/mixed; boundary="===============7113989042423392373=="
+Content-Type: multipart/mixed; boundary="===============4895028249982851935=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 01/11] net: Add l_net_subnet_matches
-Date: Mon, 11 Apr 2022 16:20:46 +0200
-Message-ID: <20220411142056.817784-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 02/15] netconfig: Avoid returning internal l_queues
+Date: Fri, 20 May 2022 17:43:25 +0200
+Message-ID: <20220520154338.2056273-2-andrew.zaborowski@intel.com>
+In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
 
---===============7113989042423392373==
+--===============4895028249982851935==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add inline function to check if two IP addresses are in the same subnet.
+Return const struct l_queue_entry pointers instead.
 ---
- ell/net.h | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+ ell/netconfig.c | 35 ++++++++++++++++++-----------------
+ ell/netconfig.h | 20 +++++++++++---------
+ 2 files changed, 29 insertions(+), 26 deletions(-)
 
-diff --git a/ell/net.h b/ell/net.h
-index c97d9c9..837209c 100644
---- a/ell/net.h
-+++ b/ell/net.h
-@@ -25,6 +25,7 @@
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 8026c81..2a1b3ed 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -1249,37 +1249,38 @@ LIB_EXPORT void l_netconfig_apply_rtnl(struct l_net=
+config *netconfig,
+ 					NULL, NULL, NULL);
+ }
  =
 
- #include <stdbool.h>
- #include <stdint.h>
-+#include <string.h>
+-LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
+-						struct l_netconfig *netconfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_addresses(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
+ {
+ 	if (out_added)
+-		*out_added =3D netconfig->addresses.added;
++		*out_added =3D l_queue_get_entries(netconfig->addresses.added);
  =
 
- struct in_addr;
- struct in6_addr;
-@@ -40,6 +41,26 @@ bool l_net_hostname_is_localhost(const char *hostname);
- bool l_net_get_address(int ifindex, struct in_addr *out);
- bool l_net_get_link_local_address(int ifindex, struct in6_addr *out);
+ 	if (out_updated)
+-		*out_updated =3D netconfig->addresses.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->addresses.updated);
  =
 
-+static inline bool l_net_subnet_matches(const void *a, const void *b,
-+					uint8_t prefix_len)
-+{
-+	uint8_t bytes =3D prefix_len / 8;
-+	uint8_t bits =3D prefix_len & 7;
-+
-+	/*
-+	 * @a and @b are network byte order IPv4 or IPv6 addresses.
-+	 * We want to check if the initial (top) @prefix_len bits match.
-+	 * memcmp the whole bytes, then compare the final byte's top
-+	 * bits by anding with a mask.
-+	 */
-+	if (bytes && memcmp(a, b, bytes))
-+		return false;
-+
-+	return !bits ||
-+		((((const uint8_t *) a)[bytes] ^ ((const uint8_t *) b)[bytes]) &
-+		 (0xff00u >> bits)) =3D=3D 0;
-+}
-+
+ 	if (out_removed)
+-		*out_removed =3D netconfig->addresses.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->addresses.removed);
+ =
+
+-	return netconfig->addresses.current;
++	return l_queue_get_entries(netconfig->addresses.current);
+ }
+ =
+
+-LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
+onfig,
+-						struct l_queue **out_added,
+-						struct l_queue **out_updated,
+-						struct l_queue **out_removed)
++LIB_EXPORT const struct l_queue_entry *l_netconfig_get_routes(
++					struct l_netconfig *netconfig,
++					const struct l_queue_entry **out_added,
++					const struct l_queue_entry **out_updated,
++					const struct l_queue_entry **out_removed)
+ {
+ 	if (out_added)
+-		*out_added =3D netconfig->routes.added;
++		*out_added =3D l_queue_get_entries(netconfig->routes.added);
+ =
+
+ 	if (out_updated)
+-		*out_updated =3D netconfig->routes.updated;
++		*out_updated =3D l_queue_get_entries(netconfig->routes.updated);
+ =
+
+ 	if (out_removed)
+-		*out_removed =3D netconfig->routes.removed;
++		*out_removed =3D l_queue_get_entries(netconfig->routes.removed);
+ =
+
+-	return netconfig->routes.current;
++	return l_queue_get_entries(netconfig->routes.current);
+ }
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index a50a895..7796a2f 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -33,7 +33,7 @@ struct l_dhcp_client;
+ struct l_dhcp6_client;
+ struct l_icmp6_client;
+ struct l_netlink;
+-struct l_queue;
++struct l_queue_entry;
+ struct l_netconfig;
+ struct l_rtnl_address;
+ struct l_rtnl_route;
+@@ -87,14 +87,16 @@ void l_netconfig_set_event_handler(struct l_netconfig *=
+netconfig,
+ =
+
+ void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
+ 				struct l_netlink *rtnl);
+-struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
+-struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
+-					struct l_queue **out_added,
+-					struct l_queue **out_updated,
+-					struct l_queue **out_removed);
++const struct l_queue_entry *l_netconfig_get_addresses(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
++const struct l_queue_entry *l_netconfig_get_routes(
++				struct l_netconfig *netconfig,
++				const struct l_queue_entry **out_added,
++				const struct l_queue_entry **out_updated,
++				const struct l_queue_entry **out_removed);
+ =
+
  #ifdef __cplusplus
  }
- #endif
 -- =
 
 2.32.0
 
---===============7113989042423392373==--
+--===============4895028249982851935==--
 
