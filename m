@@ -1,58 +1,32 @@
-Content-Type: multipart/mixed; boundary="===============3091455668891067607=="
+Content-Type: multipart/mixed; boundary="===============4983032482866480566=="
 MIME-Version: 1.0
-From: James Prestwood <prestwoj at gmail.com>
+From: Denis Kenzior <denkenz at gmail.com>
 To: ell at lists.01.org
-Subject: [PATCH] unit: add asserts to unitset test
-Date: Mon, 06 Dec 2021 16:05:49 -0800
-Message-ID: <20211207000549.1386858-1-prestwoj@gmail.com>
+Subject: Re: [PATCH 01/15] netconfig: Add missing NULL check for routes from RA
+Date: Fri, 20 May 2022 13:19:04 -0500
+Message-ID: <5ca61206-4255-a1af-1827-143899c26901@gmail.com>
+In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
 
---===============3091455668891067607==
+--===============4983032482866480566==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-To satisfy static analysis add a few more return checks
----
- unit/test-uintset.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Hi Andrew,
 
-diff --git a/unit/test-uintset.c b/unit/test-uintset.c
-index 0918ef2..31dc274 100644
---- a/unit/test-uintset.c
-+++ b/unit/test-uintset.c
-@@ -370,18 +370,18 @@ static void test_uintset_size(const void *user_data)
- =
+On 5/20/22 10:43, Andrew Zaborowski wrote:
+> Fixes: 7a137bcac31e ("netconfig: Create routes from Router Advertisements=
+")
+> ---
+>   ell/netconfig.c | 5 +++--
+>   1 file changed, 3 insertions(+), 2 deletions(-)
+> =
 
- 	assert(l_uintset_size(set) =3D=3D 0);
- =
 
--	for (i =3D 0; i < 32; i++) {
--		l_uintset_put(set, i);
-+	for (i =3D 1; i < 32; i++) {
-+		assert(l_uintset_put(set, i));
- 		assert(l_uintset_size(set) =3D=3D i);
- 	}
- =
+Patches 1-3 applied, thanks.
 
- 	assert(l_uintset_size(set) =3D=3D i - 1);
- =
+Regards,
+-Denis
 
--	l_uintset_take(set, 10);
-+	assert(l_uintset_take(set, 10));
- 	assert(l_uintset_size(set) =3D=3D i - 2);
- =
-
--	for (i =3D 0; i < 32; i++)
--		l_uintset_take(set, i);
-+	for (i =3D 1; i < 32; i++)
-+		assert(l_uintset_take(set, i));
- =
-
- 	assert(l_uintset_size(set) =3D=3D 0);
- }
--- =
-
-2.31.1
-
---===============3091455668891067607==--
+--===============4983032482866480566==--
 
