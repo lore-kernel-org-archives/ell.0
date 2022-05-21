@@ -1,64 +1,131 @@
-Content-Type: multipart/mixed; boundary="===============0904249675756439944=="
+Content-Type: multipart/mixed; boundary="===============6056757150464199213=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Mat Martineau <mathew.j.martineau at linux.intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 08/15] examples: Update netconfig method calls
-Date: Fri, 20 May 2022 17:43:31 +0200
-Message-ID: <20220520154338.2056273-8-andrew.zaborowski@intel.com>
-In-Reply-To: 20220520154338.2056273-1-andrew.zaborowski@intel.com
+Subject: [PATCH] build: Generate test certs using OpenSSL 3 legacy provider
+Date: Fri, 20 May 2022 17:15:34 -0700
+Message-ID: <20220521001534.1050889-1-mathew.j.martineau@linux.intel.com>
 
---===============0904249675756439944==
+--===============6056757150464199213==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+OpenSSL 3 moved some legacy algorithms to a separate "legacy" provider,
+so they are not available by default. Add the necessary command line
+parameters for use with OpenSSL 3, which distros are switching to. For
+example, Ubuntu 22.04 and Fedora 36 are the first version of those
+distributions to use OpenSSL 3 or later.
+
+This does break compatibility with older OpenSSL versions and
+configuring the project with "--enable-maintainer-mode". The
+tradeoff is keeping the autoconf/automake checks simpler.
 ---
- examples/netconfig-test.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ Makefile.am | 21 +++++++++++++--------
+ 1 file changed, 13 insertions(+), 8 deletions(-)
 
-diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
-index 39b6fa4..45455dc 100644
---- a/examples/netconfig-test.c
-+++ b/examples/netconfig-test.c
-@@ -108,7 +108,7 @@ static void event_handler(struct l_netconfig *netconfig=
-, uint8_t family,
- 				enum l_netconfig_event event, void *user_data)
- {
- 	const char *af_str =3D family =3D=3D AF_INET ? "v4" : "v6";
--	const struct l_queue_entry *added, *updated, *removed;
-+	const struct l_queue_entry *added, *updated, *removed, *expired;
+diff --git a/Makefile.am b/Makefile.am
+index d8ba99c..b8423c4 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -444,7 +444,8 @@ unit/cert-client-key-pkcs1.pem:
+ 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
  =
 
- 	switch (event) {
- 	case L_NETCONFIG_EVENT_CONFIGURE:
-@@ -126,15 +126,18 @@ static void event_handler(struct l_netconfig *netconf=
-ig, uint8_t family,
- 		return;
- 	}
+ unit/cert-client-key-pkcs1-des.pem: unit/cert-client-key-pkcs1.pem
+-	$(AM_V_GEN)openssl rsa -in $< -out $@ -des -passout pass:abc
++	$(AM_V_GEN)openssl rsa -in $< -out $@ -des -passout pass:abc \
++			-provider legacy -provider default
  =
 
--	l_netconfig_get_addresses(netconfig, &added, &updated, &removed);
-+	l_netconfig_get_addresses(netconfig, &added, &updated,
-+					&removed, &expired);
- 	log_addresses(af_str, "added", added);
- 	log_addresses(af_str, "updated", updated);
- 	log_addresses(af_str, "removed", removed);
-+	log_addresses(af_str, "expired", expired);
+ unit/cert-client-key-pkcs1-des3.pem: unit/cert-client-key-pkcs1.pem
+ 	$(AM_V_GEN)openssl rsa -in $< -out $@ -des3 -passout pass:abc
+@@ -463,15 +464,18 @@ unit/cert-client-key-pkcs8.pem: unit/cert-client-key-=
+pkcs1.pem
  =
 
--	l_netconfig_get_routes(netconfig, &added, &updated, &removed);
-+	l_netconfig_get_routes(netconfig, &added, &updated, &removed, &expired);
- 	log_routes(af_str, "added", added);
- 	log_routes(af_str, "updated", updated);
- 	log_routes(af_str, "removed", removed);
-+	log_routes(af_str, "expired", expired);
+ unit/cert-client-key-pkcs8-md5-des.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+-			-topk8 -v1 PBE-MD5-DES -passout pass:abc
++			-topk8 -v1 PBE-MD5-DES -passout pass:abc \
++			-provider legacy -provider default
  =
 
- 	if (apply)
- 		l_netconfig_apply_rtnl(netconfig);
+ unit/cert-client-key-pkcs8-sha1-des.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+-			-topk8 -v1 PBE-SHA1-DES -passout pass:abc
++			-topk8 -v1 PBE-SHA1-DES -passout pass:abc \
++			-provider legacy -provider default
+ =
+
+ unit/cert-client-key-pkcs8-v2-des.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+-			-topk8 -v2 des-cbc -v2prf hmacWithSHA1 -passout pass:abc
++			-topk8 -v2 des-cbc -v2prf hmacWithSHA1 -passout pass:abc \
++			-provider legacy -provider default
+ =
+
+ unit/cert-client-key-pkcs8-v2-des-ede3.pem: unit/cert-client-key-pkcs8.pem
+ 	$(AM_V_GEN)openssl pkcs8 -in $< -out $@ \
+@@ -575,19 +579,20 @@ unit/cert-entity-pkcs12-nomac.p12: unit/cert-entity-i=
+nt-key.pem unit/cert-entity
+ 	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
+pem -out $@ -export -passout pass:abc -nomac # defaut ciphers
+ =
+
+ unit/cert-entity-pkcs12-rc2-sha1.p12: unit/cert-entity-int-key.pem unit/ce=
+rt-entity-int.pem unit/cert-chain.pem
+-	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
+pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
+:abc -certpbe PBE-SHA1-RC2-40 -keypbe PBE-SHA1-RC2-128 -macalg sha1
++	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
+pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
+:abc -certpbe PBE-SHA1-RC2-40 -keypbe PBE-SHA1-RC2-128 -macalg sha1 -provid=
+er legacy -provider default
+ =
+
+ unit/cert-entity-pkcs12-des-sha256.p12: unit/cert-entity-int-key.pem unit/=
+cert-entity-int.pem unit/cert-chain.pem
+ 	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
+pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
+:abc -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-2DES -macalg sha256
+ =
+
+ unit/cert-entity-pkcs12-rc4-sha384.p12: unit/cert-entity-int-key.pem unit/=
+cert-entity-int.pem unit/cert-chain.pem
+-	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
+pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
+:abc -certpbe PBE-SHA1-RC4-128 -keypbe PBE-SHA1-RC2-40 -macalg sha384
++	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
+pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
+:abc -certpbe PBE-SHA1-RC4-128 -keypbe PBE-SHA1-RC2-40 -macalg sha384 -prov=
+ider legacy -provider default
+ =
+
+ unit/cert-entity-pkcs12-pkcs5-sha512.p12: unit/cert-entity-int-key.pem uni=
+t/cert-entity-int.pem unit/cert-chain.pem
+-	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
+pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
+:abc -certpbe des-cbc -keypbe des-cbc -macalg sha512
++	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.=
+pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass=
+:abc -certpbe des-cbc -keypbe des-cbc -macalg sha512 -provider legacy -prov=
+ider default
+ =
+
+ unit/cert-entity-combined.pem: unit/cert-entity-pkcs12-rc2-sha1.p12
+-	$(AM_V_GEN)openssl pkcs12 -in $< -out $@ -passin pass:abc -passout pass:a=
+bc
++	$(AM_V_GEN)openssl pkcs12 -in $< -out $@ -passin pass:abc -passout pass:a=
+bc \
++			 -provider legacy -provider default
+ =
+
+ unit/key-plaintext.h: unit/plaintext.txt
+ 	$(AM_V_GEN)xxd -i < $< > $@
 -- =
 
-2.32.0
+2.36.1
 
---===============0904249675756439944==--
+--===============6056757150464199213==--
 
