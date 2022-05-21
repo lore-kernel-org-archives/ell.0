@@ -1,129 +1,65 @@
-Content-Type: multipart/mixed; boundary="===============0244191465298539102=="
+Content-Type: multipart/mixed; boundary="===============3465890484644473070=="
 MIME-Version: 1.0
-From: Andrew Zaborowski <andrew.zaborowski at intel.com>
+From: Mat Martineau <mathew.j.martineau at linux.intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 07/14] netconfig: Add getters for DNS addresses and domain
- names
-Date: Thu, 16 Jun 2022 00:47:32 +0200
-Message-ID: <20220615224739.1936538-7-andrew.zaborowski@intel.com>
-In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
+Subject: Re: [PATCH] build: Check for openssl legacy provider requirement
+Date: Fri, 20 May 2022 17:15:11 -0700
+Message-ID: <4b908b7b-b273-53f1-942-d01be6484229@linux.intel.com>
+In-Reply-To: 0373E38A-FD24-457D-B4DE-DFB4A9F91DCD@holtmann.org
 
---===============0244191465298539102==
+--===============3465890484644473070==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
----
- ell/ell.sym     |  2 ++
- ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++++
- ell/netconfig.h |  2 ++
- 3 files changed, 68 insertions(+)
+On Fri, 20 May 2022, Marcel Holtmann wrote:
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 50f8909..d74e8c9 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -757,6 +757,8 @@ global:
- 	l_netconfig_apply_rtnl;
- 	l_netconfig_get_addresses;
- 	l_netconfig_get_routes;
-+	l_netconfig_get_dns_list;
-+	l_netconfig_get_domain_names;
- local:
- 	*;
- };
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index ce5bfe3..94faef0 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1425,3 +1425,67 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_g=
-et_routes(
- =
+> Hi Mat,
+>
+>> OpenSSL 3 introduced some command line incompatibilities and removed
+>> some old algorithms from the defaults. This broke some of the unit test
+>> cert generation commands on distros like Ubuntu 22.04 and Fedora 36.
+>>
+>> Detect support of "providers" by the system openssl command and insert
+>> the necessary command line parameters to enable legacy algorithms for
+>> openssl v3, but leave the commands unchanged for older openssl versions.
+>> ---
+>>
+>> Tested on Ubuntu 22.04, Fedora 36, and Fedora 35.
+>>
+>> ---
+>> Makefile.am  | 26 ++++++++++++++++++--------
+>> configure.ac |  3 +++
+>> 2 files changed, 21 insertions(+), 8 deletions(-)
+>
+> what would it take to just use OpenSSL 3 since these are just required =
 
- 	return l_queue_get_entries(netconfig->routes.current);
- }
-+
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_dns_list(struct l_netconfig *netconfig)
-+{
-+	char **ret =3D NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
-+
-+#define CONCAT(dest, src, free)		\
-+	do {				\
-+		char **tmp =3D src;	\
-+		tmp =3D free ? tmp : l_strv_copy(tmp);	\
-+		if (!dest)		\
-+			dest =3D tmp;	\
-+		else if (tmp) {		\
-+			unsigned int destlen =3D l_strv_length(dest);	\
-+			unsigned int srclen =3D l_strv_length(tmp);	\
-+			dest =3D l_realloc(dest, sizeof(char *) *	\
-+				(destlen + srclen + 1));	\
-+			memcpy(dest + destlen, tmp, sizeof(char *) *	\
-+					(srclen + 1));	\
-+			l_free(tmp);	\
-+		}			\
-+	} while (0)
-+
-+	if (netconfig->v4_dns_override)
-+		CONCAT(ret, netconfig->v4_dns_override, false);
-+	else if ((v4_lease =3D
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)))
-+		CONCAT(ret, l_dhcp_lease_get_dns(v4_lease), true);
-+
-+	if (netconfig->v6_dns_override)
-+		CONCAT(ret, netconfig->v6_dns_override, false);
-+	else if ((v6_lease =3D
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		CONCAT(ret, l_dhcp6_lease_get_dns(v6_lease), true);
-+
-+	return ret;
-+}
-+
-+/* Returns a new strv array to be freed by the caller */
-+LIB_EXPORT char **l_netconfig_get_domain_names(struct l_netconfig *netconf=
-ig)
-+{
-+	char **ret =3D NULL;
-+	const struct l_dhcp_lease *v4_lease;
-+	const struct l_dhcp6_lease *v6_lease;
-+
-+	if (netconfig->v4_domain_names_override)
-+		CONCAT(ret, netconfig->v4_domain_names_override, false);
-+	else if ((v4_lease =3D
-+			l_dhcp_client_get_lease(netconfig->dhcp_client)) &&
-+			l_dhcp_lease_get_domain_name(v4_lease)) {
-+		ret =3D l_new(char *, 2);
-+		ret[0] =3D l_dhcp_lease_get_domain_name(v4_lease);
-+	}
-+
-+	if (netconfig->v6_dns_override)
-+		CONCAT(ret, netconfig->v6_domain_names_override, false);
-+	else if ((v6_lease =3D
-+			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+		CONCAT(ret, l_dhcp6_lease_get_domains(v6_lease), true);
-+
-+	return ret;
-+}
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index 69100a2..0b1182d 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -98,6 +98,8 @@ const struct l_queue_entry *l_netconfig_get_routes(
- 				const struct l_queue_entry **out_updated,
- 				const struct l_queue_entry **out_removed,
- 				const struct l_queue_entry **out_expired);
-+char **l_netconfig_get_dns_list(struct l_netconfig *netconfig);
-+char **l_netconfig_get_domain_names(struct l_netconfig *netconfig);
- =
+> on the development systems. I need to check my release system since that =
 
- #ifdef __cplusplus
- }
--- =
+> is historically always behind, but I feel this business of supporting =
 
-2.34.1
+> two OpenSSL versions will get out of hand quickly. It is too bad that we =
 
---===============0244191465298539102==--
+> can not generate the certificates with our own tools.
+
+Well, that's slightly simpler: substitute "-provider legacy -provider =
+
+default" to the commands in Makefile.am where I added $(openssl_legacy). =
+
+It only cuts 9 lines out of the patch though.
+
+These distros and OpenSSL 3 itself are still fairly new - as much as it =
+
+seems like ELL gets used on older or limited systems the small =
+
+compatibility effort seems worth it to me.
+
+I'll send the OpenSSL3-only patch too and you can decide what direction =
+
+to take.
+
+--
+Mat Martineau
+Intel
+--===============3465890484644473070==--
 
