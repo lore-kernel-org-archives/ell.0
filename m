@@ -1,47 +1,41 @@
-Content-Type: multipart/mixed; boundary="===============4153138571395813681=="
+Content-Type: multipart/mixed; boundary="===============8441626623945608871=="
 MIME-Version: 1.0
-From: Marcel Holtmann <marcel at holtmann.org>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 3/3] Makefile: Bump library 'current' version.
-Date: Wed, 10 Nov 2021 06:58:32 +0100
-Message-ID: <1F9E641A-022D-4E02-87CC-83EFA4AA0599@holtmann.org>
-In-Reply-To: 20211110001448.175980-4-ossama.othman@intel.com
+Subject: [PATCH 1/3] tls: Flush record buffers on l_tls_close
+Date: Thu, 26 May 2022 17:56:55 +0200
+Message-ID: <20220526155657.63641-1-andrew.zaborowski@intel.com>
 
---===============4153138571395813681==
+--===============8441626623945608871==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Ossama,
+We probably don't want to handle data fragments we received before an
+l_tls_close if the TLS tunnel gets restarted in the future.
+---
+ ell/tls.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-> The l_rtnl interface changed.  Bump the "current" ELL library version
-> number accordingly.
-> ---
-> Makefile.am | 4 ++--
-> 1 file changed, 2 insertions(+), 2 deletions(-)
-> =
+diff --git a/ell/tls.c b/ell/tls.c
+index c246f1f..c072afb 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -2852,6 +2852,9 @@ LIB_EXPORT bool l_tls_start(struct l_tls *tls)
+ =
 
-> diff --git a/Makefile.am b/Makefile.am
-> index 4e650c9..73f5298 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -8,8 +8,8 @@ ACLOCAL_AMFLAGS =3D -I build-aux
-> # Interfaces added:		CURRENT++ REVISION=3D0 AGE++
-> # Interfaces removed:		CURRENT++ REVISION=3D0 AGE=3D0
-> =
+ LIB_EXPORT void l_tls_close(struct l_tls *tls)
+ {
++	tls->record_buf_len =3D 0;
++	tls->message_buf_len =3D 0;
++
+ 	TLS_DISCONNECT(TLS_ALERT_CLOSE_NOTIFY, 0, "Closing session");
+ }
+ =
 
-> -ELL_CURRENT =3D 0
-> -ELL_REVISION =3D 2
-> +ELL_CURRENT =3D 1
-> +ELL_REVISION =3D 0
-> ELL_AGE =3D 0
+-- =
 
-actually we have bothered changing this as long as we are still 0.x and not=
- stable. So I rather skip this for now.
+2.32.0
 
-Regards
-
-Marcel
-
---===============4153138571395813681==--
+--===============8441626623945608871==--
 
