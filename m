@@ -1,77 +1,95 @@
-Received: from mail-oa1-f45.google.com (mail-oa1-f45.google.com [209.85.160.45])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D55B57E
-	for <ell@lists.linux.dev>; Mon,  6 Jun 2022 18:30:53 +0000 (UTC)
-Received: by mail-oa1-f45.google.com with SMTP id 586e51a60fabf-e656032735so20234429fac.0
-        for <ell@lists.linux.dev>; Mon, 06 Jun 2022 11:30:53 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=message-id:date:mime-version:user-agent:subject:content-language:to
-         :references:from:in-reply-to:content-transfer-encoding;
-        bh=Lg1U9iEn8ivMzkiCJM7JMAkBMkmiGpCfqfB+XZKp73k=;
-        b=QUMbrgmqqALWFAwNzf16yDElC16T7JIxDwVhKL3xtHWejgBgrqb0bgb9jeaWQzVg1q
-         kfCcAesM8ENWqnkQyQTPspXOUuk1/pIAXraPr4DK0wKQ8wnGGLwi9RNbQQwUBJMR3qSG
-         9mUYlkVXdlOb8tWeJBFiOduO/fGeGvrYFnnOF2Kr6CpjZB49nHJAHY9QhsN04oJ1FcmW
-         TVwpjI0wxMRg6MeBPWrjZzRzIpOQt2lOACMV2DbOslG2xr6nyLuRSv0Hq7TF24i7iLQj
-         wr0+LysPRGXT/52Ob/QTEgzfVQAyLB7b4Nr4Zk1yt5PV0TPGy2TUwJw4d4oUDxy5uPxc
-         0o9w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
-         :content-language:to:references:from:in-reply-to
-         :content-transfer-encoding;
-        bh=Lg1U9iEn8ivMzkiCJM7JMAkBMkmiGpCfqfB+XZKp73k=;
-        b=okvWrUieXFeoVX+VmhynxX6Kg2QL7EvGBeRyI/tVXJc1SZkcSoFmJrZhb86ogVrUHZ
-         8rCY4xwMRV6O85vrB2dhYmHa33gqrmcQ437oSu5ZLfmTzH+bVTsry/slBjx6Q5XhSCW4
-         PiEWYUd0t0tMqaurTHODkBYTQz8TXyaEl3SiHw6MlXPvBYZR+NFlYzLJ3RU8Xni1orNb
-         5Dy+FFA5fOsNMpQtAZfLUeeHb9H3Y4ysIgLJ4pWvypQxmhbnJla1bnD5ezC5k/Y6GYgA
-         gYK5PVJeXETGdWDY47+Lw5OCV7aMZ8R5i0CVjHoSeP0deBy1SsG6zAY+Kb3N4IxdCm5I
-         FU3Q==
-X-Gm-Message-State: AOAM532Cgk/8HIm8ffHtWsEvbG5yJDuUBrenaFuzVcg37G3eObpTi+jR
-	ogr3fUyb3eoWaYkCYu6G4v4=
-X-Google-Smtp-Source: ABdhPJwBaZY2/IEN+/YWtHiKIfABXOA27deozLBVk0bV0aDWeyLNZcaosOlwzljqsO34UiNQ0mN07w==
-X-Received: by 2002:a05:6870:d1c8:b0:f3:2788:9397 with SMTP id b8-20020a056870d1c800b000f327889397mr24026251oac.283.1654540253053;
-        Mon, 06 Jun 2022 11:30:53 -0700 (PDT)
-Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id d22-20020a056830045600b00608b8e6fad5sm8086945otc.76.2022.06.06.11.30.52
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 06 Jun 2022 11:30:52 -0700 (PDT)
-Message-ID: <522505f6-bf75-d30e-945c-6da6a256a40f@gmail.com>
-Date: Mon, 6 Jun 2022 13:18:39 -0500
+Received: from fx.arvanta.net (static-213-198-238-194.adsl.eunet.rs [213.198.238.194])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 3CE807E
+	for <ell@lists.linux.dev>; Mon,  6 Jun 2022 20:11:17 +0000 (UTC)
+Received: from m1.arvanta.net (kcl.arvanta.net [10.5.1.8])
+	by fx.arvanta.net (Postfix) with ESMTP id 0F771237A3;
+	Mon,  6 Jun 2022 22:05:16 +0200 (CEST)
+From: =?UTF-8?q?Milan=20P=2E=20Stani=C4=87?= <mps@arvanta.net>
+To: ell@lists.linux.dev
+Cc: =?UTF-8?q?Milan=20P=2E=20Stani=C4=87?= <mps@arvanta.net>
+Subject: [PATCH] build: fix time.h related breakage on musl
+Date: Mon,  6 Jun 2022 22:05:39 +0200
+Message-Id: <20220606200539.28575-1-mps@arvanta.net>
+X-Mailer: git-send-email 2.36.1
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.3.0
-Subject: Re: Fix bug when stdin is closed
-Content-Language: en-US
-To: Greg Depoire--Ferrer <greg@gregdf.com>, ell@lists.linux.dev
-References: <20220507235434.11693-1-greg@gregdf.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20220507235434.11693-1-greg@gregdf.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Greg,
+missing time.h for struct timeval usage
+forward declaration of struct timeval in time-private.h
+---
+ ell/dhcp-transport.c  | 1 +
+ ell/dhcp6-transport.c | 1 +
+ ell/icmp6.c           | 1 +
+ ell/time-private.h    | 2 +-
+ ell/time.c            | 1 +
+ 5 files changed, 5 insertions(+), 1 deletion(-)
 
-On 5/7/22 18:54, Greg Depoire--Ferrer wrote:
-> Running iwd with FD 0 (stdin) closed fails because ell considers epoll_fd of 0 to mean failure. The first commit fixes
-> that bug.
-> 
-> However, it still won't work because ell/dhcp6-transport.c has a bug where it closes a uninitialized FD (FD 0 on my
-> machine) and that would cause an infinite loop because the epoll_wait call was returning EBADF. The second commit fixes
-> that bug.
-> 
-> I noticed that ell/dhcp-transport.c is prone to the same mistake as the udp_fd field is not initialized on construction,
-> but I don't know if the close can actually be called before the udp_fd field is set. Just to be sure, the third commit
-> initializes it.
-> 
+diff --git a/ell/dhcp-transport.c b/ell/dhcp-transport.c
+index ef030de..c4cf0ca 100644
+--- a/ell/dhcp-transport.c
++++ b/ell/dhcp-transport.c
+@@ -40,6 +40,7 @@
+ #include <linux/filter.h>
+ #include <net/if_arp.h>
+ #include <errno.h>
++#include <sys/time.h>
+ 
+ #include "io.h"
+ #include "util.h"
+diff --git a/ell/dhcp6-transport.c b/ell/dhcp6-transport.c
+index 30c425f..5ff6516 100644
+--- a/ell/dhcp6-transport.c
++++ b/ell/dhcp6-transport.c
+@@ -35,6 +35,7 @@
+ #include <net/if.h>
+ #include <unistd.h>
+ #include <errno.h>
++#include <sys/time.h>
+ 
+ #include "private.h"
+ #include "missing.h"
+diff --git a/ell/icmp6.c b/ell/icmp6.c
+index 368977f..7319903 100644
+--- a/ell/icmp6.c
++++ b/ell/icmp6.c
+@@ -36,6 +36,7 @@
+ #include <net/if.h>
+ #include <unistd.h>
+ #include <errno.h>
++#include <sys/time.h>
+ 
+ #include "private.h"
+ #include "useful.h"
+diff --git a/ell/time-private.h b/ell/time-private.h
+index 5295d94..83c23dd 100644
+--- a/ell/time-private.h
++++ b/ell/time-private.h
+@@ -19,7 +19,7 @@
+  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+  *
+  */
+-
++struct timeval;
+ uint64_t _time_pick_interval_secs(uint32_t min_secs, uint32_t max_secs);
+ uint64_t _time_fuzz_msecs(uint64_t ms);
+ uint64_t _time_fuzz_secs(uint32_t secs, uint32_t max_offset);
+diff --git a/ell/time.c b/ell/time.c
+index 10e10b0..41e5725 100644
+--- a/ell/time.c
++++ b/ell/time.c
+@@ -26,6 +26,7 @@
+ 
+ #define _GNU_SOURCE
+ #include <time.h>
++#include <sys/time.h>
+ 
+ #include "time.h"
+ #include "time-private.h"
+-- 
+2.36.1
 
-Good catch(es)!  Patches 1 & 2 applied, thanks!  See my reply regarding patch 3.
-
-Regards,
--Denis
