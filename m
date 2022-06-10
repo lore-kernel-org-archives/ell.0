@@ -1,53 +1,56 @@
-Content-Type: multipart/mixed; boundary="===============9100357206707487621=="
+Content-Type: multipart/mixed; boundary="===============6545427093673094522=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: James Prestwood <prestwoj at gmail.com>
 To: ell at lists.01.org
-Subject: Re: AIO support
-Date: Fri, 24 Sep 2021 09:21:21 -0500
-Message-ID: <f07404c6-ab34-c7f8-77fe-9b01a7839bc1@gmail.com>
-In-Reply-To: 1e731fd1-e512-f4fe-6199-2dba54323b11@maurer.systems
+Subject: [PATCH 1/2] cert-crypto: pragma false positive (-Wmaybe-uninitialized)
+Date: Fri, 10 Jun 2022 10:11:31 -0700
+Message-ID: <20220610171132.334641-1-prestwoj@gmail.com>
 
---===============9100357206707487621==
+--===============6545427093673094522==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Simon,
+On musl-gcc 'bmpstring' was detected as maybe uninitialized. This
+is actually a false positive since the usage is guarded by
+if (p_len) but the compiler isn't aware. Pragma to ignore this
+warning.
 
-On 9/24/21 3:36 AM, Simon Maurer wrote:
-> I started testing the aio interface for ell and it seems to work, except =
-it's =
+ell/cert-crypto.c: In function 'cert_pkcs12_pbkdf':
+ell/cert-crypto.c:246:17: error: 'bmpstring' may be used uninitialized in t=
+his function [-Werror=3Dmaybe-uninitialized]
+  246 |                 explicit_bzero(bmpstring, passwd_len);
+---
+ ell/cert-crypto.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-> not asynchronous. Turns out libaio works only under certain circumstances:
-> http://lse.sourceforge.net/io/aio.html
+diff --git a/ell/cert-crypto.c b/ell/cert-crypto.c
+index cc312e2..e6e8876 100644
+--- a/ell/cert-crypto.c
++++ b/ell/cert-crypto.c
+@@ -236,6 +236,8 @@ uint8_t *cert_pkcs12_pbkdf(const char *password,
+ 		ptr +=3D s_len + salt_len - j;
+ 	}
+ =
 
-yes, this was a widely reported criticism.  I assume O_DIRECT is not applic=
-able =
++_Pragma("GCC diagnostic push")
++_Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+ 	if (p_len) {
+ 		for (j =3D passwd_len; j < p_len;
+ 					j +=3D passwd_len, ptr +=3D passwd_len)
+@@ -246,6 +248,7 @@ uint8_t *cert_pkcs12_pbkdf(const char *password,
+ 		explicit_bzero(bmpstring, passwd_len);
+ 		l_free(bmpstring);
+ 	}
++_Pragma("GCC diagnostic pop")
+ =
 
-to your use case?
+ 	key =3D l_malloc(key_len + hash->len);
+ =
 
-> So it's useless. There is a newer alternative called io_uring, but only f=
-or =
+-- =
 
-> newer kernels (5.1) and not available to my target system. I will go back=
- to the
+2.34.1
 
-Honestly, for ell, io_uring would be much more interesting to support.  Wit=
-h =
-
-maybe a fallback to aio or a threaded/blocking implementation for older ker=
-nels.
-
-> POSIX AIO and use SIGEV_THREAD (writing an eventfd in the notify function=
-) =
-
-> instead of SIGEV_SIGNAL.
-> =
-
-
-You still have to contend with librt use, which I think Marcel was against.
-
-Regards,
--Denis
---===============9100357206707487621==--
+--===============6545427093673094522==--
 
