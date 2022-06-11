@@ -1,303 +1,110 @@
-Content-Type: multipart/mixed; boundary="===============5798189115714740317=="
+Content-Type: multipart/mixed; boundary="===============3270426942022063387=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 10/11] netconfig: Create routes from Router Advertisements
-Date: Mon, 11 Apr 2022 16:20:55 +0200
-Message-ID: <20220411142056.817784-10-andrew.zaborowski@intel.com>
-In-Reply-To: 20220411142056.817784-1-andrew.zaborowski@intel.com
+Subject: [PATCH 3/3] netlink: Enable extended ACKs if debug handler set
+Date: Sat, 11 Jun 2022 03:45:45 +0200
+Message-ID: <20220611014545.1466270-3-andrew.zaborowski@intel.com>
+In-Reply-To: 20220611014545.1466270-1-andrew.zaborowski@intel.com
 
---===============5798189115714740317==
+--===============3270426942022063387==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-If IPv6 is enabled, Create the ICMP6 client and handle Router
-Advertisements received by creating, updating and removing routes per
-the data in the Router Advertisements.  Timeouts aren't handled yet.
+Enable the NETLINK_EXT_ACK socket option on netlink sockets if debug
+logging is enabled so as to show the error message strings from the
+kernel.
 ---
- ell/netconfig.c | 202 +++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 201 insertions(+), 1 deletion(-)
+ ell/netlink.c | 36 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 35 insertions(+), 1 deletion(-)
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 030b2e1..15eb4ed 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -27,12 +27,16 @@
- #include <linux/types.h>
- #include <netinet/ip.h>
- #include <arpa/inet.h>
-+#include <netinet/icmp6.h>
- =
-
- #include "private.h"
- #include "useful.h"
- #include "log.h"
- #include "dhcp.h"
- #include "dhcp-private.h"
-+#include "icmp6.h"
-+#include "icmp6-private.h"
-+#include "dhcp6.h"
- #include "netlink.h"
- #include "rtnl.h"
- #include "queue.h"
-@@ -63,6 +67,8 @@ struct l_netconfig {
- 	bool v4_configured;
- 	struct l_dhcp_client *dhcp_client;
- 	bool v6_configured;
-+	struct l_icmp6_client *icmp6_client;
-+	struct l_dhcp6_client *dhcp6_client;
- =
-
- 	/* These objects, if not NULL, are owned by @addresses and @routes */
- 	struct l_rtnl_address *v4_address;
-@@ -351,6 +357,188 @@ static void netconfig_dhcp_event_handler(struct l_dhc=
-p_client *client,
- 	}
+diff --git a/ell/netlink.c b/ell/netlink.c
+index 32d021b..bab76f8 100644
+--- a/ell/netlink.c
++++ b/ell/netlink.c
+@@ -158,6 +158,31 @@ static void process_broadcast(struct l_netlink *netlin=
+k, uint32_t group,
+ 	l_hashmap_foreach(notify_list, do_notify, nlmsg);
  }
  =
 
-+static struct l_rtnl_route *netconfig_find_icmp6_route(
-+						struct l_netconfig *nc,
-+						const uint8_t *gateway,
-+						const struct route_info *dst)
++static void process_ext_ack(struct l_netlink *netlink,
++				const struct nlmsghdr *nlmsg)
 +{
-+	const struct l_queue_entry *entry;
++	const char *err_str =3D NULL;
++	uint32_t err_offset =3D -1U;
++	_auto_(l_free) char *dbg_str =3D NULL;
 +
-+	for (entry =3D l_queue_get_entries(nc->routes.current); entry;
-+			entry =3D entry->next) {
-+		struct l_rtnl_route *route =3D entry->data;
-+		const uint8_t *route_gateway;
-+		const uint8_t *route_dst;
-+		uint8_t route_prefix_len =3D 0;
++	if (!netlink->debug_handler ||
++			!netlink_parse_ext_ack(nlmsg, &err_str, &err_offset) ||
++			(!err_str && err_offset =3D=3D -1U))
++		return;
 +
-+		if (l_rtnl_route_get_family(route) !=3D AF_INET6)
-+			continue;
-+
-+		route_gateway =3D l_rtnl_route_get_gateway_in_addr(route);
-+		if ((gateway || route_gateway) &&
-+				(!gateway || !route_gateway ||
-+				 memcmp(gateway, route_gateway, 16)))
-+			continue;
-+
-+		route_dst =3D l_rtnl_route_get_dst_in_addr(route,
-+							&route_prefix_len);
-+		if ((dst || route_prefix_len) &&
-+				(!dst || !route_prefix_len ||
-+				 dst->prefix_len !=3D route_prefix_len ||
-+				 memcmp(dst->address, route_dst,
-+					 (dst->prefix_len + 7) / 8)))
-+			continue;
-+
-+		return route;
-+	}
-+
-+	return NULL;
-+}
-+
-+static struct l_rtnl_route *netconfig_add_icmp6_route(struct l_netconfig *=
-nc,
-+						const uint8_t *gateway,
-+						const struct route_info *dst,
-+						uint8_t preference)
-+{
-+	struct l_rtnl_route *rt;
-+	char buf1[INET6_ADDRSTRLEN];
-+	char buf2[INET6_ADDRSTRLEN];
-+
-+	if (gateway && !dst)
-+		rt =3D l_rtnl_route_new_gateway(inet_ntop(AF_INET6, gateway,
-+							buf1, sizeof(buf1)));
-+	else if (dst && !gateway)
-+		rt =3D l_rtnl_route_new_prefix(inet_ntop(AF_INET6, dst->address,
-+							buf2, sizeof(buf2)),
-+						dst->prefix_len);
++	if (err_str && err_offset !=3D -1U)
++		dbg_str =3D l_strdup_printf("Extended error: '%s', offset of "
++					" offending element within request: "
++					"%i bytes", err_str, (int) err_offset);
++	else if (err_str)
++		dbg_str =3D l_strdup_printf("Extended error: '%s'", err_str);
 +	else
-+		rt =3D l_rtnl_route_new_static(inet_ntop(AF_INET6, gateway,
-+							buf1, sizeof(buf1)),
-+						inet_ntop(AF_INET6,
-+							dst->address,
-+							buf2, sizeof(buf2)),
-+						dst->prefix_len);
++		dbg_str =3D l_strdup_printf("Offset of offending element within "
++					"request: %i bytes", (int) err_offset);
 +
-+	if (L_WARN_ON(!rt))
-+		return NULL;
-+
-+	l_rtnl_route_set_preference(rt, preference);
-+	l_rtnl_route_set_protocol(rt, RTPROT_RA);
-+	l_rtnl_route_set_priority(rt, nc->route_priority);
-+	l_queue_push_tail(nc->routes.current, rt);
-+	l_queue_push_tail(nc->routes.added, rt);
-+	return rt;
++	netlink->debug_handler(dbg_str, netlink->debug_data);
 +}
 +
-+static void netconfig_set_icmp6_route_data(struct l_netconfig *nc,
-+						struct l_rtnl_route *rt,
-+						uint64_t start_time,
-+						uint32_t preferred_lifetime,
-+						uint32_t valid_lifetime,
-+						uint32_t mtu, bool updated)
-+{
-+	uint64_t expiry =3D start_time + valid_lifetime * L_USEC_PER_SEC;
-+
-+	l_rtnl_route_set_mtu(rt, mtu);
-+	l_rtnl_route_set_lifetime(rt, valid_lifetime);
-+	l_rtnl_route_set_expiry(rt, expiry);
-+
-+	if (updated)
-+		l_queue_push_tail(nc->routes.updated, rt);
-+}
-+
-+static void netconfig_remove_icmp6_route(struct l_netconfig *nc,
-+						struct l_rtnl_route *route)
-+{
-+	l_queue_remove(nc->routes.current, route);
-+	l_queue_push_tail(nc->routes.removed, route);
-+}
-+
-+static void netconfig_icmp6_event_handler(struct l_icmp6_client *client,
-+						enum l_icmp6_client_event event,
-+						void *event_data,
-+						void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
-+	const struct l_icmp6_router *r;
-+	struct l_rtnl_route *default_route;
-+	unsigned int i;
-+
-+	if (event !=3D L_ICMP6_CLIENT_EVENT_ROUTER_FOUND)
-+		return;
-+
-+	r =3D event_data;
-+
-+	/*
-+	 * Note: If this is the first RA received, the l_dhcp6_client
-+	 * will have received the event before us and will be acting
-+	 * on it by now.
-+	 */
-+
-+	if (nc->v4_gateway_override)
-+		return;
-+
-+	/* Process the default gateway information */
-+	default_route =3D netconfig_find_icmp6_route(nc, r->address, NULL);
-+
-+	if (!default_route && r->lifetime) {
-+		default_route =3D netconfig_add_icmp6_route(nc, r->address, NULL,
-+								r->pref);
-+		if (unlikely(!default_route))
-+			return;
-+
-+		netconfig_set_icmp6_route_data(nc, default_route, r->start_time,
-+						r->lifetime, r->lifetime,
-+						r->mtu, false);
-+	} else if (default_route && r->lifetime)
-+		netconfig_set_icmp6_route_data(nc, default_route, r->start_time,
-+						r->lifetime, r->lifetime,
-+						r->mtu, true);
-+	else if (default_route && !r->lifetime)
-+		netconfig_remove_icmp6_route(nc, default_route);
-+
-+	/*
-+	 * Process the onlink and offlink routes, from the Router
-+	 * Advertisement's Prefix Information options and Route
-+	 * Information options respectively.
-+	 */
-+	for (i =3D 0; i < r->n_routes; i++) {
-+		const struct route_info *info =3D &r->routes[i];
-+		const uint8_t *gateway =3D info->onlink ? NULL : r->address;
-+		struct l_rtnl_route *route =3D
-+			netconfig_find_icmp6_route(nc, gateway, info);
-+
-+		if (!route && info->valid_lifetime) {
-+			route =3D netconfig_add_icmp6_route(nc, gateway, info,
-+							info->preference);
-+			if (unlikely(!route))
-+				continue;
-+
-+			netconfig_set_icmp6_route_data(nc, route, r->start_time,
-+						info->preferred_lifetime,
-+						info->valid_lifetime,
-+						gateway ? r->mtu : 0, false);
-+		} else if (route && info->valid_lifetime)
-+			netconfig_set_icmp6_route_data(nc, route, r->start_time,
-+						info->preferred_lifetime,
-+						info->valid_lifetime,
-+						gateway ? r->mtu : 0, true);
-+		else if (route && !info->valid_lifetime)
-+			netconfig_remove_icmp6_route(nc, route);
-+	}
-+
-+	/*
-+	 * Note: we may be emitting this before L_NETCONFIG_EVENT_CONFIGURE.
-+	 * We should probably instead save the affected routes in separate
-+	 * lists and add them to the _CONFIGURE event, suppressing any _UPDATE
-+	 * events while nc->v6_configured is false.
-+	 */
-+	if (!l_queue_isempty(nc->routes.added) ||
-+			!l_queue_isempty(nc->routes.updated) ||
-+			!l_queue_isempty(nc->routes.removed))
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
-+}
-+
- LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+ static void process_message(struct l_netlink *netlink, struct nlmsghdr *nl=
+msg)
  {
- 	struct l_netconfig *nc;
-@@ -373,6 +561,13 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_=
-t ifindex)
- 					netconfig_dhcp_event_handler,
- 					nc, NULL);
+ 	const void *data =3D nlmsg;
+@@ -176,10 +201,12 @@ static void process_message(struct l_netlink *netlink=
+, struct nlmsghdr *nlmsg)
  =
 
-+	nc->dhcp6_client =3D l_dhcp6_client_new(ifindex);
+ 		switch (nlmsg->nlmsg_type) {
+ 		case NLMSG_ERROR:
+-			err =3D data + NLMSG_HDRLEN;
++			err =3D NLMSG_DATA(nlmsg);
+ =
+
+ 			command->handler(err->error, 0, NULL, 0,
+ 							command->user_data);
 +
-+	nc->icmp6_client =3D l_dhcp6_client_get_icmp6(nc->dhcp6_client);
-+	l_icmp6_client_add_event_handler(nc->icmp6_client,
-+					netconfig_icmp6_event_handler,
-+					nc, NULL);
++			process_ext_ack(netlink, nlmsg);
+ 			break;
+ 		}
+ 	} else {
+@@ -597,6 +624,8 @@ LIB_EXPORT bool l_netlink_set_debug(struct l_netlink *n=
+etlink,
+ 			l_netlink_debug_func_t function,
+ 			void *user_data, l_netlink_destroy_func_t destroy)
+ {
++	int ext_ack;
 +
- 	return nc;
+ 	if (unlikely(!netlink))
+ 		return false;
+ =
+
+@@ -609,6 +638,11 @@ LIB_EXPORT bool l_netlink_set_debug(struct l_netlink *=
+netlink,
+ =
+
+ 	/* l_io_set_debug(netlink->io, function, user_data, NULL); */
+ =
+
++	ext_ack =3D function !=3D NULL;
++	if (setsockopt(l_io_get_fd(netlink->io), SOL_NETLINK, NETLINK_EXT_ACK,
++			&ext_ack, sizeof(ext_ack)) < 0 && function)
++		function("Failed to set NETLINK_EXT_ACK", user_data);
++
+ 	return true;
  }
  =
 
-@@ -393,6 +588,7 @@ LIB_EXPORT void l_netconfig_destroy(struct l_netconfig =
-*netconfig)
- 	l_netconfig_set_domain_names_override(netconfig, AF_INET6, NULL);
- =
-
- 	l_dhcp_client_destroy(netconfig->dhcp_client);
-+	l_dhcp6_client_destroy(netconfig->dhcp6_client);
- 	l_netconfig_set_event_handler(netconfig, NULL, NULL, NULL);
- 	l_queue_destroy(netconfig->addresses.current, NULL);
- 	l_queue_destroy(netconfig->addresses.added, NULL);
-@@ -815,7 +1011,10 @@ LIB_EXPORT bool l_netconfig_start(struct l_netconfig =
-*netconfig)
- 	}
- =
-
- 	if (netconfig->v6_enabled) {
--		if (netconfig->v6_static_addr && !netconfig->do_static_work) {
-+		if (!netconfig->v6_static_addr) {
-+			if (!l_dhcp6_client_start(netconfig->dhcp6_client))
-+				return false;
-+		} else if (!netconfig->do_static_work) {
- 			/*
- 			 * We're basically ready to configure the interface
- 			 * but do this in an idle callback.
-@@ -851,6 +1050,7 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *n=
-etconfig)
- 	netconfig->v6_address =3D NULL;
- =
-
- 	l_dhcp_client_stop(netconfig->dhcp_client);
-+	l_dhcp6_client_stop(netconfig->dhcp6_client);
- }
- =
-
- LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhcp_client(
 -- =
 
-2.32.0
+2.34.1
 
---===============5798189115714740317==--
+--===============3270426942022063387==--
 
