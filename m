@@ -1,150 +1,129 @@
-Content-Type: multipart/mixed; boundary="===============2000355399882768534=="
+Content-Type: multipart/mixed; boundary="===============0244191465298539102=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 5/6] netconfig: Add l_netconfig_apply_rtnl
-Date: Mon, 07 Feb 2022 16:07:16 +0100
-Message-ID: <20220207150717.60511-5-andrew.zaborowski@intel.com>
-In-Reply-To: 20220207150717.60511-1-andrew.zaborowski@intel.com
+Subject: [PATCH 07/14] netconfig: Add getters for DNS addresses and domain
+ names
+Date: Thu, 16 Jun 2022 00:47:32 +0200
+Message-ID: <20220615224739.1936538-7-andrew.zaborowski@intel.com>
+In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
 
---===============2000355399882768534==
+--===============0244191465298539102==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Add l_netconfig_apply_rtnl and the getters for current lists of routes
-and addresses for the netconfig user to be able to commit address and
-route changes.
 ---
- ell/ell.sym     |  3 ++
- ell/netconfig.c | 73 +++++++++++++++++++++++++++++++++++++++++++++++++
- ell/netconfig.h | 11 ++++++++
- 3 files changed, 87 insertions(+)
+ ell/ell.sym     |  2 ++
+ ell/netconfig.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/netconfig.h |  2 ++
+ 3 files changed, 68 insertions(+)
 
 diff --git a/ell/ell.sym b/ell/ell.sym
-index 6c27800..b256771 100644
+index 50f8909..d74e8c9 100644
 --- a/ell/ell.sym
 +++ b/ell/ell.sym
-@@ -728,6 +728,9 @@ global:
- 	l_netconfig_stop;
- 	l_netconfig_get_dhcp_client;
- 	l_netconfig_set_event_handler;
-+	l_netconfig_apply_rtnl;
-+	l_netconfig_get_addresses;
-+	l_netconfig_get_routes;
+@@ -757,6 +757,8 @@ global:
+ 	l_netconfig_apply_rtnl;
+ 	l_netconfig_get_addresses;
+ 	l_netconfig_get_routes;
++	l_netconfig_get_dns_list;
++	l_netconfig_get_domain_names;
  local:
  	*;
  };
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index e3ac751..7317a79 100644
+index ce5bfe3..94faef0 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -373,3 +373,76 @@ LIB_EXPORT void l_netconfig_set_event_handler(struct l=
-_netconfig *netconfig,
- 	netconfig->handler.user_data =3D user_data;
- 	netconfig->handler.destroy =3D destroy;
- }
-+
-+LIB_EXPORT void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
-+					struct l_netlink *rtnl)
-+{
-+	const struct l_queue_entry *entry;
-+
-+	for (entry =3D l_queue_get_entries(netconfig->addresses.removed); entry;
-+			entry =3D entry->next)
-+		l_rtnl_ifaddr_delete(rtnl, netconfig->ifindex, entry->data,
-+					NULL, NULL, NULL);
-+
-+	for (entry =3D l_queue_get_entries(netconfig->addresses.added); entry;
-+			entry =3D entry->next)
-+		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
-+					NULL, NULL, NULL);
-+
-+	/* We can use l_rtnl_ifaddr_add here since that uses NLM_F_REPLACE */
-+	for (entry =3D l_queue_get_entries(netconfig->addresses.updated); entry;
-+			entry =3D entry->next)
-+		l_rtnl_ifaddr_add(rtnl, netconfig->ifindex, entry->data,
-+					NULL, NULL, NULL);
-+
-+	for (entry =3D l_queue_get_entries(netconfig->routes.removed); entry;
-+			entry =3D entry->next)
-+		l_rtnl_route_delete(rtnl, netconfig->ifindex, entry->data,
-+					NULL, NULL, NULL);
-+
-+	for (entry =3D l_queue_get_entries(netconfig->routes.added); entry;
-+			entry =3D entry->next)
-+		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
-+					NULL, NULL, NULL);
-+
-+	/* We can use l_rtnl_route_add here since that uses NLM_F_REPLACE */
-+	for (entry =3D l_queue_get_entries(netconfig->routes.updated); entry;
-+			entry =3D entry->next)
-+		l_rtnl_route_add(rtnl, netconfig->ifindex, entry->data,
-+					NULL, NULL, NULL);
-+}
-+
-+LIB_EXPORT struct l_queue *l_netconfig_get_addresses(
-+						struct l_netconfig *netconfig,
-+						struct l_queue **out_added,
-+						struct l_queue **out_updated,
-+						struct l_queue **out_removed)
-+{
-+	if (out_added)
-+		*out_added =3D netconfig->addresses.added;
-+
-+	if (out_updated)
-+		*out_updated =3D netconfig->addresses.updated;
-+
-+	if (out_removed)
-+		*out_removed =3D netconfig->addresses.removed;
-+
-+	return netconfig->addresses.current;
-+}
-+
-+LIB_EXPORT struct l_queue *l_netconfig_get_routes(struct l_netconfig *netc=
-onfig,
-+						struct l_queue **out_added,
-+						struct l_queue **out_updated,
-+						struct l_queue **out_removed)
-+{
-+	if (out_added)
-+		*out_added =3D netconfig->routes.added;
-+
-+	if (out_updated)
-+		*out_updated =3D netconfig->routes.updated;
-+
-+	if (out_removed)
-+		*out_removed =3D netconfig->routes.removed;
-+
-+	return netconfig->routes.current;
-+}
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index eab48b0..bb5eff5 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -66,6 +66,17 @@ void l_netconfig_set_event_handler(struct l_netconfig *n=
-etconfig,
- 					void *user_data,
- 					l_netconfig_destroy_cb_t destroy);
+@@ -1425,3 +1425,67 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_g=
+et_routes(
  =
 
-+void l_netconfig_apply_rtnl(struct l_netconfig *netconfig,
-+				struct l_netlink *rtnl);
-+struct l_queue *l_netconfig_get_addresses(struct l_netconfig *netconfig,
-+					struct l_queue **out_added,
-+					struct l_queue **out_updated,
-+					struct l_queue **out_removed);
-+struct l_queue *l_netconfig_get_routes(struct l_netconfig *netconfig,
-+					struct l_queue **out_added,
-+					struct l_queue **out_updated,
-+					struct l_queue **out_removed);
+ 	return l_queue_get_entries(netconfig->routes.current);
+ }
 +
++/* Returns a new strv array to be freed by the caller */
++LIB_EXPORT char **l_netconfig_get_dns_list(struct l_netconfig *netconfig)
++{
++	char **ret =3D NULL;
++	const struct l_dhcp_lease *v4_lease;
++	const struct l_dhcp6_lease *v6_lease;
++
++#define CONCAT(dest, src, free)		\
++	do {				\
++		char **tmp =3D src;	\
++		tmp =3D free ? tmp : l_strv_copy(tmp);	\
++		if (!dest)		\
++			dest =3D tmp;	\
++		else if (tmp) {		\
++			unsigned int destlen =3D l_strv_length(dest);	\
++			unsigned int srclen =3D l_strv_length(tmp);	\
++			dest =3D l_realloc(dest, sizeof(char *) *	\
++				(destlen + srclen + 1));	\
++			memcpy(dest + destlen, tmp, sizeof(char *) *	\
++					(srclen + 1));	\
++			l_free(tmp);	\
++		}			\
++	} while (0)
++
++	if (netconfig->v4_dns_override)
++		CONCAT(ret, netconfig->v4_dns_override, false);
++	else if ((v4_lease =3D
++			l_dhcp_client_get_lease(netconfig->dhcp_client)))
++		CONCAT(ret, l_dhcp_lease_get_dns(v4_lease), true);
++
++	if (netconfig->v6_dns_override)
++		CONCAT(ret, netconfig->v6_dns_override, false);
++	else if ((v6_lease =3D
++			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
++		CONCAT(ret, l_dhcp6_lease_get_dns(v6_lease), true);
++
++	return ret;
++}
++
++/* Returns a new strv array to be freed by the caller */
++LIB_EXPORT char **l_netconfig_get_domain_names(struct l_netconfig *netconf=
+ig)
++{
++	char **ret =3D NULL;
++	const struct l_dhcp_lease *v4_lease;
++	const struct l_dhcp6_lease *v6_lease;
++
++	if (netconfig->v4_domain_names_override)
++		CONCAT(ret, netconfig->v4_domain_names_override, false);
++	else if ((v4_lease =3D
++			l_dhcp_client_get_lease(netconfig->dhcp_client)) &&
++			l_dhcp_lease_get_domain_name(v4_lease)) {
++		ret =3D l_new(char *, 2);
++		ret[0] =3D l_dhcp_lease_get_domain_name(v4_lease);
++	}
++
++	if (netconfig->v6_dns_override)
++		CONCAT(ret, netconfig->v6_domain_names_override, false);
++	else if ((v6_lease =3D
++			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
++		CONCAT(ret, l_dhcp6_lease_get_domains(v6_lease), true);
++
++	return ret;
++}
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index 69100a2..0b1182d 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -98,6 +98,8 @@ const struct l_queue_entry *l_netconfig_get_routes(
+ 				const struct l_queue_entry **out_updated,
+ 				const struct l_queue_entry **out_removed,
+ 				const struct l_queue_entry **out_expired);
++char **l_netconfig_get_dns_list(struct l_netconfig *netconfig);
++char **l_netconfig_get_domain_names(struct l_netconfig *netconfig);
+ =
+
  #ifdef __cplusplus
  }
- #endif
 -- =
 
-2.32.0
+2.34.1
 
---===============2000355399882768534==--
+--===============0244191465298539102==--
 
