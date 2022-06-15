@@ -1,130 +1,64 @@
-Content-Type: multipart/mixed; boundary="===============6297235733298395737=="
+Content-Type: multipart/mixed; boundary="===============8035242853698760412=="
 MIME-Version: 1.0
-From: Charlotte Delenk <darkkirb at darkkirb.de>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH] Restore support for clang and other non-GCC compilers
-Date: Wed, 22 Sep 2021 08:28:42 +0200
-Message-ID: <86d56975-7c9b-6cf6-9571-225c9bd6a6ea@darkkirb.de>
-In-Reply-To: bb30e7a6-e799-3732-e18a-1a998ad62c44@gmail.com
+Subject: [PATCH 06/14] examples: Update netconfig method calls
+Date: Thu, 16 Jun 2022 00:47:31 +0200
+Message-ID: <20220615224739.1936538-6-andrew.zaborowski@intel.com>
+In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
 
---===============6297235733298395737==
+--===============8035242853698760412==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Denis,
+---
+ examples/netconfig-test.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-On 9/22/21 00:36, Denis Kenzior wrote:
-> So what about doing something like this (attached).=C2=A0 This approach i=
-s =
+diff --git a/examples/netconfig-test.c b/examples/netconfig-test.c
+index 39b6fa4..45455dc 100644
+--- a/examples/netconfig-test.c
++++ b/examples/netconfig-test.c
+@@ -108,7 +108,7 @@ static void event_handler(struct l_netconfig *netconfig=
+, uint8_t family,
+ 				enum l_netconfig_event event, void *user_data)
+ {
+ 	const char *af_str =3D family =3D=3D AF_INET ? "v4" : "v6";
+-	const struct l_queue_entry *added, *updated, *removed;
++	const struct l_queue_entry *added, *updated, *removed, *expired;
+ =
 
-> a bit less flexible than our current version since we have to declare =
+ 	switch (event) {
+ 	case L_NETCONFIG_EVENT_CONFIGURE:
+@@ -126,15 +126,18 @@ static void event_handler(struct l_netconfig *netconf=
+ig, uint8_t family,
+ 		return;
+ 	}
+ =
 
-> extra destructors, but maybe clang doesn't hate it?
-This patch is working fine with clang.
->
->> Signed-off-by: Charlotte Delenk <darkkirb(a)darkkirb.de>
->
-> Just FYI, we do not use S-o-b tags here.
-I think I added them on accident anyways.
+-	l_netconfig_get_addresses(netconfig, &added, &updated, &removed);
++	l_netconfig_get_addresses(netconfig, &added, &updated,
++					&removed, &expired);
+ 	log_addresses(af_str, "added", added);
+ 	log_addresses(af_str, "updated", updated);
+ 	log_addresses(af_str, "removed", removed);
++	log_addresses(af_str, "expired", expired);
+ =
 
+-	l_netconfig_get_routes(netconfig, &added, &updated, &removed);
++	l_netconfig_get_routes(netconfig, &added, &updated, &removed, &expired);
+ 	log_routes(af_str, "added", added);
+ 	log_routes(af_str, "updated", updated);
+ 	log_routes(af_str, "removed", removed);
++	log_routes(af_str, "expired", expired);
+ =
 
-Regards,
-Charlotte
+ 	if (apply)
+ 		l_netconfig_apply_rtnl(netconfig);
+-- =
 
+2.34.1
 
---===============6297235733298395737==
-Content-Type: application/pgp-keys
-MIME-Version: 1.0
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="OpenPGP_0x3CEF5DDA915AECB0.asc"
-
-LS0tLS1CRUdJTiBQR1AgUFVCTElDIEtFWSBCTE9DSy0tLS0tCgp4c0ZOQkdFK0Nlc0JFQURGaFBy
-WTV1M09ZTS9jWWZKSFh6ZElrRkxSYUpxL3BEZGE3d2tCeFNRY3NhOUUxNHdiUjRDZEJZYzFPTWpI
-CjZtSmJOaFRSeGdUY3JjVjNNYW1aOCtaeWtXMS90N2w5ZHFBREJjQXByVEdEQjRwelRrM1pCRE1l
-ekZaQ0pmR2NCcUhodkVRSXdkZSsKQUhhVEdueE8zanJiT0JLeFZFRSsrOTkveDV1Q3ZuVzlYWFFB
-aWRKTzQ0K3dSV0thbVlhL0YyNXpMc2Y0WXZ4Lzh4SlVjQStCb3pibApISmN3M2kxTVNDRnFjM1Vp
-SXMyZ25zQ2U4UXZjbmVvbUdwTlZrZnNwdEJVYjdkUGFPR0VIMjlFUmRqTFhxQlBsblRSTE9UWVJ0
-TUJECkl5YTZRK2h0cGNrSlNzRjVoN05xUlhSUCtzc1ZZRzJDTE9VMzBxdlI3YVFGa01GaEw2MGx3
-WVZKcEo1b1hud2Rsd0V0M0FST3ZWRUUKYjY2SzJZckxTOVdOUmRXbFE0UHVBcHBQOEUvZTNnWkFw
-Vk93WkF0RlNaMVlrNExhb1VjdUYyM1ozaGFKT09DeWlvWENCb1ZlcTRxcApXVmp6OWY1bmZ3OUdB
-VE82SUVaR09lako3N2F5eU1KT3BRQmZMUnExQWRmanFzNE1CZENlYXB3WDVjQnFKZyt0RjRaSEFa
-ZWVNWkdlCkF2bUV4cmVXNnF3UlVDNWNySHFjUlA2SEVDZXZweis5ejJBNWRtdzZFU3NEdjNEQWgy
-SHlOU0NYYkY1RzdLYlM3ejVTK0h6b0tQK3QKTFo1UDI0VWorbEZZUFN4VVVFdEpEWjNGamRZbnpy
-U3l5L1VVVXl4azg5UzM3Z3lQb1pscmthNWw5MmFwTHBoVVhubTlGcUd2b2J5ZgpQTW1tZzJ0VTdz
-T2xvUUFSQVFBQnpTZERhR0Z5Ykc5MGRHVWdSR1ZzWlc1cklEeGtZWEpyYTJseVlrQmtZWEpyYTJs
-eVlpNWtaVDdDCndZNEVFd0VJQURnV0lRUWdiYVhoMmdrRXR1NUpGcm84NzEzYWtWcnNzQVVDWVQ0
-SjZ3SWJBd1VMQ1FnSEFnWVZDZ2tJQ3dJRUZnSUQKQVFJZUFRSVhnQUFLQ1JBODcxM2FrVnJzc0Nv
-ZEVBQys3c3pQbDVJUUc4b1B3THhZbVZhczQ4d0Y5ZDVUS2h6VnV5THpTOEpZdFVnVwppUFlTYWFO
-SmJDdW9BTi9PMGE5bHV2akpoY01NcWV5OVlKYTRSOUJYcHNDNWFJRWo1M1RJV3g2WmVTZDZsekVX
-LzZqVHFBRlFhSWlvCmdVTm1Kc0NTUmFlZ2FWUE5kTHBCd0ZrNE5TcnkzaDJQUXhrdEcrakxMU0RP
-UWJxRnpZS2o1czZ2MkdHdHZvWm5OV2dlNllkNkhEVjUKR3pjQ3pEc1hIMDVscGV5eW12d3Fnbk16
-d3ZERk1MUnVBQ21GQ0NPZk9NcmpSMEVSMGtnd2srZkcxbDU2YXJwTG9Yc2ZZS2tkYnlBWgpNRnZK
-bW5IRHZudnltajhSVVF4alI5bFg4akRUWllYU1F1R204K0owVUIxMHlXek5YZDEvWGJsRm1EVDNn
-YUNrOU1xdFdvR3h2Q2w0CjNEU21SdGF6Vzl5L2xEcG1xNE9rRjdjTit4VnRZQ3NrbVVhdzhXRjhV
-N1JXZWxDY1N4dlgvVzFyVGY3clU3VFRBMTZ3UGV2bHVlVzAKMW1XT3k1bmR5TzBCMlFFZjZ6N3kz
-N1RlaHZ3NE5IU1VlbE04d1JRcCs5Lzl1dFNreWIvSU5Sb0VuZlZTYW5ySnVjVGhnZlNJVXo4NAo5
-OWNRNUNSc01IRUprRjhMY01zaDJYanNMQkcrWGhzalpUWlk5MWkzYnBtU0pGNUo5QVV4UExkbFM2
-R1lxNzNkK05rb01ycXRISjJMCjRTTTRiNDZvRklHSFdsWjBWNVVmSHFVVnc0YUVIOGdyRENlWjlE
-eCtSOWN1K1VGWmEyZjFsTzNLcVEwQkJ5NnFLTTNHRm1NUnNBVW4KWVRoUldSK0kxQlA2NU1TOGlP
-SDA0VzNnNGtYUkVjTEJjd1FRQVFnQUhSWWhCUEtvdDY5UEJ5WStJOUFYOWxFd1FXeDVjR2UyQlFK
-aApQZ3BDQUFvSkVGRXdRV3g1Y0dlMmlNOFFBSlRJQmtzL3ZyaTcyQ1dIQi8wK3dlTnM1ZEZ5cHpl
-UWpMcDBJQ2pFbHcrQWNIN2hYN0hLCjlKV0pyOWZJb0hOclhUOVFVYjZIMHViWHZRRzE1bzgwQkha
-UHIwUHpCMHA1K0ppZEI4S0Z6Q0R5VWZ0UnNKcmlHb2YrUFIzUlhxZFAKVmJtdDYzUkp5TjVhaWZp
-VEVoOFlZWXNsQy9BaGVtMWVuK25DUHQzQVA2RGFmdHluVlVKNGJFZ1FuWElDSHZNNklzSTZFREJK
-YTFnRQpJbWVuWUFJOXVSdGdXcEI1Q2hudXpYY0puU3J4c0pBRGlqMXVYaHhFdms3Q3FMb3J6Vktt
-N1VzckdZbm5KUVdydjVhZFluZG93b25uClhrWFVqUkpxaXQ3b3JDQ3lDRkpRU2ZYeVJCY2g4Z2ZW
-ekRxb0JiVlo4Mnl6ZzN0dm5uMThOOFR3RmEzWXFhdGMxb1UydUJKYTMzeGMKR3JCSTZpeUlkUlY4
-ajBaT2d6aGFuQ1ZCODI1SjNud0NYdkZwSnAyR2c5aG9RaklYTDhLdnkraGJaWkFGa1pOZmdQSm1w
-ajB2Z3RmaQpkeFJ6WElOWjhUNk4ranp0c010ZkU4bzQ4eDJIdFdlT1FHZS90dzQyQU90ZjI3QWpQ
-ZktsSWkwU3ZsaElEYUZzSmtXSGdpb3ZhbjczCmZUNzdkUk1WZENDay9lMVRJeVEzQTVmc0lCT2l6
-RC9vblh3VkFGT3Nzelg3dEsvcExIWFlseUN4L1JraWs1OGJnTWsrSWs5WWJqS0wKWWw0OEQ2QXRW
-bEZkbVdwbW45OFlyY0JENWtzWHJYZ1ZCMVI1RUJreTN6NnltOUxaR3FHQzFwME9TcUhjOEZUalZw
-emZOTlBIRDNzUQpBVGV5L09mWFd2V2czTzliS2V6S0VYbTR6ak1FWVVkMDBCWUpLd1lCQkFIYVJ3
-OEJBUWRBQlAzSVlRYnpoVGZJV0pDY2ozK1NnTEJGCjJGazNTTXlNNWltYmFxaG9FQ1RDd2UwRUdB
-RUlBQ0FXSVFRZ2JhWGgyZ2tFdHU1SkZybzg3MTNha1Zyc3NBVUNZVWQwMEFJYkFnQ0IKQ1JBODcx
-M2FrVnJzc0hZZ0JCa1dDZ0FkRmlFRVA2OWVYVk5LVU9ERGlzb3pBVjQzYUtjSys4VUZBbUZIZE5B
-QUNna1FBVjQzYUtjSworOFgyRndEOENyai9RV0NnRUNaNmdYS3hCTy9LdjFhM0pteXVpNjh6L1E3
-d2tTTm5iY3NCQUp4VzhYSDFEbXN6USttOXFQbk9QaDFPCnp5Mm9NaDZpdnhPenZRN0Qzc1lDejdJ
-UC8zOW1WTlRCa0ZsTlFWRlhPdjA4WHRZbnFwZmxIVEJ6bFVKTGJuZVdXN3NXMVVRWm1sVjQKUUJZ
-Z1hrTmdQL1FiaTZNUFRBYkowWUYrd0djVXlFWDh5UnR1VExJVXdDVUNqSEJ6NEtGSnFiUnBGek5W
-Y1hweWpUU3VZL3Z2SGcxdQpTUFVtZWpFQTBNN3F2eVZxZWxXVGtUZllSalFkU2czalgvVUdRa2JX
-NWsrV1ZoNEMrVVF2YmVlaU5RYkRPN2NLSEdkYWduczFHMGNtCmdOWmYvR3V3ZnFjWUpjaEVaanRr
-b3VYZjY3MldaZFJZZUVwNzkvYVB5WEFXVHZ6R2s2N3FBUUdIbWl3NWJUR0MxVldwcG91K0REbUUK
-MExDMm1pRUxEcXFhczRCWlJyRktpVm5jdm5WbmJESUFpNXJxdVA1dktiQXBiK1Rsb2ZaRW1ydTBM
-UmVnaEJKNzNDcnlXZndYWFY2Qgo2M3pZVnpJN04vZUxlYVlvM0h4VzNoNTZudkJKNitHSFczWk92
-d1B6K2lzUk5LazZQSFFxZXpLS00zZEgzWjE1bTRUeVJIQzJCSW1YCmFaZUQxMWJKNW5XaWwxRmh2
-ZXBHY3dJMXVUd1NzNEFRU1I5QVBvU2FHNU53U0s4U1BWdWc4Vk1zdVdjSXBsOGh4MDN1NmdEZ3h6
-emMKU1NvcU1KT3dvTmpra1EwaTZsK0tYblRWbzE1VnZyZkxCZXJpTzZySldSMUFJeHVISzZyS09U
-ODJpTURma1FjbnNnTGViZXZVN1RtMwpzSGNpcUZHblJtVUxoaW43VTVtQStzeE5rdTdUQnZPc1RO
-K0ErQ1dLZ2xoZG9LZUhRTFZoV053RTY4ajgxenBITnh3akZzRkNnTjBQCmM5azJlQzNUV0lPQWpP
-WVgraTk0U2V4UHpqZ0VZVWhBNEJJS0t3WUJCQUdYVlFFRkFRRUhRT1dYck1JUnk4NStGMWVRZFIv
-ODV5cWQKbnNJQ00yRkVKd1JEZ0NBTmhuaFpBd0VJQjhMQmRnUVlBUWdBSUJZaEJDQnRwZUhhQ1FT
-Mjdra1d1anp2WGRxUld1eXdCUUpoU0VEZwpBaHNNQUFvSkVEenZYZHFSV3V5d0pxc1AvaU94ZHlB
-TTl1TWlhQitmRlpIekVIRmxGR0hLK3IxSDRPMytPZzY3WjQ3MTIyaEplUUNHCmNPMDlQSTBybXpz
-eXNjNU5UcU1xVXNHOVhiVUJwNW5EREs4RnRzamZOb21SWmQwbUcxNVV1dWtBTkJCV0x3N1UvRXpi
-aEZRZFEvcnIKdTJiVVlJRXNSbHJ1bXd1THVvU0tLU2NiWjB3M0VLSmt4Q3Z3RkdBR0J2cHZXcXpU
-QVliNE9FbEtacjNsVVozRTY2bXhjRFRQelA5awpOQTFuMlJXTWZ3dUlrendrYmZUWUZhUU8zUERL
-SXB1MmxtS016U0g0aFcyQ0RvR2ljZXpJelNoWEdFZDJxWFVadzk4UXU1emV3Mi9tClZMUWpHR2ps
-SnRhUnRqVEVHWVI0S3R5dlN6eElUc25aRUF1UU5tV0tCanJYcEpMUjZKbUM1Q2dyMXp1OHlvOEJN
-ZC93STNzNzgyMXQKbitQcCsxc1llWTlXL2hLekY2U0ZHKzlFZWpwa3ZyZjIzcGpmbE0yNHJlaHBS
-KzJqdWRXdExaSVhETFRDOGpWVVlzR0RQUmw0YWkrRQorZFp0RkFCWDIyRGdnemlIWXZ4M2Q5Y21o
-clczTmdtaE1hYXpTTXlFRldPVzJrc1BtbnNCeU51MGpCN1RzUngxM1Y5V1hmdDBoU01kCjJDZnZI
-R21XeTF1QXBxN1htRVpvK1ZMWm1GSE1FbnVHN3BEWHBkU0RtckdmZW1tYkRJNzd5UmVjcTQ5aVRw
-TGZkMnh3b1o1Ri90S1IKOXNDL05oQ2k0Sm9uaUtZTjU5eTNmaER2dCs4aUc0YWZFcHFFSTBYRmhO
-TDdmaE8veW9DS2srdVJ1TlE3RVNGb1JHcEQzc0h0UEdhcApDUElFNlMyemVHbTFCVkxPUkxocUZa
-Z0wKPXVtN2wKLS0tLS1FTkQgUEdQIFBVQkxJQyBLRVkgQkxPQ0stLS0tLQ==
---===============6297235733298395737==
-Content-Type: application/pgp-signature
-MIME-Version: 1.0
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="OpenPGP_signature.sig"
-
-LS0tLS1CRUdJTiBQR1AgU0lHTkFUVVJFLS0tLS0KCnduc0VBQllJQUNNV0lRUS9yMTVkVTBwUTRN
-T0t5ak1CWGpkb3B3cjd4UVVDWVVyTkd3VURBQUFBQUFBS0NSQUJYamRvcHdyN3hjWXUKQVAwZHBn
-TWJ3V0RhRVdxRllONng3cTFtQ0J6TkdGOUFSeVp1aGlBU0tzd21lUUQ4Q0V0NzJtMjZROFR0MC9u
-VW5BTmRLaVVwVWc1WgpmR1E2UHlkVUh6cEdtZ289Cj1kUGF0Ci0tLS0tRU5EIFBHUCBTSUdOQVRV
-UkUtLS0tLQo=
-
---===============6297235733298395737==--
+--===============8035242853698760412==--
 
