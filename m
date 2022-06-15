@@ -1,465 +1,231 @@
-Content-Type: multipart/mixed; boundary="===============6392206425462263480=="
+Content-Type: multipart/mixed; boundary="===============3884407939160149305=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 08/17] netconfig: Expire addresses and routes
-Date: Fri, 13 May 2022 16:55:01 +0200
-Message-ID: <20220513145510.1408510-8-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513145510.1408510-1-andrew.zaborowski@intel.com
+Subject: [PATCH 08/14] netconfig: Wait for link-local address before DHCPv6
+Date: Thu, 16 Jun 2022 00:47:33 +0200
+Message-ID: <20220615224739.1936538-8-andrew.zaborowski@intel.com>
+In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
 
---===============6392206425462263480==
+--===============3884407939160149305==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Start differentiating between routes/addresses being removed and those
-expiring.  Generally if we're committing the routes through RTNL, the
-lifetimes are submitted to the kernel and the kernel should expire them
-for us on the kernel side.  In that case there's no need to send an
-RTM_DELROUTE/RTM_DELADDR.  That should apply to routes received in
-Router Advertisements as well as addresses and routes from expiring DHCP
-leases and DHCPv6 leases.
-
-For routes/addresses being removed because a router is going offline and
-signals that by setting the lifetime to 0 in an RA, or as a result of
-L_DHCP_CLIENT_EVENT_IP_CHANGED and similar, us or the user do need to
-send RTM_DELROUTE/RTM_DELADDR.  To differentiate between the two cases
-(removal and expiry) pass two separate lists to the user.
-
-Add checks for expired IPv6 routes in the ICMPv6 event handler to avoid
-using timers for that.  We have no bound on the number of routes (yet)
-so we avoid keeping potentially many timers or keeping one timer
-tracking multiple expiry times which would add a little complexity (but
-might be acceptable.)
+Have one global RTM_NEWADDR listener.  On l_netconfig_start dump
+existing IPv6 addresses and wait until a link-local address is added so
+it can be used as the source address for our DHCPv6 frames.
 ---
- ell/netconfig.c | 166 ++++++++++++++++++++++++++++++++++++++++++------
- ell/netconfig.h |   6 +-
- 2 files changed, 152 insertions(+), 20 deletions(-)
+ ell/netconfig.c | 151 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 148 insertions(+), 3 deletions(-)
 
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 724cb38..e915a12 100644
+index 94faef0..b8f98d0 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -71,6 +71,7 @@ struct l_netconfig {
- 	bool v6_configured;
+@@ -72,6 +72,7 @@ struct l_netconfig {
  	struct l_icmp6_client *icmp6_client;
  	struct l_dhcp6_client *dhcp6_client;
-+	struct l_idle *signal_expired_work;
+ 	struct l_idle *signal_expired_work;
++	unsigned int ifaddr6_dump_cmd_id;
  =
 
  	/* These objects, if not NULL, are owned by @addresses and @routes */
  	struct l_rtnl_address *v4_address;
-@@ -91,10 +92,14 @@ struct l_netconfig {
- 		 * for example those that only have their lifetime updated.
- 		 *
- 		 * Any entries in @added and @updated are owned by @current.
-+		 * Entries in @removed need to be removed with an
-+		 * RTM_DELADD/RTM_DELROUTE while those in @expired are only
-+		 * informative as the kernel will have removed them already.
- 		 */
- 		struct l_queue *added;
- 		struct l_queue *updated;
- 		struct l_queue *removed;
-+		struct l_queue *expired;
- 	} addresses, routes;
+@@ -114,6 +115,9 @@ union netconfig_addr {
+ 	struct in6_addr v6;
+ };
  =
 
- 	struct {
-@@ -115,10 +120,14 @@ static void netconfig_update_cleanup(struct l_netconf=
-ig *nc)
- 	l_queue_clear(nc->addresses.updated, NULL);
- 	l_queue_clear(nc->addresses.removed,
- 			(l_queue_destroy_func_t) l_rtnl_address_free);
-+	l_queue_clear(nc->addresses.expired,
-+			(l_queue_destroy_func_t) l_rtnl_address_free);
- 	l_queue_clear(nc->routes.added, NULL);
- 	l_queue_clear(nc->routes.updated, NULL);
- 	l_queue_clear(nc->routes.removed,
- 			(l_queue_destroy_func_t) l_rtnl_route_free);
-+	l_queue_clear(nc->routes.expired,
-+			(l_queue_destroy_func_t) l_rtnl_route_free);
- }
- =
-
- static void netconfig_emit_event(struct l_netconfig *nc, uint8_t family,
-@@ -162,6 +171,24 @@ static struct l_rtnl_route *netconfig_route_new(struct=
- l_netconfig *nc,
- 	return rt;
- }
- =
-
-+static void netconfig_signal_expired(struct l_idle *idle, void *user_data)
-+{
-+	struct l_netconfig *nc =3D user_data;
++static struct l_queue *addr_wait_list;
++static unsigned int rtnl_id;
 +
-+	l_idle_remove(l_steal_ptr(nc->signal_expired_work));
-+
-+	/*
-+	 * If the idle work was scheduled from within l_netconfig_get_routes
-+	 * or netconfig_icmp6_event_handler, the user is likely to have
-+	 * already received an event and had a chance to process the expired
-+	 * routes list.  In that case there's no need to emit a new event,
-+	 * and the list will have been emptied in netconfig_update_cleanup()
-+	 * anyway.
-+	 */
-+	if (!l_queue_isempty(nc->routes.expired))
-+		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
-+}
-+
- static void netconfig_add_v4_routes(struct l_netconfig *nc, const char *ip,
- 					uint8_t prefix_len, const char *gateway,
- 					uint8_t rtm_protocol)
-@@ -237,6 +264,19 @@ static void netconfig_add_v6_static_routes(struct l_ne=
-tconfig *nc,
- 	l_queue_push_tail(nc->routes.added, v6_default_route);
- }
- =
-
-+static bool netconfig_address_exists(struct l_queue *list,
-+					const struct l_rtnl_address *address)
-+{
-+	const struct l_queue_entry *entry;
-+
-+	for (entry =3D l_queue_get_entries(list); entry;
-+			entry =3D entry->next)
-+		if ((const struct l_rtnl_address *) entry->data =3D=3D address)
-+			return true;
-+
-+	return false;
-+}
-+
- static bool netconfig_route_exists(struct l_queue *list,
- 					const struct l_rtnl_route *route)
+ static void netconfig_update_cleanup(struct l_netconfig *nc)
  {
-@@ -293,13 +333,15 @@ static void netconfig_set_dhcp_lifetimes(struct l_net=
-config *nc, bool updated)
- 	l_rtnl_address_set_lifetimes(nc->v4_address, 0, lifetime);
- 	l_rtnl_address_set_expiry(nc->v4_address, 0, expiry);
- =
-
--	if (updated)
-+	if (updated && !netconfig_address_exists(nc->addresses.added,
-+							nc->v4_address))
- 		l_queue_push_tail(nc->addresses.updated, nc->v4_address);
- =
-
- 	l_rtnl_route_set_lifetime(nc->v4_subnet_route, lifetime);
- 	l_rtnl_route_set_expiry(nc->v4_subnet_route, expiry);
- =
-
--	if (updated)
-+	if (updated && !netconfig_route_exists(nc->routes.added,
-+						nc->v4_subnet_route))
- 		l_queue_push_tail(nc->routes.updated, nc->v4_subnet_route);
- =
-
- 	if (!nc->v4_default_route)
-@@ -308,23 +350,42 @@ static void netconfig_set_dhcp_lifetimes(struct l_net=
-config *nc, bool updated)
- 	l_rtnl_route_set_lifetime(nc->v4_default_route, lifetime);
- 	l_rtnl_route_set_expiry(nc->v4_default_route, expiry);
- =
-
--	if (updated)
-+	if (updated && !netconfig_route_exists(nc->routes.added,
-+						nc->v4_default_route))
- 		l_queue_push_tail(nc->routes.updated, nc->v4_default_route);
- }
- =
-
--static void netconfig_remove_dhcp_address_routes(struct l_netconfig *nc)
-+static void netconfig_remove_dhcp_address_routes(struct l_netconfig *nc,
-+							bool expired)
- {
-+	struct l_queue *routes =3D
-+		expired ? nc->routes.expired : nc->routes.removed;
-+
- 	l_queue_remove(nc->addresses.current, nc->v4_address);
--	l_queue_push_tail(nc->addresses.removed, nc->v4_address);
-+	l_queue_remove(nc->addresses.updated, nc->v4_address);
-+
-+	if (!l_queue_remove(nc->addresses.added, nc->v4_address))
-+		l_queue_push_tail(
-+			expired ? nc->addresses.expired : nc->addresses.removed,
-+			nc->v4_address);
-+
- 	nc->v4_address =3D NULL;
- =
-
- 	l_queue_remove(nc->routes.current, nc->v4_subnet_route);
--	l_queue_push_tail(nc->routes.removed, nc->v4_subnet_route);
-+	l_queue_remove(nc->routes.updated, nc->v4_subnet_route);
-+
-+	if (!l_queue_remove(nc->routes.added, nc->v4_subnet_route))
-+		l_queue_push_tail(routes, nc->v4_subnet_route);
-+
- 	nc->v4_subnet_route =3D NULL;
- =
-
- 	if (nc->v4_default_route) {
- 		l_queue_remove(nc->routes.current, nc->v4_default_route);
--		l_queue_push_tail(nc->routes.removed, nc->v4_default_route);
-+		l_queue_remove(nc->routes.updated, nc->v4_default_route);
-+
-+		if (!l_queue_remove(nc->routes.added, nc->v4_default_route))
-+			l_queue_push_tail(routes, nc->v4_default_route);
-+
- 		nc->v4_default_route =3D NULL;
- 	}
- }
-@@ -340,7 +401,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
-client *client,
- 		if (L_WARN_ON(!nc->v4_configured))
- 			break;
- =
-
--		netconfig_remove_dhcp_address_routes(nc);
-+		netconfig_remove_dhcp_address_routes(nc, false);
- 		netconfig_add_dhcp_address_routes(nc);
- 		netconfig_set_dhcp_lifetimes(nc, false);
- 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_UPDATE);
-@@ -365,7 +426,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
-client *client,
- 		if (L_WARN_ON(!nc->v4_configured))
- 			break;
- =
-
--		netconfig_remove_dhcp_address_routes(nc);
-+		netconfig_remove_dhcp_address_routes(nc, true);
- 		nc->v4_configured =3D false;
- =
-
- 		if (l_dhcp_client_start(nc->dhcp_client))
-@@ -446,14 +507,21 @@ static void netconfig_set_dhcp6_address_lifetimes(str=
-uct l_netconfig *nc,
- 					start_time + p * L_USEC_PER_SEC,
- 					start_time + v * L_USEC_PER_SEC);
- =
-
--	if (updated)
-+	if (updated && !netconfig_address_exists(nc->addresses.added,
-+							nc->v6_address))
- 		l_queue_push_tail(nc->addresses.updated, nc->v6_address);
- }
- =
-
--static void netconfig_remove_dhcp6_address(struct l_netconfig *nc)
-+static void netconfig_remove_dhcp6_address(struct l_netconfig *nc, bool ex=
-pired)
- {
- 	l_queue_remove(nc->addresses.current, nc->v6_address);
--	l_queue_push_tail(nc->addresses.removed, nc->v6_address);
-+	l_queue_remove(nc->addresses.updated, nc->v6_address);
-+
-+	if (!l_queue_remove(nc->addresses.added, nc->v6_address))
-+		l_queue_push_tail(
-+			expired ? nc->addresses.expired : nc->addresses.removed,
-+			nc->v6_address);
-+
- 	nc->v6_address =3D NULL;
- }
- =
-
-@@ -477,7 +545,7 @@ static void netconfig_dhcp6_event_handler(struct l_dhcp=
-6_client *client,
- 		if (L_WARN_ON(!nc->v6_configured))
- 			break;
- =
-
--		netconfig_remove_dhcp6_address(nc);
-+		netconfig_remove_dhcp6_address(nc, false);
- 		netconfig_add_dhcp6_address(nc);
- 		netconfig_set_dhcp6_address_lifetimes(nc, false);
- 		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
-@@ -486,7 +554,7 @@ static void netconfig_dhcp6_event_handler(struct l_dhcp=
-6_client *client,
- 		if (L_WARN_ON(!nc->v6_configured))
- 			break;
- =
-
--		netconfig_remove_dhcp6_address(nc);
-+		netconfig_remove_dhcp6_address(nc, true);
- 		nc->v6_configured =3D false;
- =
-
- 		if (l_dhcp6_client_start(nc->dhcp6_client))
-@@ -525,6 +593,49 @@ static void netconfig_dhcp6_event_handler(struct l_dhc=
-p6_client *client,
+ 	l_queue_clear(nc->addresses.added, NULL);
+@@ -1211,6 +1215,121 @@ static void netconfig_do_static_config(struct l_idl=
+e *idle, void *user_data)
  	}
  }
  =
 
-+static uint64_t now;
-+
-+static bool netconfig_check_route_expired(void *data, void *user_data)
++static void netconfig_rtnl_unregister(void *user_data)
 +{
-+	struct l_netconfig *nc =3D user_data;
-+	struct l_rtnl_route *route =3D data;
-+	uint64_t expiry_time =3D l_rtnl_route_get_expiry(route);
++	struct l_netlink *rtnl =3D user_data;
 +
-+	if (!expiry_time || now < expiry_time)
-+		return false;
++	if (!addr_wait_list || !l_queue_isempty(addr_wait_list))
++		return;
++
++	l_queue_destroy(l_steal_ptr(addr_wait_list), NULL);
++	l_netlink_unregister(rtnl, rtnl_id);
++	rtnl_id =3D 0;
++}
++
++static void netconfig_addr_wait_unregister(struct l_netconfig *nc,
++						bool in_notify)
++{
++	struct l_netlink *rtnl =3D l_rtnl_get();
++
++	if (nc->ifaddr6_dump_cmd_id) {
++		unsigned int cmd_id =3D nc->ifaddr6_dump_cmd_id;
++
++		nc->ifaddr6_dump_cmd_id =3D 0;
++		l_netlink_cancel(rtnl, cmd_id);
++	}
++
++	if (!l_queue_remove(addr_wait_list, nc))
++		return;
++
++	if (!l_queue_isempty(addr_wait_list))
++		return;
++
++	/* We can't do l_netlink_unregister() inside a notification */
++	if (in_notify)
++		l_idle_oneshot(netconfig_rtnl_unregister, rtnl, NULL);
++	else
++		netconfig_rtnl_unregister(rtnl);
++}
++
++static void netconfig_ifaddr_ipv6_added(struct l_netconfig *nc,
++					const struct ifaddrmsg *ifa,
++					uint32_t len)
++{
++	struct in6_addr in6;
++	_auto_(l_free) char *ip =3D NULL;
++
++	if (ifa->ifa_flags & IFA_F_TENTATIVE)
++		return;
++
++	if (!nc->started)
++		return;
++
++	l_rtnl_ifaddr6_extract(ifa, len, &ip);
++	inet_pton(AF_INET6, ip, &in6);
++
++	if (!IN6_IS_ADDR_LINKLOCAL(&in6))
++		return;
++
++	netconfig_addr_wait_unregister(nc, true);
++
++	l_dhcp6_client_set_link_local_address(nc->dhcp6_client, ip);
 +
 +	/*
-+	 * Since we set lifetimes on the routes we submit to the kernel with
-+	 * RTM_NEWROUTE, we count on them being deleted automatically so no
-+	 * need to send an RTM_DELROUTE.  We signal the fact that the route
-+	 * expired to the user by having it on the expired list but there's
-+	 * nothing that the user needs to do with the routes on that list
-+	 * like they do with the added, updated and removed lists.
-+	 *
-+	 * If for some reason the route is still on the added list, drop it
-+	 * from there and there's nothing to notify the user of.
++	 * Only now that we have a link-local address start actual DHCPv6
++	 * setup.
 +	 */
-+	if (!l_queue_remove(nc->routes.added, route))
-+		l_queue_push_tail(nc->routes.expired, route);
++	if (l_dhcp6_client_start(nc->dhcp6_client))
++		return;
 +
-+	l_queue_remove(nc->routes.updated, route);
-+	l_queue_remove(nc->routes.removed, route);
-+	return true;
++	netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
 +}
 +
-+static void netconfig_expire_routes(struct l_netconfig *nc)
++static void netconfig_ifaddr_ipv6_notify(uint16_t type, const void *data,
++						uint32_t len, void *user_data)
 +{
-+	now =3D l_time_now();
++	const struct ifaddrmsg *ifa =3D data;
++	uint32_t bytes =3D len - NLMSG_ALIGN(sizeof(struct ifaddrmsg));
++	const struct l_queue_entry *entry, *next;
 +
-+	if (l_queue_foreach_remove(nc->routes.current,
-+					netconfig_check_route_expired, nc) &&
-+			!l_queue_isempty(nc->routes.expired) &&
-+			!nc->signal_expired_work)
-+		nc->signal_expired_work =3D l_idle_create(
-+						netconfig_signal_expired,
-+						nc, NULL);
++	switch (type) {
++	case RTM_NEWADDR:
++		/* Iterate safely since elements may be removed */
++		for (entry =3D l_queue_get_entries(addr_wait_list); entry;
++				entry =3D next) {
++			struct l_netconfig *nc =3D entry->data;
++
++			next =3D entry->next;
++
++			if (ifa->ifa_index =3D=3D nc->ifindex)
++				netconfig_ifaddr_ipv6_added(nc, ifa, bytes);
++		}
++
++		break;
++	}
 +}
 +
- static struct l_rtnl_route *netconfig_find_icmp6_route(
- 						struct l_netconfig *nc,
- 						const uint8_t *gateway,
-@@ -630,7 +741,10 @@ static void netconfig_remove_icmp6_route(struct l_netc=
-onfig *nc,
- 						struct l_rtnl_route *route)
++static void netconfig_ifaddr_ipv6_dump_cb(int error, uint16_t type,
++						const void *data, uint32_t len,
++						void *user_data)
++{
++	struct l_netconfig *nc =3D user_data;
++
++	if (!nc->ifaddr6_dump_cmd_id || !nc->started)
++		return;
++
++	if (error) {
++		netconfig_addr_wait_unregister(nc, false);
++		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
++		return;
++	}
++
++	if (type !=3D RTM_NEWADDR)
++		return;
++
++	netconfig_ifaddr_ipv6_notify(type, data, len, user_data);
++}
++
+ LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
  {
- 	l_queue_remove(nc->routes.current, route);
--	l_queue_push_tail(nc->routes.removed, route);
-+	l_queue_remove(nc->routes.updated, route);
+ 	if (unlikely(!netconfig || netconfig->started))
+@@ -1253,14 +1372,38 @@ configure_ipv6:
+ 		goto done;
+ 	}
+ =
+
+-	if (!l_dhcp6_client_start(netconfig->dhcp6_client))
+-		goto stop_ipv4;
++	/*
++	 * We only care about being on addr_wait_list if we're waiting for
++	 * the link-local address for DHCP6.  Add ourself to the list here
++	 * before we start the dump, instead of after it ends, to eliminate
++	 * the possibility of missing an RTM_NEWADDR between the end of
++	 * the dump command and registering for the events.
++	 */
++	if (!addr_wait_list) {
++		addr_wait_list =3D l_queue_new();
 +
-+	if (!l_queue_remove(nc->routes.added, route))
-+		l_queue_push_tail(nc->routes.removed, route);
- }
- =
-
- static void netconfig_icmp6_event_handler(struct l_icmp6_client *client,
-@@ -657,6 +771,8 @@ static void netconfig_icmp6_event_handler(struct l_icmp=
-6_client *client,
- 	if (nc->v4_gateway_override)
- 		return;
- =
-
-+	netconfig_expire_routes(nc);
++		rtnl_id =3D l_netlink_register(l_rtnl_get(), RTNLGRP_IPV6_IFADDR,
++						netconfig_ifaddr_ipv6_notify,
++						netconfig, NULL);
++		if (!rtnl_id)
++			goto unregister;
++	}
 +
- 	/* Process the default gateway information */
- 	default_route =3D netconfig_find_icmp6_route(nc, r->address, NULL);
++	netconfig->ifaddr6_dump_cmd_id =3D l_rtnl_ifaddr6_dump(l_rtnl_get(),
++						netconfig_ifaddr_ipv6_dump_cb,
++						netconfig, NULL);
++	if (!netconfig->ifaddr6_dump_cmd_id)
++		goto unregister;
++
++	l_queue_push_tail(addr_wait_list, netconfig);
  =
 
-@@ -719,7 +835,8 @@ static void netconfig_icmp6_event_handler(struct l_icmp=
-6_client *client,
- 	 */
- 	if (!l_queue_isempty(nc->routes.added) ||
- 			!l_queue_isempty(nc->routes.updated) ||
--			!l_queue_isempty(nc->routes.removed))
-+			!l_queue_isempty(nc->routes.removed) ||
-+			!l_queue_isempty(nc->routes.expired))
- 		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
- }
+ done:
+ 	netconfig->started =3D true;
+ 	return true;
  =
 
-@@ -1156,6 +1273,9 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
+-stop_ipv4:
++unregister:
++	netconfig_addr_wait_unregister(netconfig, false);
++
+ 	if (netconfig->v4_enabled) {
+ 		if (netconfig->v4_static_addr)
+ 			l_idle_remove(l_steal_ptr(netconfig->do_static_work));
+@@ -1284,6 +1427,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
 netconfig)
- 	if (netconfig->do_static_work)
- 		l_idle_remove(l_steal_ptr(netconfig->do_static_work));
+ 	if (netconfig->signal_expired_work)
+ 		l_idle_remove(l_steal_ptr(netconfig->signal_expired_work));
  =
 
-+	if (netconfig->signal_expired_work)
-+		l_idle_remove(l_steal_ptr(netconfig->signal_expired_work));
++	netconfig_addr_wait_unregister(netconfig, false);
 +
  	netconfig_update_cleanup(netconfig);
  	l_queue_clear(netconfig->routes.current,
  			(l_queue_destroy_func_t) l_rtnl_route_free);
-@@ -1236,7 +1356,8 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_ge=
-t_addresses(
- 					struct l_netconfig *netconfig,
- 					const struct l_queue_entry **out_added,
- 					const struct l_queue_entry **out_updated,
--					const struct l_queue_entry **out_removed)
-+					const struct l_queue_entry **out_removed,
-+					const struct l_queue_entry **out_expired)
- {
- 	if (out_added)
- 		*out_added =3D l_queue_get_entries(netconfig->addresses.added);
-@@ -1247,6 +1368,9 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_ge=
-t_addresses(
- 	if (out_removed)
- 		*out_removed =3D l_queue_get_entries(netconfig->addresses.removed);
- =
-
-+	if (out_expired)
-+		*out_expired =3D l_queue_get_entries(netconfig->addresses.expired);
-+
- 	return l_queue_get_entries(netconfig->addresses.current);
- }
- =
-
-@@ -1254,8 +1378,11 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_g=
-et_routes(
- 					struct l_netconfig *netconfig,
- 					const struct l_queue_entry **out_added,
- 					const struct l_queue_entry **out_updated,
--					const struct l_queue_entry **out_removed)
-+					const struct l_queue_entry **out_removed,
-+					const struct l_queue_entry **out_expired)
- {
-+	netconfig_expire_routes(netconfig);
-+
- 	if (out_added)
- 		*out_added =3D l_queue_get_entries(netconfig->routes.added);
- =
-
-@@ -1265,5 +1392,8 @@ LIB_EXPORT const struct l_queue_entry *l_netconfig_ge=
-t_routes(
- 	if (out_removed)
- 		*out_removed =3D l_queue_get_entries(netconfig->routes.removed);
- =
-
-+	if (out_expired)
-+		*out_expired =3D l_queue_get_entries(netconfig->routes.expired);
-+
- 	return l_queue_get_entries(netconfig->routes.current);
- }
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index 874491f..cf11c67 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -86,12 +86,14 @@ const struct l_queue_entry *l_netconfig_get_addresses(
- 				struct l_netconfig *netconfig,
- 				const struct l_queue_entry **out_added,
- 				const struct l_queue_entry **out_updated,
--				const struct l_queue_entry **out_removed);
-+				const struct l_queue_entry **out_removed,
-+				const struct l_queue_entry **out_expired);
- const struct l_queue_entry *l_netconfig_get_routes(
- 				struct l_netconfig *netconfig,
- 				const struct l_queue_entry **out_added,
- 				const struct l_queue_entry **out_updated,
--				const struct l_queue_entry **out_removed);
-+				const struct l_queue_entry **out_removed,
-+				const struct l_queue_entry **out_expired);
- =
-
- #ifdef __cplusplus
- }
 -- =
 
-2.32.0
+2.34.1
 
---===============6392206425462263480==--
+--===============3884407939160149305==--
 
