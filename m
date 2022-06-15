@@ -1,89 +1,143 @@
-Content-Type: multipart/mixed; boundary="===============0375967884797722111=="
+Content-Type: multipart/mixed; boundary="===============8754488779582547531=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 17/17] icmp6: Ignore bad prefixes per RFC4862
-Date: Sat, 14 May 2022 00:47:13 +0200
-Message-ID: <20220513224713.1447773-17-andrew.zaborowski@intel.com>
-In-Reply-To: 20220513224713.1447773-1-andrew.zaborowski@intel.com
+Subject: [PATCH 09/14] netconfig: Write /proc/sys/net files to enable IPv6
+Date: Thu, 16 Jun 2022 00:47:34 +0200
+Message-ID: <20220615224739.1936538-9-andrew.zaborowski@intel.com>
+In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
 
---===============0375967884797722111==
+--===============8754488779582547531==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-"Silently ignore" Prefix Information options with a preferred time
-longer than valid time and those matching the link-local prefix as
-mandated by RFC4862 Section 5.5.3.  These prefixes are also invalid
-according to RFC4861.
+Write the accept_ra setting to 0.  On l_netconfig_start if the existing
+address dump command finds no link-local address then also try resetting
+disable_ipv6 and toggling addr_gen_mode to trigger the kernel to
+generate a link-local address.
 ---
- ell/icmp6.c | 32 ++++++++++++++++++++++++++++++--
- 1 file changed, 30 insertions(+), 2 deletions(-)
+ ell/netconfig.c | 66 +++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 64 insertions(+), 2 deletions(-)
 
-diff --git a/ell/icmp6.c b/ell/icmp6.c
-index ab2fe9c..96ba1ec 100644
---- a/ell/icmp6.c
-+++ b/ell/icmp6.c
-@@ -45,6 +45,7 @@
- #include "time-private.h"
- #include "queue.h"
- #include "net.h"
-+#include "net-private.h"
- #include "netlink.h"
- #include "rtnl.h"
- #include "missing.h"
-@@ -817,7 +818,27 @@ struct l_icmp6_router *_icmp6_router_parse(const struc=
-t nd_router_advert *ra,
- 			i->onlink =3D true;
- 			i->valid_lifetime =3D l_get_be32(opts + 4);
- 			i->preferred_lifetime =3D l_get_be32(opts + 8);
--			memcpy(i->address, opts + 16, 16);
-+
-+			/*
-+			 * Only the initial Prefix Length bits of the prefix
-+			 * are valid.  The remaining bits "MUST" be ignored
-+			 * by the receiver.
-+			 */
-+			memcpy(i->address, net_prefix_from_ipv6(opts + 16,
-+							i->prefix_len), 16);
-+
-+			/*
-+			 * For SLAAC (RFC4862) we need to "silently ignore"
-+			 * routes with a preferred lifetime longer than valid
-+			 * lifetime, and those with the link-local prefix.
-+			 * Since it makes sense, do it regardless of SLAAC.
-+			 */
-+			if (i->preferred_lifetime > i->valid_lifetime)
-+				break;
-+
-+			if (i->prefix_len >=3D 10 &&
-+					IN6_IS_ADDR_LINKLOCAL(i->address))
-+				break;
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index b8f98d0..8d0425d 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -28,6 +28,12 @@
+ #include <netinet/ip.h>
+ #include <arpa/inet.h>
+ #include <netinet/icmp6.h>
++#include <net/if.h>
++#include <errno.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <fcntl.h>
++#include <unistd.h>
  =
 
- 			n_routes +=3D 1;
- 			break;
-@@ -869,7 +890,14 @@ struct l_icmp6_router *_icmp6_router_parse(const struc=
-t nd_router_advert *ra,
- 			i->onlink =3D false;
- 			i->preference =3D preference;
- 			i->valid_lifetime =3D l_get_be32(opts + 4);
--			memcpy(i->address, opts + 8, (i->prefix_len + 7) / 8);
-+
-+			/*
-+			 * Only the initial Prefix Length bits of the prefix
-+			 * are valid.  The remaining bits "MUST" be ignored
-+			 * by the receiver.
-+			 */
-+			memcpy(i->address, net_prefix_from_ipv6(opts + 8,
-+							i->prefix_len), 16);
+ #include "private.h"
+ #include "useful.h"
+@@ -858,6 +864,30 @@ static void netconfig_icmp6_event_handler(struct l_icm=
+p6_client *client,
+ 		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
+ }
  =
 
- 			n_routes +=3D 1;
- 			break;
++static int netconfig_proc_write_ipv6_setting(struct l_netconfig *nc,
++						const char *setting,
++						const char *value)
++{
++	char ifname[IF_NAMESIZE];
++	_auto_(l_free) char *filename =3D NULL;
++	int fd;
++	int r;
++
++	if (unlikely(!if_indextoname(nc->ifindex, ifname)))
++		return -errno;
++
++	filename =3D l_strdup_printf("/proc/sys/net/ipv6/conf/%s/%s",
++					ifname, setting);
++
++	fd =3D L_TFR(open(filename, O_WRONLY));
++	if (unlikely(fd < 0))
++		return -errno;
++
++	r =3D L_TFR(write(fd, value, strlen(value)));
++	L_TFR(close(fd));
++	return r;
++}
++
+ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+ {
+ 	struct l_netconfig *nc;
+@@ -890,6 +920,9 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t=
+ ifindex)
+ 					netconfig_icmp6_event_handler,
+ 					nc, NULL);
+ =
+
++	/* Disable in-kernel autoconfiguration for the interface */
++	netconfig_proc_write_ipv6_setting(nc, "accept_ra", "0");
++
+ 	return nc;
+ }
+ =
+
+@@ -1330,6 +1363,34 @@ static void netconfig_ifaddr_ipv6_dump_cb(int error,=
+ uint16_t type,
+ 	netconfig_ifaddr_ipv6_notify(type, data, len, user_data);
+ }
+ =
+
++static void netconfig_ifaddr_ipv6_dump_done_cb(void *user_data)
++{
++	struct l_netconfig *nc =3D user_data;
++
++	/*
++	 * Handle the case of no link-local address having been found during
++	 * the dump.  If nc->ifaddr6_dump_cmd_id is 0, we have found one or
++	 * the dump is being cancelled.  Otherwise try disabing the
++	 * "disable_ipv6" setting for the interface since it may have been
++	 * enabled.  Also write "addr_gen_mode" which triggers regerating
++	 * the link-local addresss on the interface in the kernel if it
++	 * was previously removed.
++	 */
++	if (!nc->ifaddr6_dump_cmd_id || !nc->started)
++		return;
++
++	nc->ifaddr6_dump_cmd_id =3D 0;
++
++	/* "do not generate a link-local address" */
++	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "1");
++	/* "generate address based on EUI64 (default)" */
++	netconfig_proc_write_ipv6_setting(nc, "addr_gen_mode", "0");
++	/* "enable IPv6 operation" */
++	netconfig_proc_write_ipv6_setting(nc, "disable_ipv6", "0");
++
++	/* TODO: save original values and reset in l_netconfig_stop() */
++}
++
+ LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
+ {
+ 	if (unlikely(!netconfig || netconfig->started))
+@@ -1390,8 +1451,9 @@ configure_ipv6:
+ 	}
+ =
+
+ 	netconfig->ifaddr6_dump_cmd_id =3D l_rtnl_ifaddr6_dump(l_rtnl_get(),
+-						netconfig_ifaddr_ipv6_dump_cb,
+-						netconfig, NULL);
++					netconfig_ifaddr_ipv6_dump_cb,
++					netconfig,
++					netconfig_ifaddr_ipv6_dump_done_cb);
+ 	if (!netconfig->ifaddr6_dump_cmd_id)
+ 		goto unregister;
+ =
+
 -- =
 
-2.32.0
+2.34.1
 
---===============0375967884797722111==--
+--===============8754488779582547531==--
 
