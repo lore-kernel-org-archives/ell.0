@@ -1,70 +1,78 @@
-Received: from mail-pl1-f177.google.com (mail-pl1-f177.google.com [209.85.214.177])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mail-0201.mail-europe.com (mail-0201.mail-europe.com [51.77.79.158])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 947841FDA
-	for <ell@lists.linux.dev>; Tue, 14 Jun 2022 21:14:05 +0000 (UTC)
-Received: by mail-pl1-f177.google.com with SMTP id i15so8795437plr.1
-        for <ell@lists.linux.dev>; Tue, 14 Jun 2022 14:14:05 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=7lcR2q190lfrT16WpIKZJ4Zni7BFCQXd6Qu0mcZRNl4=;
-        b=W53azEAW0nsvNWrwBvsqMk+pi/R2MLKnGhGOlIH0K195axdiZ2OpoNuh6BsR88JrFq
-         lqg8ZDVUaUKylq2H4skXV8FzBcwlgSZR/LUMBM6F5Fd2FFGMg3USR8P55i8zJvoKqXvy
-         cGDhhRqeGNFVGHDEDg7odRXvPlWlDB8ImZ0mQIMR0WLzsbcEFD04LVpcPKip8T1u8d+a
-         7AQ0n1KIV3Uk2XXqoLOBVP2jQ+LVVcPdG0Adz8zZID9hMzEIJ3jBkWA0iPlJdhg0JyEt
-         HtdxmcKI7+a8BGaObCB2uMkQJTASWpVwZWZhQkRaO9b/LRv0e2QFoppXd/g5AauMfpyY
-         z4Ag==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=7lcR2q190lfrT16WpIKZJ4Zni7BFCQXd6Qu0mcZRNl4=;
-        b=KQ+7oJ/afQS3EUHesj8kCl713gXX947JnRlmlvaMI0XLYfsuMxPDhzqpzkObzhvXD0
-         NxrnpBJVDULfQXjC98n/voug7WXcub0SutwuwXa9njrhs+HvMGeBksRwhBp03TRka+VA
-         N5MU6ddqYY9Quxsvfm6CK7MNyxpEefVsqWDSWneRroU6qcemo/g1mztlJKX/zbbjdmeP
-         Dxy2SV6VqWySQwGi4kpZUNQWKNxga65WlwvFXe94B5gvwG+xGL100vr4QEkHljXPi/aC
-         D11OgciUAF7ggm7HEKjLU6VBJneiADBFwTzLV3LphOLqQC7AXdu3oJHGnV9j/28oehyL
-         yHbg==
-X-Gm-Message-State: AJIora+2NkZLL5K0PHmAaDGvFhP8fCDwq8dAVnEkKLG92Gf5HMsYJZkS
-	nwizujFCp6mja7c0IFrLCN4uG/nlpIU=
-X-Google-Smtp-Source: AGRyM1va8HndwhVYVYhrZ0BKkmx6ONeC6flMbxfvjTSCMA5dRVc74wroxUtkgVfqp2giDImMKajXdA==
-X-Received: by 2002:a17:902:d183:b0:168:d6d6:20aa with SMTP id m3-20020a170902d18300b00168d6d620aamr6288169plb.143.1655241244686;
-        Tue, 14 Jun 2022 14:14:04 -0700 (PDT)
-Received: from localhost.localdomain ([50.45.187.22])
-        by smtp.gmail.com with ESMTPSA id o6-20020aa79786000000b0050dc76281e0sm7966806pfp.186.2022.06.14.14.14.04
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 14 Jun 2022 14:14:04 -0700 (PDT)
-From: James Prestwood <prestwoj@gmail.com>
-To: ell@lists.linux.dev
-Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH] CI test, please ignore
-Date: Tue, 14 Jun 2022 14:11:47 -0700
-Message-Id: <20220614211147.697569-1-prestwoj@gmail.com>
-X-Mailer: git-send-email 2.34.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 243CF46A4
+	for <ell@lists.linux.dev>; Wed, 15 Jun 2022 00:41:22 +0000 (UTC)
+Date: Wed, 15 Jun 2022 00:41:08 +0000
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=protonmail.com;
+	s=protonmail3; t=1655253672; x=1655512872;
+	bh=p97pnNfTexaxdxwBcl4ei+pFuO9pdbsn2aO6vc6wk7Q=;
+	h=Date:To:From:Cc:Reply-To:Subject:Message-ID:In-Reply-To:
+	 References:Feedback-ID:From:To:Cc:Date:Subject:Reply-To:
+	 Feedback-ID:Message-ID;
+	b=HtObegajTnh82ue2JV1wGBHWvLFK45NWPfidYV3P2miHJxRDDrQmy9dwWngr2f/N3
+	 c9FaFdORjHGAIztu3pnFeRSXIOLPnsMAE/2UEbGuV4JupkweTX4mfxyrUjZe1bCzFJ
+	 aoB6UXc8c8E8q7z/PCaPmZSTPQVbMl2T3KFHjzJzGZAAFhSXI0zD7QXzhlicdrPwUl
+	 Rtdigqf9Z+GUkRbgTG6O3rbdi49DWvWZGMQLBIrhR53ry7Ow9lsHfORjWXeq8KnwMa
+	 nmjuAXq5c4BWSvt0I9K183QazPatLhvvSw3XnI6YvH5CDWa90MYigRnuH5eL0690sj
+	 e82vnoB7mgo8w==
+To: Denis Kenzior <denkenz@gmail.com>
+From: Ryan McClue <re.mcclue@protonmail.com>
+Cc: "ell@lists.linux.dev" <ell@lists.linux.dev>
+Reply-To: Ryan McClue <re.mcclue@protonmail.com>
+Subject: Re: Sending and Receiving DBUS Message
+Message-ID: <wk-twE8P7fmAykCAdLvcaPGWWzSscceUiLEpbWSuUV1-uQWzsrMcDyNszaOKEMiPRWLhATf11gMgyp9VUcGXPVkkFFzeTOnLhSN9CX9G1x8=@protonmail.com>
+In-Reply-To: <b448db72-549e-f748-3851-9d297b7ea05d@gmail.com>
+References: <VVBTpWPl9dQKNCUMJDgYOFMFEgO_VdFuJ60Eu9ZBWznwRfuoIDDnwp17yk8Et0hiD0NaBFbhi5c1qAM0a-sgP85vbvnk17x_1U_efI5rSLM=@protonmail.com> <f6c025d3-a2e8-9f53-8b5b-71703be4c2f6@gmail.com> <PyTvMi1te-mCaRAe18nuXlJoIfYvu3xK9CP4XDweGT28egcFExPPkellIjOWwQXzxEbT3qH-KPmokmIcTaAq7UL4FIDs5jWEgA8yW676FTo=@protonmail.com> <b448db72-549e-f748-3851-9d297b7ea05d@gmail.com>
+Feedback-ID: 25557543:user:proton
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
----
- README | 2 ++
- 1 file changed, 2 insertions(+)
+Hi Denis,
 
-diff --git a/README b/README
-index 99207e3..6d8f930 100644
---- a/README
-+++ b/README
-@@ -1,3 +1,5 @@
-+Changed the README
-+
- ELL - Embedded Linux library
- ****************************
- 
--- 
-2.34.1
+I have removed 'l_dbus_message_unref()', however the main loop still seems =
+to stop at 'counter =3D 8' and the message callback does not get invoked.
 
+int counter =3D 0;
+while (true) {
+  printf("counter: %d\n", counter++);
+  int timeout =3D l_main_prepare();
+  l_main_iterate(timeout);
+}
+
+If I replace with 'l_main_iterate(0)', counter does get incremented as you =
+would expect. However, the message callback still does not get invoked.
+
+--
+Ryan McClue, Sydney
+
+------- Original Message -------
+On Wednesday, June 15th, 2022 at 12:48 AM, Denis Kenzior <denkenz@gmail.com=
+> wrote:
+
+
+> Hi Ryan,
+>
+> <snip>
+>
+> > struct l_dbus_message *msg =3D l_dbus_message_new_method_call(conn, "or=
+g.bluez", "/org/bluez/hci0",
+> > "org.bluez.Adapter1", "StartDiscovery");
+> >
+> > l_dbus_send_with_reply(conn, msg, start_discovery_callback, NULL, NULL)=
+;
+> >
+> > l_dbus_message_unref(msg);
+>
+>
+> l_dbus_send* take ownership of the message, so it is wrong to unref it he=
+re.
+>
+> Regards,
+> -Denis
