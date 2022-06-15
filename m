@@ -1,37 +1,39 @@
-Content-Type: multipart/mixed; boundary="===============7092167877953148621=="
+Content-Type: multipart/mixed; boundary="===============1754965114806961086=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 03/11] rtnl: Add l_rtnl_route_new_static
-Date: Mon, 18 Apr 2022 14:19:55 -0500
-Message-ID: <3d153e5e-a1a6-3cc5-dbd2-d113e38e09a3@gmail.com>
-In-Reply-To: 20220411142056.817784-3-andrew.zaborowski@intel.com
+Subject: [PATCH 01/14] netconfig: Reset {v4,
+ v6}_configured to false on netconfig stop
+Date: Thu, 16 Jun 2022 00:47:26 +0200
+Message-ID: <20220615224739.1936538-1-andrew.zaborowski@intel.com>
 
---===============7092167877953148621==
+--===============1754965114806961086==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
+---
+ ell/netconfig.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-On 4/11/22 09:20, Andrew Zaborowski wrote:
-> Add a constructor for prefix routes through a specific gateway/router.
-> ---
-> Name follows suggestion in
-> https://lists.01.org/hyperkitty/list/ell(a)lists.01.org/message/ZPJRBKRRO=
-CGZFVLLFUCL6GYHHG2JQZLW/
-> ---
->   ell/ell.sym |  1 +
->   ell/rtnl.c  | 31 +++++++++++++++++++++++++++++++
->   ell/rtnl.h  |  2 ++
->   3 files changed, 34 insertions(+)
-> =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 2a1b3ed..5de5d74 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -1163,6 +1163,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
+netconfig)
+ 	netconfig->v4_subnet_route =3D NULL;
+ 	netconfig->v4_default_route =3D NULL;
+ 	netconfig->v6_address =3D NULL;
++	netconfig->v4_configured =3D false;
++	netconfig->v6_configured =3D false;
+ =
 
+ 	l_dhcp_client_stop(netconfig->dhcp_client);
+ 	l_dhcp6_client_stop(netconfig->dhcp6_client);
+-- =
 
-Applied, thanks.
+2.34.1
 
-Regards,
--Denis
-
---===============7092167877953148621==--
+--===============1754965114806961086==--
 
