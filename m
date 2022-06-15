@@ -1,62 +1,183 @@
-Content-Type: multipart/mixed; boundary="===============1239444979114087337=="
+Content-Type: multipart/mixed; boundary="===============6663272632834642975=="
 MIME-Version: 1.0
-From: Denis Kenzior <denkenz at gmail.com>
+From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: Re: [PATCH 4/5] util: add l_secure_select_byte
-Date: Fri, 04 Feb 2022 11:35:34 -0600
-Message-ID: <de076f60-25d4-c950-799f-87327ce1cf2f@gmail.com>
-In-Reply-To: 20220204170603.216439-4-prestwoj@gmail.com
+Subject: [PATCH 13/14] netconfig: Start ACD before committing static IPv4
+Date: Thu, 16 Jun 2022 00:47:38 +0200
+Message-ID: <20220615224739.1936538-13-andrew.zaborowski@intel.com>
+In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
 
---===============1239444979114087337==
+--===============6663272632834642975==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
-Hi James,
+When the IPv4 is configured to be static we can use ACD in order to
+check that the IP is available and not already in use.  If a
+conflict is found netconfig will be reset and no IP will be set on
+the interface.  The ACD client is left with the default
+'defend once' policy, and probes are not turned off.  This will
+increase connection time, but for static IP it is considered the
+safe approach.
+---
+ ell/netconfig.c | 71 ++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 64 insertions(+), 7 deletions(-)
 
-On 2/4/22 11:06, James Prestwood wrote:
-> This was taken from IWD and modified slightly to act off a boolean
-> rather than a 0xff/0x00 byte to stay consistent with l_secure_select
-> ---
->   ell/util.h | 15 +++++++++++++++
->   1 file changed, 15 insertions(+)
-> =
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index bcb2df9..7d4a97e 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -53,6 +53,7 @@
+ #include "strv.h"
+ #include "net.h"
+ #include "net-private.h"
++#include "acd.h"
+ #include "netconfig.h"
+ =
 
-> diff --git a/ell/util.h b/ell/util.h
-> index 9d4e36c..d390d27 100644
-> --- a/ell/util.h
-> +++ b/ell/util.h
-> @@ -425,6 +425,21 @@ static inline void l_secure_select(bool select_left,
->   		o[i] =3D r[i] ^ ((l[i] ^ r[i]) & mask);
->   }
->   =
+ struct l_netconfig {
+@@ -81,6 +82,7 @@ struct l_netconfig {
+ 	struct l_idle *signal_expired_work;
+ 	unsigned int ifaddr6_dump_cmd_id;
+ 	struct l_queue *icmp_route_data;
++	struct l_acd *acd;
+ =
 
-> +/*
-> + * Returns either true_value or false_value (depending if mask is 0xFF o=
-r 0x00
-> + * respectively).
-> + * This constant time selection method allows to keep an identical memory
-> + * access pattern.
-> + */
-> +static inline uint8_t l_secure_select_byte(bool select_true,
-> +					const uint8_t true_value,
-> +					const uint8_t false_value)
-> +{
-> +	uint8_t mask =3D -(!!select_true);
-> +
-> +	return (mask & true_value) | (~mask & false_value);
-> +}
-> +
+ 	/* These objects, if not NULL, are owned by @addresses and @routes */
+ 	struct l_rtnl_address *v4_address;
+@@ -389,8 +391,8 @@ static void netconfig_set_dhcp_lifetimes(struct l_netco=
+nfig *nc, bool updated)
+ 		l_queue_push_tail(nc->routes.updated, nc->v4_default_route);
+ }
+ =
 
-Why not use secure_select from ell/useful.h ?
+-static void netconfig_remove_dhcp_address_routes(struct l_netconfig *nc,
+-							bool expired)
++static void netconfig_remove_v4_address_routes(struct l_netconfig *nc,
++						bool expired)
+ {
+ 	struct l_queue *routes =3D
+ 		expired ? nc->routes.expired : nc->routes.removed;
+@@ -466,7 +468,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
+client *client,
+ 		if (L_WARN_ON(!nc->v4_configured))
+ 			break;
+ =
 
->   #ifdef __cplusplus
->   }
->   #endif
-> =
+-		netconfig_remove_dhcp_address_routes(nc, false);
++		netconfig_remove_v4_address_routes(nc, false);
+ 		netconfig_add_dhcp_address_routes(nc);
+ 		netconfig_set_dhcp_lifetimes(nc, false);
+ 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_UPDATE);
+@@ -492,7 +494,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_=
+client *client,
+ 		if (L_WARN_ON(!nc->v4_configured))
+ 			break;
+ =
 
+-		netconfig_remove_dhcp_address_routes(nc, true);
++		netconfig_remove_v4_address_routes(nc, true);
+ 		nc->v4_configured =3D false;
+ =
 
-Regards,
--Denis
---===============1239444979114087337==--
+ 		if (l_dhcp_client_start(nc->dhcp_client))
+@@ -1327,16 +1329,69 @@ static void netconfig_add_v6_static_address_routes(=
+struct l_netconfig *nc)
+ 	netconfig_add_v6_static_routes(nc, ip, prefix_len);
+ }
+ =
+
+-static void netconfig_do_static_config(struct l_idle *idle, void *user_dat=
+a)
++static void netconfig_ipv4_acd_event(enum l_acd_event event, void *user_da=
+ta)
+ {
+ 	struct l_netconfig *nc =3D user_data;
+ =
+
+-	l_idle_remove(l_steal_ptr(nc->do_static_work));
++	switch (event) {
++	case L_ACD_EVENT_AVAILABLE:
++		if (L_WARN_ON(nc->v4_configured))
++			break;
+ =
+
+-	if (nc->v4_static_addr && !nc->v4_configured) {
+ 		netconfig_add_v4_static_address_routes(nc);
+ 		nc->v4_configured =3D true;
+ 		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
++		break;
++	case L_ACD_EVENT_CONFLICT:
++		if (L_WARN_ON(nc->v4_configured))
++			break;
++
++		/*
++		 * Conflict found, no IP was actually set or routes added so
++		 * just emit the event.
++		 */
++		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
++		break;
++	case L_ACD_EVENT_LOST:
++		if (L_WARN_ON(!nc->v4_configured))
++			break;
++
++		/*
++		 * Set IP but lost it some time later.  Reset IPv4 in this
++		 * case and emit the FAILED event since we have no way to
++		 * recover from here.
++		 */
++		netconfig_remove_v4_address_routes(nc, false);
++		nc->v4_configured =3D false;
++		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
++		break;
++	}
++}
++
++static void netconfig_do_static_config(struct l_idle *idle, void *user_dat=
+a)
++{
++	struct l_netconfig *nc =3D user_data;
++
++	l_idle_remove(l_steal_ptr(nc->do_static_work));
++
++	if (nc->v4_static_addr && !nc->v4_configured) {
++		char ip[INET_ADDRSTRLEN];
++
++		l_rtnl_address_get_address(nc->v4_static_addr, ip);
++
++		nc->acd =3D l_acd_new(nc->ifindex);
++                l_acd_set_event_handler(nc->acd, netconfig_ipv4_acd_event,=
+ nc,
++					NULL);
++
++		if (!l_acd_start(nc->acd, ip)) {
++			l_acd_destroy(l_steal_ptr(nc->acd));
++
++			/* Configure right now as a fallback */
++			netconfig_add_v4_static_address_routes(nc);
++			nc->v4_configured =3D true;
++			netconfig_emit_event(nc, AF_INET,
++						L_NETCONFIG_EVENT_CONFIGURE);
++		}
+ 	}
+ =
+
+ 	if (nc->v6_static_addr && !nc->v6_configured) {
+@@ -1604,6 +1659,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *=
+netconfig)
+ =
+
+ 	l_dhcp_client_stop(netconfig->dhcp_client);
+ 	l_dhcp6_client_stop(netconfig->dhcp6_client);
++
++	l_acd_destroy(l_steal_ptr(netconfig->acd));
+ }
+ =
+
+ LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhcp_client(
+-- =
+
+2.34.1
+
+--===============6663272632834642975==--
 
