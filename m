@@ -1,88 +1,56 @@
-Content-Type: multipart/mixed; boundary="===============2957281854991792083=="
+Content-Type: multipart/mixed; boundary="===============0425479823250752407=="
 MIME-Version: 1.0
 From: Andrew Zaborowski <andrew.zaborowski at intel.com>
 To: ell at lists.01.org
-Subject: [PATCH 06/12] netconfig: Add l_netconfig_get_{dhcp6,icmp6}_client
-Date: Thu, 21 Apr 2022 17:45:19 +0200
-Message-ID: <20220421154525.1416984-6-andrew.zaborowski@intel.com>
-In-Reply-To: 20220421154525.1416984-1-andrew.zaborowski@intel.com
+Subject: [PATCH 02/14] netconfig: Don't set prefsrc on gateway route for now
+Date: Thu, 16 Jun 2022 00:47:27 +0200
+Message-ID: <20220615224739.1936538-2-andrew.zaborowski@intel.com>
+In-Reply-To: 20220615224739.1936538-1-andrew.zaborowski@intel.com
 
---===============2957281854991792083==
+--===============0425479823250752407==
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 
+Avoid setting the prefsrc attribute on our gateway route until we have
+at least a better handling of DAD on the IPv6 addresses, either by
+leveraging the kernel implementation or adding our own.  The kernel
+won't allow us to add a route with prefsrc containing a local address
+that has been basically just added with RTM_NEWADDR because DAD would
+still be running and if it works it's by luck.  We'll need to add those
+routes asynchronously after the address has been confirmed.
 ---
- ell/ell.sym     |  2 ++
- ell/netconfig.c | 18 ++++++++++++++++++
- ell/netconfig.h |  4 ++++
- 3 files changed, 24 insertions(+)
+ ell/netconfig.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 60dd257..0f9f884 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -749,6 +749,8 @@ global:
- 	l_netconfig_start;
- 	l_netconfig_stop;
- 	l_netconfig_get_dhcp_client;
-+	l_netconfig_get_dhcp6_client;
-+	l_netconfig_get_icmp6_client;
- 	l_netconfig_set_event_handler;
- 	l_netconfig_apply_rtnl;
- 	l_netconfig_get_addresses;
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index fd4de2c..783c6a2 100644
+index 5de5d74..c7251c2 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -1086,6 +1086,24 @@ LIB_EXPORT struct l_dhcp_client *l_netconfig_get_dhc=
-p_client(
- 	return netconfig->dhcp_client;
+@@ -235,7 +235,17 @@ static void netconfig_add_v6_static_routes(struct l_ne=
+tconfig *nc,
+ =
+
+ 	v6_default_route =3D l_rtnl_route_new_gateway(nc->v6_gateway_override);
+ 	l_rtnl_route_set_protocol(v6_default_route, RTPROT_STATIC);
+-	L_WARN_ON(!l_rtnl_route_set_prefsrc(v6_default_route, ip));
++	/*
++	 * TODO: Optimally we'd set the prefsrc on the route with:
++	 * L_WARN_ON(!l_rtnl_route_set_prefsrc(v6_default_route, ip));
++	 *
++	 * but that means that we can only commit the route to the kernel
++	 * with an RTM_NEWROUTE command after the corresponding RTM_NEWADDR
++	 * has returned and the kernel has finished DAD for the address and
++	 * cleared IFA_F_TENTATIVE.  That will complicate
++	 * l_netconfig_apply_rtnl() significantly but may be inevitable.
++	 */
++
+ 	l_queue_push_tail(nc->routes.current, v6_default_route);
+ 	l_queue_push_tail(nc->routes.added, v6_default_route);
  }
- =
-
-+LIB_EXPORT struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
-+						struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return NULL;
-+
-+	return netconfig->dhcp6_client;
-+}
-+
-+LIB_EXPORT struct l_icmp6_client *l_netconfig_get_icmp6_client(
-+						struct l_netconfig *netconfig)
-+{
-+	if (unlikely(!netconfig))
-+		return NULL;
-+
-+	return netconfig->icmp6_client;
-+}
-+
- LIB_EXPORT void l_netconfig_set_event_handler(struct l_netconfig *netconfi=
-g,
- 					l_netconfig_event_cb_t handler,
- 					void *user_data,
-diff --git a/ell/netconfig.h b/ell/netconfig.h
-index f90ec81..a50a895 100644
---- a/ell/netconfig.h
-+++ b/ell/netconfig.h
-@@ -75,6 +75,10 @@ void l_netconfig_stop(struct l_netconfig *netconfig);
- =
-
- struct l_dhcp_client *l_netconfig_get_dhcp_client(
- 						struct l_netconfig *netconfig);
-+struct l_dhcp6_client *l_netconfig_get_dhcp6_client(
-+						struct l_netconfig *netconfig);
-+struct l_icmp6_client *l_netconfig_get_icmp6_client(
-+						struct l_netconfig *netconfig);
- =
-
- void l_netconfig_set_event_handler(struct l_netconfig *netconfig,
- 					l_netconfig_event_cb_t handler,
 -- =
 
-2.32.0
+2.34.1
 
---===============2957281854991792083==--
+--===============0425479823250752407==--
 
