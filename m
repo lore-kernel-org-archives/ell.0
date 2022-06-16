@@ -1,86 +1,54 @@
-Received: from mail-oi1-f179.google.com (mail-oi1-f179.google.com [209.85.167.179])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mail.archlinux.org (mail.archlinux.org [95.216.189.61])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D61B1FA4
-	for <ell@lists.linux.dev>; Wed, 15 Jun 2022 03:59:39 +0000 (UTC)
-Received: by mail-oi1-f179.google.com with SMTP id q11so13993683oih.10
-        for <ell@lists.linux.dev>; Tue, 14 Jun 2022 20:59:39 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=message-id:date:mime-version:user-agent:subject:content-language:to
-         :cc:references:from:in-reply-to:content-transfer-encoding;
-        bh=GST9Vz5rEiCj75uzAlHrnyqAY7HNWtNQB44wpW3nTUs=;
-        b=n7PFdYzdlkB7ifJOON2oKWRnkA8reys7CVVrXaQTfyoo81rnuB5Xoq8HhjFcYtLiW4
-         SoAHsFCFbRCT0DUFst35HLfi6olaiiDGr1mD7S67dPnp0LoKfQazeeRLSHmEm3fsWW6b
-         /I8OIpEnX4XJsRogD752zS2uptRcSMT/KMZnLxRs46jM0PkgdB+HHLTAunNDD0qiqu/g
-         Z2iIkTO5G52KkbnS+wVBWi5uBfBSydK+tehUtV3062nLyrDWKDGCRG/oy+kEffztjWiu
-         sJoMGgmzn2AFJsXdZQhXAI4lSHmscHd6IrzkRiOVFkCwU9V0NWSoAEXMGnuZEWStia1e
-         zpLw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
-         :content-language:to:cc:references:from:in-reply-to
-         :content-transfer-encoding;
-        bh=GST9Vz5rEiCj75uzAlHrnyqAY7HNWtNQB44wpW3nTUs=;
-        b=49A9e2zdI1EXR3AyOA3PnRZ4Yp65ddpr6b3ScHRK92pY6IEftj7qUoLH3gsFFgtImx
-         z6x5uakB0adOcKeTK8dBJqt8g0rXA1d+0WSsLLAAEyQ6nyFQqgrBhMnJHKTJLDVCGTL3
-         DuSLG3OPGkR/PCobDJpTpG2aeOFLv0S8Wd+BRGjLRYsBo0EXAtmzHG4YHttn42uhHVxU
-         tGuSwKIZcdOdG/c/3Nn9v8tzdvyQY7GZ2ziq86Br/tYrD/WYt3wiYN2xfWLuItW6M0ex
-         zP0cVjb3pM7P/vDZt1J0xwGVTfQ1XPzN/ui45raN+6d5zm+M45URyVTtxuDLTUZfTeZR
-         0vxw==
-X-Gm-Message-State: AOAM533bvXMx6Mx1vvDuofmCtV5Ji5FzEd9+i7eJDdBijkNqsZ6tQkV4
-	xQ40SDsrfwQdqAzuOvd4v6c=
-X-Google-Smtp-Source: ABdhPJxgvlFzolXuEi1c5cnQdgazpm0hLSaOAjN5rjbpIkW/oSGNZbTVja1zsiOle1bxx/e9lqCT8Q==
-X-Received: by 2002:a05:6808:1905:b0:32e:c7f6:b75c with SMTP id bf5-20020a056808190500b0032ec7f6b75cmr3988545oib.247.1655265578559;
-        Tue, 14 Jun 2022 20:59:38 -0700 (PDT)
-Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id a23-20020a4ad5d7000000b0041b703a6131sm5915490oot.45.2022.06.14.20.59.37
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 14 Jun 2022 20:59:38 -0700 (PDT)
-Message-ID: <603b4d33-aa7b-1974-f41b-d9930d5f0eba@gmail.com>
-Date: Tue, 14 Jun 2022 22:53:09 -0500
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87E237A
+	for <ell@lists.linux.dev>; Thu, 16 Jun 2022 05:26:58 +0000 (UTC)
+Received: from workstation64 (ip5b41e765.dynamic.kabel-deutschland.de [91.65.231.101])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange ECDHE (P-256) server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mail.archlinux.org (Postfix) with ESMTPSA id 0B6B21102D0D
+	for <ell@lists.linux.dev>; Thu, 16 Jun 2022 05:26:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=archlinux.org;
+	s=dkim-rsa; t=1655357216;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=;
+	b=cw6xDUK7+Si6stCjJJofm9lcSZKFjIRRyD+RheB5+q7LZUuCRZQ17qTdFdMFJ1q45ZMrSZ
+	usLPwQsMk9bj4jqq817mT6ATwHucTz2qwG73fVrls9fntHcHVjqBfOvWREaZIlDr8uzXbK
+	o/Cw+oSWVVq+beIvDWTmptOLc4JTUWCntc+GTBKAsVF3nnRiihQGi90021RQ+Mu1CXYjNI
+	/UHR82SCTnAtOkkUpIHxCavUnZ6QQxiOySGSH0NfSZ1+D3a56MJPBnnSMnM8zWySql1NPH
+	0pFgrTFs07hZ5nBxzBRNysBEda+E4gIUhIGeK4C7LPchmfsTuOVtJwNjPu3S8qflwfpXqm
+	APXCPy0apbrBrEqOkLdy62A518lB7fEY9nJ9piwEQwFzIVkXetWZ23xjm7t2TvhYPmVY/G
+	s++28OFWrwrKHaY1ZjNKveORasiWqhGL2PFERVMsz9gDEY4ODDSp7fxmnPy4M2ZkMWLxAE
+	LV4Sv6VYpJf8HsvCdP0ybPSJ2oiYzaI0lbJz1KHWuubhsXUdNM/9A45+MY55irvWmvNZPb
+	MwwOaLa7V5Z/go+cZ8ZSTUGwkbQJ+gq6IbHuQqyqGVTh93ZNX5iERs4RO3ZKmKQdTepBZB
+	8rhWKKVi10lwXtiGVbATR1KV310X+pFN2IAQlcX2AS4oIv45y7c8A=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=archlinux.org;
+	s=dkim-ed25519; t=1655357216;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=;
+	b=ERZGxwx+JKY1eZko3mZiUSwt9UEfUBsU2fc1/ZkgfU1d2Zu2A26KQRnP337hz22u+zerf2
+	pkATksB8IOckjmCg==
+Date: Thu, 16 Jun 2022 07:26:55 +0200
+From: Andreas Radke <andyrtr@archlinux.org>
+To: ell@lists.linux.dev
+Subject: help
+Message-ID: <20220616072655.5990e9c6@workstation64>
+Organization: ArchLinux
+X-Mailer: Claws Mail 4.1.0 (GTK 3.24.34; x86_64-pc-linux-gnu)
+Face: iVBORw0KGgoAAAANSUhEUgAAADAAAAAwBAMAAAClLOS0AAAAJFBMVEXLVzlCOzajNBsxMDJ9Rjo7JB1CJx2jo6JhMh9CPj9gFBAcGRUvqpyyAAACVElEQVQ4jWXTvWvbQBQA8McRSMeqwtQhi/LQcHgTVwghi+sKIncrhRCSKZQY0S4pGNTgycK4D3UymUyXxhAQ5ymEJJD75/pOX1baNxjr/bj37t1JsFw47VjsVH9guKxzHWMeHGf5H5xx3phmKQwXTrH60DxofWvunNYKC7vmWXMYE/xTyjznxLE29y9g0TE5hhxzY3YasDvcfUxhi+Hjt7oLDMstnXgADJFeV7Xgqlj6sAIOrkba1GB7dB77sH3J5EdZA/ZIOjFAYgF8f/2pBbspwDYUIX7dVVAcUwp1iKgNx224b8Gp1wCGX1pw0oBA/6LVvA2ygu8Mr/NNKVGDvVrEFkSfSzjgH3zFUKGg4xL4Yrqe8ACz3GPa2opOS7C9PfQEH+wKMdOzSE+bYxcrEHyrGvXZCZG+aeYQwjbNUrg15jHOpg3YHiBzANLxBa02k/dFtd00o5l8AViBPwApN/AGK0A7uXQb6BKW2Z7HA+5twOny2PiHbQVIe0qp+vXpIs/GL8ogR5lNlaNcF5YVSJ1qOtVEcycIGnDQ6+XY07nOsxvXDRxXMbhcMQWpPUlZnmfnDmcUQ9EqFQJ1KrOvOZ3bFQwBQ6BSnkT0NLcgN7AJBQfKRmRBppyf81NRqoTBAAF79tuZOkWigdCeBtpKqgUHRyIc2GvHotIGnkIRsnCeZi+BxyAaoKT453UN75Q6DD3wiWKiEc3GNewr9fuHvXKaj0aj2TRJ3tfwdtK3nxLvaBSH0ThJxiUEyWS/eDVZZmE0STg+WDhKJk+XdoiwiAKSK/UXmpn5K/owqOUAAAAASUVORK5CYII=
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.3.0
-Subject: Re: Sending and Receiving DBUS Message
-Content-Language: en-US
-To: Ryan McClue <re.mcclue@protonmail.com>
-Cc: "ell@lists.linux.dev" <ell@lists.linux.dev>
-References: <VVBTpWPl9dQKNCUMJDgYOFMFEgO_VdFuJ60Eu9ZBWznwRfuoIDDnwp17yk8Et0hiD0NaBFbhi5c1qAM0a-sgP85vbvnk17x_1U_efI5rSLM=@protonmail.com>
- <f6c025d3-a2e8-9f53-8b5b-71703be4c2f6@gmail.com>
- <PyTvMi1te-mCaRAe18nuXlJoIfYvu3xK9CP4XDweGT28egcFExPPkellIjOWwQXzxEbT3qH-KPmokmIcTaAq7UL4FIDs5jWEgA8yW676FTo=@protonmail.com>
- <b448db72-549e-f748-3851-9d297b7ea05d@gmail.com>
- <wk-twE8P7fmAykCAdLvcaPGWWzSscceUiLEpbWSuUV1-uQWzsrMcDyNszaOKEMiPRWLhATf11gMgyp9VUcGXPVkkFFzeTOnLhSN9CX9G1x8=@protonmail.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <wk-twE8P7fmAykCAdLvcaPGWWzSscceUiLEpbWSuUV1-uQWzsrMcDyNszaOKEMiPRWLhATf11gMgyp9VUcGXPVkkFFzeTOnLhSN9CX9G1x8=@protonmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
+Authentication-Results: mail.archlinux.org;
+	auth=pass smtp.auth=andyrtr smtp.mailfrom=andyrtr@archlinux.org
 
-Hi Ryan,
-
->>> struct l_dbus_message *msg = l_dbus_message_new_method_call(conn, "org.bluez", "/org/bluez/hci0",
->>> "org.bluez.Adapter1", "StartDiscovery");
->>>
-
-You also need to make sure to set the arguments on the message.  In your case:
-
-l_dbus_message_set_arguments(msg, "");
-
-We probably should have l_dbus_send* reject messages which have not been setup 
-properly.  But since you're not checking the error, it wouldn't really help :)
-
->>> l_dbus_send_with_reply(conn, msg, start_discovery_callback, NULL, NULL);
->>>
->>> l_dbus_message_unref(msg);
-
-Here's a functional example based on your code.
-
-http://dpaste.com/8GVMYE3DY
-
-Regards,
--Denis
