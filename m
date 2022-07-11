@@ -1,74 +1,172 @@
-Received: from mail-oi1-f175.google.com (mail-oi1-f175.google.com [209.85.167.175])
+Received: from mail-lf1-f45.google.com (mail-lf1-f45.google.com [209.85.167.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FF471C3A
-	for <ell@lists.linux.dev>; Fri,  1 Jul 2022 15:21:46 +0000 (UTC)
-Received: by mail-oi1-f175.google.com with SMTP id w193so3941423oie.5
-        for <ell@lists.linux.dev>; Fri, 01 Jul 2022 08:21:46 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=message-id:date:mime-version:user-agent:subject:content-language:to
-         :references:from:in-reply-to:content-transfer-encoding;
-        bh=C2ajNJ2OaCtvfcMYPSAGuga3DZ/fyB68ysZ9YBr9RxE=;
-        b=ASvNeJHalZoFZqGg07C5opLIUUsudmPhWpsM1revRlSh8/780siHnKPOUkfaip+iXa
-         bFv6q1trN3qQ0wWikXcDiUBIQLQcqav3HlVSKeWpt1w1N/dhghgGAvZkXZtmZhugsTp9
-         yVkV6WsnR9odgvcuFBYVM8OsNoFdLUsosYut+VLGH+3kU/i5kBNPTzdl0fmHI5Up5dt6
-         aOJDplwY8ROipOiMNOprcNANS7CFEJ/3iPx5UUpuvZGwL7IjxFofkTB6lkH9CpTH5PY7
-         EwWjtyRWbsupnxk5Ld2mzSt9bwlMDHYuvo4otDI7XHWE+OFNJIJlpQUxpzAS4jGGK/a7
-         LdCw==
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A44CD7A
+	for <ell@lists.linux.dev>; Mon, 11 Jul 2022 14:03:51 +0000 (UTC)
+Received: by mail-lf1-f45.google.com with SMTP id d12so8837630lfq.12
+        for <ell@lists.linux.dev>; Mon, 11 Jul 2022 07:03:51 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
-         :content-language:to:references:from:in-reply-to
+        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
          :content-transfer-encoding;
-        bh=C2ajNJ2OaCtvfcMYPSAGuga3DZ/fyB68ysZ9YBr9RxE=;
-        b=SbH7XQIvw+T9W0XiGYbbv+AfCOKC9Uw+c2NWCpVflLt5kqqhgHSDuSsqi2T5+MElk6
-         Hn+ucf9SGwP4wXU1Hm9C2ci6TSZDPu6KRH4ZJ50UbinaDeUYVGOgJ5ROaY9Sii6jM9wW
-         tXpJjHoSAMiwT6RE86bry2o7qmkVGW/ZSYwrkhiqYfss7Qe2HEbdLyRt8pmp9KE866wl
-         4smlSQMWJjw5QdjBgEPyKXfIO33uCxLHRePZu37xbhIVuupqvAu5OAfWn3mblVH8qj/r
-         0DbEIJl//iJcXY4fYypOgQqvAy6bVLhmiu7+EuFXVj+gYBx2xhmyf38Unfj9homoNlqw
-         8EOQ==
-X-Gm-Message-State: AJIora9xNGycQ103hi+5lTn3XbIvR9BNkv9Aln1pBqMm20sNEuGlF5vF
-	OKyaPbPG4HzpsTgnOisxNIU=
-X-Google-Smtp-Source: AGRyM1up4vlFGeIShwjHtEvJtFKGL3k6+g1ClLkMQsjBUOpUJRInTsRFjVjo/4TumcRuy80b2B4Xuw==
-X-Received: by 2002:a05:6808:1a13:b0:335:870b:324e with SMTP id bk19-20020a0568081a1300b00335870b324emr10100947oib.297.1656688906098;
-        Fri, 01 Jul 2022 08:21:46 -0700 (PDT)
-Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id q30-20020a056808201e00b003351d035f77sm1759507oiw.47.2022.07.01.08.21.45
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 01 Jul 2022 08:21:45 -0700 (PDT)
-Message-ID: <670bbd3a-2d83-85ca-477e-b0c18054d551@gmail.com>
-Date: Fri, 1 Jul 2022 10:11:30 -0500
+        bh=fgVeknC3GYUxHbPxCrFv+ZVcNYkRwkYN4G/61+IIZ/I=;
+        b=s3102kPrve3jHT5EGePAnvYd4QQ1fybdlQ8pmaMGgWcQI54TVpVWVMVyCWcJ7CO3N7
+         Hzuz0bM2rePoU7TVS0/Rngu/7FIv+dMRYiweJYYh4XZiNznI1IEW8NRfSomOgSw/z9W9
+         5LveoNUykDBzndzlE0y2Y/qWKeuGkNrn0YcMgUYhW+V0yeIrK7sFINgsikRob7ldTaCQ
+         a9QMpGI5Te96PfeXKWi+4eqkLpjvOLc1GLJ6QZlUAYGVTFEmsesbCrrBj52V7c8ghmlU
+         DHRqDKPUe/OQ9Q2M6EjQl9eOCFdHF9JRzmFPCId5NWWLodhnfjWBsBNhY83q78tDoIcb
+         Vq/g==
+X-Gm-Message-State: AJIora/sS1J50H9jhkdv8WZPSptyQNleDmR07Wbym1COWmQl1CjXf5Ix
+	806QahZvIIkG98R4ZNMgDAGSdv0KK9G5cBWJ
+X-Google-Smtp-Source: AGRyM1vcNKl9MdvP2VXumBf+octcOJ6t6eXUQpbqhah2fgFiJMdYoQNg5ujEfbMA+WAmtMWj78VOCw==
+X-Received: by 2002:a05:6512:158b:b0:489:e031:a013 with SMTP id bp11-20020a056512158b00b00489e031a013mr2720533lfb.508.1657548229296;
+        Mon, 11 Jul 2022 07:03:49 -0700 (PDT)
+Received: from iss.home (79.184.238.213.ipv4.supernova.orange.pl. [79.184.238.213])
+        by smtp.gmail.com with ESMTPSA id h15-20020a19ca4f000000b0048745483f2asm1565178lfj.23.2022.07.11.07.03.48
+        for <ell@lists.linux.dev>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 11 Jul 2022 07:03:48 -0700 (PDT)
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+To: ell@lists.linux.dev
+Subject: [PATCH] netconfig: API to disable/enable ACD
+Date: Mon, 11 Jul 2022 16:03:44 +0200
+Message-Id: <20220711140344.3464765-1-andrew.zaborowski@intel.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.3.0
-Subject: Re: [PATCH 1/4] dhcp: Set lease->bound_time before emitting event
-Content-Language: en-US
-To: Andrew Zaborowski <andrew.zaborowski@intel.com>, ell@lists.linux.dev
-References: <20220701133237.2887854-1-andrew.zaborowski@intel.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20220701133237.2887854-1-andrew.zaborowski@intel.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Andrew,
+When using FILS IP Assignment, the received configuration will be passed
+to l_netconfig as "static", yet we may want to skip ACD to avoid the
+overhead.
+---
+ ell/ell.sym     |  1 +
+ ell/netconfig.c | 40 ++++++++++++++++++++++++++++------------
+ ell/netconfig.h |  1 +
+ 3 files changed, 30 insertions(+), 12 deletions(-)
 
-On 7/1/22 08:32, Andrew Zaborowski wrote:
-> The event handler for L_DHCP_CLIENT_EVENT_LEASE_OBTAINED/RENEWED will
-> want to use the new lease->bound_time value for expiry time calculation
-> to we need to set it before we emit the events in the DHCP ACK handler.
-> ---
->   ell/dhcp.c | 3 +--
->   1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-
-All applied, thanks.
-
-Regards,
--Denis
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 8f4e59d..81cec64 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -747,6 +747,7 @@ global:
+ 	l_netconfig_set_gateway_override;
+ 	l_netconfig_set_dns_override;
+ 	l_netconfig_set_domain_names_override;
++	l_netconfig_set_acd_enabled;
+ 	l_netconfig_check_config;
+ 	l_netconfig_reset_config;
+ 	l_netconfig_start;
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 28afa9b..8f87e64 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -67,6 +67,7 @@ struct l_netconfig {
+ 	char *v4_gateway_override;
+ 	char **v4_dns_override;
+ 	char **v4_domain_names_override;
++	bool acd_enabled;
+ 
+ 	bool v6_enabled;
+ 	struct l_rtnl_address *v6_static_addr;
+@@ -1031,7 +1032,6 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+ 
+ 	nc = l_new(struct l_netconfig, 1);
+ 	nc->ifindex = ifindex;
+-	nc->v4_enabled = true;
+ 
+ 	nc->addresses.current = l_queue_new();
+ 	nc->addresses.added = l_queue_new();
+@@ -1061,6 +1061,7 @@ LIB_EXPORT struct l_netconfig *l_netconfig_new(uint32_t ifindex)
+ 	/* Disable in-kernel autoconfiguration for the interface */
+ 	netconfig_proc_write_ipv6_uint_setting(nc, "accept_ra", 0);
+ 
++	l_netconfig_reset_config(nc);
+ 	return nc;
+ }
+ 
+@@ -1275,6 +1276,16 @@ LIB_EXPORT bool l_netconfig_set_domain_names_override(
+ 	return true;
+ }
+ 
++LIB_EXPORT bool l_netconfig_set_acd_enabled(struct l_netconfig *netconfig,
++						bool enabled)
++{
++	if (unlikely(!netconfig || netconfig->started))
++		return false;
++
++	netconfig->acd_enabled = enabled;
++	return true;
++}
++
+ static bool netconfig_check_family_config(struct l_netconfig *nc,
+ 						uint8_t family)
+ {
+@@ -1343,6 +1354,7 @@ LIB_EXPORT bool l_netconfig_reset_config(struct l_netconfig *netconfig)
+ 	l_netconfig_set_gateway_override(netconfig, AF_INET, NULL);
+ 	l_netconfig_set_dns_override(netconfig, AF_INET, NULL);
+ 	l_netconfig_set_domain_names_override(netconfig, AF_INET, NULL);
++	l_netconfig_set_acd_enabled(netconfig, true);
+ 	l_netconfig_set_family_enabled(netconfig, AF_INET6, false);
+ 	l_netconfig_set_static_addr(netconfig, AF_INET6, NULL);
+ 	l_netconfig_set_gateway_override(netconfig, AF_INET6, NULL);
+@@ -1434,25 +1446,29 @@ static void netconfig_do_static_config(struct l_idle *idle, void *user_data)
+ 	l_idle_remove(l_steal_ptr(nc->do_static_work));
+ 
+ 	if (nc->v4_static_addr && !nc->v4_configured) {
+-		char ip[INET_ADDRSTRLEN];
++		if (nc->acd_enabled) {
++			char ip[INET_ADDRSTRLEN];
+ 
+-		l_rtnl_address_get_address(nc->v4_static_addr, ip);
++			l_rtnl_address_get_address(nc->v4_static_addr, ip);
+ 
+-		nc->acd = l_acd_new(nc->ifindex);
+-                l_acd_set_event_handler(nc->acd, netconfig_ipv4_acd_event, nc,
+-					NULL);
++			nc->acd = l_acd_new(nc->ifindex);
++			l_acd_set_event_handler(nc->acd,
++						netconfig_ipv4_acd_event, nc,
++						NULL);
+ 
+-		if (!l_acd_start(nc->acd, ip)) {
+-			l_acd_destroy(l_steal_ptr(nc->acd));
++			if (l_acd_start(nc->acd, ip))
++				goto configure_ipv6;
+ 
++			l_acd_destroy(l_steal_ptr(nc->acd));
+ 			/* Configure right now as a fallback */
+-			netconfig_add_v4_static_address_routes(nc);
+-			nc->v4_configured = true;
+-			netconfig_emit_event(nc, AF_INET,
+-						L_NETCONFIG_EVENT_CONFIGURE);
+ 		}
++
++		netconfig_add_v4_static_address_routes(nc);
++		nc->v4_configured = true;
++		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_CONFIGURE);
+ 	}
+ 
++configure_ipv6:
+ 	if (nc->v6_static_addr && !nc->v6_configured) {
+ 		netconfig_add_v6_static_address_routes(nc);
+ 		nc->v6_configured = true;
+diff --git a/ell/netconfig.h b/ell/netconfig.h
+index ac467b6..7710d83 100644
+--- a/ell/netconfig.h
++++ b/ell/netconfig.h
+@@ -68,6 +68,7 @@ bool l_netconfig_set_dns_override(struct l_netconfig *netconfig, uint8_t family,
+ 					char **dns_list);
+ bool l_netconfig_set_domain_names_override(struct l_netconfig *netconfig,
+ 						uint8_t family, char **names);
++bool l_netconfig_set_acd_enabled(struct l_netconfig *netconfig, bool enabled);
+ bool l_netconfig_check_config(struct l_netconfig *netconfig);
+ bool l_netconfig_reset_config(struct l_netconfig *netconfig);
+ 
+-- 
+2.34.1
 
