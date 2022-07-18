@@ -1,47 +1,47 @@
-Received: from mail-oa1-f43.google.com (mail-oa1-f43.google.com [209.85.160.43])
+Received: from mail-ot1-f51.google.com (mail-ot1-f51.google.com [209.85.210.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FC3F33DE
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D6AC333DF
 	for <ell@lists.linux.dev>; Mon, 18 Jul 2022 18:07:16 +0000 (UTC)
-Received: by mail-oa1-f43.google.com with SMTP id 586e51a60fabf-10c0119dd16so25857964fac.6
-        for <ell@lists.linux.dev>; Mon, 18 Jul 2022 11:07:15 -0700 (PDT)
+Received: by mail-ot1-f51.google.com with SMTP id br15-20020a056830390f00b0061c9d73b8bdso3719184otb.6
+        for <ell@lists.linux.dev>; Mon, 18 Jul 2022 11:07:16 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=pMAzSKeE5FuNXbvrHPS5yhXcTBNmrECY11tiJECwGqc=;
-        b=XHrdzhFSIcaRT7pS+5bBfsUq8Zo48H52Rhj0KxJYNg0OkEQHtlULcavTVAKpZ4QXkF
-         6TQ8Ulsq+oXdOcyOQP5rhwDae7F8YsnWln5ySkpspVTpQlLf+MSQEQfmPFHw1Z9hwrZR
-         6mMzzVZr+NgiCNA1QHzuiyRDjmoPv2kFYiDAdSvnuRuB/Ht1g1E4B7Yj8agS1GNiJnkb
-         e7GpvOuYHrPPRFM5+1u0o0GO9S3E4Or4dOGRQOmPyomyQijlQe2sWQezq8OFojivtMB5
-         4w9Eseau2v2EIPFrM6bRvGmPfBideKuY7FUG4yEnM2Ly97qev919lHBXYAn8b9WK+hG1
-         aBIA==
+        bh=Jj8SzOc4fPGKTCmDSCizZ0kMBR+BMY1DeLBui51Bxng=;
+        b=m8uA5HUPka495onoTbfVOGwD8mBVbNizflUEo5OqIgNU+2N87c4IXEY3XVK3qwEUjj
+         cudYF8QXtQHrnNYLPSwGvV1wwRED69folGkw4Vx2aqJc73OKsmmCmP20XgL/sR23jwFH
+         QaSL2AtWlnKJbr7yFsOCh1R+TTNkA/Cot/Z1YZl2uU8C9VZo/fsIRbhJW0SCTwfO7mCc
+         32G93OOBKmwQg+HTq0/f1nEl+k0SblhJVFH0DKhounqZLP2jhghPHJmFG2cXJ/fSgoOw
+         /Cxi19lcGTHxARlzej70IjWQ0EF8RktJui5SQffQy8dExh+UA3A1mCey+frNkDPBtc2A
+         E25w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=pMAzSKeE5FuNXbvrHPS5yhXcTBNmrECY11tiJECwGqc=;
-        b=L6YfqlL092Ou4vgD46GkPOZWtg5tkej75NhE8AlIDTE4WGG9cbsr3ZWJVtK/UVBCdW
-         G4i14wGsfMikPSoN6wPaspUjMY1cE4226pxa81tFOAxnnK4xXmPoXmYeg8Rapo34k6o3
-         LLWnIs8hTHhzUuMbY0qE/bsnOWf1PqpAjnuDsYLzZTfmdcnfr+GTgMb7LLjNcAPKUwIu
-         PVhoGQDArESiInej5ngT2PhGllCJoOw+qTFNEGCGD9W0Vy3tMHZ0e/30eP6OgVrjcoR+
-         iKpS8cq98g+pCWkgeU2PB7V2oAnLdlfFFDtUEWUaL95kDVSulGAf4E/AUR30U63gdAna
-         GSQA==
-X-Gm-Message-State: AJIora/Fam47H4dMvwMmd/8E59VOuJ9gEoDHXgpayk0+WiZFwf0iEWx3
-	5Qbcf4dL3lNzOwawo574wF5+OgMKKmY=
-X-Google-Smtp-Source: AGRyM1uV19TI4nAL9ELOZ+fn8tElTvt7t5Yy3NhTDKOiTO0G3JeK0DT8Z3l2uWO8E37wG9XIq+uQjQ==
-X-Received: by 2002:a05:6808:e88:b0:337:9676:ddd4 with SMTP id k8-20020a0568080e8800b003379676ddd4mr13052181oil.9.1658167635052;
+        bh=Jj8SzOc4fPGKTCmDSCizZ0kMBR+BMY1DeLBui51Bxng=;
+        b=qwHDer9BckyERxbCWPmFVi0TZFwynKYZwMIJ8VZVun/T8kmz/i4tVlLG0Y85ruOklq
+         yac5DKzHpm+ukBtn9T1K0y2qg3EXb69Jx/9v9nQigWduJIorXNN34b1/Ev2rxZoDGnNz
+         BHOYCEidRMnnoCGydAaz7fQDgwUKnfGqcfdRrXk2adXCV7H3cBK4qz+DlG8MTghmNkG9
+         8J/a0ZInDucH6o+tIRapE/Uhx9EDh/fkYNF0whq+ldY5CG9pA4COJ7m3Vj0U7VGmMe1o
+         CJz9gcFkD2vZ1gLMuT60NjvF0A9Fq1pKkO1rraGbABwHWAtOdbWsEmfOCagPvm20mOJN
+         4JOA==
+X-Gm-Message-State: AJIora8Cu2TxcEgpIKyCsgMdJcMjqk0M8CdjnphsWBRYEpbKO+HUmeAw
+	//J6hfMj+0zVILJsIZD9UBAtdjjobjE=
+X-Google-Smtp-Source: AGRyM1tKUw9kATb878hT+PGD2UCYqjiyLjjtanEVKPPOEJDj1nnBe7L9cyqDilWXsZUUUBZDOjE+8g==
+X-Received: by 2002:a05:6830:248c:b0:61c:98a2:105d with SMTP id u12-20020a056830248c00b0061c98a2105dmr4446760ots.158.1658167635742;
         Mon, 18 Jul 2022 11:07:15 -0700 (PDT)
 Received: from localhost.localdomain (216.106.68.145.reverse.socket.net. [216.106.68.145])
-        by smtp.gmail.com with ESMTPSA id n23-20020a056870559700b0010c727a3c79sm6808467oao.26.2022.07.18.11.07.14
+        by smtp.gmail.com with ESMTPSA id n23-20020a056870559700b0010c727a3c79sm6808467oao.26.2022.07.18.11.07.15
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 18 Jul 2022 11:07:14 -0700 (PDT)
+        Mon, 18 Jul 2022 11:07:15 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH v2 08/10] unit: Skip ECDSA cipher suite tests
-Date: Mon, 18 Jul 2022 13:00:43 -0500
-Message-Id: <20220718180045.5845-8-denkenz@gmail.com>
+Subject: [PATCH v2 09/10] useful: Add maxsize()
+Date: Mon, 18 Jul 2022 13:00:44 -0500
+Message-Id: <20220718180045.5845-9-denkenz@gmail.com>
 X-Mailer: git-send-email 2.35.1
 In-Reply-To: <20220718180045.5845-1-denkenz@gmail.com>
 References: <20220718180045.5845-1-denkenz@gmail.com>
@@ -53,26 +53,30 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Since ECDSA sign operation is currently not supported, ECDSA in server
-mode cannot work.  Skip tests for these cipher suites for now.
+Similar to minsize(), but for finding the maximum of two sizes
 ---
- unit/test-tls.c | 3 +++
- 1 file changed, 3 insertions(+)
+ ell/useful.h | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/unit/test-tls.c b/unit/test-tls.c
-index aee5b2e36b78..53d4f38ef875 100644
---- a/unit/test-tls.c
-+++ b/unit/test-tls.c
-@@ -1050,6 +1050,9 @@ int main(int argc, char *argv[])
- 		struct tls_bulk_encryption_algorithm *alg = suite->encryption;
- 		bool supported;
+diff --git a/ell/useful.h b/ell/useful.h
+index 791fa2006494..efd91d78b3f2 100644
+--- a/ell/useful.h
++++ b/ell/useful.h
+@@ -38,6 +38,14 @@ static inline size_t minsize(size_t a, size_t b)
+ 	return b;
+ }
  
-+		if (l_str_has_prefix(suite->name, "TLS_ECDHE_ECDSA"))
-+			continue;
++static inline size_t maxsize(size_t a, size_t b)
++{
++	if (a >= b)
++		return a;
 +
- 		if (alg->cipher_type == TLS_CIPHER_AEAD)
- 			supported = l_aead_cipher_is_supported(alg->l_aead_id);
- 		else
++	return b;
++}
++
+ static inline void set_bit(void *addr, unsigned int bit)
+ {
+ 	unsigned char *field = addr;
 -- 
 2.35.1
 
