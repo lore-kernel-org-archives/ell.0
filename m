@@ -1,48 +1,50 @@
-Received: from mail-oa1-f51.google.com (mail-oa1-f51.google.com [209.85.160.51])
+Received: from mail-oo1-f50.google.com (mail-oo1-f50.google.com [209.85.161.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8DEC1320E
-	for <ell@lists.linux.dev>; Mon, 18 Jul 2022 16:08:35 +0000 (UTC)
-Received: by mail-oa1-f51.google.com with SMTP id 586e51a60fabf-10c0430e27dso24956886fac.4
-        for <ell@lists.linux.dev>; Mon, 18 Jul 2022 09:08:35 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D90A0323F
+	for <ell@lists.linux.dev>; Mon, 18 Jul 2022 16:08:36 +0000 (UTC)
+Received: by mail-oo1-f50.google.com with SMTP id d12-20020a4aeb8c000000b004214e709b72so2363334ooj.6
+        for <ell@lists.linux.dev>; Mon, 18 Jul 2022 09:08:36 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=rJlGaTt8c3u3xYzawmr81ynKoJj/T5ePwtuRsOr5Qu0=;
-        b=d8RTclhwis29hL+rug7N/7WGAiaL7+3DwQx2xMF3FrteJL0a/NT9BYlYKoTpXnp7Lg
-         lf0ZbGDHtyYxR5vPv0jBApzibStAlrFRYpQchSZXB91BOSY9QEK4GKN2AUQS4afGPZny
-         jxjukKM5uM+/S4NliC3/g5iHBcXfoN4o1vN7tFlqowfTwK7FYmkL3Kv4MMrYsDjDhTDJ
-         InsMqwIXfazw5tWfqv9Upe/YYtGNVqh/lfNETAxUTsCrYcv5YKkiKlb5GYW885rF4mjl
-         rtIfj8Wj7P04KGExXJ04zYOutbOMtxrVgGmO0s5ydcihCTSdkiAlzxL/+rezpc9E8/l+
-         2Oug==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=kW99CkzG/sAtLGON6i1sEngEB0b9gBWe/XHcegnda2w=;
+        b=g5Q2Jsh3gilmNrt6JhAWqusKih5NorGK4HzpiZZZw960CXDgZ8p9s6v+qGeQ3AovWo
+         hpz4fiPCDtBKNrKjLGGU2srU0wPbR8r3CuyWXDB8pkciTQy8h0x4AlDTcjEMY3aeTmUk
+         U9HhXU+61R0rgL6L8IC9w7+5hvXy6JWwK1p611s9R5CtwP9InOFjk91Vz3PAS0+pyc7P
+         8YQ3FiMiSTemYA8Ce4KvZpw9PxT/Fb2lF1VSzKo3NKEpBybXgfzwASX1DGU8X9eFfwMn
+         yRl3ob1WJb3+42JhsCGeOlPbH+7LTJm2JHwE+rUlZ59G3XSfxeHwYDkT8n2FnonWp8kk
+         3bTA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=rJlGaTt8c3u3xYzawmr81ynKoJj/T5ePwtuRsOr5Qu0=;
-        b=AXz9LH5jZraz3Cr6JBfCyLEJ9uR7LR5260xCEaTK8XAfjH64H6gedpr/L7hv1+t3zL
-         FVRqrF2dI/IAQPaAJ5hafTEHTOUtGWrcidkXR4ht2WMV18rBufPa/iUkWmmG5L8jtY1c
-         2zYrM3NkwXHNyN8mwoxcMBm/WubEdEZTFOFq2JPP9SNLtwJPcvJ9P9wXKGKc9NVVtFrf
-         3uwFjqrwcSvI+fEFuDVsxPwGlCcSJ471K8Cpx7l8EV1SCpEC4PxFbb+qcyvy79Kf8pGB
-         ZIOUaWFpDVyYeQIA0y2T/i8Uq+Lh6lBsuGQis0lW7ZKuYAkyosVdQMW7YlIAEy0Mhjh1
-         cyqQ==
-X-Gm-Message-State: AJIora8ZgaegQ184KqGdRqiG0M+2q/Po29K15mWkw4bg0BN1IDun56wD
-	NqsepSMS/xhYXuS2HNJzoYkOmxVhlRw=
-X-Google-Smtp-Source: AGRyM1sjm0kWqokyx8CS1xbPkldBXhaHyGJ+zBsRnY1yx22xVZYzkY3BDSEl5zk6tr/kZ+xb0vZ3VQ==
-X-Received: by 2002:a05:6808:1247:b0:335:2987:120c with SMTP id o7-20020a056808124700b003352987120cmr13704601oiv.142.1658160514504;
-        Mon, 18 Jul 2022 09:08:34 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=kW99CkzG/sAtLGON6i1sEngEB0b9gBWe/XHcegnda2w=;
+        b=ED3XIXeOJ+rCvxDhWsLU+dI+ArfAOCj/UyxtK6FSi8W1JMWDIEDkBWkiH9nHP4OUbc
+         yv/HzzWqA6a+7WU8C62Re1cK5KFkcg383tF+ma3WS+Qb7CmNS2RadALZiTOm7MLuCvV+
+         b+qZvnfAwkU1O2i5POETn4bDI9IF9cmbCjK9V3xfVvZXEBAb4CUonqkLF34N+zniLOq6
+         a1Mlfygl3T157v3WgilthfxtzOHS52KIZqwu7IUn+Fe+pVUCm3YngS40vooNi8hDBO+B
+         JYRf8OpepF7ccdujxYog7+yIr/5ZKNBpIHboz8Pfs1DPs9uNqBZGEzSH6i3OVx2q8TfN
+         bA1Q==
+X-Gm-Message-State: AJIora9K44bMkNKUZzzQ7q0r2SOKxA1MrC9RVFWWycdb6DZRl34sjFyy
+	VQ4Yv7d6MxQWRiq7w6IV5h6DWs+6Ht4=
+X-Google-Smtp-Source: AGRyM1tqI1fxv/l+54Cy7mUf9Qg2eBcKrMDkV9K8Zw4IJUUjdm+OuW4c2La5xymxsg5bRI1GydmPCw==
+X-Received: by 2002:a4a:b642:0:b0:435:46f0:8102 with SMTP id f2-20020a4ab642000000b0043546f08102mr9702127ooo.17.1658160515924;
+        Mon, 18 Jul 2022 09:08:35 -0700 (PDT)
 Received: from localhost.localdomain (216.106.68.145.reverse.socket.net. [216.106.68.145])
-        by smtp.gmail.com with ESMTPSA id t19-20020a9d5913000000b0061cae832e5dsm297941oth.3.2022.07.18.09.08.34
+        by smtp.gmail.com with ESMTPSA id t19-20020a9d5913000000b0061cae832e5dsm297941oth.3.2022.07.18.09.08.35
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 18 Jul 2022 09:08:34 -0700 (PDT)
+        Mon, 18 Jul 2022 09:08:35 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH 1/9] cert/key: Add support for EC based certificates
-Date: Mon, 18 Jul 2022 11:02:14 -0500
-Message-Id: <20220718160222.10634-1-denkenz@gmail.com>
+Subject: [PATCH 3/9] key: ECDSA data is given in x962 format
+Date: Mon, 18 Jul 2022 11:02:16 -0500
+Message-Id: <20220718160222.10634-3-denkenz@gmail.com>
 X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220718160222.10634-1-denkenz@gmail.com>
+References: <20220718160222.10634-1-denkenz@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -51,97 +53,53 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Mostly for use with Elliptic Curve (EC) Digital Signature
-Algorithm (DSA) based certificates.  Other combinations of EC +
-signature algorithms are also possible.
-
-This requires your kernel to be built with CRYPTO_ECDSA support.
+When using the verify operation with ECDSA based public keys, the new
+format type must be used.
 ---
+ ell/key.c | 12 +++++-------
+ ell/key.h |  1 +
+ 2 files changed, 6 insertions(+), 7 deletions(-)
 
-NOTE: At the time this patch was created, kernel had to be patched with
-the following fix in order for ECDSA support to function properly from
-userspace:
-https://lore.kernel.org/linux-crypto/20220715182810.30505-1-denkenz@gmail.com/
-
- ell/cert.c | 18 ++++++++++++++++--
- ell/cert.h |  1 +
- ell/key.c  |  1 +
- ell/key.h  |  1 +
- 4 files changed, 19 insertions(+), 2 deletions(-)
-
-diff --git a/ell/cert.c b/ell/cert.c
-index 141ea1cec038..a158142445ec 100644
---- a/ell/cert.c
-+++ b/ell/cert.c
-@@ -77,7 +77,15 @@ static const struct pkcs1_encryption_oid {
- } pkcs1_encryption_oids[] = {
- 	{ /* rsaEncryption */
- 		L_CERT_KEY_RSA,
--		{ 9, { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 } },
-+		{ .asn1_len = 9, .asn1 = {
-+			0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 }
-+		},
-+	},
-+	{ /* ecPublicKey */
-+		L_CERT_KEY_ECC,
-+		{ .asn1_len = 7, .asn1 = {
-+			0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01 }
-+		},
- 	},
- };
- 
-@@ -261,8 +269,14 @@ LIB_EXPORT struct l_key *l_cert_get_pubkey(struct l_cert *cert)
- 		return NULL;
- 
- 	/* Use kernel's ASN.1 certificate parser to find the key data for us */
--	if (cert->pubkey_type == L_CERT_KEY_RSA)
-+	switch (cert->pubkey_type) {
-+	case L_CERT_KEY_RSA:
- 		return l_key_new(L_KEY_RSA, cert->asn1, cert->asn1_len);
-+	case L_CERT_KEY_ECC:
-+		return l_key_new(L_KEY_ECC, cert->asn1, cert->asn1_len);
-+	case L_CERT_KEY_UNKNOWN:
-+		break;
-+	}
- 
- 	return NULL;
- }
-diff --git a/ell/cert.h b/ell/cert.h
-index 605e427c3d05..f637588e6d66 100644
---- a/ell/cert.h
-+++ b/ell/cert.h
-@@ -36,6 +36,7 @@ struct l_certchain;
- 
- enum l_cert_key_type {
- 	L_CERT_KEY_RSA,
-+	L_CERT_KEY_ECC,
- 	L_CERT_KEY_UNKNOWN,
- };
- 
 diff --git a/ell/key.c b/ell/key.c
-index b28bf4dbf085..73f38581f736 100644
+index 73f38581f736..24374a5d836d 100644
 --- a/ell/key.c
 +++ b/ell/key.c
-@@ -108,6 +108,7 @@ struct l_keyring {
- static const char * const key_type_names[] = {
- 	[L_KEY_RAW] = "user",
- 	[L_KEY_RSA] = "asymmetric",
-+	[L_KEY_ECC] = "asymmetric",
- };
+@@ -383,18 +383,16 @@ LIB_EXPORT ssize_t l_key_get_payload_size(struct l_key *key)
  
- static long kernel_add_key(const char *type, const char *description,
+ static const char *lookup_cipher(enum l_key_cipher_type cipher)
+ {
+-	const char* ret = NULL;
+-
+ 	switch (cipher) {
+ 	case L_KEY_RSA_PKCS1_V1_5:
+-		ret = "pkcs1";
+-		break;
++		return "pkcs1";
+ 	case L_KEY_RSA_RAW:
+-		ret = "raw";
+-		break;
++		return "raw";
++	case L_KEY_ECDSA_X962:
++		return "x962";
+ 	}
+ 
+-	return ret;
++	return NULL;
+ }
+ 
+ static const char *lookup_checksum(enum l_checksum_type checksum)
 diff --git a/ell/key.h b/ell/key.h
-index d25d09385b6f..f26f7ecb26c3 100644
+index f26f7ecb26c3..68971052ffde 100644
 --- a/ell/key.h
 +++ b/ell/key.h
-@@ -45,6 +45,7 @@ enum l_key_feature {
- enum l_key_type {
- 	L_KEY_RAW = 0,
- 	L_KEY_RSA,
-+	L_KEY_ECC,
+@@ -56,6 +56,7 @@ enum l_keyring_restriction {
+ enum l_key_cipher_type {
+ 	L_KEY_RSA_PKCS1_V1_5,
+ 	L_KEY_RSA_RAW,
++	L_KEY_ECDSA_X962,
  };
  
- enum l_keyring_restriction {
+ struct l_key *l_key_new(enum l_key_type type, const void *payload,
 -- 
 2.35.1
 
