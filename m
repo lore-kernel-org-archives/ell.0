@@ -1,48 +1,50 @@
-Received: from mail-oa1-f51.google.com (mail-oa1-f51.google.com [209.85.160.51])
+Received: from mail-oa1-f52.google.com (mail-oa1-f52.google.com [209.85.160.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4718433CC
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E4B333DE
 	for <ell@lists.linux.dev>; Mon, 18 Jul 2022 18:07:11 +0000 (UTC)
-Received: by mail-oa1-f51.google.com with SMTP id 586e51a60fabf-10c0052da61so25823756fac.12
+Received: by mail-oa1-f52.google.com with SMTP id 586e51a60fabf-10bf634bc50so25866196fac.3
         for <ell@lists.linux.dev>; Mon, 18 Jul 2022 11:07:11 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=KVl4FR/UvUMnUD+PgXmBC9MO7CbdSnwg0TP7pYIG/8M=;
-        b=hwhBv7F1KcW+O+HiNC/F71pZNztq0HsbibDOSR1u5QozkBOcp2nnK/uIg2Kxig+yG3
-         Wgk6LIJEZqjslv74+M114QgMc3bnv4o1ifydUzy+Xo30XVz6Qm32qNAPYFi1SpFp0Xni
-         mQmayqwsCEMX1Yg6Niq7RkDH39PYQQ6UWrnN8r6xKu8u1r0+TrdvsMABrfRepix5JQFc
-         Pt3nlyD0RUyt0V2rQ77iWctW9m1RlC2jQQnLtxMyF4ej8ZPHl1YmvfkmN8TIKM/KeDyw
-         JVHGCO2t5adaPunl8/ldo3RFfMIHiHPS5L5WnfP5lShijPzKPCvkbqZ8UQz2lxazrew2
-         k6fw==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=eJv6T4eZlPUQrv96VWRsGjDiVJ2iugN0FZGR84yt/kA=;
+        b=DQtZnL2kWdcShFuehGPgKzpj6YJ1FAvClhkknLcl4DaK0NStuBq8xYfA8hw7yMFsrH
+         QDvH+06feTP2Vpqrpx3kZoIiqVIx3qNPxyD19vSb8tOo+udH0CO7RohZeH6Ynrp+dFoH
+         oJx8x9RbncYgQSMgllBcwY036hSozfJ285dXoKW7QX6cnZ62OkcCouVVNpE1YWyZctzW
+         4sasKCWR2WXsmaUPYHVY2DgF4I9vQxLRIUFXEccFR84kc1q5vVI7g8/oDzDLRW7+T8uz
+         V3TMNjGkV+wVEUPV+/anqYq6oMh6xC9eTS4KAakjCWtOjo5taaVGpZycidq68XSzOEcu
+         g6WQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=KVl4FR/UvUMnUD+PgXmBC9MO7CbdSnwg0TP7pYIG/8M=;
-        b=PncmTqUod247LY7MzX5VJxtPU9AQJFuydUIw6NBCXgypg9Ni3OHePoqxSlNYxHK5wD
-         zVnjptmbFdzx+/5HlGausk8e2ueepRwxk/YduQCL0kU2GvzaEzGt3dZoNC5a2873obJe
-         dy8rF8VKh8eYA0AwhfSVaTlg7V1TdSm158KvzLKy79NFfTOIZ9ozI3WcaWm0BWWGhd7p
-         q84YFi1AWyzMkYBWYW/amdL5J/ZUL2Lwip1YF2kLJVvf8cMfOMkUIFHuuV88CsvfE51D
-         +i1/cpalBzey0EgGt6Ml/QHK56M6D0u9KNLOl5c3NgAngnPD2IzOFXnsp6HRAfvHpfS0
-         IxhA==
-X-Gm-Message-State: AJIora8tpGbH7Wo9RZ6qsIJui6jRkBc7MEngvH6aB163TqL8aF8BrQd4
-	jQLW99c1n537yR3jfAQdYWyYKaGEA4E=
-X-Google-Smtp-Source: AGRyM1szlAGxp7E73GXhkbixMJPJByzArS+3aLBYnjFzIdYa3tdb8QgBGdn3QCiKF4/QWjpugYGjpg==
-X-Received: by 2002:a05:6870:e248:b0:10d:215d:1b41 with SMTP id d8-20020a056870e24800b0010d215d1b41mr7936823oac.179.1658167629704;
-        Mon, 18 Jul 2022 11:07:09 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=eJv6T4eZlPUQrv96VWRsGjDiVJ2iugN0FZGR84yt/kA=;
+        b=iP0pYFUwRGoIcngvGVdLLdFk1AUfPQLo+wwEWHvcMAQnn9/MhHZhtP8rb6A6AcJ2Yt
+         gl91RNAM0Kj03WJW5+LYkPJyrExlNT09c9tbclUj8ndsfnGkY78Z+PUB6V8Seydy3RfI
+         i9ENaAi1kHytRSlv/XLemzGpuyVOKUv7zdGR5Ec7wGiB1c0dLSd0+DZUJhaEUYicuXvi
+         2FMZAn0g8UvtyZtbPG+BVuTmedEhR8Vwy4dW2wnm3jxHJGmsul097tnPz/bEbAvo9jHW
+         72XzWoOOd7oZNbpHImELoDLt1a4wHDJtWCC8v0G8rEBwisSeYnf0pRGDHaAyiaAbuhw5
+         U6KA==
+X-Gm-Message-State: AJIora9eIxdmdcmIccde7emV5Z1EHMsD8a18+dv3DT+hNLv2YzlQQ9Yk
+	JCtqw7Sk4v2VFBrg2nrAssaCWXZpZyA=
+X-Google-Smtp-Source: AGRyM1tyMt4x2ohBVVJDwldBtnrfC4QsD7UzXNn+ArCisOAkAAsMf8sFrLXKuCgCAxDU+Sfh9mw08w==
+X-Received: by 2002:a05:6870:829e:b0:10c:240b:cbb9 with SMTP id q30-20020a056870829e00b0010c240bcbb9mr15044385oae.115.1658167630415;
+        Mon, 18 Jul 2022 11:07:10 -0700 (PDT)
 Received: from localhost.localdomain (216.106.68.145.reverse.socket.net. [216.106.68.145])
         by smtp.gmail.com with ESMTPSA id n23-20020a056870559700b0010c727a3c79sm6808467oao.26.2022.07.18.11.07.09
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 18 Jul 2022 11:07:09 -0700 (PDT)
+        Mon, 18 Jul 2022 11:07:10 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH v2 01/10] cert/key: Add support for EC based certificates
-Date: Mon, 18 Jul 2022 13:00:36 -0500
-Message-Id: <20220718180045.5845-1-denkenz@gmail.com>
+Subject: [PATCH v2 02/10] unit: Add basic EC-DSA verification test
+Date: Mon, 18 Jul 2022 13:00:37 -0500
+Message-Id: <20220718180045.5845-2-denkenz@gmail.com>
 X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220718180045.5845-1-denkenz@gmail.com>
+References: <20220718180045.5845-1-denkenz@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -51,96 +53,163 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Mostly for use with Elliptic Curve (EC) Digital Signature
-Algorithm (DSA) based certificates.  Other combinations of EC +
-signature algorithms are also possible.
-
-This requires your kernel to be built with CRYPTO_ECDSA support.
 ---
-NOTE: At the time this patch was created, kernel had to be patched with
-the following fix in order for ECDSA support to function properly from
-userspace:
-https://lore.kernel.org/linux-crypto/20220715182810.30505-1-denkenz@gmail.com/
+ .gitignore      |  2 ++
+ Makefile.am     | 39 ++++++++++++++++++++++++++++++++++++++-
+ unit/test-tls.c | 22 +++++++++++++++++++++-
+ 3 files changed, 61 insertions(+), 2 deletions(-)
 
- ell/cert.c | 18 ++++++++++++++++--
- ell/cert.h |  1 +
- ell/key.c  |  1 +
- ell/key.h  |  1 +
- 4 files changed, 19 insertions(+), 2 deletions(-)
-
-diff --git a/ell/cert.c b/ell/cert.c
-index 141ea1cec038..a158142445ec 100644
---- a/ell/cert.c
-+++ b/ell/cert.c
-@@ -77,7 +77,15 @@ static const struct pkcs1_encryption_oid {
- } pkcs1_encryption_oids[] = {
- 	{ /* rsaEncryption */
- 		L_CERT_KEY_RSA,
--		{ 9, { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 } },
-+		{ .asn1_len = 9, .asn1 = {
-+			0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01 }
-+		},
-+	},
-+	{ /* ecPublicKey */
-+		L_CERT_KEY_ECC,
-+		{ .asn1_len = 7, .asn1 = {
-+			0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01 }
-+		},
- 	},
- };
+diff --git a/.gitignore b/.gitignore
+index 346243a8f9c7..76f10aecfdd3 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -67,6 +67,8 @@ unit/cert-*.csr
+ unit/cert-*.srl
+ unit/cert-*.crt
+ unit/cert-*.p12
++unit/ec-cert-*.pem
++unit/ec-cert-*.csr
+ unit/key-*.dat
+ unit/key-*.h
+ unit/*.log
+diff --git a/Makefile.am b/Makefile.am
+index 2bf728bbde7a..e5d7143af236 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -219,6 +219,7 @@ cert_tests = unit/test-pem \
+ cert_files = unit/cert-chain.pem \
+ 			unit/cert-entity-int.pem \
+ 			unit/cert-server.pem \
++			unit/ec-cert-server.pem \
+ 			unit/cert-server-key-pkcs8.pem \
+ 			unit/cert-client.pem \
+ 			unit/cert-client.crt \
+@@ -246,6 +247,7 @@ cert_files = unit/cert-chain.pem \
+ cert_checks = unit/cert-intca \
+ 			unit/cert-entity-int \
+ 			unit/cert-server \
++			unit/ec-cert-server \
+ 			unit/cert-client \
+ 			unit/cert-no-keyid
  
-@@ -261,8 +269,14 @@ LIB_EXPORT struct l_key *l_cert_get_pubkey(struct l_cert *cert)
- 		return NULL;
+@@ -417,15 +419,30 @@ false_redirect_openssl = 2>/dev/null
+ unit/cert-ca-key.pem:
+ 	$(AM_V_GEN)openssl genrsa -out $@ 2048 $($(AM_V_P)_redirect_openssl)
  
- 	/* Use kernel's ASN.1 certificate parser to find the key data for us */
--	if (cert->pubkey_type == L_CERT_KEY_RSA)
-+	switch (cert->pubkey_type) {
-+	case L_CERT_KEY_RSA:
- 		return l_key_new(L_KEY_RSA, cert->asn1, cert->asn1_len);
-+	case L_CERT_KEY_ECC:
-+		return l_key_new(L_KEY_ECC, cert->asn1, cert->asn1_len);
-+	case L_CERT_KEY_UNKNOWN:
-+		break;
++unit/ec-cert-ca-key.pem:
++	$(AM_V_GEN)openssl ecparam -out $@ -name secp384r1 \
++				-genkey $($(AM_V_P)_redirect_openssl)
++
++
+ unit/cert-ca.pem: unit/cert-ca-key.pem unit/gencerts.cnf
+ 	$(AM_V_GEN)openssl req -x509 -new -nodes -extensions ca_ext \
+ 			-config $(srcdir)/unit/gencerts.cnf \
+ 			-subj '/O=International Union of Example Organizations/CN=Certificate issuer guy/emailAddress=ca@mail.example' \
+ 			-key $< -sha256 -days 10000 -out $@
+ 
++unit/ec-cert-ca.pem: unit/ec-cert-ca-key.pem unit/gencerts.cnf
++	$(AM_V_GEN)openssl req -x509 -new -nodes -extensions ca_ext \
++			-config $(srcdir)/unit/gencerts.cnf \
++			-subj '/O=International Union of Example Organizations/CN=Certificate issuer guy/emailAddress=ca@mail.example' \
++			-key $< -sha256 -days 10000 -out $@
++
+ unit/cert-server-key.pem:
+ 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
+ 
++unit/ec-cert-server-key.pem:
++	$(AM_V_GEN)openssl ecparam -out $@ -name secp384r1 \
++				-genkey $($(AM_V_P)_redirect_openssl)
++
+ unit/cert-server-key-pkcs8.pem: unit/cert-server-key.pem
+ 	$(AM_V_GEN)openssl pkcs8 -topk8 -nocrypt -in $< -out $@
+ 
+@@ -435,6 +452,12 @@ unit/cert-server.csr: unit/cert-server-key.pem unit/gencerts.cnf
+ 			-subj '/O=Foo Example Organization/CN=Foo Example Organization/emailAddress=foo@mail.example' \
+ 			-key $< -out $@
+ 
++unit/ec-cert-server.csr: unit/ec-cert-server-key.pem unit/gencerts.cnf
++	$(AM_V_GEN)openssl req -new -extensions cert_ext \
++			-config $(srcdir)/unit/gencerts.cnf \
++			-subj '/O=Foo Example Organization/CN=Foo Example Organization/emailAddress=foo@mail.example' \
++			-key $< -out $@
++
+ unit/cert-server.pem: unit/cert-server.csr unit/cert-ca.pem unit/gencerts.cnf
+ 	$(AM_V_GEN)openssl x509 -req -extensions server_ext \
+ 			-extfile $(srcdir)/unit/gencerts.cnf \
+@@ -443,9 +466,22 @@ unit/cert-server.pem: unit/cert-server.csr unit/cert-ca.pem unit/gencerts.cnf
+ 			-CAserial $(builddir)/unit/cert-ca.srl \
+ 			-CAcreateserial -sha256 -days 10000 -out $@ $($(AM_V_P)_redirect_openssl)
+ 
++unit/ec-cert-server.pem: unit/ec-cert-server.csr unit/ec-cert-ca.pem \
++				unit/gencerts.cnf
++	$(AM_V_GEN)openssl x509 -req -extensions server_ext \
++			-extfile $(srcdir)/unit/gencerts.cnf \
++			-in $< -CA $(builddir)/unit/ec-cert-ca.pem \
++			-CAkey $(builddir)/unit/ec-cert-ca-key.pem \
++			-CAserial $(builddir)/unit/cert-ca.srl \
++			-CAcreateserial -sha256 -days 10000 \
++			-out $@ $($(AM_V_P)_redirect_openssl)
++
+ unit/cert-server: unit/cert-server.pem unit/cert-ca.pem
+ 	$(AM_V_GEN)openssl verify -CAfile $(builddir)/unit/cert-ca.pem $<
+ 
++unit/ec-cert-server: unit/ce-cert-server.pem unit/ce-cert-ca.pem
++	$(AM_V_GEN)openssl verify -CAfile $(builddir)/unit/ce-cert-ca.pem $<
++
+ unit/cert-client-key-pkcs1.pem:
+ 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
+ 
+@@ -623,7 +659,8 @@ check-local: $(cert_checks)
+ endif
+ 
+ clean-local:
+-	-rm -f unit/cert-*.pem unit/cert-*.csr unit/cert-*.srl unit/key-*.dat
++	-rm -f unit/ec-cert*.pem unit/ec-cert-*.csr \
++		unit/cert-*.pem unit/cert-*.csr unit/cert-*.srl unit/key-*.dat
+ 
+ maintainer-clean-local:
+ 	-rm -rf build-aux
+diff --git a/unit/test-tls.c b/unit/test-tls.c
+index 7937962cf8a0..aee5b2e36b78 100644
+--- a/unit/test-tls.c
++++ b/unit/test-tls.c
+@@ -325,6 +325,24 @@ static void test_certificates(const void *data)
+ 	l_queue_destroy(twocas, (l_queue_destroy_func_t) l_cert_free);
+ }
+ 
++static void test_ec_certificates(const void *data)
++{
++	struct l_queue *cacert;
++	struct l_certchain *chain;
++
++	cacert = l_pem_load_certificate_list(CERTDIR "ec-cert-ca.pem");
++	assert(cacert && !l_queue_isempty(cacert));
++
++	chain = l_pem_load_certificate_chain(CERTDIR "ec-cert-server.pem");
++	assert(chain);
++
++	assert(l_certchain_verify(chain, cacert, NULL));
++	assert(l_certchain_verify(chain, NULL, NULL));
++
++	l_certchain_free(chain);
++	l_queue_destroy(cacert, (l_queue_destroy_func_t) l_cert_free);
++}
++
+ struct tls_conn_test {
+ 	const char *server_cert_path;
+ 	const char *server_key_path;
+@@ -948,8 +966,10 @@ int main(int argc, char *argv[])
+ 	l_test_add("TLS 1.2 PRF with SHA512", test_tls12_prf,
+ 			&tls12_prf_sha512_0);
+ 
+-	if (l_key_is_supported(L_KEY_FEATURE_RESTRICT))
++	if (l_key_is_supported(L_KEY_FEATURE_RESTRICT)) {
+ 		l_test_add("Certificate chains", test_certificates, NULL);
++		l_test_add("ECDSA Certificates", test_ec_certificates, NULL);
 +	}
  
- 	return NULL;
- }
-diff --git a/ell/cert.h b/ell/cert.h
-index 605e427c3d05..f637588e6d66 100644
---- a/ell/cert.h
-+++ b/ell/cert.h
-@@ -36,6 +36,7 @@ struct l_certchain;
- 
- enum l_cert_key_type {
- 	L_CERT_KEY_RSA,
-+	L_CERT_KEY_ECC,
- 	L_CERT_KEY_UNKNOWN,
- };
- 
-diff --git a/ell/key.c b/ell/key.c
-index b28bf4dbf085..73f38581f736 100644
---- a/ell/key.c
-+++ b/ell/key.c
-@@ -108,6 +108,7 @@ struct l_keyring {
- static const char * const key_type_names[] = {
- 	[L_KEY_RAW] = "user",
- 	[L_KEY_RSA] = "asymmetric",
-+	[L_KEY_ECC] = "asymmetric",
- };
- 
- static long kernel_add_key(const char *type, const char *description,
-diff --git a/ell/key.h b/ell/key.h
-index d25d09385b6f..f26f7ecb26c3 100644
---- a/ell/key.h
-+++ b/ell/key.h
-@@ -45,6 +45,7 @@ enum l_key_feature {
- enum l_key_type {
- 	L_KEY_RAW = 0,
- 	L_KEY_RSA,
-+	L_KEY_ECC,
- };
- 
- enum l_keyring_restriction {
+ 	if (!l_getrandom_is_supported()) {
+ 		printf("getrandom missing, skipping TLS connection tests...\n");
 -- 
 2.35.1
 
