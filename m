@@ -1,363 +1,228 @@
-Received: from mail-oa1-f46.google.com (mail-oa1-f46.google.com [209.85.160.46])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mga11.intel.com (mga11.intel.com [192.55.52.93])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB64833DE
-	for <ell@lists.linux.dev>; Mon, 18 Jul 2022 18:07:17 +0000 (UTC)
-Received: by mail-oa1-f46.google.com with SMTP id 586e51a60fabf-f2a4c51c45so25825304fac.9
-        for <ell@lists.linux.dev>; Mon, 18 Jul 2022 11:07:17 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=2azAAHQ6fsFnnhnY4mJKJ9tLp5x4obJcyIKrfiVPHTw=;
-        b=p44GwBD0l6oEF2OIYVlrcoIwBt0le85Gay84giC0adbFISIsfrr1Y7HsrVPnS0Fkvm
-         ckqELwa+DH+WzKWcyGBqwbow0LMJXstLU7AvYCIKd+vTUW4Akei+em7Cu0LO1GvG0T0J
-         dlL4/cd0p8+8EU1DWQKkip9foi2FlaFwtjF/2qT5b+JSnmbsKlsT3quuz6RHKV1UyvDp
-         lMiAarLphQ7FnsP48Gwvm+fDujeWQjHAuTnKO1RoS1k5T/POOcur4Cw7rKbPyVhqHQBC
-         wdpN1bvzf1CQYLm/GYFAcSPORcred21sSnFIRBWjZ17CrI7KlEhrkyh+mqU5Q3YMzBt+
-         kDaQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=2azAAHQ6fsFnnhnY4mJKJ9tLp5x4obJcyIKrfiVPHTw=;
-        b=S9hB63nvPNUvpGbsaU4MJl0zZq/06ne1Pv4n5Bf4RSjruIBXtHd07EMVy4g6NKzSpW
-         Arrbf5GAi/6ASerecnvyQjsPLz2Gj7M4Aw9t5iRx11lxU028lbjM73HPFjzfZOVZwHhJ
-         3jkul27xEAL1j0L7UAza5FMC1rSXJKxFrdzWuz2f2/aMfZpFsAX6UKdUQmxcdt+1pbup
-         ZHSz0h/f/TIrJM0tYH8RVQZAOUZavM5zfHcbb1L4J2xmlDyOJDiHr8SE+z96Js4cLqbe
-         eUT6N4aGnTBPoGTbv+AJLzGVy9MgXr+xN3ujZYaB468uwARk22e5389wusIIWxAxrxAN
-         6zVA==
-X-Gm-Message-State: AJIora9jPmJaifnGzEbz9IeRqkDix8Tc0stzS3SVl/uwPvpMLjieAx97
-	J9NFW2HWahmLV6JaLb0MNP/4puieAUM=
-X-Google-Smtp-Source: AGRyM1u2s4CY9woUz7SFfgvASmKBRy7BWWq9Wgdxy6gprdlW7ukbdmfI20TbI8kLdMbvYfSnthbsOQ==
-X-Received: by 2002:aca:c282:0:b0:32f:546:61ff with SMTP id s124-20020acac282000000b0032f054661ffmr12980462oif.39.1658167636569;
-        Mon, 18 Jul 2022 11:07:16 -0700 (PDT)
-Received: from localhost.localdomain (216.106.68.145.reverse.socket.net. [216.106.68.145])
-        by smtp.gmail.com with ESMTPSA id n23-20020a056870559700b0010c727a3c79sm6808467oao.26.2022.07.18.11.07.15
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 18 Jul 2022 11:07:16 -0700 (PDT)
-From: Denis Kenzior <denkenz@gmail.com>
-To: ell@lists.linux.dev
-Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH v2 10/10] tls: Do not set verify_data_length unless needed
-Date: Mon, 18 Jul 2022 13:00:45 -0500
-Message-Id: <20220718180045.5845-10-denkenz@gmail.com>
-X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220718180045.5845-1-denkenz@gmail.com>
-References: <20220718180045.5845-1-denkenz@gmail.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E000B33E7
+	for <ell@lists.linux.dev>; Mon, 18 Jul 2022 19:08:06 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1658171286; x=1689707286;
+  h=date:from:to:cc:subject:in-reply-to:message-id:
+   references:mime-version;
+  bh=/B+U/uCgeq65yzls9My4sf5IvIX0jNug1vTx+VbocNM=;
+  b=N8zs/YpZpF8ggR3xXoPo3Jg1/aeVkGhWTP4gypTBCjLedEk7APkJ5ATs
+   Bu6lCwuedNees+NQOkUgs+/6eF1+1iOsDsO8zdX1dol5bPgQjz+tuvILq
+   LFTF74fH2zogZ7wscyQz+Ohhp7Ph3bROQXxhqf6LLEGD78Kb2F1Rs/+dx
+   QW742Tih0eKyV9K/wLe905jueLGkr+mgFTYG5ZDgaQ8pufOD1pEXj4uzy
+   CXM3C/gso+0bm5Se+KofSDiOKlA4QRmDK67wsm00i87lN6WvxGbNsO/Ns
+   rdGaUvMaefNXLKAQDOTcyaEeyiBg0540bJS3W6ECUu/Q1UoJjVzg4A2B2
+   Q==;
+X-IronPort-AV: E=McAfee;i="6400,9594,10412"; a="283866439"
+X-IronPort-AV: E=Sophos;i="5.92,281,1650956400"; 
+   d="scan'208";a="283866439"
+Received: from fmsmga004.fm.intel.com ([10.253.24.48])
+  by fmsmga102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 18 Jul 2022 12:07:57 -0700
+X-IronPort-AV: E=Sophos;i="5.92,281,1650956400"; 
+   d="scan'208";a="665131249"
+Received: from sinforoz-mobl.amr.corp.intel.com ([10.251.20.49])
+  by fmsmga004-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 18 Jul 2022 12:07:57 -0700
+Date: Mon, 18 Jul 2022 12:07:57 -0700 (PDT)
+From: Mat Martineau <mathew.j.martineau@linux.intel.com>
+To: Denis Kenzior <denkenz@gmail.com>
+cc: ell@lists.linux.dev
+Subject: Re: [PATCH v2 02/10] unit: Add basic EC-DSA verification test
+In-Reply-To: <20220718180045.5845-2-denkenz@gmail.com>
+Message-ID: <559e999-ea7c-cab2-1327-d37b2c36e713@linux.intel.com>
+References: <20220718180045.5845-1-denkenz@gmail.com> <20220718180045.5845-2-denkenz@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; format=flowed; charset=US-ASCII
 
-All current TLS cipher suites use a verify_data_length of 12.  In fact,
-according to RFC 5246, most cipher suites are expected to be 12 bytes
-unless specified otherwise.  Use this fact to simplify the cipher suite
-definition: initialization of verify_data_length is no longer necessary
-unless the length is greater than 12 bytes.
+On Mon, 18 Jul 2022, Denis Kenzior wrote:
 
-While here, also update struct tls_cipher_suite to use a size_t member
-for verify_data_length instead of an int.
----
- ell/tls-private.h |  2 +-
- ell/tls-suites.c  | 26 --------------------------
- ell/tls.c         | 29 +++++++++++++++++++++--------
- 3 files changed, 22 insertions(+), 35 deletions(-)
+> ---
+> .gitignore      |  2 ++
+> Makefile.am     | 39 ++++++++++++++++++++++++++++++++++++++-
+> unit/test-tls.c | 22 +++++++++++++++++++++-
+> 3 files changed, 61 insertions(+), 2 deletions(-)
+>
+> diff --git a/.gitignore b/.gitignore
+> index 346243a8f9c7..76f10aecfdd3 100644
+> --- a/.gitignore
+> +++ b/.gitignore
+> @@ -67,6 +67,8 @@ unit/cert-*.csr
+> unit/cert-*.srl
+> unit/cert-*.crt
+> unit/cert-*.p12
+> +unit/ec-cert-*.pem
+> +unit/ec-cert-*.csr
+> unit/key-*.dat
+> unit/key-*.h
+> unit/*.log
+> diff --git a/Makefile.am b/Makefile.am
+> index 2bf728bbde7a..e5d7143af236 100644
+> --- a/Makefile.am
+> +++ b/Makefile.am
+> @@ -219,6 +219,7 @@ cert_tests = unit/test-pem \
+> cert_files = unit/cert-chain.pem \
+> 			unit/cert-entity-int.pem \
+> 			unit/cert-server.pem \
+> +			unit/ec-cert-server.pem \
+> 			unit/cert-server-key-pkcs8.pem \
+> 			unit/cert-client.pem \
+> 			unit/cert-client.crt \
+> @@ -246,6 +247,7 @@ cert_files = unit/cert-chain.pem \
+> cert_checks = unit/cert-intca \
+> 			unit/cert-entity-int \
+> 			unit/cert-server \
+> +			unit/ec-cert-server \
+> 			unit/cert-client \
+> 			unit/cert-no-keyid
+>
+> @@ -417,15 +419,30 @@ false_redirect_openssl = 2>/dev/null
+> unit/cert-ca-key.pem:
+> 	$(AM_V_GEN)openssl genrsa -out $@ 2048 $($(AM_V_P)_redirect_openssl)
+>
+> +unit/ec-cert-ca-key.pem:
+> +	$(AM_V_GEN)openssl ecparam -out $@ -name secp384r1 \
+> +				-genkey $($(AM_V_P)_redirect_openssl)
+> +
+> +
+> unit/cert-ca.pem: unit/cert-ca-key.pem unit/gencerts.cnf
+> 	$(AM_V_GEN)openssl req -x509 -new -nodes -extensions ca_ext \
+> 			-config $(srcdir)/unit/gencerts.cnf \
+> 			-subj '/O=International Union of Example Organizations/CN=Certificate issuer guy/emailAddress=ca@mail.example' \
+> 			-key $< -sha256 -days 10000 -out $@
+>
+> +unit/ec-cert-ca.pem: unit/ec-cert-ca-key.pem unit/gencerts.cnf
+> +	$(AM_V_GEN)openssl req -x509 -new -nodes -extensions ca_ext \
+> +			-config $(srcdir)/unit/gencerts.cnf \
+> +			-subj '/O=International Union of Example Organizations/CN=Certificate issuer guy/emailAddress=ca@mail.example' \
+> +			-key $< -sha256 -days 10000 -out $@
+> +
+> unit/cert-server-key.pem:
+> 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
+>
+> +unit/ec-cert-server-key.pem:
+> +	$(AM_V_GEN)openssl ecparam -out $@ -name secp384r1 \
+> +				-genkey $($(AM_V_P)_redirect_openssl)
+> +
+> unit/cert-server-key-pkcs8.pem: unit/cert-server-key.pem
+> 	$(AM_V_GEN)openssl pkcs8 -topk8 -nocrypt -in $< -out $@
+>
+> @@ -435,6 +452,12 @@ unit/cert-server.csr: unit/cert-server-key.pem unit/gencerts.cnf
+> 			-subj '/O=Foo Example Organization/CN=Foo Example Organization/emailAddress=foo@mail.example' \
+> 			-key $< -out $@
+>
+> +unit/ec-cert-server.csr: unit/ec-cert-server-key.pem unit/gencerts.cnf
+> +	$(AM_V_GEN)openssl req -new -extensions cert_ext \
+> +			-config $(srcdir)/unit/gencerts.cnf \
+> +			-subj '/O=Foo Example Organization/CN=Foo Example Organization/emailAddress=foo@mail.example' \
+> +			-key $< -out $@
+> +
+> unit/cert-server.pem: unit/cert-server.csr unit/cert-ca.pem unit/gencerts.cnf
+> 	$(AM_V_GEN)openssl x509 -req -extensions server_ext \
+> 			-extfile $(srcdir)/unit/gencerts.cnf \
+> @@ -443,9 +466,22 @@ unit/cert-server.pem: unit/cert-server.csr unit/cert-ca.pem unit/gencerts.cnf
+> 			-CAserial $(builddir)/unit/cert-ca.srl \
+> 			-CAcreateserial -sha256 -days 10000 -out $@ $($(AM_V_P)_redirect_openssl)
+>
+> +unit/ec-cert-server.pem: unit/ec-cert-server.csr unit/ec-cert-ca.pem \
+> +				unit/gencerts.cnf
+> +	$(AM_V_GEN)openssl x509 -req -extensions server_ext \
+> +			-extfile $(srcdir)/unit/gencerts.cnf \
+> +			-in $< -CA $(builddir)/unit/ec-cert-ca.pem \
+> +			-CAkey $(builddir)/unit/ec-cert-ca-key.pem \
+> +			-CAserial $(builddir)/unit/cert-ca.srl \
+> +			-CAcreateserial -sha256 -days 10000 \
+> +			-out $@ $($(AM_V_P)_redirect_openssl)
+> +
+> unit/cert-server: unit/cert-server.pem unit/cert-ca.pem
+> 	$(AM_V_GEN)openssl verify -CAfile $(builddir)/unit/cert-ca.pem $<
+>
+> +unit/ec-cert-server: unit/ce-cert-server.pem unit/ce-cert-ca.pem
+> +	$(AM_V_GEN)openssl verify -CAfile $(builddir)/unit/ce-cert-ca.pem $<
 
-diff --git a/ell/tls-private.h b/ell/tls-private.h
-index 8ceeb68df40b..8941e90d03ca 100644
---- a/ell/tls-private.h
-+++ b/ell/tls-private.h
-@@ -112,7 +112,7 @@ struct tls_mac_algorithm {
- struct tls_cipher_suite {
- 	uint8_t id[2];
- 	const char *name;
--	int verify_data_length;
-+	size_t verify_data_length;
- 
- 	struct tls_bulk_encryption_algorithm *encryption;
- 	struct tls_signature_algorithm *signature;
-diff --git a/ell/tls-suites.c b/ell/tls-suites.c
-index 34141ab7fa56..ee4e7ee6c310 100644
---- a/ell/tls-suites.c
-+++ b/ell/tls-suites.c
-@@ -1262,7 +1262,6 @@ static struct tls_mac_algorithm tls_sha = {
- static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- 	.id = { 0x00, 0x0a },
- 	.name = "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_3des_ede,
- 	.mac = &tls_sha,
- 	.signature = &tls_rsa_signature,
-@@ -1270,7 +1269,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_dhe_rsa_with_3des_ede_cbc_sha = {
- 	.id = { 0x00, 0x16 },
- 	.name = "TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_3des_ede,
- 	.mac = &tls_sha,
- 	.signature = &tls_rsa_signature,
-@@ -1278,7 +1276,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_rsa_with_aes_128_cbc_sha = {
- 	.id = { 0x00, 0x2f },
- 	.name = "TLS_RSA_WITH_AES_128_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128,
- 	.mac = &tls_sha,
- 	.signature = &tls_rsa_signature,
-@@ -1286,7 +1283,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_dhe_rsa_with_aes_128_cbc_sha = {
- 	.id = { 0x00, 0x33 },
- 	.name = "TLS_DHE_RSA_WITH_AES_128_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128,
- 	.mac = &tls_sha,
- 	.signature = &tls_rsa_signature,
-@@ -1294,7 +1290,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_rsa_with_aes_256_cbc_sha = {
- 	.id = { 0x00, 0x35 },
- 	.name = "TLS_RSA_WITH_AES_256_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256,
- 	.mac = &tls_sha,
- 	.signature = &tls_rsa_signature,
-@@ -1302,7 +1297,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_dhe_rsa_with_aes_256_cbc_sha = {
- 	.id = { 0x00, 0x39 },
- 	.name = "TLS_DHE_RSA_WITH_AES_256_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256,
- 	.mac = &tls_sha,
- 	.signature = &tls_rsa_signature,
-@@ -1310,7 +1304,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_rsa_with_aes_128_cbc_sha256 = {
- 	.id = { 0x00, 0x3c },
- 	.name = "TLS_RSA_WITH_AES_128_CBC_SHA256",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128,
- 	.mac = &tls_sha256,
- 	.signature = &tls_rsa_signature,
-@@ -1318,7 +1311,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_rsa_with_aes_256_cbc_sha256 = {
- 	.id = { 0x00, 0x3d },
- 	.name = "TLS_RSA_WITH_AES_256_CBC_SHA256",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256,
- 	.mac = &tls_sha256,
- 	.signature = &tls_rsa_signature,
-@@ -1326,7 +1318,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_dhe_rsa_with_aes_128_cbc_sha256 = {
- 	.id = { 0x00, 0x67 },
- 	.name = "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128,
- 	.mac = &tls_sha256,
- 	.signature = &tls_rsa_signature,
-@@ -1334,7 +1325,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_dhe_rsa_with_aes_256_cbc_sha256 = {
- 	.id = { 0x00, 0x6b },
- 	.name = "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256,
- 	.mac = &tls_sha256,
- 	.signature = &tls_rsa_signature,
-@@ -1342,14 +1332,12 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_rsa_with_aes_128_gcm_sha256 = {
- 	.id = { 0x00, 0x9c },
- 	.name = "TLS_RSA_WITH_AES_128_GCM_SHA256",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128_gcm,
- 	.signature = &tls_rsa_signature,
- 	.key_xchg = &tls_rsa_key_xchg,
- }, tls_rsa_with_aes_256_gcm_sha384 = {
- 	.id = { 0x00, 0x9d },
- 	.name = "TLS_RSA_WITH_AES_256_GCM_SHA384",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256_gcm,
- 	.prf_hmac = L_CHECKSUM_SHA384,
- 	.signature = &tls_rsa_signature,
-@@ -1357,14 +1345,12 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_dhe_rsa_with_aes_128_gcm_sha256 = {
- 	.id = { 0x00, 0x9e },
- 	.name = "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128_gcm,
- 	.signature = &tls_rsa_signature,
- 	.key_xchg = &tls_dhe,
- }, tls_dhe_rsa_with_aes_256_gcm_sha384 = {
- 	.id = { 0x00, 0x9f },
- 	.name = "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256_gcm,
- 	.prf_hmac = L_CHECKSUM_SHA384,
- 	.signature = &tls_rsa_signature,
-@@ -1372,7 +1358,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_rsa_with_3des_ede_cbc_sha = {
- 	.id = { 0xc0, 0x12 },
- 	.name = "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_3des_ede,
- 	.mac = &tls_sha,
- 	.signature = &tls_rsa_signature,
-@@ -1380,7 +1365,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_rsa_with_aes_128_cbc_sha = {
- 	.id = { 0xc0, 0x13 },
- 	.name = "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128,
- 	.mac = &tls_sha,
- 	.signature = &tls_rsa_signature,
-@@ -1388,7 +1372,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_rsa_with_aes_256_cbc_sha = {
- 	.id = { 0xc0, 0x14 },
- 	.name = "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256,
- 	.mac = &tls_sha,
- 	.signature = &tls_rsa_signature,
-@@ -1396,7 +1379,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_rsa_with_aes_128_cbc_sha256 = {
- 	.id = { 0xc0, 0x27 },
- 	.name = "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128,
- 	.mac = &tls_sha256,
- 	.signature = &tls_rsa_signature,
-@@ -1404,7 +1386,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_rsa_with_aes_256_cbc_sha384 = {
- 	.id = { 0xc0, 0x28 },
- 	.name = "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256,
- 	.mac = &tls_sha384,
- 	.prf_hmac = L_CHECKSUM_SHA384,
-@@ -1413,14 +1394,12 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_rsa_with_aes_128_gcm_sha256 = {
- 	.id = { 0xc0, 0x2f },
- 	.name = "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128_gcm,
- 	.signature = &tls_rsa_signature,
- 	.key_xchg = &tls_ecdhe,
- }, tls_ecdhe_rsa_with_aes_256_gcm_sha384 = {
- 	.id = { 0xc0, 0x30 },
- 	.name = "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256_gcm,
- 	.prf_hmac = L_CHECKSUM_SHA384,
- 	.signature = &tls_rsa_signature,
-@@ -1428,7 +1407,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_ecdsa_with_3des_ede_cbc_sha = {
- 	.id = { 0xc0, 0x08 },
- 	.name = "TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_3des_ede,
- 	.mac = &tls_sha,
- 	.signature = &tls_ecdsa_signature,
-@@ -1436,7 +1414,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_ecdsa_with_aes_128_cbc_sha = {
- 	.id = { 0xc0, 0x09 },
- 	.name = "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128,
- 	.mac = &tls_sha,
- 	.signature = &tls_ecdsa_signature,
-@@ -1444,7 +1421,6 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_ecdsa_with_aes_256_cbc_sha = {
- 	.id = { 0xc0, 0x0a },
- 	.name = "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256,
- 	.mac = &tls_sha,
- 	.signature = &tls_ecdsa_signature,
-@@ -1452,14 +1428,12 @@ static struct tls_cipher_suite tls_rsa_with_3des_ede_cbc_sha = {
- }, tls_ecdhe_ecdsa_with_aes_128_gcm_sha256 = {
- 	.id = { 0xc0, 0x2b },
- 	.name = "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes128_gcm,
- 	.signature = &tls_ecdsa_signature,
- 	.key_xchg = &tls_ecdhe,
- }, tls_ecdhe_ecdsa_with_aes_256_gcm_sha384 = {
- 	.id = { 0xc0, 0x2c },
- 	.name = "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
--	.verify_data_length = 12,
- 	.encryption = &tls_aes256_gcm,
- 	.prf_hmac = L_CHECKSUM_SHA384,
- 	.signature = &tls_ecdsa_signature,
-diff --git a/ell/tls.c b/ell/tls.c
-index 136aa8660c2a..fa3df5d3c260 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -1370,11 +1370,25 @@ static void tls_send_change_cipher_spec(struct l_tls *tls)
- 	tls_tx_record(tls, TLS_CT_CHANGE_CIPHER_SPEC, &buf, 1);
- }
- 
-+static size_t tls_verify_data_length(struct l_tls *tls, unsigned int index)
-+{
-+	/*
-+	 * RFC 5246, Section 7.4.9:
-+	 *
-+	 * In previous versions of TLS, the verify_data was always 12 octets
-+	 * long.  In the current version of TLS, it depends on the cipher
-+	 * suite.  Any cipher suite which does not explicitly specify
-+	 * verify_data_length has a verify_data_length equal to 12.
-+	 */
-+	return maxsize(tls->cipher_suite[index]->verify_data_length, 12);
-+}
-+
- static void tls_send_finished(struct l_tls *tls)
- {
- 	uint8_t buf[512];
- 	uint8_t *ptr = buf + TLS_HANDSHAKE_HEADER_SIZE;
- 	uint8_t seed[HANDSHAKE_HASH_MAX_SIZE * 2];
-+	size_t vdl = tls_verify_data_length(tls, 1);
- 	size_t seed_len;
- 
- 	if (tls->negotiated_version >= L_TLS_V12) {
-@@ -1391,8 +1405,8 @@ static void tls_send_finished(struct l_tls *tls)
- 				tls->server ? "server finished" :
- 				"client finished",
- 				seed, seed_len,
--				ptr, tls->cipher_suite[1]->verify_data_length);
--	ptr += tls->cipher_suite[1]->verify_data_length;
-+				ptr, vdl);
-+	ptr += vdl;
- 
- 	tls_tx_handshake(tls, TLS_FINISHED, buf, ptr - buf);
- }
-@@ -1400,14 +1414,14 @@ static void tls_send_finished(struct l_tls *tls)
- static bool tls_verify_finished(struct l_tls *tls, const uint8_t *received,
- 				size_t len)
- {
--	uint8_t expected[tls->cipher_suite[0]->verify_data_length];
-+	size_t vdl = tls_verify_data_length(tls, 0);
-+	uint8_t expected[vdl];
- 	uint8_t *seed;
- 	size_t seed_len;
- 
--	if (len != (size_t) tls->cipher_suite[0]->verify_data_length) {
-+	if (len != vdl) {
- 		TLS_DISCONNECT(TLS_ALERT_DECODE_ERROR, 0,
--				"TLS_FINISHED length not %i",
--				tls->cipher_suite[0]->verify_data_length);
-+				"TLS_FINISHED length not %zu", vdl);
- 
- 		return false;
- 	}
-@@ -1428,8 +1442,7 @@ static bool tls_verify_finished(struct l_tls *tls, const uint8_t *received,
- 				tls->server ? "client finished" :
- 				"server finished",
- 				seed, seed_len,
--				expected,
--				tls->cipher_suite[0]->verify_data_length);
-+				expected, vdl);
- 
- 	if (memcmp(received, expected, len)) {
- 		TLS_DISCONNECT(TLS_ALERT_DECRYPT_ERROR, 0,
--- 
-2.35.1
+Denis -
 
+A few typos here: "ce-cert" instead of "ec-cert". This showed up as:
+
+make[2]: *** No rule to make target 'unit/ce-cert-server.pem', needed by 'unit/ec-cert-server'.  Stop.
+
+after the testsuite summary when running "make check".
+
+
+Other than that, v2 looks good on my system. I didn't try out the kernel 
+patch you mention in patch 1, I assume that's why I had the test failures 
+with "tls-suites: Add ECDSA suites from RFC 8422".
+
+
+- Mat
+
+> +
+> unit/cert-client-key-pkcs1.pem:
+> 	$(AM_V_GEN)openssl genrsa -out $@ $($(AM_V_P)_redirect_openssl)
+>
+> @@ -623,7 +659,8 @@ check-local: $(cert_checks)
+> endif
+>
+> clean-local:
+> -	-rm -f unit/cert-*.pem unit/cert-*.csr unit/cert-*.srl unit/key-*.dat
+> +	-rm -f unit/ec-cert*.pem unit/ec-cert-*.csr \
+> +		unit/cert-*.pem unit/cert-*.csr unit/cert-*.srl unit/key-*.dat
+>
+> maintainer-clean-local:
+> 	-rm -rf build-aux
+> diff --git a/unit/test-tls.c b/unit/test-tls.c
+> index 7937962cf8a0..aee5b2e36b78 100644
+> --- a/unit/test-tls.c
+> +++ b/unit/test-tls.c
+> @@ -325,6 +325,24 @@ static void test_certificates(const void *data)
+> 	l_queue_destroy(twocas, (l_queue_destroy_func_t) l_cert_free);
+> }
+>
+> +static void test_ec_certificates(const void *data)
+> +{
+> +	struct l_queue *cacert;
+> +	struct l_certchain *chain;
+> +
+> +	cacert = l_pem_load_certificate_list(CERTDIR "ec-cert-ca.pem");
+> +	assert(cacert && !l_queue_isempty(cacert));
+> +
+> +	chain = l_pem_load_certificate_chain(CERTDIR "ec-cert-server.pem");
+> +	assert(chain);
+> +
+> +	assert(l_certchain_verify(chain, cacert, NULL));
+> +	assert(l_certchain_verify(chain, NULL, NULL));
+> +
+> +	l_certchain_free(chain);
+> +	l_queue_destroy(cacert, (l_queue_destroy_func_t) l_cert_free);
+> +}
+> +
+> struct tls_conn_test {
+> 	const char *server_cert_path;
+> 	const char *server_key_path;
+> @@ -948,8 +966,10 @@ int main(int argc, char *argv[])
+> 	l_test_add("TLS 1.2 PRF with SHA512", test_tls12_prf,
+> 			&tls12_prf_sha512_0);
+>
+> -	if (l_key_is_supported(L_KEY_FEATURE_RESTRICT))
+> +	if (l_key_is_supported(L_KEY_FEATURE_RESTRICT)) {
+> 		l_test_add("Certificate chains", test_certificates, NULL);
+> +		l_test_add("ECDSA Certificates", test_ec_certificates, NULL);
+> +	}
+>
+> 	if (!l_getrandom_is_supported()) {
+> 		printf("getrandom missing, skipping TLS connection tests...\n");
+> -- 
+> 2.35.1
+>
+>
+>
+
+--
+Mat Martineau
+Intel
