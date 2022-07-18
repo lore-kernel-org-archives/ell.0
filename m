@@ -1,47 +1,47 @@
-Received: from mail-oo1-f50.google.com (mail-oo1-f50.google.com [209.85.161.50])
+Received: from mail-oa1-f45.google.com (mail-oa1-f45.google.com [209.85.160.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D90A0323F
-	for <ell@lists.linux.dev>; Mon, 18 Jul 2022 16:08:36 +0000 (UTC)
-Received: by mail-oo1-f50.google.com with SMTP id d12-20020a4aeb8c000000b004214e709b72so2363334ooj.6
-        for <ell@lists.linux.dev>; Mon, 18 Jul 2022 09:08:36 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BAD133CC
+	for <ell@lists.linux.dev>; Mon, 18 Jul 2022 16:08:37 +0000 (UTC)
+Received: by mail-oa1-f45.google.com with SMTP id 586e51a60fabf-10cf9f5b500so23783878fac.2
+        for <ell@lists.linux.dev>; Mon, 18 Jul 2022 09:08:37 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=kW99CkzG/sAtLGON6i1sEngEB0b9gBWe/XHcegnda2w=;
-        b=g5Q2Jsh3gilmNrt6JhAWqusKih5NorGK4HzpiZZZw960CXDgZ8p9s6v+qGeQ3AovWo
-         hpz4fiPCDtBKNrKjLGGU2srU0wPbR8r3CuyWXDB8pkciTQy8h0x4AlDTcjEMY3aeTmUk
-         U9HhXU+61R0rgL6L8IC9w7+5hvXy6JWwK1p611s9R5CtwP9InOFjk91Vz3PAS0+pyc7P
-         8YQ3FiMiSTemYA8Ce4KvZpw9PxT/Fb2lF1VSzKo3NKEpBybXgfzwASX1DGU8X9eFfwMn
-         yRl3ob1WJb3+42JhsCGeOlPbH+7LTJm2JHwE+rUlZ59G3XSfxeHwYDkT8n2FnonWp8kk
-         3bTA==
+        bh=T0yZmzVZsIi01ezIp6odCr2lCTUSdgwxASWd9vC9+Kg=;
+        b=RgAdP1hwL0xD3sX72A7N9rxD76M2Oc0SoYt4BuvAOY+5YqwPG7BYZRTUehmtRLb9JD
+         VJQG+y4eC0ZUyuXZHC4spMuHnwKh+g9x4l/nmtRnM6X4hCuFUjE/LhRNqBCZeJSNpKMp
+         MpX3+Mz5eS3rP5xSJu31XFY0G04S37dZ5UQN9dHQEOYA5nJSqMe4FoPERNHNc9jMl1ZF
+         dY4wY01HdpIOTEbcqfIK2F1OzTMGlKFMgsycbt8UHvv8Kzh8Tn/1ZTDOQRiPnyNIk/oU
+         VsPwdsFNZoXrTUDgL8fOH42yZXFjJ+gxciJ/L7GBFnjk2tQG/mLjyf4mUgG1VmLLkVyu
+         g4tQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=kW99CkzG/sAtLGON6i1sEngEB0b9gBWe/XHcegnda2w=;
-        b=ED3XIXeOJ+rCvxDhWsLU+dI+ArfAOCj/UyxtK6FSi8W1JMWDIEDkBWkiH9nHP4OUbc
-         yv/HzzWqA6a+7WU8C62Re1cK5KFkcg383tF+ma3WS+Qb7CmNS2RadALZiTOm7MLuCvV+
-         b+qZvnfAwkU1O2i5POETn4bDI9IF9cmbCjK9V3xfVvZXEBAb4CUonqkLF34N+zniLOq6
-         a1Mlfygl3T157v3WgilthfxtzOHS52KIZqwu7IUn+Fe+pVUCm3YngS40vooNi8hDBO+B
-         JYRf8OpepF7ccdujxYog7+yIr/5ZKNBpIHboz8Pfs1DPs9uNqBZGEzSH6i3OVx2q8TfN
-         bA1Q==
-X-Gm-Message-State: AJIora9K44bMkNKUZzzQ7q0r2SOKxA1MrC9RVFWWycdb6DZRl34sjFyy
-	VQ4Yv7d6MxQWRiq7w6IV5h6DWs+6Ht4=
-X-Google-Smtp-Source: AGRyM1tqI1fxv/l+54Cy7mUf9Qg2eBcKrMDkV9K8Zw4IJUUjdm+OuW4c2La5xymxsg5bRI1GydmPCw==
-X-Received: by 2002:a4a:b642:0:b0:435:46f0:8102 with SMTP id f2-20020a4ab642000000b0043546f08102mr9702127ooo.17.1658160515924;
-        Mon, 18 Jul 2022 09:08:35 -0700 (PDT)
+        bh=T0yZmzVZsIi01ezIp6odCr2lCTUSdgwxASWd9vC9+Kg=;
+        b=np4PM3Dld9fnG7BJjyPc7iQzES56wsH+aA1YhCE7BJfAhyAHVmEbSFNuvCkerpPX1a
+         Bz/Rd+TZsZGna4dE+S3VvWwRaBwTwF2vOiH3EhrAmMMBCAVb/bQVyAw3p7NxJQ+hWenp
+         56bcnJrtH55PpDdHJJS4u2tKTn59gWZH7YI9KWylEZyddfnTiGeIIjO0C3qsGCZDrN6r
+         u/XxEjjG3XLfJASF+x7VCZR3QOEopdbLJv0ywqURSKlypCmJHIYaNR74GSC4Fdb5V2f0
+         614dWJuT672tp02ZfRPatqukwTwHENC3wtqeVt/rWZtAeeBWnq9QpRtLF3ZYarRwnhJ9
+         DFzg==
+X-Gm-Message-State: AJIora88ALHzR9VDjpf0JYaBvdAXgk4Zb17aBsMoRo0Fl1Ajit+cOd61
+	tYm697ZnNfVP/vEH+WlsWnVT2PKLw9U=
+X-Google-Smtp-Source: AGRyM1sRoFojpfTwp7esFbu/EXvRhfW+jK/MuWBgT1FtnmKGQ6OETc3lmPYqyyXuwq9yc+OZBVSdrg==
+X-Received: by 2002:aca:d9d5:0:b0:339:f84e:ff15 with SMTP id q204-20020acad9d5000000b00339f84eff15mr16661916oig.25.1658160516606;
+        Mon, 18 Jul 2022 09:08:36 -0700 (PDT)
 Received: from localhost.localdomain (216.106.68.145.reverse.socket.net. [216.106.68.145])
-        by smtp.gmail.com with ESMTPSA id t19-20020a9d5913000000b0061cae832e5dsm297941oth.3.2022.07.18.09.08.35
+        by smtp.gmail.com with ESMTPSA id t19-20020a9d5913000000b0061cae832e5dsm297941oth.3.2022.07.18.09.08.36
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 18 Jul 2022 09:08:35 -0700 (PDT)
+        Mon, 18 Jul 2022 09:08:36 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH 3/9] key: ECDSA data is given in x962 format
-Date: Mon, 18 Jul 2022 11:02:16 -0500
-Message-Id: <20220718160222.10634-3-denkenz@gmail.com>
+Subject: [PATCH 4/9] tls: Support peer certificates that use ECDSA
+Date: Mon, 18 Jul 2022 11:02:17 -0500
+Message-Id: <20220718160222.10634-4-denkenz@gmail.com>
 X-Mailer: git-send-email 2.35.1
 In-Reply-To: <20220718160222.10634-1-denkenz@gmail.com>
 References: <20220718160222.10634-1-denkenz@gmail.com>
@@ -53,53 +53,50 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When using the verify operation with ECDSA based public keys, the new
-format type must be used.
 ---
- ell/key.c | 12 +++++-------
- ell/key.h |  1 +
- 2 files changed, 6 insertions(+), 7 deletions(-)
+ ell/tls.c | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
 
-diff --git a/ell/key.c b/ell/key.c
-index 73f38581f736..24374a5d836d 100644
---- a/ell/key.c
-+++ b/ell/key.c
-@@ -383,18 +383,16 @@ LIB_EXPORT ssize_t l_key_get_payload_size(struct l_key *key)
+diff --git a/ell/tls.c b/ell/tls.c
+index b2f7411f3b36..75b9d45c6523 100644
+--- a/ell/tls.c
++++ b/ell/tls.c
+@@ -1899,6 +1899,8 @@ static void tls_handle_certificate(struct l_tls *tls,
+ 	bool dummy;
+ 	const char *error_str;
+ 	char *subject_str;
++	enum l_key_cipher_type format_type;
++	enum l_checksum_type checksum_type;
  
- static const char *lookup_cipher(enum l_key_cipher_type cipher)
- {
--	const char* ret = NULL;
--
- 	switch (cipher) {
- 	case L_KEY_RSA_PKCS1_V1_5:
--		ret = "pkcs1";
--		break;
-+		return "pkcs1";
- 	case L_KEY_RSA_RAW:
--		ret = "raw";
--		break;
-+		return "raw";
-+	case L_KEY_ECDSA_X962:
-+		return "x962";
+ 	if (len < 3)
+ 		goto decode_error;
+@@ -2028,9 +2030,23 @@ static void tls_handle_certificate(struct l_tls *tls,
+ 		return;
  	}
  
--	return ret;
-+	return NULL;
- }
+-	if (!l_key_get_info(tls->peer_pubkey, L_KEY_RSA_PKCS1_V1_5,
+-					L_CHECKSUM_NONE, &tls->peer_pubkey_size,
+-					&dummy)) {
++	switch (l_cert_get_pubkey_type(tls->peer_cert)) {
++	case L_CERT_KEY_RSA:
++		format_type = L_KEY_RSA_PKCS1_V1_5;
++		checksum_type = L_CHECKSUM_NONE;
++		break;
++	case L_CERT_KEY_ECC:
++		format_type = L_KEY_ECDSA_X962;
++		checksum_type = L_CHECKSUM_SHA1;
++		break;
++	case L_CERT_KEY_UNKNOWN:
++		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
++				"Unknown public key type");
++		return;
++	}
++
++	if (!l_key_get_info(tls->peer_pubkey, format_type, checksum_type,
++				&tls->peer_pubkey_size, &dummy)) {
+ 		TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
+ 				"Can't l_key_get_info for peer public key");
  
- static const char *lookup_checksum(enum l_checksum_type checksum)
-diff --git a/ell/key.h b/ell/key.h
-index f26f7ecb26c3..68971052ffde 100644
---- a/ell/key.h
-+++ b/ell/key.h
-@@ -56,6 +56,7 @@ enum l_keyring_restriction {
- enum l_key_cipher_type {
- 	L_KEY_RSA_PKCS1_V1_5,
- 	L_KEY_RSA_RAW,
-+	L_KEY_ECDSA_X962,
- };
- 
- struct l_key *l_key_new(enum l_key_type type, const void *payload,
 -- 
 2.35.1
 
