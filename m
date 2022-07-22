@@ -1,84 +1,137 @@
-Received: from mail-oa1-f47.google.com (mail-oa1-f47.google.com [209.85.160.47])
+Received: from mail-pg1-f174.google.com (mail-pg1-f174.google.com [209.85.215.174])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 229B93C0A
-	for <ell@lists.linux.dev>; Mon, 18 Jul 2022 20:24:57 +0000 (UTC)
-Received: by mail-oa1-f47.google.com with SMTP id 586e51a60fabf-10bffc214ffso26945801fac.1
-        for <ell@lists.linux.dev>; Mon, 18 Jul 2022 13:24:56 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E368715C9
+	for <ell@lists.linux.dev>; Fri, 22 Jul 2022 20:30:06 +0000 (UTC)
+Received: by mail-pg1-f174.google.com with SMTP id 23so5260351pgc.8
+        for <ell@lists.linux.dev>; Fri, 22 Jul 2022 13:30:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=message-id:date:mime-version:user-agent:subject:content-language:to
-         :cc:references:from:in-reply-to:content-transfer-encoding;
-        bh=kX6Q6oNawEZnrf8E2/JXgf4JEZBPfvgGohfjyvYvZCA=;
-        b=dR80BAc6LWedAzDgMOnwVomyjIpSKe4aTydkKcX09uQuM1Y4oOVkYzl0TFdghv/gKB
-         FQ253d4WUg/zsaS6KFGFqBKd+FX/HjQ58qKBCMi91C/ckt6NEWf+Sr+LIvR8G0m+wcak
-         qse9OUpcUaa8EfNzXwIJZ9gqpWxkcknMMxcA/Y5dnkP0AYnf+uh6PNk6dkcDp6QZ2vdo
-         Ejuxq7SCiwr1GfjOcFWs9Tcsgs/NKb19q4PGc9Gxd+e2DOFSOytcrmESA6YBvXfZCpPj
-         rUUk707jKoOvV79YQoo1AzSs1nhA+LuCIlaXckkX6WuRlfwRzMyxzPiY+pHsZVLyUAHj
-         b4Bg==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=njq2ipD94Ut/QZ1/O4vJ57zqDi79K0XW9sUZnNRFwd4=;
+        b=Iw71uBZ3uqFsW7iyNi49Ub+wbcwjKkYgWbCebC4G159Sl+PqRqweWBkkhuZwnFg1GM
+         UDmflVf2tmAmHXR/rwHoDbcdYx/d+pP8Zp/eBH+1sgOeqXBdr3Rexm6yno9Ir4CbUfYJ
+         R+CXWi8FCjGemuZnO/M3JbgJnmk6KmgxWiUQVjrorumAda1R6Orc3NjWxyMTFVLHnq4w
+         LjyTFyZrdUuOhpo4PfVlbbe9nqR8SIbcBxsl0fMf6+zQ0r7nYCnbR5lwaBfhtbhvYdqD
+         CqUWtI76urpwmDv1XlqXU/t/4tjxeC3gZlUut9zF1RFMDjp0kvj/PiHy0eZmquKtm4Iq
+         poWg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
-         :content-language:to:cc:references:from:in-reply-to
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
          :content-transfer-encoding;
-        bh=kX6Q6oNawEZnrf8E2/JXgf4JEZBPfvgGohfjyvYvZCA=;
-        b=RYQ7K6bnMuo2VI/4Dg8cktIp7oLTuA9Qhrj2xE09E0YUfSD/iw2uZ9Rg90bQGYEyVx
-         eNf6iis73VX7G2Q1gp2q/hDqWWIWvCdXBJ9XrLAIK8VwUvr+cIDoHrV0nnNCeaq2f0CF
-         yOcNLloTOJrUQmrAUPnjTFfM+u0bFA40INuwVWo2Om2bmNq4q1Cz6Fs9/Xb4/lXznRaW
-         UwmxDjrC66Oy1aevgiPSA3dTQIPpoVqMtrcncYzlzcSwxAX+7X4odlS/ZNZCqkBlZy6p
-         iYCNl1H0xFeFnMbf5nUvlBt3+tyLLelqpjhPhfsWfXsWsVVQPjFAD7lx44Zwy3erF/8W
-         YXqw==
-X-Gm-Message-State: AJIora+2ww3HG35oWK5wVJZcSZU+y2LeIPnsvrBvKJnFL98kCReIqAMF
-	7/lg4e5hZuEc/LDCAMgjopqBL7Ra4kU=
-X-Google-Smtp-Source: AGRyM1ux8UFeyHl0vWjqU38YHRryyAIAmmerBSB7HqnmRq5Hk+/x6Ec1in2WVi3oqFw3RgRsEJr/9g==
-X-Received: by 2002:a05:6870:808d:b0:10c:7b97:8da5 with SMTP id q13-20020a056870808d00b0010c7b978da5mr19137039oab.70.1658175896094;
-        Mon, 18 Jul 2022 13:24:56 -0700 (PDT)
-Received: from [10.0.2.15] (216.106.68.145.reverse.socket.net. [216.106.68.145])
-        by smtp.googlemail.com with ESMTPSA id d7-20020a056830138700b0061c94e755d8sm2833547otq.58.2022.07.18.13.24.55
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 18 Jul 2022 13:24:55 -0700 (PDT)
-Message-ID: <83e13273-5c51-815c-99de-6517a42e0b5b@gmail.com>
-Date: Mon, 18 Jul 2022 15:21:50 -0500
+        bh=njq2ipD94Ut/QZ1/O4vJ57zqDi79K0XW9sUZnNRFwd4=;
+        b=asw/lYYiL5zvWGquqj9Unz111gkon3Av9kR8E5L0i9fRJyBI4svc/XhiTqEByrmno0
+         nVEDfVVVkqhYD1KSAIArFyDjjVLEtY5DkpuJK+AIisltlbvERS1LGbHGOBoGXQ15suWU
+         2Hf9gAp7wXCZu7v3zL22ki2qjvaRswd3uMECco8xF/mGewNFuB/MYqvLpDQ/chdoqatQ
+         W8UVe/vC97CTuuJ2am6BtVKJGxV3ohZ1A7i9cwtXJ4+nz9iSjwqa/1jZrK2TuJFNmhqI
+         JgrQ00pJTZwvGJyKZlY//w9cIylDkBbKjct4ls1bOErI24lIAhpVod/Ud5NIdG4STMcC
+         3WuA==
+X-Gm-Message-State: AJIora/3NbanLxaTquCzC6BfeHmrdI1Myfb3IkKHXb1VWrwW2vvlGOKP
+	UNigxgb6MxQrcuhG9oJOmztkr61qgQU=
+X-Google-Smtp-Source: AGRyM1t68U4/mP1JuG6s2h6S9ze2nVohjeFhtnRELUCbofmfA49UUnTvR8HxCHbB36ogMUsvebja/g==
+X-Received: by 2002:a05:6a00:450d:b0:52a:c1a3:9286 with SMTP id cw13-20020a056a00450d00b0052ac1a39286mr1464407pfb.63.1658521805887;
+        Fri, 22 Jul 2022 13:30:05 -0700 (PDT)
+Received: from localhost.localdomain ([50.45.187.22])
+        by smtp.gmail.com with ESMTPSA id q21-20020aa79835000000b0052ac12e7596sm4341170pfl.114.2022.07.22.13.30.05
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 22 Jul 2022 13:30:05 -0700 (PDT)
+From: James Prestwood <prestwoj@gmail.com>
+To: ell@lists.linux.dev
+Cc: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH 1/2] uintset: add l_uintset_subtract
+Date: Fri, 22 Jul 2022 13:27:46 -0700
+Message-Id: <20220722202747.1193490-1-prestwoj@gmail.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.11.0
-Subject: Re: [PATCH v2 02/10] unit: Add basic EC-DSA verification test
-Content-Language: en-US
-To: Mat Martineau <mathew.j.martineau@linux.intel.com>
-Cc: ell@lists.linux.dev
-References: <20220718180045.5845-1-denkenz@gmail.com>
- <20220718180045.5845-2-denkenz@gmail.com>
- <559e999-ea7c-cab2-1327-d37b2c36e713@linux.intel.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <559e999-ea7c-cab2-1327-d37b2c36e713@linux.intel.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Mat,
+This subtracts set_b from set_a, and returns the new set.
+---
+ ell/ell.sym   |  1 +
+ ell/uintset.c | 37 +++++++++++++++++++++++++++++++++++++
+ ell/uintset.h |  3 +++
+ 3 files changed, 41 insertions(+)
 
-> A few typos here: "ce-cert" instead of "ec-cert". This showed up as:
-> 
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 8f4e59d..f454921 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -537,6 +537,7 @@ global:
+ 	l_uintset_foreach;
+ 	l_uintset_clone;
+ 	l_uintset_intersect;
++	l_uintset_subtract;
+ 	l_uintset_isempty;
+ 	l_uintset_size;
+ 	/* uuid */
+diff --git a/ell/uintset.c b/ell/uintset.c
+index 863bc56..4837bcf 100644
+--- a/ell/uintset.c
++++ b/ell/uintset.c
+@@ -532,6 +532,43 @@ LIB_EXPORT struct l_uintset *l_uintset_intersect(const struct l_uintset *set_a,
+ 	return intersection;
+ }
+ 
++/**
++ * l_uintset_subtract:
++ * @set_a: The set of numbers
++ * @set_b: The set of numbers to subtract from set_a
++ *
++ * Subtracts two sets of numbers of an equal base, e.g.:
++ * l_uintset_get_min(set_a) must be equal to l_uintset_get_min(set_b) and
++ * l_uintset_get_max(set_a) must be equal to l_uintset_get_max(set_b)
++ *
++ * Returns: A newly allocated l_uintset containing set_a - set_b
++ */
++LIB_EXPORT struct l_uintset *l_uintset_subtract(const struct l_uintset *set_a,
++						const struct l_uintset *set_b)
++{
++	struct l_uintset *subtraction;
++	uint32_t offset;
++	uint32_t offset_max;
++
++	if (unlikely(!set_a || !set_b))
++		return NULL;
++
++	if (unlikely(set_a->min != set_b->min || set_a->max != set_b->max))
++		return NULL;
++
++	subtraction = l_uintset_new_from_range(set_a->min, set_a->max);
++
++	offset_max = (set_a->size + BITS_PER_LONG - 1) / BITS_PER_LONG;
++
++	/* Subtract by: set_a & ~set_b */
++	for (offset = 0; offset < offset_max; offset++) {
++		subtraction->bits[offset] =
++				set_a->bits[offset] & ~(set_b->bits[offset]);
++	}
++
++	return subtraction;
++}
++
+ /**
+  * l_uintset_isempty
+  * @set: The set of numbers
+diff --git a/ell/uintset.h b/ell/uintset.h
+index aa9de48..86ce8f7 100644
+--- a/ell/uintset.h
++++ b/ell/uintset.h
+@@ -60,6 +60,9 @@ void l_uintset_foreach(const struct l_uintset *set,
+ struct l_uintset *l_uintset_clone(const struct l_uintset *original);
+ struct l_uintset *l_uintset_intersect(const struct l_uintset *set_a,
+ 						const struct l_uintset *set_b);
++struct l_uintset *l_uintset_subtract(const struct l_uintset *set_a,
++						const struct l_uintset *set_b);
++
+ bool l_uintset_isempty(const struct l_uintset *set);
+ uint32_t l_uintset_size(const struct l_uintset *set);
+ 
+-- 
+2.34.1
 
-Ok, I fixed this in my local copy now.
-
-> 
-> Other than that, v2 looks good on my system. I didn't try out the kernel patch 
-
-Excellent, thanks for testing.
-
-> you mention in patch 1, I assume that's why I had the test failures with 
-> "tls-suites: Add ECDSA suites from RFC 8422".
-
-The reason is that kernel upstream only supports signature verification and not 
-the sign operation itself.  Not sure why.  I'll try to fix that eventually, but 
-for now we're limited to ECDSA use in anonymous client mode only.  The test 
-assumes that both client + server side is implemented.  Hence the need for patch 
-8/10.
-
-Regards,
--Denis
