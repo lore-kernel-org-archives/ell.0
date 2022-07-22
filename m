@@ -1,48 +1,50 @@
-Received: from mail-pg1-f174.google.com (mail-pg1-f174.google.com [209.85.215.174])
+Received: from mail-pl1-f182.google.com (mail-pl1-f182.google.com [209.85.214.182])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E368715C9
-	for <ell@lists.linux.dev>; Fri, 22 Jul 2022 20:30:06 +0000 (UTC)
-Received: by mail-pg1-f174.google.com with SMTP id 23so5260351pgc.8
-        for <ell@lists.linux.dev>; Fri, 22 Jul 2022 13:30:06 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5188015D6
+	for <ell@lists.linux.dev>; Fri, 22 Jul 2022 20:30:07 +0000 (UTC)
+Received: by mail-pl1-f182.google.com with SMTP id c6so5464155pla.6
+        for <ell@lists.linux.dev>; Fri, 22 Jul 2022 13:30:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=njq2ipD94Ut/QZ1/O4vJ57zqDi79K0XW9sUZnNRFwd4=;
-        b=Iw71uBZ3uqFsW7iyNi49Ub+wbcwjKkYgWbCebC4G159Sl+PqRqweWBkkhuZwnFg1GM
-         UDmflVf2tmAmHXR/rwHoDbcdYx/d+pP8Zp/eBH+1sgOeqXBdr3Rexm6yno9Ir4CbUfYJ
-         R+CXWi8FCjGemuZnO/M3JbgJnmk6KmgxWiUQVjrorumAda1R6Orc3NjWxyMTFVLHnq4w
-         LjyTFyZrdUuOhpo4PfVlbbe9nqR8SIbcBxsl0fMf6+zQ0r7nYCnbR5lwaBfhtbhvYdqD
-         CqUWtI76urpwmDv1XlqXU/t/4tjxeC3gZlUut9zF1RFMDjp0kvj/PiHy0eZmquKtm4Iq
-         poWg==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=FUT92SGbEh2cZE2scW3RdwHu9uZrPfWv3DZak050nNo=;
+        b=EwmEIvzqCh7nbTtiHEdbClxr7hgzoGkLsprLkYi9CtyYWQfsnmUoUbMwlrzWbIiSJ2
+         vildI3VmJvWmGn5jfebeyvTtz/jNQuQdOvt2NCfkyLnoBPLtHcD6hgNsvCcgsKttI2TF
+         2I7h74AMuey8KSh6eN2RB3y/zm6C+LuJ1w0iPbqnAi07UiicKBUV0A2E7OLt57NLf8Ri
+         UMNK5oguGEH0NyOLT8jbaqKJnH++fNpk4b5k7DzF4G0WPvOxj57CKfPbpjP+H52sUqie
+         vQjUAV+r8XAzJJwyTuXkzYUXNWXmy3hs9DG7Zz1g3I4gtnl49wqyol2RV2X1Vu6LT4rN
+         FSZg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=njq2ipD94Ut/QZ1/O4vJ57zqDi79K0XW9sUZnNRFwd4=;
-        b=asw/lYYiL5zvWGquqj9Unz111gkon3Av9kR8E5L0i9fRJyBI4svc/XhiTqEByrmno0
-         nVEDfVVVkqhYD1KSAIArFyDjjVLEtY5DkpuJK+AIisltlbvERS1LGbHGOBoGXQ15suWU
-         2Hf9gAp7wXCZu7v3zL22ki2qjvaRswd3uMECco8xF/mGewNFuB/MYqvLpDQ/chdoqatQ
-         W8UVe/vC97CTuuJ2am6BtVKJGxV3ohZ1A7i9cwtXJ4+nz9iSjwqa/1jZrK2TuJFNmhqI
-         JgrQ00pJTZwvGJyKZlY//w9cIylDkBbKjct4ls1bOErI24lIAhpVod/Ud5NIdG4STMcC
-         3WuA==
-X-Gm-Message-State: AJIora/3NbanLxaTquCzC6BfeHmrdI1Myfb3IkKHXb1VWrwW2vvlGOKP
-	UNigxgb6MxQrcuhG9oJOmztkr61qgQU=
-X-Google-Smtp-Source: AGRyM1t68U4/mP1JuG6s2h6S9ze2nVohjeFhtnRELUCbofmfA49UUnTvR8HxCHbB36ogMUsvebja/g==
-X-Received: by 2002:a05:6a00:450d:b0:52a:c1a3:9286 with SMTP id cw13-20020a056a00450d00b0052ac1a39286mr1464407pfb.63.1658521805887;
-        Fri, 22 Jul 2022 13:30:05 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=FUT92SGbEh2cZE2scW3RdwHu9uZrPfWv3DZak050nNo=;
+        b=wseW60JybYMefO7X+4m1u2PSCy9AQIzMiA1HmL6IaZWTEosarvYiDsRJ6IiNAhw5dX
+         7vX+iVvzzvAtTHB+RWAP1fU5bABYAXOqymvqDR3BgUXPY+mxF+k0KgxgQ7slxW4kQ5j/
+         GdHxQAnAFnssN67tlaGiz1LEI05RpyaHN2742nqGvOxC6OQh5Exvr6pNPLbJYsz0hg5r
+         6DdCZWCqn9M9fbj0q/zkJiw2EBtqf5o46h8hs+mBitsVFWm/Ap1TWzvokHivu6m6ahr5
+         ck1OfN4CPpJ4FIK2Pq+4DXz+V4DREpvTpot/zNB9cYEyFB7CQITeE5Yui7oXiezAMsGK
+         6tiA==
+X-Gm-Message-State: AJIora8NORC43iTZTIh+8hm1qaK9naI0JUKc4y4HwfomcS2zgTMuYLAA
+	OJIdaK0tMQuVmHkwO5VmcopRbc/z2fw=
+X-Google-Smtp-Source: AGRyM1vmj4WaPgZXa0dcnTUt/8Cirnl5HkZujOH0wRRLX3SPIbAvTkOD0qHrFClOio71J/taAxJieg==
+X-Received: by 2002:a17:902:b182:b0:16c:da9d:5e8b with SMTP id s2-20020a170902b18200b0016cda9d5e8bmr1561674plr.74.1658521806500;
+        Fri, 22 Jul 2022 13:30:06 -0700 (PDT)
 Received: from localhost.localdomain ([50.45.187.22])
-        by smtp.gmail.com with ESMTPSA id q21-20020aa79835000000b0052ac12e7596sm4341170pfl.114.2022.07.22.13.30.05
+        by smtp.gmail.com with ESMTPSA id q21-20020aa79835000000b0052ac12e7596sm4341170pfl.114.2022.07.22.13.30.06
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 22 Jul 2022 13:30:05 -0700 (PDT)
+        Fri, 22 Jul 2022 13:30:06 -0700 (PDT)
 From: James Prestwood <prestwoj@gmail.com>
 To: ell@lists.linux.dev
 Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 1/2] uintset: add l_uintset_subtract
-Date: Fri, 22 Jul 2022 13:27:46 -0700
-Message-Id: <20220722202747.1193490-1-prestwoj@gmail.com>
+Subject: [PATCH 2/2] unit: add unit test for l_uintset_subtract
+Date: Fri, 22 Jul 2022 13:27:47 -0700
+Message-Id: <20220722202747.1193490-2-prestwoj@gmail.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20220722202747.1193490-1-prestwoj@gmail.com>
+References: <20220722202747.1193490-1-prestwoj@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -51,87 +53,82 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This subtracts set_b from set_a, and returns the new set.
 ---
- ell/ell.sym   |  1 +
- ell/uintset.c | 37 +++++++++++++++++++++++++++++++++++++
- ell/uintset.h |  3 +++
- 3 files changed, 41 insertions(+)
+ unit/test-uintset.c | 54 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 54 insertions(+)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 8f4e59d..f454921 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -537,6 +537,7 @@ global:
- 	l_uintset_foreach;
- 	l_uintset_clone;
- 	l_uintset_intersect;
-+	l_uintset_subtract;
- 	l_uintset_isempty;
- 	l_uintset_size;
- 	/* uuid */
-diff --git a/ell/uintset.c b/ell/uintset.c
-index 863bc56..4837bcf 100644
---- a/ell/uintset.c
-+++ b/ell/uintset.c
-@@ -532,6 +532,43 @@ LIB_EXPORT struct l_uintset *l_uintset_intersect(const struct l_uintset *set_a,
- 	return intersection;
+diff --git a/unit/test-uintset.c b/unit/test-uintset.c
+index 6e3767b..a097f0b 100644
+--- a/unit/test-uintset.c
++++ b/unit/test-uintset.c
+@@ -388,6 +388,59 @@ static void test_uintset_size(const void *user_data)
+ 	l_uintset_free(set);
  }
  
-+/**
-+ * l_uintset_subtract:
-+ * @set_a: The set of numbers
-+ * @set_b: The set of numbers to subtract from set_a
-+ *
-+ * Subtracts two sets of numbers of an equal base, e.g.:
-+ * l_uintset_get_min(set_a) must be equal to l_uintset_get_min(set_b) and
-+ * l_uintset_get_max(set_a) must be equal to l_uintset_get_max(set_b)
-+ *
-+ * Returns: A newly allocated l_uintset containing set_a - set_b
-+ */
-+LIB_EXPORT struct l_uintset *l_uintset_subtract(const struct l_uintset *set_a,
-+						const struct l_uintset *set_b)
++static void test_uintset_subtract(const void *data)
 +{
-+	struct l_uintset *subtraction;
-+	uint32_t offset;
-+	uint32_t offset_max;
++	struct l_uintset *set_a = l_uintset_new_from_range(0, 10);
++	struct l_uintset *set_b = l_uintset_new_from_range(1, 11);
++	struct l_uintset *sub;
 +
-+	if (unlikely(!set_a || !set_b))
-+		return NULL;
++	/* Some sanity checks */
++	assert(l_uintset_subtract(NULL, NULL) == NULL);
++	assert(l_uintset_subtract(set_a, set_b) == NULL);
 +
-+	if (unlikely(set_a->min != set_b->min || set_a->max != set_b->max))
-+		return NULL;
++	l_uintset_free(set_a);
++	l_uintset_free(set_b);
 +
-+	subtraction = l_uintset_new_from_range(set_a->min, set_a->max);
++	set_a = l_uintset_new_from_range(0, 128);
++	set_b = l_uintset_new_from_range(0, 128);
 +
-+	offset_max = (set_a->size + BITS_PER_LONG - 1) / BITS_PER_LONG;
++	/* (<empty>) - (<empty>) = (<empty>) */
++	sub = l_uintset_subtract(set_a, set_b);
++	assert(l_uintset_isempty(sub));
++	l_uintset_free(sub);
 +
-+	/* Subtract by: set_a & ~set_b */
-+	for (offset = 0; offset < offset_max; offset++) {
-+		subtraction->bits[offset] =
-+				set_a->bits[offset] & ~(set_b->bits[offset]);
-+	}
++	/* Sanity check this works across word boundaries */
++	l_uintset_put(set_b, 65);
++	l_uintset_put(set_b, 64);
++	l_uintset_put(set_b, 63);
 +
-+	return subtraction;
++	/* (<empty>) - (65, 64, 63) = (<empty>) */
++	sub = l_uintset_subtract(set_a, set_b);
++	assert(!l_uintset_contains(sub, 64));
++	l_uintset_free(sub);
++
++	l_uintset_put(set_a, 64);
++
++	/* (64) - (65, 64, 63) = (<empty>) */
++	sub = l_uintset_subtract(set_a, set_b);
++	assert(!l_uintset_contains(sub, 64));
++	l_uintset_free(sub);
++
++	l_uintset_take(set_b, 64);
++
++	/* (64) - (65, 63) = (64) */
++	sub = l_uintset_subtract(set_a, set_b);
++	assert(l_uintset_contains(sub, 64));
++	l_uintset_free(sub);
++
++	/* (65, 63) - (64) = (65, 63) */
++	sub = l_uintset_subtract(set_b, set_a);
++	assert(l_uintset_contains(sub, 65));
++	assert(!l_uintset_contains(sub, 64));
++	assert(l_uintset_contains(sub, 63));
++	l_uintset_free(sub);
 +}
 +
- /**
-  * l_uintset_isempty
-  * @set: The set of numbers
-diff --git a/ell/uintset.h b/ell/uintset.h
-index aa9de48..86ce8f7 100644
---- a/ell/uintset.h
-+++ b/ell/uintset.h
-@@ -60,6 +60,9 @@ void l_uintset_foreach(const struct l_uintset *set,
- struct l_uintset *l_uintset_clone(const struct l_uintset *original);
- struct l_uintset *l_uintset_intersect(const struct l_uintset *set_a,
- 						const struct l_uintset *set_b);
-+struct l_uintset *l_uintset_subtract(const struct l_uintset *set_a,
-+						const struct l_uintset *set_b);
-+
- bool l_uintset_isempty(const struct l_uintset *set);
- uint32_t l_uintset_size(const struct l_uintset *set);
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -407,6 +460,7 @@ int main(int argc, char *argv[])
+ 							&intersect_data_2);
+ 	l_test_add("l_uintset isempty", test_uintset_isempty, NULL);
+ 	l_test_add("l_uintset size", test_uintset_size, NULL);
++	l_test_add("l_uintset_subtract", test_uintset_subtract, NULL);
  
+ 	return l_test_run();
+ }
 -- 
 2.34.1
 
