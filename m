@@ -1,96 +1,74 @@
-Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
+Received: from mail-oa1-f43.google.com (mail-oa1-f43.google.com [209.85.160.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6810D5385
-	for <ell@lists.linux.dev>; Tue, 26 Jul 2022 16:35:03 +0000 (UTC)
-Received: by mail-pl1-f169.google.com with SMTP id d3so5935094pls.4
-        for <ell@lists.linux.dev>; Tue, 26 Jul 2022 09:35:03 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8013C538E
+	for <ell@lists.linux.dev>; Tue, 26 Jul 2022 17:29:32 +0000 (UTC)
+Received: by mail-oa1-f43.google.com with SMTP id 586e51a60fabf-10d8880d055so19440259fac.8
+        for <ell@lists.linux.dev>; Tue, 26 Jul 2022 10:29:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=J4AcuxRb3iWedNA8jR8K83pLp95pONbrhbMVb/XlT+A=;
-        b=fAB0AXB9K/1zhHfVcgZUi6rhWuhLuCF1rx3/TnoXDNbQKrsbCAvOe7Byof+DhtLlLT
-         qL+ceHNIjyA34MSZqAfhDdtLBvYNg8Z6xgwuv/+CCMjHSJbtAiZA8LEJErwayoM/Urrq
-         ErL+Dw2W+juhlQBhrwbFZPtCJAebNnF7Kb+Bo8URGxLXLpj3RFgW0AMiT/Xr+7kq23e8
-         i2P4a3BamHXtIJY0VeWAcRYvI9G0xNl/Byrml/XIrXVooT4PqoATqNnU7zEp5MhxVwBF
-         nvCqDYcO0npf2ZXZ0khnZ6EI81l+vccL30JQngsDnrgel9nbxAm6OmNQI0GsrdKbXJol
-         Hmow==
+        h=message-id:date:mime-version:user-agent:subject:content-language:to
+         :references:from:in-reply-to:content-transfer-encoding;
+        bh=tAP2hKTi/I24vh26JZ97aUnrTjWPUe1aoF3BywCmHIw=;
+        b=IsGsyFTZjJxi24CXhv/8XgbnTODUyo7NsepjFtZqY21zXud4CBQGEZOkaZK91GhNBZ
+         xP819Cp2eCXUx7PQdKT5O7rzSxuiaTvysodI5pygDI7UclTb6vYtcDAPr0f0x7hhVu9u
+         2Re6eTj9MNtHmamxhRHMU9FJKgBlp16GSHFJ7rMISBZAPXirez2C+nhJEOC20ATkD6mC
+         h+pv56yU+6PLPudhYt8MtXiAhB3hhyIV6sRrqxU81zKogCfiFsf4+pHaSU6FV4gDF/zs
+         /s1ddNW6RxB6j4MPwbfNp3ICVwNqkvV2koveT2Jr5p0rGeNDr1lp8qvLMp6jbkaI/Rtn
+         a2LA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=J4AcuxRb3iWedNA8jR8K83pLp95pONbrhbMVb/XlT+A=;
-        b=ubE9uJVp9nXRG8PUlYdPo6yvweGMDKb/Be4DW1pjhReQg8q9qguuhVHrfrlS/ClBKk
-         QaxLMF+P0gaLKw3s7d7IAQZotzlGmd1iL9AE1eN8nvhJbIl1Ze5S8Dh/3bvSucA6lhcn
-         NjevQQzu3G/alP4lwFTjZc2R2dDEAvgBDiknXi4BHfnMc+VkzpNLpjS0/MfjCm6CAZun
-         tDK05N1GUlQtdNFJT72EK/WsdyPuNZz1Of8jF2zUD4qNj+/gi6jSW5s+FJs8GGQbzclz
-         OyvubbmEYFI3zwgFCstpi8TxFvlcg/tKXNvyy+oOfZZFF6BgEHBYPIp6DO5CLsOGg+V0
-         PTAg==
-X-Gm-Message-State: AJIora9ob9opSEHcFGEfLm+xUxAQN8G3sj9vtYpuhtG4PcLn28qixSUA
-	lroUCYbDqGHdSyOZTXJRpC41nsFy6Rg=
-X-Google-Smtp-Source: AGRyM1sXoyyUYYrdt+8hfom3bfQIEo7V7ZibSSsk39fc50kOpSgqIhSg2vz2TJE/MV2CmWFKAx32AQ==
-X-Received: by 2002:a17:902:f542:b0:16d:5a3d:a529 with SMTP id h2-20020a170902f54200b0016d5a3da529mr15418388plf.170.1658853302697;
-        Tue, 26 Jul 2022 09:35:02 -0700 (PDT)
-Received: from jprestwo-xps.none (h208-100-169-68.bendor.broadband.dynamic.tds.net. [208.100.169.68])
-        by smtp.gmail.com with ESMTPSA id z17-20020a170903019100b00168e83eda56sm11955336plg.3.2022.07.26.09.35.02
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 26 Jul 2022 09:35:02 -0700 (PDT)
-From: James Prestwood <prestwoj@gmail.com>
-To: ell@lists.linux.dev
-Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 2/2] genl: remove 'msg' from l_genl_attr
-Date: Tue, 26 Jul 2022 09:35:00 -0700
-Message-Id: <20220726163500.6171-2-prestwoj@gmail.com>
-X-Mailer: git-send-email 2.34.3
-In-Reply-To: <20220726163500.6171-1-prestwoj@gmail.com>
-References: <20220726163500.6171-1-prestwoj@gmail.com>
+        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
+         :content-language:to:references:from:in-reply-to
+         :content-transfer-encoding;
+        bh=tAP2hKTi/I24vh26JZ97aUnrTjWPUe1aoF3BywCmHIw=;
+        b=Ob1fZ7fWVitNoWIB3Dadn/PUPEKqCMBhW1O+CY2+LWemeBHZuuThNksY5FjzPmQyIG
+         DZXQ4iCdoNabwnRHdvRNK7hjObvms0lIb/hiIiD4UP0JkRZd+kKEsakr9zZRUD64cUSM
+         OJg35rwDUI2UGNwQJJihmmZk2uB9CNMyfvlkNQmsLqhVnKDUIgnaZZeeMPY/eb9+4IyA
+         yJx+78sFBuBrNCMMYK2GboNxQDHTbEFoyJoaBEnhTleuCQfBczCLB2Kw7C1w+yCGeTV9
+         40Cjxc44WwxFmgV7OibVcdiWmjpmcqcA9L+UwFoYrc10Nwd7Kq3yzfmEVhpJ8Oi4j0Cl
+         srbw==
+X-Gm-Message-State: AJIora+6WZ3o2IBVpi7UAor06sXGQQg+K1oI0wsbAvwIScqRyd4cLLyk
+	mMW5w09OYgjkbz4W45rpOAg=
+X-Google-Smtp-Source: AGRyM1uYpj95WcWHdeEuTx2jCR1JLMeuj9CDlyZDMfqEx8uyL8fQq09G/Cf22Y9jqZzvTgfKz8NVfw==
+X-Received: by 2002:a05:6870:339a:b0:f2:d065:be1f with SMTP id w26-20020a056870339a00b000f2d065be1fmr151542oae.69.1658856571557;
+        Tue, 26 Jul 2022 10:29:31 -0700 (PDT)
+Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id o6-20020a9d6d06000000b0061c309b1dc2sm6370111otp.39.2022.07.26.10.29.30
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 26 Jul 2022 10:29:31 -0700 (PDT)
+Message-ID: <7fb212bf-ec4a-00a3-5e76-3e101ee9f67a@gmail.com>
+Date: Tue, 26 Jul 2022 12:08:28 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.11.0
+Subject: Re: [PATCH 1/2] genl: make l_genl_attr_recurse take a const pointer
+Content-Language: en-US
+To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
+References: <20220726163500.6171-1-prestwoj@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20220726163500.6171-1-prestwoj@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-The original l_genl_msg object was never being used
----
- ell/genl.c | 2 --
- ell/genl.h | 1 -
- 2 files changed, 3 deletions(-)
+Hi James,
 
-diff --git a/ell/genl.c b/ell/genl.c
-index 2c873ef..4ed95df 100644
---- a/ell/genl.c
-+++ b/ell/genl.c
-@@ -1720,7 +1720,6 @@ LIB_EXPORT bool l_genl_attr_init(struct l_genl_attr *attr,
- 	if (!NLA_OK(nla, len))
- 		return false;
- 
--	attr->msg = msg;
- 	attr->data = NULL;
- 	attr->len = 0;
- 	attr->next_data = nla;
-@@ -1773,7 +1772,6 @@ LIB_EXPORT bool l_genl_attr_recurse(const struct l_genl_attr *attr,
- 	if (!nla)
- 		return false;
- 
--	nested->msg = attr->msg;
- 	nested->data = NULL;
- 	nested->len = 0;
- 	nested->next_data = NLA_DATA(nla);
-diff --git a/ell/genl.h b/ell/genl.h
-index 42041fa..915bcf7 100644
---- a/ell/genl.h
-+++ b/ell/genl.h
-@@ -76,7 +76,6 @@ bool l_genl_request_family(struct l_genl *genl, const char *name,
- 					l_genl_destroy_func_t destroy);
- 
- struct l_genl_attr {
--	struct l_genl_msg *msg;
- 	const void *data;
- 	uint32_t len;
- 	const void *next_data;
--- 
-2.34.3
+On 7/26/22 11:34, James Prestwood wrote:
+> The outer attribute iterator should be const since its not being
+> modified.
+> ---
+>   ell/genl.c | 2 +-
+>   ell/genl.h | 3 ++-
+>   2 files changed, 3 insertions(+), 2 deletions(-)
+> 
+
+Both applied, thanks.
+
+Regards,
+-Denis
 
