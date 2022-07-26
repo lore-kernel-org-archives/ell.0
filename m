@@ -1,48 +1,50 @@
-Received: from mail-pg1-f174.google.com (mail-pg1-f174.google.com [209.85.215.174])
+Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C89825384
-	for <ell@lists.linux.dev>; Tue, 26 Jul 2022 16:35:02 +0000 (UTC)
-Received: by mail-pg1-f174.google.com with SMTP id f65so13577873pgc.12
-        for <ell@lists.linux.dev>; Tue, 26 Jul 2022 09:35:02 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6810D5385
+	for <ell@lists.linux.dev>; Tue, 26 Jul 2022 16:35:03 +0000 (UTC)
+Received: by mail-pl1-f169.google.com with SMTP id d3so5935094pls.4
+        for <ell@lists.linux.dev>; Tue, 26 Jul 2022 09:35:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=hI6QSi/O/MST0K1KXlY/poQrkUOTYChYz6IMXxsS7nY=;
-        b=eoR+4NPO5OnsehLJLCRrjkLZ/sMSDxJPGwZpS732JZy2cP87fUkGMaLT2XliNQXJ7A
-         GfjH+G1fAPBFUSy84/FpNv9WuWTPsW3kYShBPKA5bt6mZ0Fexz/YoCqbAMdzP+KogwfH
-         tHTiWjL528KLZovvtydwEWruwOK8vzxZWq7ugqyUNw/b3Zv1PW1AheiHWMF//R5l3OEr
-         D/BrNvtooRLpuKSnx98T/nOknKw7hbNe1OJMtAXIqL96ruO8ppeL9CILrwXwN2D6azZ4
-         suZSTDy4RKwBrIm5NAfSoKA0BHp1YMLWg3YfOC7ajuMwO+qixqMntEJVPevB1OWVyWXN
-         vAJw==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=J4AcuxRb3iWedNA8jR8K83pLp95pONbrhbMVb/XlT+A=;
+        b=fAB0AXB9K/1zhHfVcgZUi6rhWuhLuCF1rx3/TnoXDNbQKrsbCAvOe7Byof+DhtLlLT
+         qL+ceHNIjyA34MSZqAfhDdtLBvYNg8Z6xgwuv/+CCMjHSJbtAiZA8LEJErwayoM/Urrq
+         ErL+Dw2W+juhlQBhrwbFZPtCJAebNnF7Kb+Bo8URGxLXLpj3RFgW0AMiT/Xr+7kq23e8
+         i2P4a3BamHXtIJY0VeWAcRYvI9G0xNl/Byrml/XIrXVooT4PqoATqNnU7zEp5MhxVwBF
+         nvCqDYcO0npf2ZXZ0khnZ6EI81l+vccL30JQngsDnrgel9nbxAm6OmNQI0GsrdKbXJol
+         Hmow==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=hI6QSi/O/MST0K1KXlY/poQrkUOTYChYz6IMXxsS7nY=;
-        b=N6njTIXtcWfX5/KZEnPKEe5z3Zq4V3lPtjRx3AYjPgDGiABEQFnyt84xAgar0xozX7
-         Byjj2mcIV4mPS3KC9TeXv+vtwT/DiHeEEBDbviopnjsOfDMvKemDVfsIyHEtq3GQ4UDs
-         SRqfiA+Up9HNgkBFwxJQOxOrOPKVUHlZJKnhNs5zsNh9sFeWdJwNg3aCCfU58HMwc0Z7
-         FkwV+gd3E+NeCdJiQLp5nON8mvJMeSmORRsc9zh35MbHifwA2w3N3NIJLvBxkt/YsNjV
-         kLYykET/DvKa9MWe4nsSbshgry8qbDW7A7uFwmtQX9JrKEgevTdz4UrwfD24TDO3Gt5P
-         Ty0A==
-X-Gm-Message-State: AJIora/Ut/QZQDyWOIJpOobjN4F/lAhDH3svXCYOc1sGxJe7YOqSegzV
-	x1j/oTKvVQYFvG1x3ihSsLSio8kaEPg=
-X-Google-Smtp-Source: AGRyM1vjx9wUZ3e7quZthLJZIUjCMnHR6atdIwX0ZQ3P2PbHA7Lf/giImzwtMzBR6nwdh18ol2B6Tw==
-X-Received: by 2002:a05:6a02:18b:b0:415:c9d:4e3c with SMTP id bj11-20020a056a02018b00b004150c9d4e3cmr15192853pgb.580.1658853302056;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=J4AcuxRb3iWedNA8jR8K83pLp95pONbrhbMVb/XlT+A=;
+        b=ubE9uJVp9nXRG8PUlYdPo6yvweGMDKb/Be4DW1pjhReQg8q9qguuhVHrfrlS/ClBKk
+         QaxLMF+P0gaLKw3s7d7IAQZotzlGmd1iL9AE1eN8nvhJbIl1Ze5S8Dh/3bvSucA6lhcn
+         NjevQQzu3G/alP4lwFTjZc2R2dDEAvgBDiknXi4BHfnMc+VkzpNLpjS0/MfjCm6CAZun
+         tDK05N1GUlQtdNFJT72EK/WsdyPuNZz1Of8jF2zUD4qNj+/gi6jSW5s+FJs8GGQbzclz
+         OyvubbmEYFI3zwgFCstpi8TxFvlcg/tKXNvyy+oOfZZFF6BgEHBYPIp6DO5CLsOGg+V0
+         PTAg==
+X-Gm-Message-State: AJIora9ob9opSEHcFGEfLm+xUxAQN8G3sj9vtYpuhtG4PcLn28qixSUA
+	lroUCYbDqGHdSyOZTXJRpC41nsFy6Rg=
+X-Google-Smtp-Source: AGRyM1sXoyyUYYrdt+8hfom3bfQIEo7V7ZibSSsk39fc50kOpSgqIhSg2vz2TJE/MV2CmWFKAx32AQ==
+X-Received: by 2002:a17:902:f542:b0:16d:5a3d:a529 with SMTP id h2-20020a170902f54200b0016d5a3da529mr15418388plf.170.1658853302697;
         Tue, 26 Jul 2022 09:35:02 -0700 (PDT)
 Received: from jprestwo-xps.none (h208-100-169-68.bendor.broadband.dynamic.tds.net. [208.100.169.68])
-        by smtp.gmail.com with ESMTPSA id z17-20020a170903019100b00168e83eda56sm11955336plg.3.2022.07.26.09.35.01
+        by smtp.gmail.com with ESMTPSA id z17-20020a170903019100b00168e83eda56sm11955336plg.3.2022.07.26.09.35.02
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 26 Jul 2022 09:35:01 -0700 (PDT)
+        Tue, 26 Jul 2022 09:35:02 -0700 (PDT)
 From: James Prestwood <prestwoj@gmail.com>
 To: ell@lists.linux.dev
 Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 1/2] genl: make l_genl_attr_recurse take a const pointer
-Date: Tue, 26 Jul 2022 09:34:59 -0700
-Message-Id: <20220726163500.6171-1-prestwoj@gmail.com>
+Subject: [PATCH 2/2] genl: remove 'msg' from l_genl_attr
+Date: Tue, 26 Jul 2022 09:35:00 -0700
+Message-Id: <20220726163500.6171-2-prestwoj@gmail.com>
 X-Mailer: git-send-email 2.34.3
+In-Reply-To: <20220726163500.6171-1-prestwoj@gmail.com>
+References: <20220726163500.6171-1-prestwoj@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -51,40 +53,44 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The outer attribute iterator should be const since its not being
-modified.
+The original l_genl_msg object was never being used
 ---
- ell/genl.c | 2 +-
- ell/genl.h | 3 ++-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ ell/genl.c | 2 --
+ ell/genl.h | 1 -
+ 2 files changed, 3 deletions(-)
 
 diff --git a/ell/genl.c b/ell/genl.c
-index 2cae2f0..2c873ef 100644
+index 2c873ef..4ed95df 100644
 --- a/ell/genl.c
 +++ b/ell/genl.c
-@@ -1761,7 +1761,7 @@ LIB_EXPORT bool l_genl_attr_next(struct l_genl_attr *attr,
- 	return true;
- }
+@@ -1720,7 +1720,6 @@ LIB_EXPORT bool l_genl_attr_init(struct l_genl_attr *attr,
+ 	if (!NLA_OK(nla, len))
+ 		return false;
  
--LIB_EXPORT bool l_genl_attr_recurse(struct l_genl_attr *attr,
-+LIB_EXPORT bool l_genl_attr_recurse(const struct l_genl_attr *attr,
- 						struct l_genl_attr *nested)
- {
- 	const struct nlattr *nla;
+-	attr->msg = msg;
+ 	attr->data = NULL;
+ 	attr->len = 0;
+ 	attr->next_data = nla;
+@@ -1773,7 +1772,6 @@ LIB_EXPORT bool l_genl_attr_recurse(const struct l_genl_attr *attr,
+ 	if (!nla)
+ 		return false;
+ 
+-	nested->msg = attr->msg;
+ 	nested->data = NULL;
+ 	nested->len = 0;
+ 	nested->next_data = NLA_DATA(nla);
 diff --git a/ell/genl.h b/ell/genl.h
-index 7e5b7bb..42041fa 100644
+index 42041fa..915bcf7 100644
 --- a/ell/genl.h
 +++ b/ell/genl.h
-@@ -109,7 +109,8 @@ bool l_genl_msg_leave_nested(struct l_genl_msg *msg);
- bool l_genl_attr_init(struct l_genl_attr *attr, struct l_genl_msg *msg);
- bool l_genl_attr_next(struct l_genl_attr *attr, uint16_t *type,
- 					uint16_t *len, const void **data);
--bool l_genl_attr_recurse(struct l_genl_attr *attr, struct l_genl_attr *nested);
-+bool l_genl_attr_recurse(const struct l_genl_attr *attr,
-+				struct l_genl_attr *nested);
+@@ -76,7 +76,6 @@ bool l_genl_request_family(struct l_genl *genl, const char *name,
+ 					l_genl_destroy_func_t destroy);
  
- bool l_genl_family_info_has_group(const struct l_genl_family_info *info,
- 					const char *group);
+ struct l_genl_attr {
+-	struct l_genl_msg *msg;
+ 	const void *data;
+ 	uint32_t len;
+ 	const void *next_data;
 -- 
 2.34.3
 
