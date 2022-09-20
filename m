@@ -1,37 +1,37 @@
-Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
+Received: from mail-wr1-f48.google.com (mail-wr1-f48.google.com [209.85.221.48])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D71E01C14
-	for <ell@lists.linux.dev>; Tue, 20 Sep 2022 13:32:09 +0000 (UTC)
-Received: by mail-wm1-f49.google.com with SMTP id n8so1928669wmr.5
-        for <ell@lists.linux.dev>; Tue, 20 Sep 2022 06:32:09 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C639F1C33
+	for <ell@lists.linux.dev>; Tue, 20 Sep 2022 13:32:10 +0000 (UTC)
+Received: by mail-wr1-f48.google.com with SMTP id n10so4244818wrw.12
+        for <ell@lists.linux.dev>; Tue, 20 Sep 2022 06:32:10 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
          :subject:date;
-        bh=AZi3cbry6UKzY4JlMsSbIQlN6BVUAUgZlnk+ekcym10=;
-        b=6KixW1z+4SNGB8xxTUELVb7AJ8Nr3lPY7GIlj0sGvi0A1s7gXIWoy2VNToJ8am5APV
-         zIl7JqMZ3kKxR7F1By3C8h+TtKo/acnlKoiqh0xg0HLS2iFmJ17Ya+LkzZtxU931C2eq
-         9AC006aJ8tTTU1ApOpzkPA+gCrUT+hU5Byn1a4MvSHwz7fXH27bEg9/y0FbghMt8pKhY
-         Bu3sD8AeE/8A6pXfQTZQVd/vSmYDrlp1AmT9rbcgx4/99c9xL8EYoujdynVOc7H4OA6/
-         FJUN+u3CULQtiraEgWPYOUykBH0dTAj4Zo4GGT30JkWvnakV51LUVQTfTUx0lX5HZLRH
-         n+yQ==
-X-Gm-Message-State: ACrzQf2lTKGLmsgDNfPaBTUxbu0mG5XsMzkB/Ldf5Wch2jhYYkS5MxLM
-	JZnIoOA+UKn27aLVKup5tBlJG5kAZQtvCue0
-X-Google-Smtp-Source: AMsMyM7nPKTymL4mLW57nLO5LSBu86baNXFWfbY3krDIXyDEi3jPwXUVfTiB+4zGJpzR+MNTO/uEaA==
-X-Received: by 2002:a7b:cb49:0:b0:3b4:b08a:89b with SMTP id v9-20020a7bcb49000000b003b4b08a089bmr2405898wmj.173.1663680727712;
-        Tue, 20 Sep 2022 06:32:07 -0700 (PDT)
+        bh=OtK7kWrHD4n3tNmGYWwa7daNLr6uxs5H43rd9QcxanI=;
+        b=vGQOqiaTdeEtcvwxYmNR3XEq5rI4tRiwpap9AxsnnSQWuPlNWa0wf/9m3BtI2MM5sJ
+         9vCo8t6k0s4dSrbanJEwLo66Z7VIjxL5GjsHqyu54l2eTkOKbyLudmTfJLUNBNLKcgPx
+         BSh8e3L+UJ1TEkEv05vgt1wpgS7SAQakWNV7Z/Yr1DGDJVdzTYGobEN0V5+eh+3N0yNT
+         BVlE/3B4gajUGQeJ6q1fZE7Gzw+B3N3mru3hnzbJWBtVTgnrwYmDtJKFadm5fX37Q7hN
+         9AsC/GE1Blx9Outu9tZQMyzz6f+jLyclvuJK4iIYCE61PbVsBKQZYQt4iuu+Dl07RXkD
+         g1Ug==
+X-Gm-Message-State: ACrzQf1/sTX8OKWS2wXwpV0cOITfOhef+jMIQ6iTp0p/KpfZcORBDylY
+	t3SwUauiP3D8dLWfy7ZJB+zJH+8lbcaF5NMt
+X-Google-Smtp-Source: AMsMyM6CBHvdUSDPy6IW568ALo2xTTGW+xqNEJZIyPYiXMk26qWeCNdJcv5D2NL1lzZscX0u9p4wJA==
+X-Received: by 2002:a5d:588f:0:b0:22a:fe0c:afb8 with SMTP id n15-20020a5d588f000000b0022afe0cafb8mr7011701wrf.431.1663680728675;
+        Tue, 20 Sep 2022 06:32:08 -0700 (PDT)
 Received: from iss.ger.corp.intel.com ([82.213.228.103])
-        by smtp.gmail.com with ESMTPSA id d16-20020adff2d0000000b0022863395912sm2082wrp.53.2022.09.20.06.32.06
+        by smtp.gmail.com with ESMTPSA id d16-20020adff2d0000000b0022863395912sm2082wrp.53.2022.09.20.06.32.07
         for <ell@lists.linux.dev>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 20 Sep 2022 06:32:07 -0700 (PDT)
+        Tue, 20 Sep 2022 06:32:08 -0700 (PDT)
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
 To: ell@lists.linux.dev
-Subject: [PATCH 4/6] netconfig: Handle DNS data from l_icmp6_router
-Date: Tue, 20 Sep 2022 15:31:59 +0200
-Message-Id: <20220920133201.3303119-4-andrew.zaborowski@intel.com>
+Subject: [PATCH 5/6] icmp6,netconfig: Skip SLLAO if RS sent from optimistic address
+Date: Tue, 20 Sep 2022 15:32:00 +0200
+Message-Id: <20220920133201.3303119-5-andrew.zaborowski@intel.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20220920133201.3303119-1-andrew.zaborowski@intel.com>
 References: <20220920133201.3303119-1-andrew.zaborowski@intel.com>
@@ -43,259 +43,205 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Track the lists of DNSes and search domains based on Router Advertisement
-options parsed by l_icmp6_client.  Return them in
-l_netconfig_get_dns_list, l_netconfig_get_domain_names.
+Make sure we don't include de Source Link-Local Address Option in our
+Router Solicitations until the source link-local address completes DAD.
+Extand the recently added l_icmp6_client_set_link_local_address() with a
+parameter to tell us whether the address is optimistic.  Don't change
+the l_dhcp6_client_set_link_local_address signature to avoid breaking
+existing users.
 ---
- ell/netconfig.c | 160 ++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 154 insertions(+), 6 deletions(-)
+ ell/dhcp6.c     |  2 +-
+ ell/icmp6.c     | 29 +++++++++++++++++++++--------
+ ell/icmp6.h     |  3 ++-
+ ell/netconfig.c | 30 ++++++++++++++++++++++++++----
+ 4 files changed, 50 insertions(+), 14 deletions(-)
 
+diff --git a/ell/dhcp6.c b/ell/dhcp6.c
+index e234eb0..2792ff2 100644
+--- a/ell/dhcp6.c
++++ b/ell/dhcp6.c
+@@ -1623,7 +1623,7 @@ LIB_EXPORT bool l_dhcp6_client_set_link_local_address(
+ 		return false;
+ 
+ 	if (!client->nora)
+-		l_icmp6_client_set_link_local_address(client->icmp6, ll);
++		l_icmp6_client_set_link_local_address(client->icmp6, ll, false);
+ 
+ 	return true;
+ }
+diff --git a/ell/icmp6.c b/ell/icmp6.c
+index 5ddc494..f087ba3 100644
+--- a/ell/icmp6.c
++++ b/ell/icmp6.c
+@@ -206,7 +206,8 @@ static uint16_t icmp6_checksum(const struct iovec *iov, unsigned int iov_len)
+ 
+ static int icmp6_send_router_solicitation(int s, int ifindex,
+ 					const uint8_t src_mac[static 6],
+-					const struct in6_addr *src_ip)
++					const struct in6_addr *src_ip,
++					bool src_ip_optimistic)
+ {
+ 	struct nd_router_solicit rs = {
+ 		.nd_rs_type = ND_ROUTER_SOLICIT,
+@@ -247,11 +248,17 @@ static int icmp6_send_router_solicitation(int s, int ifindex,
+ 
+ 	memcpy(&ip_hdr.ip6_src, src_ip, 16);
+ 
+-	if (l_memeqzero(src_ip, 16)) {
++	if (l_memeqzero(src_ip, 16) || src_ip_optimistic) {
+ 		/*
+-		 * radvd will discard and warn about RSs from the unspecified
+-		 * address with the SLLAO, omit that option by dropping the
+-		 * last two iov buffers.
++		 * RFC 4429 Section 3.2: "A node MUST NOT send a Router
++		 * Solicitation with a SLLAO from an Optimistic Address.
++		 * Router Solicitations SHOULD be sent from a non-Optimistic
++		 * or the Unspecified Address; however, they MAY be sent from
++		 * an Optimistic Address as long as the SLLAO is not included."
++		 *
++		 * Additionally radvd will also discard and warn about RSs
++		 * from the unspecified address with the SLLAO.  Omit that
++		 * option by dropping the last two iov buffers.
+ 		 */
+ 		msg.msg_iovlen -= 2;
+ 		ip_hdr.ip6_plen = htons(ntohs(ip_hdr.ip6_plen) - rs_sllao_size);
+@@ -347,6 +354,7 @@ struct l_icmp6_client {
+ 	uint64_t retransmit_time;
+ 	struct l_io *io;
+ 	struct in6_addr src_ip;
++	bool src_ip_optimistic;
+ 
+ 	struct l_icmp6_router *ra;
+ 	struct l_netlink *rtnl;
+@@ -547,7 +555,8 @@ static void icmp6_client_timeout_send(struct l_timeout *timeout,
+ 
+ 	r = icmp6_send_router_solicitation(l_io_get_fd(client->io),
+ 						client->ifindex, client->mac,
+-						&client->src_ip);
++						&client->src_ip,
++						client->src_ip_optimistic);
+ 	if (r < 0) {
+ 		CLIENT_DEBUG("Error sending Router Solicitation: %s",
+ 				strerror(-r));
+@@ -766,7 +775,7 @@ LIB_EXPORT bool l_icmp6_client_set_route_priority(
+ 
+ LIB_EXPORT bool l_icmp6_client_set_link_local_address(
+ 						struct l_icmp6_client *client,
+-						const char *ll)
++						const char *ll, bool optimistic)
+ {
+ 	if (unlikely(!client))
+ 		return false;
+@@ -777,7 +786,11 @@ LIB_EXPORT bool l_icmp6_client_set_link_local_address(
+ 	 * is fine.  Once we have a confirmed link-local address we use that
+ 	 * as the source address.
+ 	 */
+-	return inet_pton(AF_INET6, ll, &client->src_ip) == 1;
++	if (inet_pton(AF_INET6, ll, &client->src_ip) != 1)
++		return false;
++
++	client->src_ip_optimistic = optimistic;
++	return true;
+ }
+ 
+ struct l_icmp6_router *_icmp6_router_new()
+diff --git a/ell/icmp6.h b/ell/icmp6.h
+index ffbb8a8..ad3d661 100644
+--- a/ell/icmp6.h
++++ b/ell/icmp6.h
+@@ -66,7 +66,8 @@ bool l_icmp6_client_set_rtnl(struct l_icmp6_client *client,
+ bool l_icmp6_client_set_route_priority(struct l_icmp6_client *client,
+ 						uint32_t priority);
+ bool l_icmp6_client_set_link_local_address(struct l_icmp6_client *client,
+-						const char *ll);
++						const char *ll,
++						bool optimistic);
+ 
+ char *l_icmp6_router_get_address(const struct l_icmp6_router *r);
+ bool l_icmp6_router_get_managed(const struct l_icmp6_router *r);
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index e5c7b51..765703b 100644
+index 765703b..c558cad 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -98,6 +98,8 @@ struct l_netconfig {
+@@ -93,6 +93,7 @@ struct l_netconfig {
+ 	unsigned int orig_optimistic_dad;
+ 	uint8_t mac[ETH_ALEN];
+ 	struct l_timeout *ra_timeout;
++	bool have_lla;
+ 	enum {
+ 		NETCONFIG_V6_METHOD_UNSET,
  		NETCONFIG_V6_METHOD_DHCP,
- 		NETCONFIG_V6_METHOD_SLAAC,
- 	} v6_auto_method;
-+	struct l_queue *slaac_dnses;
-+	struct l_queue *slaac_domains;
+@@ -702,7 +703,7 @@ static bool netconfig_check_start_dhcp6(struct l_netconfig *nc)
+ 		return true;
  
- 	/* These objects, if not NULL, are owned by @addresses and @routes */
- 	struct l_rtnl_address *v4_address;
-@@ -151,6 +153,8 @@ static struct l_queue *addr_wait_list;
- static unsigned int rtnl_id;
+ 	/* Don't start DHCPv6 while waiting for the link-local address */
+-	if (l_queue_find(addr_wait_list, netconfig_match, nc))
++	if (!nc->have_lla)
+ 		return true;
  
- static const unsigned int max_icmp6_routes = 100;
-+static const unsigned int max_icmp6_dnses = 10;
-+static const unsigned int max_icmp6_domains = 10;
- 
- static void netconfig_update_cleanup(struct l_netconfig *nc)
+ 	return l_dhcp6_client_start(nc->dhcp6_client);
+@@ -1844,6 +1845,7 @@ static void netconfig_ifaddr_ipv6_added(struct l_netconfig *nc,
  {
-@@ -681,6 +685,16 @@ static bool netconfig_match(const void *a, const void *b)
- 	return a == b;
- }
+ 	struct in6_addr in6;
+ 	_auto_(l_free) char *ip = NULL;
++	bool new_lla;
  
-+static bool netconfig_match_addr(const void *a, const void *b)
-+{
-+	return memcmp(a, b, 16) == 0;
-+}
-+
-+static bool netconfig_match_str(const void *a, const void *b)
-+{
-+	return strcmp(a, b) == 0;
-+}
-+
- static bool netconfig_check_start_dhcp6(struct l_netconfig *nc)
- {
- 	/* Don't start DHCPv6 until we get an RA with the managed bit set */
-@@ -809,6 +823,88 @@ static void netconfig_set_slaac_address_lifetimes(struct l_netconfig *nc,
- 		l_queue_push_tail(nc->addresses.updated, nc->v6_address);
- }
- 
-+static bool netconfig_process_slaac_dns_info(struct l_netconfig *nc,
-+						const struct l_icmp6_router *r)
-+{
-+	bool updated = false;
-+	unsigned int i;
-+	unsigned int n_dns = l_queue_length(nc->slaac_dnses);
-+	unsigned int n_domains = l_queue_length(nc->slaac_domains);
-+
-+	for (i = 0; i < r->n_dns; i++) {
-+		const struct dns_info *info = &r->dns_list[i];
-+
-+		/*
-+		 * For simplicity don't track lifetimes (TODO), add entries
-+		 * when the lifetime is non-zero, remove them when the
-+		 * lifetime is zero.  We have no API to add time-limited
-+		 * entries to the system either.
-+		 *
-+		 * RFC8106 Section 5.1: "A value of zero means that the RDNSS
-+		 * addresses MUST no longer be used."
-+		 */
-+		if (info->lifetime) {
-+			if (n_dns >= max_icmp6_dnses)
-+				continue;
-+
-+			if (l_queue_find(nc->slaac_dnses, netconfig_match_addr,
-+						info->address))
-+				continue;
-+
-+			l_queue_push_tail(nc->slaac_dnses,
-+						l_memdup(info->address, 16));
-+			n_dns++;
-+		} else {
-+			void *addr = l_queue_remove_if(nc->slaac_dnses,
-+							netconfig_match_addr,
-+							info->address);
-+
-+			if (!addr)
-+				continue;
-+
-+			l_free(addr);
-+			n_dns--;
-+		}
-+
-+		updated = true;
-+	}
-+
-+	for (i = 0; i < r->n_domains; i++) {
-+		const struct domain_info *info = &r->domains[i];
-+
-+		/*
-+		 * RFC8106 Section 5.2: "A value of zero means that the DNSSL
-+		 * domain names MUST no longer be used."
-+		 */
-+		if (info->lifetime) {
-+			if (n_domains >= max_icmp6_domains)
-+				continue;
-+
-+			if (l_queue_find(nc->slaac_domains, netconfig_match_str,
-+						info->domain))
-+				continue;
-+
-+			l_queue_push_tail(nc->slaac_domains,
-+						l_strdup(info->domain));
-+			n_domains++;
-+		} else {
-+			void *str = l_queue_remove_if(nc->slaac_domains,
-+							netconfig_match_str,
-+							info->domain);
-+
-+			if (!str)
-+				continue;
-+
-+			l_free(str);
-+			n_domains--;
-+		}
-+
-+		updated = true;
-+	}
-+
-+	return updated;
-+}
-+
- static uint64_t now;
- 
- static bool netconfig_check_route_expired(void *data, void *user_data)
-@@ -1027,6 +1123,7 @@ static void netconfig_icmp6_event_handler(struct l_icmp6_client *client,
- 	const struct l_icmp6_router *r;
- 	struct netconfig_route_data *default_rd;
- 	unsigned int i;
-+	bool dns_updated = false;
- 
- 	if (event != L_ICMP6_CLIENT_EVENT_ROUTER_FOUND)
+ 	if ((ifa->ifa_flags & IFA_F_TENTATIVE) &&
+ 			!(ifa->ifa_flags & IFA_F_OPTIMISTIC))
+@@ -1858,16 +1860,28 @@ static void netconfig_ifaddr_ipv6_added(struct l_netconfig *nc,
+ 	if (!IN6_IS_ADDR_LINKLOCAL(&in6))
  		return;
-@@ -1122,6 +1219,14 @@ process_nondefault_routes:
- 			r->n_ac_prefixes) {
- 		nc->v6_auto_method = NETCONFIG_V6_METHOD_SLAAC;
  
-+		/*
-+		 * Do this first so that any changes are included in the
-+		 * CONFIGURE event emitted next.
-+		 */
-+		nc->slaac_dnses = l_queue_new();
-+		nc->slaac_domains = l_queue_new();
-+		netconfig_process_slaac_dns_info(nc, r);
+-	netconfig_addr_wait_unregister(nc, true);
++	new_lla = !nc->have_lla;
++	nc->have_lla = true;
 +
- 		/*
- 		 * The DAD for the link-local address may be still running
- 		 * but again we can generate the global address already and
-@@ -1156,6 +1261,7 @@ process_nondefault_routes:
- 	 * and allows us to extend its lifetime.
- 	 */
- 	netconfig_set_slaac_address_lifetimes(nc, r);
-+	dns_updated = netconfig_process_slaac_dns_info(nc, r);
++	if (!(ifa->ifa_flags & IFA_F_TENTATIVE))
++		netconfig_addr_wait_unregister(nc, true);
++	else if (nc->ifaddr6_dump_cmd_id) {
++		struct l_netlink *rtnl = l_rtnl_get();
++		unsigned int cmd_id = nc->ifaddr6_dump_cmd_id;
++
++		nc->ifaddr6_dump_cmd_id = 0;
++		l_netlink_cancel(rtnl, cmd_id);
++	}
  
- emit_event:
+ 	l_dhcp6_client_set_link_local_address(nc->dhcp6_client, ip);
+-	l_icmp6_client_set_link_local_address(nc->icmp6_client, ip);
++	l_icmp6_client_set_link_local_address(nc->icmp6_client, ip,
++					!!(ifa->ifa_flags & IFA_F_OPTIMISTIC));
+ 
  	/*
-@@ -1168,7 +1274,8 @@ emit_event:
- 			!l_queue_isempty(nc->routes.updated) ||
- 			!l_queue_isempty(nc->routes.removed) ||
- 			!l_queue_isempty(nc->routes.expired) ||
--			!l_queue_isempty(nc->addresses.updated))
-+			!l_queue_isempty(nc->addresses.updated) ||
-+			dns_updated)
- 		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_UPDATE);
- }
+ 	 * Only now that we have a link-local address see if we can start
+ 	 * actual DHCPv6 setup.
+ 	 */
+-	if (netconfig_check_start_dhcp6(nc))
++	if (new_lla && netconfig_check_start_dhcp6(nc))
+ 		return;
  
-@@ -2007,6 +2114,8 @@ LIB_EXPORT void l_netconfig_stop(struct l_netconfig *netconfig)
- 	l_queue_clear(netconfig->routes.current,
- 			(l_queue_destroy_func_t) l_rtnl_route_free);
- 	l_queue_clear(netconfig->icmp_route_data, l_free);
-+	l_queue_clear(netconfig->slaac_dnses, l_free);
-+	l_queue_clear(netconfig->slaac_domains, l_free);
- 	netconfig->v4_address = NULL;
- 	netconfig->v4_subnet_route = NULL;
- 	netconfig->v4_default_route = NULL;
-@@ -2255,9 +2364,31 @@ append_v6:
+ 	netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
+@@ -2022,6 +2036,13 @@ configure_ipv6:
+ 	 * before we start the dump, instead of after it ends, to eliminate
+ 	 * the possibility of missing an RTM_NEWADDR between the end of
+ 	 * the dump command and registering for the events.
++	 *
++	 * We stay on that list until we receive a non-tentative LL address.
++	 * Note that we may set .have_lla earlier, specifically when we
++	 * receive a tentative LL address that is also optimistic.  We will
++	 * however stay on addr_wait_list because we want to notify
++	 * l_icmp6_client again when the LL address completes DAD and becomes
++	 * non-tentative.
+ 	 */
+ 	if (!addr_wait_list) {
+ 		addr_wait_list = l_queue_new();
+@@ -2041,6 +2062,7 @@ configure_ipv6:
+ 		goto unregister;
  
- 	if (netconfig->v6_dns_override)
- 		netconfig_strv_cat(&ret, netconfig->v6_dns_override, false);
--	else if ((v6_lease =
--			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+	else if (netconfig->v6_auto_method == NETCONFIG_V6_METHOD_DHCP &&
-+			(v6_lease = l_dhcp6_client_get_lease(
-+						netconfig->dhcp6_client)))
- 		netconfig_strv_cat(&ret, l_dhcp6_lease_get_dns(v6_lease), true);
-+	else if (netconfig->v6_auto_method == NETCONFIG_V6_METHOD_SLAAC &&
-+			!l_queue_isempty(netconfig->slaac_dnses)) {
-+		unsigned int dest_len = l_strv_length(ret);
-+		unsigned int src_len = l_queue_length(netconfig->slaac_dnses);
-+		char **i;
-+		const struct l_queue_entry *entry;
-+
-+		ret = l_realloc(ret, sizeof(char *) * (dest_len + src_len + 1));
-+		i = ret + dest_len;
-+
-+		for (entry = l_queue_get_entries(netconfig->slaac_dnses);
-+				entry; entry = entry->next) {
-+			char addr_str[INET6_ADDRSTRLEN];
-+
-+			if (inet_ntop(AF_INET6, entry->data, addr_str,
-+					sizeof(addr_str)))
-+				*i++ = l_strdup(addr_str);
-+		}
-+
-+		*i = NULL;
-+	}
+ 	l_queue_push_tail(addr_wait_list, netconfig);
++	netconfig->have_lla = false;
  
- done:
- 	return ret;
-@@ -2288,13 +2419,30 @@ append_v6:
- 	if (!netconfig->v6_configured)
- 		goto done;
- 
--	if (netconfig->v6_dns_override)
-+	if (netconfig->v6_domain_names_override)
- 		netconfig_strv_cat(&ret, netconfig->v6_domain_names_override,
- 					false);
--	else if ((v6_lease =
--			l_dhcp6_client_get_lease(netconfig->dhcp6_client)))
-+	else if (netconfig->v6_auto_method == NETCONFIG_V6_METHOD_DHCP &&
-+			(v6_lease = l_dhcp6_client_get_lease(
-+						netconfig->dhcp6_client)))
- 		netconfig_strv_cat(&ret, l_dhcp6_lease_get_domains(v6_lease),
- 					true);
-+	else if (netconfig->v6_auto_method == NETCONFIG_V6_METHOD_SLAAC &&
-+			!l_queue_isempty(netconfig->slaac_domains)) {
-+		unsigned int dest_len = l_strv_length(ret);
-+		unsigned int src_len = l_queue_length(netconfig->slaac_domains);
-+		char **i;
-+		const struct l_queue_entry *entry;
-+
-+		ret = l_realloc(ret, sizeof(char *) * (dest_len + src_len + 1));
-+		i = ret + dest_len;
-+
-+		for (entry = l_queue_get_entries(netconfig->slaac_domains);
-+				entry; entry = entry->next)
-+			*i++ = l_strdup(entry->data);
-+
-+		*i = NULL;
-+	}
- 
- done:
- 	return ret;
+ 	if (!l_net_get_mac_address(netconfig->ifindex, netconfig->mac))
+ 		goto unregister;
 -- 
 2.34.1
 
