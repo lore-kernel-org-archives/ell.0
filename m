@@ -1,37 +1,40 @@
 Received: from mail-wr1-f48.google.com (mail-wr1-f48.google.com [209.85.221.48])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D1001C14
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E38631C2D
 	for <ell@lists.linux.dev>; Tue, 20 Sep 2022 13:32:07 +0000 (UTC)
-Received: by mail-wr1-f48.google.com with SMTP id g3so4243842wrq.13
+Received: by mail-wr1-f48.google.com with SMTP id bq9so4325744wrb.4
         for <ell@lists.linux.dev>; Tue, 20 Sep 2022 06:32:07 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:to
-         :from:x-gm-message-state:from:to:cc:subject:date;
-        bh=p+uD+/L+jxWQUGdqxtyjWsUrv0xM55qHt3jLx4B27ZA=;
-        b=yOikbv0ZG3i9dHEVoMrn4o6X1UBAip2ytFX5rmz8h52pSXZjj/40zRb5BDDzfYBjd9
-         JtH+CJcUrSrOMv8a8hbh5W1J7hbWr7jVl++CtoNb+e/JgEuOqdIvkPztaviWxIL94WDe
-         L+KN0g1AxN4AzJbZMdtGnLL1uWdsYz5rxHAdLwNtBdnsl2A4mw49R63wjPUP10umqHL/
-         kpk0XNPgCzt8TvtODQ2Aph23aON9YcnlXuH9Dv328al9wEJUV7L3EdJH6TJXyJnWLZY7
-         v/woboeChFzcz0/t/AKgMkTzv5xZs+TX262UVlw1xE1nw/TIGYQxvOqUktAR6Fpx6NwB
-         +L9Q==
-X-Gm-Message-State: ACrzQf2RlKVIEsNG1bK9W6MQaADDnnkkDd5aMaPPMzxtID+LA44pncev
-	ruzykAMJkbv9nX6X958tA1s8FbXo/MGL8yyl
-X-Google-Smtp-Source: AMsMyM488yun7hSrNNQGDXFfXd7nUVx4w/G2/vMlbM3wZH7mzPPsWDabZOX5zHCz2DhmWyWLpnpDlg==
-X-Received: by 2002:a5d:52cb:0:b0:21a:3cc5:f5f4 with SMTP id r11-20020a5d52cb000000b0021a3cc5f5f4mr14548670wrv.367.1663680725087;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
+         :subject:date;
+        bh=DUiwdwzhPJguHKXKA3ySWVT+9rY4F7aeUFf/xvB39Xw=;
+        b=XAVlzRTNlGRgp4kMg2cUkb6TzIU04TzcxlND05l0qtk7DbWJE2JZKpzDXriQNzpILm
+         FQhAH7D1V7rgfMmKmGbs+PcH6MRY+zdtcYwRMyu2Gtxb6zh1xvdRqv8mDO2Jgma4i1qr
+         d/t1yWtQYrTwkdmOGe80kBUgRg86lhqXMK7D4tQWQPIL8Hh3wbfkPYcDSBp9/v+RXfCh
+         SQRw++LUJLqFw+IB/gDJeEi7byJamOlGDny3IrrKMwxNyAAGK3cZo7LP2RXPw/AYqm+3
+         PxjshWU7rgRnaTAdGaLDjxJ5rqbD3stEnSxS+59Ofwx80YF5+v90yxPQDlCGiUK7EhTp
+         bphg==
+X-Gm-Message-State: ACrzQf1N+7HThr8S13TPNcT11ZOHysP3evTznu3vlIb72faSulFi/ctL
+	75v8ThZ3TJ3FpLqSGZY7ocovuIxyVAioKtJB
+X-Google-Smtp-Source: AMsMyM7LxRfRLmaFVohEVL9ATeFJzi9lTzvea1mkvHFAbGy2j5gPrWT+5lXIxJbZk/kZGbzctn0DEQ==
+X-Received: by 2002:a05:6000:1687:b0:22a:3516:4f98 with SMTP id y7-20020a056000168700b0022a35164f98mr14055871wrd.525.1663680725976;
         Tue, 20 Sep 2022 06:32:05 -0700 (PDT)
 Received: from iss.ger.corp.intel.com ([82.213.228.103])
-        by smtp.gmail.com with ESMTPSA id d16-20020adff2d0000000b0022863395912sm2082wrp.53.2022.09.20.06.32.04
+        by smtp.gmail.com with ESMTPSA id d16-20020adff2d0000000b0022863395912sm2082wrp.53.2022.09.20.06.32.05
         for <ell@lists.linux.dev>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 20 Sep 2022 06:32:04 -0700 (PDT)
+        Tue, 20 Sep 2022 06:32:05 -0700 (PDT)
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
 To: ell@lists.linux.dev
-Subject: [PATCH 1/6] net: Allow padding in net_domain_list_parse
-Date: Tue, 20 Sep 2022 15:31:56 +0200
-Message-Id: <20220920133201.3303119-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/6] unit: Update net_domain_list_parse test
+Date: Tue, 20 Sep 2022 15:31:57 +0200
+Message-Id: <20220920133201.3303119-2-andrew.zaborowski@intel.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20220920133201.3303119-1-andrew.zaborowski@intel.com>
+References: <20220920133201.3303119-1-andrew.zaborowski@intel.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -40,97 +43,54 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The domain name lists in ICMPv6 options may be 0-padded meaning that a
-0-byte at the beginning of a domain record (ie. a domain with no labels)
-is allowed and should be treated as the end of the list.  Add a boolean
-parameter to tell net_domain_list_parse() whether to allow this.
-
-Fixes: 4b1ce9b3e3d0 ("icmp6: Parse RDNSS and DNSSL options")
 ---
- ell/dhcp6-lease.c | 2 +-
- ell/icmp6.c       | 6 +++---
- ell/net-private.h | 2 +-
- ell/net.c         | 8 +++++++-
- 4 files changed, 12 insertions(+), 6 deletions(-)
+ unit/test-net.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
 
-diff --git a/ell/dhcp6-lease.c b/ell/dhcp6-lease.c
-index 978176a..a92cff9 100644
---- a/ell/dhcp6-lease.c
-+++ b/ell/dhcp6-lease.c
-@@ -312,7 +312,7 @@ struct l_dhcp6_lease *_dhcp6_lease_parse_options(
- 			lease->rapid_commit = true;
- 			break;
- 		case L_DHCP6_OPTION_DOMAIN_LIST:
--			lease->domain_list = net_domain_list_parse(v, l);
-+			lease->domain_list = net_domain_list_parse(v, l, false);
- 			if (!lease->domain_list)
- 				goto error;
+diff --git a/unit/test-net.c b/unit/test-net.c
+index ff5d2b0..f3f1522 100644
+--- a/unit/test-net.c
++++ b/unit/test-net.c
+@@ -113,11 +113,13 @@ static void test_net_domain_list_parse(const void *data)
+ 	static const uint8_t l1[] = { 7, 'e', 'x', 'a', 'm', 'p', 'l', 'e',
+ 					3, 'c', 'o', 'm', 0,
+ 					4, 't', 'e', 's', 't', 0 };
+-	static const uint8_t l2[] = { 0, 0};
++	static const uint8_t l2[] = { 0, 0 };
+ 	static const uint8_t l3[] = { 4, '.', '=', '2', '3', 0 };
++	static const uint8_t l4[] = { 7, 'e', 'x', 'a', 'm', 'p', 'l', 'e',
++					3, 'c', 'o', 'm', 0, 0 };
+ 	char **domains;
  
-diff --git a/ell/icmp6.c b/ell/icmp6.c
-index a2765ea..5ddc494 100644
---- a/ell/icmp6.c
-+++ b/ell/icmp6.c
-@@ -1104,11 +1104,11 @@ struct l_icmp6_router *_icmp6_router_parse(const struct nd_router_advert *ra,
- 		{
- 			struct domain_info *info = &r->domains[n_domains];
- 			_auto_(l_free) char **domain_list =
--				net_domain_list_parse(opts + 8, l - 8);
-+				net_domain_list_parse(opts + 8, l - 8, true);
- 			char **i;
+-	domains = net_domain_list_parse(l1, sizeof(l1));
++	domains = net_domain_list_parse(l1, sizeof(l1), false);
+ 	assert(domains);
+ 	assert(domains[0]);
+ 	assert(!strcmp(domains[0], "example.com"));
+@@ -126,14 +128,21 @@ static void test_net_domain_list_parse(const void *data)
+ 	assert(!domains[2]);
+ 	l_strfreev(domains);
  
--			/* Ignore invalid option */
--			if (!domain_list)
-+			/* Ignore malformed option */
-+			if (!domain_list || !domain_list[0])
- 				break;
+-	assert(!net_domain_list_parse(l2, sizeof(l2)));
++	assert(!net_domain_list_parse(l2, sizeof(l2), false));
  
- 			for (i = domain_list; *i; i++) {
-diff --git a/ell/net-private.h b/ell/net-private.h
-index 39d4d98..a864034 100644
---- a/ell/net-private.h
-+++ b/ell/net-private.h
-@@ -21,7 +21,7 @@
-  */
- 
- char *net_domain_name_parse(const uint8_t *raw, size_t raw_len);
--char **net_domain_list_parse(const uint8_t *raw, size_t raw_len);
-+char **net_domain_list_parse(const uint8_t *raw, size_t raw_len, bool padded);
- 
- static inline const void *net_prefix_from_ipv6(const uint8_t *address,
- 						uint8_t prefix_len)
-diff --git a/ell/net.c b/ell/net.c
-index 378b9f2..aa7fc20 100644
---- a/ell/net.c
-+++ b/ell/net.c
-@@ -295,7 +295,7 @@ char *net_domain_name_parse(const uint8_t *raw, size_t raw_len)
- /*
-  * Parse list of domain names encoded according to RFC 1035 Section 3.1
-  */
--char **net_domain_list_parse(const uint8_t *raw, size_t raw_len)
-+char **net_domain_list_parse(const uint8_t *raw, size_t raw_len, bool padded)
- {
- 	size_t remaining = raw_len;
- 	const uint8_t *p = raw;
-@@ -305,6 +305,9 @@ char **net_domain_list_parse(const uint8_t *raw, size_t raw_len)
- 	struct l_string *growable = NULL;
- 
- 	while (remaining) {
-+		if (padded && p[0] == 0)
-+			break;
+-	domains = net_domain_list_parse(l3, sizeof(l3));
++	domains = net_domain_list_parse(l3, sizeof(l3), false);
+ 	assert(domains);
+ 	assert(domains[0]);
+ 	assert(!strcmp(domains[0], "\\.\\06123"));
+ 	assert(!domains[1]);
+ 	l_strfreev(domains);
 +
- 		r = validate_next_domain_name(p, remaining);
- 		if (r < 0)
- 			return NULL;
-@@ -323,6 +326,9 @@ char **net_domain_list_parse(const uint8_t *raw, size_t raw_len)
- 		remaining -= *p + 1;
++	domains = net_domain_list_parse(l4, sizeof(l4), true);
++	assert(domains);
++	assert(domains[0]);
++	assert(!strcmp(domains[0], "example.com"));
++	assert(!domains[1]);
++	l_strfreev(domains);
+ }
  
- 		if (*p == 0) {
-+			if (!growable)
-+				break;
-+
- 			p += 1;
- 			ret[nitems++] = l_string_unwrap(growable);
- 			growable = NULL;
+ int main(int argc, char *argv[])
 -- 
 2.34.1
 
