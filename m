@@ -1,81 +1,83 @@
-Received: from mail-oa1-f43.google.com (mail-oa1-f43.google.com [209.85.160.43])
+Received: from mail-wm1-f51.google.com (mail-wm1-f51.google.com [209.85.128.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F58F7462
-	for <ell@lists.linux.dev>; Tue, 20 Sep 2022 15:22:38 +0000 (UTC)
-Received: by mail-oa1-f43.google.com with SMTP id 586e51a60fabf-11eab59db71so4657211fac.11
-        for <ell@lists.linux.dev>; Tue, 20 Sep 2022 08:22:38 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date;
-        bh=Y6XQTOGcUwqqMN1CfQ0xDy5MLI2GxRnDGIuHSNfO2Jo=;
-        b=LBH6ZYu1B+k/nB9aYkfdADQ5HeUE5ngmlu97EUNYT5Zc177o0vMI2qBSn+3MfCRjV6
-         GPjYff9VRDUXZXSnwmghvwIzAorzFKbJg6qXxTXgU1bszI2jFqodmkqTqh9bswboZF33
-         rwkQRMGiiqw8ZaSVHxBXq1il0pINMrs0Z237l3FFc41s8qg2GTFEoR23tI0OUDPsIPmh
-         xpHdXJA4qpque0zSdskSDBJs2MUwEZadLEHCnwf6ILwEP1Qnqb6BcLpnhSVWv0vTrA42
-         QLwni6BulrZpXTKGCnY7djLGKHpTXvQDIOrlSyxoPTvVfLNi7wdlM60RkYzaOIUvgZNH
-         uSTA==
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 69B7233C7
+	for <ell@lists.linux.dev>; Fri, 30 Sep 2022 13:53:15 +0000 (UTC)
+Received: by mail-wm1-f51.google.com with SMTP id c192-20020a1c35c9000000b003b51339d350so5079250wma.3
+        for <ell@lists.linux.dev>; Fri, 30 Sep 2022 06:53:15 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date;
-        bh=Y6XQTOGcUwqqMN1CfQ0xDy5MLI2GxRnDGIuHSNfO2Jo=;
-        b=GrtWzO9gkU1oSiZJeODAKAdUJDM1WLV08xkcTCtFXoVlhKfMUyiangdEUQY8wO3wR9
-         kbvpApvRVGCavGvbaP9dbPCHxcln1vTubHVSORnxC/n/viF94+0H9oijyVX8nHfHQxWf
-         YlmrX8tzG5PGfTSjeXX1IDQ5qgnmBNfyOvLnx1hOG9fmEaFELi4Ylc7nsWVUX4NrOkZE
-         xcDwJhDtjWkr2nxZ5ixF0yboT6AXqDcS0gV3i3RlwdLh+7pcGYkU1ncoGYjL69476YVp
-         kq1F5frDFn4AE3rrI3kSrnOcr7+XpQQI82VDDT0hospzpYj0ZB63B3V853WQg0wae3oX
-         pUaw==
-X-Gm-Message-State: ACrzQf3lTl+Fk95pYP8KfGYrECvtI5dBrkdqyQfTC7fRV4K/1sukc15h
-	UO0Fsowm2wsXNoY4579kdXRyNUuWgh4=
-X-Google-Smtp-Source: AMsMyM5YQHr3Wl2NkY7RSxgVI1T87BOG6e7faxfnCuaQ7pS08AGwt/mIAnxeJeJcR9kVfwr6LMuoqw==
-X-Received: by 2002:a05:6871:291:b0:128:4c:b207 with SMTP id i17-20020a056871029100b00128004cb207mr2329492oae.65.1663687357196;
-        Tue, 20 Sep 2022 08:22:37 -0700 (PDT)
-Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id r11-20020a0568080aab00b0034f763a9650sm23032oij.20.2022.09.20.08.22.36
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 20 Sep 2022 08:22:36 -0700 (PDT)
-Message-ID: <fda107ac-b988-408e-9c58-ebca4f57b518@gmail.com>
-Date: Tue, 20 Sep 2022 10:06:01 -0500
+        h=content-transfer-encoding:mime-version:message-id:date:subject:to
+         :from:x-gm-message-state:from:to:cc:subject:date;
+        bh=vpFAl3rqIU1iYzhZEiuF5G4ulQ+7hkV9H48xUc5Lkgw=;
+        b=xw8e2r5uCgxdB0bBksWQlaLRZxboKhG3xrYK213x68B6L3fqt7acdizKcjpr4MnLQg
+         5ecXWK0nab93S2IOGd+TnXMnG757GFRbcM6itwd5/+Qfx7eTM5VhgTPEvMMCnIQa2lQ+
+         uoqSOGGR0W4NjQMLNpS8Fg7Cxx9bjUlu0cvhBSO4Oiq1KlFNHZHR30JanbgPKPhKJ7OR
+         XGyoUZx/hhZSslMjbXZlQvt+UrC2jDHiVNzLoDM0BM+Zv4IAr14RjP5qtYcZB+sTD5rl
+         Lm0iKwL4p56pD8Y0pxCSswq9SW81Vtm4FPCO5EBLn2nPhOoDRiUiNhDWNXePJq7Lvx0W
+         gWeQ==
+X-Gm-Message-State: ACrzQf1febIE037FaS9Xiz2nYgAWiX1W8lFILoVM34TjIcFQqei3pbHA
+	sytslJPApuAFEC+cdhW2c5tP1qirVqs=
+X-Google-Smtp-Source: AMsMyM5OwLSQNgMoxpia3luQUP4wu5gkXIZK6S3TDdwShmFSAQUKZknMkehxGu8P13zKn1x2lsg1Hw==
+X-Received: by 2002:a7b:c40e:0:b0:3b3:3faa:10c2 with SMTP id k14-20020a7bc40e000000b003b33faa10c2mr6100954wmi.32.1664545993270;
+        Fri, 30 Sep 2022 06:53:13 -0700 (PDT)
+Received: from localhost.localdomain ([82.213.228.103])
+        by smtp.gmail.com with ESMTPSA id p5-20020a05600c1d8500b003b492b30822sm2249801wms.2.2022.09.30.06.53.12
+        for <ell@lists.linux.dev>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 30 Sep 2022 06:53:12 -0700 (PDT)
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+To: ell@lists.linux.dev
+Subject: [PATCH 1/5] dhcp6: Include Client ID in Information-Request
+Date: Fri, 30 Sep 2022 15:52:46 +0200
+Message-Id: <20220930135250.534296-1-andrew.zaborowski@intel.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.11.0
-Subject: Re: [PATCH 1/6] net: Allow padding in net_domain_list_parse
-Content-Language: en-US
-To: Andrew Zaborowski <andrew.zaborowski@intel.com>, ell@lists.linux.dev
-References: <20220920133201.3303119-1-andrew.zaborowski@intel.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20220920133201.3303119-1-andrew.zaborowski@intel.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Andrew,
+The Reply parser requires that the Client ID be present in the Reply but
+the server only includes that if the Information-Request included the
+Client ID.  RFC 8415 Section 18.2.6 has this to say about the Client ID:
 
-On 9/20/22 08:31, Andrew Zaborowski wrote:
-> The domain name lists in ICMPv6 options may be 0-padded meaning that a
-> 0-byte at the beginning of a domain record (ie. a domain with no labels)
-> is allowed and should be treated as the end of the list.  Add a boolean
-> parameter to tell net_domain_list_parse() whether to allow this.
-> 
-> Fixes: 4b1ce9b3e3d0 ("icmp6: Parse RDNSS and DNSSL options")
-> ---
->   ell/dhcp6-lease.c | 2 +-
->   ell/icmp6.c       | 6 +++---
->   ell/net-private.h | 2 +-
->   ell/net.c         | 8 +++++++-
->   4 files changed, 12 insertions(+), 6 deletions(-)
-> 
+"The client SHOULD include a Client Identifier option (see Section 21.2)
+to identify itself to the server (however, see Section 4.3.1 of [RFC7844]
+for reasons why a client may not want to include this option).  If the
+client does not include a Client Identifier option, the server will not
+be able to return any client-specific options to the client, or the
+server may choose not to respond to the message at all."
 
-All applied, thanks.
+RFC 7833 Section 4.3.1 says this:
+"When using stateless DHCPv6, clients wanting to protect their privacy
+SHOULD NOT include client identifiers in their Information-request
+messages.  This will prevent the server from specifying client-specific
+options if it is configured to do so, but the need for anonymity
+precludes such options anyway."
+---
+The obvious alternative is to not include the Client ID and not require
+it in the Reply validation, or make this configurable to avoid privacy
+concerns.  I'm happy to go with either of these options.
 
-Regards,
--Denis
+ ell/dhcp6.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/ell/dhcp6.c b/ell/dhcp6.c
+index 2792ff2..0705a7b 100644
+--- a/ell/dhcp6.c
++++ b/ell/dhcp6.c
+@@ -738,6 +738,8 @@ static int dhcp6_client_send_information_request(struct l_dhcp6_client *client)
+ 	option_append_elapsed_time(builder, client->transaction_start_t);
+ 	option_append_option_request(builder, client->request_options,
+ 					DHCP6_STATE_REQUESTING_INFORMATION);
++	option_append_bytes(builder, DHCP6_OPTION_CLIENT_ID,
++					client->duid, client->duid_len);
+ 
+ 	information_request = dhcp6_message_builder_free(builder, false,
+ 						&information_request_len);
+-- 
+2.34.1
 
