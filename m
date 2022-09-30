@@ -1,37 +1,37 @@
-Received: from mail-wr1-f47.google.com (mail-wr1-f47.google.com [209.85.221.47])
+Received: from mail-wr1-f48.google.com (mail-wr1-f48.google.com [209.85.221.48])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7C48833C7
-	for <ell@lists.linux.dev>; Fri, 30 Sep 2022 13:53:17 +0000 (UTC)
-Received: by mail-wr1-f47.google.com with SMTP id bk15so6956120wrb.13
-        for <ell@lists.linux.dev>; Fri, 30 Sep 2022 06:53:17 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4EC4D33D6
+	for <ell@lists.linux.dev>; Fri, 30 Sep 2022 13:53:18 +0000 (UTC)
+Received: by mail-wr1-f48.google.com with SMTP id bq9so6974817wrb.4
+        for <ell@lists.linux.dev>; Fri, 30 Sep 2022 06:53:18 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
          :subject:date;
-        bh=352np4+Vvl4GITWnXLxw5PiWkWduXovJunaijCyYwTY=;
-        b=csSyTrRZAQ7LJ2AhwIEwwd0X1oGuRzuD2UQ2Y1UmuYGKLMmp3bop/ouiuXtpANXmTs
-         5ZPI4qJQxAxOriUycXwA45sHjwWifTrWqrcxAtZG3y81Lj7p9aqyiiIinUbQeaFPQZqF
-         OwvTW5YfUnJ79aWRNILF79GpxaJnxNtuE5AhAOtcImc41Lc/8RAFMJfd8IiQXs/QawW9
-         XVdxsmmR8YYksLlALmuW0q+Z2ReixXqcWmzBudLy7NLxBgvAyihwYu1Zev+8txABkLbw
-         UmFHZyQ//UMbmUw+Bw/wBn2LYcMa0aOIO36Nu8kRuRLsSeDFrgf+aFr59zkHsiPr8p6E
-         a0pg==
-X-Gm-Message-State: ACrzQf08ejtC4jw6z8b8o+mUz77lZbxoa0dsN2cEs6dxws7Y1NEYMrcL
-	/QsqYu1eRLxRBtISUdaLUkkne3efok0=
-X-Google-Smtp-Source: AMsMyM7tByFYrhHpxD/FE6Ev0cGhf9obZHXeWOLIzG3/wyv6rJ23XVnlZQHRpoKE6djfrMDo1m1nSw==
-X-Received: by 2002:adf:d1c2:0:b0:22a:66ad:2669 with SMTP id b2-20020adfd1c2000000b0022a66ad2669mr5947428wrd.468.1664545995519;
-        Fri, 30 Sep 2022 06:53:15 -0700 (PDT)
+        bh=TVzIy4OOYGtD8U3hCNP460aQxBdJlNFEpxfDuXjjKsg=;
+        b=b7uGN73tl9BPQyBTOenY40qVxxsYOzmK9SPMffs579Qw9PY78PuHIkH753zgnksDkZ
+         tIole8lF6uRuI/a2/NA8OSVWs4LzJkpuUfMxNHM9/yS18LOESjL78dP0YMli3i4NH3Rb
+         c+hHd7q0J/Z0IhbskWsoUkoY8y6+m1rIZDOCDjcX19D5CPq9Aodv/cE1zzGtu+wM/oQF
+         dI+h5796QM0csM/Xe0G3VRdn64QHWLO099Xe4I4SfRuwRjtrwR4NPWDPIKDFQdCxF1w1
+         u3RGSAMO8fcchU/eGZxwo87O6+bIa0R7Vg65XulASFHZ+XTWK68Fi8AlpBsvEFOmBZ+Q
+         a4UQ==
+X-Gm-Message-State: ACrzQf0ZI768Lzi5cOlvoNi8VIqsHVMa+9/ZvsFpcgScorhRgzlH7Wkp
+	wRpaFWch7z5Lit92NIqsYhIC6mgQXbM=
+X-Google-Smtp-Source: AMsMyM56gq0GaKwu6841HItAL08Th8BUcfVF9E7cqqwtPwllNNAnqwhsgojbkI1FIlXmoLE2Zv0wmw==
+X-Received: by 2002:a05:6000:98b:b0:22c:c3b1:3f2a with SMTP id by11-20020a056000098b00b0022cc3b13f2amr6032249wrb.11.1664545996303;
+        Fri, 30 Sep 2022 06:53:16 -0700 (PDT)
 Received: from localhost.localdomain ([82.213.228.103])
-        by smtp.gmail.com with ESMTPSA id p5-20020a05600c1d8500b003b492b30822sm2249801wms.2.2022.09.30.06.53.14
+        by smtp.gmail.com with ESMTPSA id p5-20020a05600c1d8500b003b492b30822sm2249801wms.2.2022.09.30.06.53.15
         for <ell@lists.linux.dev>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Fri, 30 Sep 2022 06:53:15 -0700 (PDT)
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
 To: ell@lists.linux.dev
-Subject: [PATCH 4/5] netconfig: Return SLAAC+DHCP6 DNS info from getters
-Date: Fri, 30 Sep 2022 15:52:49 +0200
-Message-Id: <20220930135250.534296-4-andrew.zaborowski@intel.com>
+Subject: [PATCH 5/5] netconfig: Stop ongoing work on failure
+Date: Fri, 30 Sep 2022 15:52:50 +0200
+Message-Id: <20220930135250.534296-5-andrew.zaborowski@intel.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20220930135250.534296-1-andrew.zaborowski@intel.com>
 References: <20220930135250.534296-1-andrew.zaborowski@intel.com>
@@ -43,110 +43,157 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-In l_netconfig_get_dns_list(), l_netconfig_get_domain_names() return
-both the DNS information from Router Advertisements if any, and from the
-l_dhcp6_client lease if any, to cover the SLAAC+DHCP6 mode and other
-possible corner cases.
+When we emit L_NETCONFIG_EVENT_FAILED for either address family, stop
+any timeouts and processing of events for that family.  The assumption
+was that the user will call l_netconfig_unconfigure() and/or
+l_netconfig_stop() when this happens but the user may want to ignore one
+of the address families setup failing and continue with the other one.
 ---
- ell/netconfig.c | 47 ++++++++++++++++++++++++++++++-----------------
- 1 file changed, 30 insertions(+), 17 deletions(-)
+ ell/netconfig.c | 53 ++++++++++++++++++++++++++++---------------------
+ 1 file changed, 30 insertions(+), 23 deletions(-)
 
 diff --git a/ell/netconfig.c b/ell/netconfig.c
-index e54e2f9..7aac5ad 100644
+index 7aac5ad..76b18a7 100644
 --- a/ell/netconfig.c
 +++ b/ell/netconfig.c
-@@ -1209,6 +1209,20 @@ process_nondefault_routes:
- 			netconfig_remove_icmp6_route(nc, rd);
+@@ -188,6 +188,24 @@ static void netconfig_emit_event(struct l_netconfig *nc, uint8_t family,
+ 		netconfig_update_cleanup(nc);
+ }
+ 
++static void netconfig_addr_wait_unregister(struct l_netconfig *nc,
++						bool in_notify);
++
++static void netconfig_failed(struct l_netconfig *nc, uint8_t family)
++{
++	if (family == AF_INET) {
++		l_dhcp_client_stop(nc->dhcp_client);
++		l_acd_destroy(l_steal_ptr(nc->acd));
++	} else {
++		netconfig_addr_wait_unregister(nc, false);
++		l_dhcp6_client_stop(nc->dhcp6_client);
++		l_icmp6_client_stop(nc->icmp6_client);
++		l_timeout_remove(l_steal_ptr(nc->ra_timeout));
++	}
++
++	netconfig_emit_event(nc, family, L_NETCONFIG_EVENT_FAILED);
++}
++
+ static struct l_rtnl_route *netconfig_route_new(struct l_netconfig *nc,
+ 						uint8_t family,
+ 						const void *dst,
+@@ -523,8 +541,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
+ 			netconfig_emit_event(nc, AF_INET,
+ 						L_NETCONFIG_EVENT_UNCONFIGURE);
+ 		else
+-			netconfig_emit_event(nc, AF_INET,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET);
+ 
+ 		break;
+ 	case L_DHCP_CLIENT_EVENT_NO_LEASE:
+@@ -539,8 +556,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
+ 		 * better yet a configurable timeout.
+ 		 */
+ 		if (!l_dhcp_client_start(nc->dhcp_client))
+-			netconfig_emit_event(nc, AF_INET,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET);
+ 
+ 		break;
+ 	}
+@@ -656,8 +672,7 @@ static void netconfig_dhcp6_event_handler(struct l_dhcp6_client *client,
+ 			netconfig_emit_event(nc, AF_INET6,
+ 						L_NETCONFIG_EVENT_UNCONFIGURE);
+ 		else
+-			netconfig_emit_event(nc, AF_INET6,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET6);
+ 
+ 		break;
+ 	case L_DHCP6_CLIENT_EVENT_LEASE_RENEWED:
+@@ -686,8 +701,7 @@ static void netconfig_dhcp6_event_handler(struct l_dhcp6_client *client,
+ 		 * or better yet a configurable timeout.
+ 		 */
+ 		if (!l_dhcp6_client_start(nc->dhcp6_client))
+-			netconfig_emit_event(nc, AF_INET6,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET6);
+ 
+ 		break;
+ 	}
+@@ -727,11 +741,8 @@ static void netconfig_ra_timeout_cb(struct l_timeout *timeout, void *user_data)
+ {
+ 	struct l_netconfig *nc = user_data;
+ 
+-	l_timeout_remove(l_steal_ptr(nc->ra_timeout));
+-
+ 	/* No Router Advertisements received, assume no DHCPv6 or SLAAC */
+-	l_icmp6_client_stop(nc->icmp6_client);
+-	netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
++	netconfig_failed(nc, AF_INET6);
+ }
+ 
+ static void netconfig_add_slaac_address(struct l_netconfig *nc,
+@@ -1238,8 +1249,7 @@ process_nondefault_routes:
+ 		l_dhcp6_client_set_stateless(nc->dhcp6_client, false);
+ 
+ 		if (!netconfig_check_start_dhcp6(nc)) {
+-			netconfig_emit_event(nc, AF_INET6,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET6);
+ 			return;
+ 		}
+ 
+@@ -1279,7 +1289,7 @@ process_nondefault_routes:
+ 
+ 	/* Neither method seems available, fail */
+ 	if (nc->v6_auto_method == NETCONFIG_V6_METHOD_UNSET) {
+-		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
++		netconfig_failed(nc, AF_INET6);
+ 		return;
  	}
  
-+	/*
-+	 * Do this first so that any changes are included in the event
-+	 * emitted next, be it UPDATE or CONFIGURE.
-+	 */
-+	if (r->n_dns || r->n_domains) {
-+		if (!nc->slaac_dnses && r->n_dns)
-+			nc->slaac_dnses = l_queue_new();
-+
-+		if (!nc->slaac_domains && r->n_domains)
-+			nc->slaac_domains = l_queue_new();
-+
-+		dns_updated = netconfig_process_slaac_dns_info(nc, r);
-+	}
-+
- 	/*
- 	 * For lack of a better policy, select between DHCPv6 and SLAAC based
- 	 * on the first RA received.  Prefer DHCPv6.
-@@ -1245,14 +1259,6 @@ process_nondefault_routes:
- 		} else
- 			nc->v6_auto_method = NETCONFIG_V6_METHOD_SLAAC;
- 
--		/*
--		 * Do this first so that any changes are included in the
--		 * CONFIGURE event emitted next.
--		 */
--		nc->slaac_dnses = l_queue_new();
--		nc->slaac_domains = l_queue_new();
--		netconfig_process_slaac_dns_info(nc, r);
--
- 		/*
- 		 * The DAD for the link-local address may be still running
- 		 * but again we can generate the global address already and
-@@ -1287,7 +1293,6 @@ process_nondefault_routes:
- 	 * and allows us to extend its lifetime.
+@@ -1777,7 +1787,7 @@ static void netconfig_ipv4_acd_event(enum l_acd_event event, void *user_data)
+ 		 * Conflict found, no IP was actually set or routes added so
+ 		 * just emit the event.
+ 		 */
+-		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
++		netconfig_failed(nc, AF_INET);
+ 		break;
+ 	case L_ACD_EVENT_LOST:
+ 		if (L_WARN_ON(!nc->v4_configured))
+@@ -1790,7 +1800,7 @@ static void netconfig_ipv4_acd_event(enum l_acd_event event, void *user_data)
+ 		 */
+ 		netconfig_remove_v4_address_routes(nc, false);
+ 		nc->v4_configured = false;
+-		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
++		netconfig_failed(nc, AF_INET);
+ 		break;
+ 	}
+ }
+@@ -1911,10 +1921,8 @@ static void netconfig_ifaddr_ipv6_added(struct l_netconfig *nc,
+ 	 * Only now that we have a link-local address see if we can start
+ 	 * actual DHCPv6 setup.
  	 */
- 	netconfig_set_slaac_address_lifetimes(nc, r);
--	dns_updated = netconfig_process_slaac_dns_info(nc, r);
+-	if (new_lla && netconfig_check_start_dhcp6(nc))
+-		return;
+-
+-	netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
++	if (new_lla && !netconfig_check_start_dhcp6(nc))
++		netconfig_failed(nc, AF_INET6);
+ }
  
- emit_event:
- 	/*
-@@ -2411,14 +2416,18 @@ append_v6:
- 	if (!netconfig->v6_configured)
- 		goto done;
+ static void netconfig_ifaddr_ipv6_notify(uint16_t type, const void *data,
+@@ -1951,8 +1959,7 @@ static void netconfig_ifaddr_ipv6_dump_cb(int error, uint16_t type,
+ 		return;
  
--	if (netconfig->v6_dns_override)
-+	if (netconfig->v6_dns_override) {
- 		netconfig_strv_cat(&ret, netconfig->v6_dns_override, false);
--	else if (netconfig->v6_auto_method == NETCONFIG_V6_METHOD_DHCP &&
-+		goto done;
-+	}
-+
-+	if (L_IN_SET(netconfig->v6_auto_method, NETCONFIG_V6_METHOD_DHCP,
-+				NETCONFIG_V6_METHOD_SLAAC_DHCP) &&
- 			(v6_lease = l_dhcp6_client_get_lease(
- 						netconfig->dhcp6_client)))
- 		netconfig_strv_cat(&ret, l_dhcp6_lease_get_dns(v6_lease), true);
--	else if (netconfig->v6_auto_method == NETCONFIG_V6_METHOD_SLAAC &&
--			!l_queue_isempty(netconfig->slaac_dnses)) {
-+
-+	if (!l_queue_isempty(netconfig->slaac_dnses)) {
- 		unsigned int dest_len = l_strv_length(ret);
- 		unsigned int src_len = l_queue_length(netconfig->slaac_dnses);
- 		char **i;
-@@ -2468,16 +2477,20 @@ append_v6:
- 	if (!netconfig->v6_configured)
- 		goto done;
+ 	if (error) {
+-		netconfig_addr_wait_unregister(nc, false);
+-		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
++		netconfig_failed(nc, AF_INET6);
+ 		return;
+ 	}
  
--	if (netconfig->v6_domain_names_override)
-+	if (netconfig->v6_domain_names_override) {
- 		netconfig_strv_cat(&ret, netconfig->v6_domain_names_override,
- 					false);
--	else if (netconfig->v6_auto_method == NETCONFIG_V6_METHOD_DHCP &&
-+		goto done;
-+	}
-+
-+	if (L_IN_SET(netconfig->v6_auto_method, NETCONFIG_V6_METHOD_DHCP,
-+				NETCONFIG_V6_METHOD_SLAAC_DHCP) &&
- 			(v6_lease = l_dhcp6_client_get_lease(
- 						netconfig->dhcp6_client)))
- 		netconfig_strv_cat(&ret, l_dhcp6_lease_get_domains(v6_lease),
- 					true);
--	else if (netconfig->v6_auto_method == NETCONFIG_V6_METHOD_SLAAC &&
--			!l_queue_isempty(netconfig->slaac_domains)) {
-+
-+	if (!l_queue_isempty(netconfig->slaac_domains)) {
- 		unsigned int dest_len = l_strv_length(ret);
- 		unsigned int src_len = l_queue_length(netconfig->slaac_domains);
- 		char **i;
 -- 
 2.34.1
 
