@@ -1,37 +1,37 @@
-Received: from mail-wr1-f47.google.com (mail-wr1-f47.google.com [209.85.221.47])
+Received: from mail-wr1-f51.google.com (mail-wr1-f51.google.com [209.85.221.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A609833D9
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0F3C33C9
 	for <ell@lists.linux.dev>; Mon,  3 Oct 2022 22:29:05 +0000 (UTC)
-Received: by mail-wr1-f47.google.com with SMTP id j7so13342798wrr.3
+Received: by mail-wr1-f51.google.com with SMTP id bk15so18691113wrb.13
         for <ell@lists.linux.dev>; Mon, 03 Oct 2022 15:29:05 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
          :subject:date;
-        bh=YMlLnTf3srE3i5/B/X2C9Q8R1Z+Y0QSr7luB+e7ADrQ=;
-        b=wwqrbK0FXm+79nw377Ll8GehYwvvsLObDGlkXlFNNzcNfzZcEbU08z65Vln5ozYWbh
-         CF6noKIM1MAonAyZlaUdd6rwAnQBcFg+H+KgqmFtmUXFMrhnehPwZb/YlJ9FdahJQ8+4
-         Tye6+MME0qPd5DOTMjq24Ti5qXyFTbpOHf8nQ1DiVZClwiqTvf5iSmxspkePCKKTUy6W
-         cPocrd3Kdp29yK4SvD5bXZYE1dFrYcjSHhHjOsEBrEaNaNjCAeF/3EhX1TrRVXrggWki
-         qeGQL5rw+kmsAMsd73F/C8l4vAUL3+mUPFsrgDP2pJ2jqNYUmUva80X1rXfafnMzYsEh
-         Y3rg==
-X-Gm-Message-State: ACrzQf2mYD7QKzggH+PItQfbNENhypDhDsW7NUt7Ts6pY+Ugi9+b7rfI
-	/XmBnEaZnXhmlzOZL5sZZPBobBHVX2ThLg==
-X-Google-Smtp-Source: AMsMyM7VGCMUtf6smTaEMvE6/pn+bOaPCxnj4ItJlOkG3rnPvlTr3HWIPBKR7UXjiy5q6W03k2MxPw==
-X-Received: by 2002:a5d:404b:0:b0:22e:331e:1cba with SMTP id w11-20020a5d404b000000b0022e331e1cbamr6447593wrp.488.1664836144902;
-        Mon, 03 Oct 2022 15:29:04 -0700 (PDT)
+        bh=TVzIy4OOYGtD8U3hCNP460aQxBdJlNFEpxfDuXjjKsg=;
+        b=MsW0SRpJuI5qKCzJ1jjYU4ruQvOf5+9GQ8JJJQGiC/a554nAiTXfZFK3LJmlsrBb/t
+         p0lzlOOuXc3zKsiQYHYh8rQ85aJ+hdPbXKRl0XLz2wa/FJ8GCzn584382KC0DJpD6DUG
+         QkLClRptJPaacbVcKYbSo5CAzUE8Zs9d9CXTa9zKsDgSTi6S5kuz1Gbatn2vyEtYL1bv
+         StVi+RmuPrElejRKZJCfNHtEPQm9imCexjknzVfp9/ga1QEJiG639ONiP0QMeKFIOCze
+         FvaF9fqhKIxKXYosbnPkTgCsIt2seYWlpl8AUtQ+4N7apH9H7px/A16T3cPN3qo9YrQg
+         UG8g==
+X-Gm-Message-State: ACrzQf2q9s3Zg1/Y/VcQ6bY75MewYEocHF1Jf/64CLmScAmwAAtJB+G/
+	l4EJD45T6fwF0cZ76weOLZKsgtVn6ebvfQ==
+X-Google-Smtp-Source: AMsMyM6OdAzArzqVwaQ5UTfqBrcCXyv/JTvZ78ekT5RRqXNHvb7+pJ/Ebt+Oe0QeplCVsvdVsnvm3g==
+X-Received: by 2002:a05:6000:78a:b0:22e:4c41:9e36 with SMTP id bu10-20020a056000078a00b0022e4c419e36mr369513wrb.160.1664836143734;
+        Mon, 03 Oct 2022 15:29:03 -0700 (PDT)
 Received: from localhost.localdomain ([82.213.228.103])
-        by smtp.gmail.com with ESMTPSA id l9-20020a056000022900b0022b315b4649sm10434207wrz.26.2022.10.03.15.29.03
+        by smtp.gmail.com with ESMTPSA id l9-20020a056000022900b0022b315b4649sm10434207wrz.26.2022.10.03.15.29.02
         for <ell@lists.linux.dev>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 03 Oct 2022 15:29:04 -0700 (PDT)
+        Mon, 03 Oct 2022 15:29:03 -0700 (PDT)
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
 To: ell@lists.linux.dev
-Subject: [PATCH 5/5] dhcp6: Don't require Client ID in Information-request reply
-Date: Tue,  4 Oct 2022 00:28:47 +0200
-Message-Id: <20221003222847.699047-5-andrew.zaborowski@intel.com>
+Subject: [PATCH 4/5] netconfig: Stop ongoing work on failure
+Date: Tue,  4 Oct 2022 00:28:46 +0200
+Message-Id: <20221003222847.699047-4-andrew.zaborowski@intel.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20221003222847.699047-1-andrew.zaborowski@intel.com>
 References: <20221003222847.699047-1-andrew.zaborowski@intel.com>
@@ -43,76 +43,156 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Since we don't include our Client ID option when sending an
-Information-request, the server can't send it back in its Reply.  Don't
-require it when validating.
-RFC 8415 Section 18.2.6 has this to say about the Client ID:
-
-"The client SHOULD include a Client Identifier option (see Section 21.2)
-to identify itself to the server (however, see Section 4.3.1 of [RFC7844]
-for reasons why a client may not want to include this option).  If the
-client does not include a Client Identifier option, the server will not
-be able to return any client-specific options to the client, or the
-server may choose not to respond to the message at all."
-
-RFC 7833 Section 4.3.1 says this:
-"When using stateless DHCPv6, clients wanting to protect their privacy
-SHOULD NOT include client identifiers in their Information-request
-messages.  This will prevent the server from specifying client-specific
-options if it is configured to do so, but the need for anonymity
-precludes such options anyway."
+When we emit L_NETCONFIG_EVENT_FAILED for either address family, stop
+any timeouts and processing of events for that family.  The assumption
+was that the user will call l_netconfig_unconfigure() and/or
+l_netconfig_stop() when this happens but the user may want to ignore one
+of the address families setup failing and continue with the other one.
 ---
- ell/dhcp6.c | 13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
+ ell/netconfig.c | 53 ++++++++++++++++++++++++++++---------------------
+ 1 file changed, 30 insertions(+), 23 deletions(-)
 
-diff --git a/ell/dhcp6.c b/ell/dhcp6.c
-index 3dbd0cd..a17dc49 100644
---- a/ell/dhcp6.c
-+++ b/ell/dhcp6.c
-@@ -1098,6 +1098,7 @@ bool _dhcp6_option_iter_next(struct dhcp6_option_iter *iter, uint16_t *type,
+diff --git a/ell/netconfig.c b/ell/netconfig.c
+index 7aac5ad..76b18a7 100644
+--- a/ell/netconfig.c
++++ b/ell/netconfig.c
+@@ -188,6 +188,24 @@ static void netconfig_emit_event(struct l_netconfig *nc, uint8_t family,
+ 		netconfig_update_cleanup(nc);
  }
  
- static int dhcp6_client_validate_message(struct l_dhcp6_client *client,
-+					bool expect_client_id,
- 					const struct dhcp6_message *message,
- 					size_t len)
++static void netconfig_addr_wait_unregister(struct l_netconfig *nc,
++						bool in_notify);
++
++static void netconfig_failed(struct l_netconfig *nc, uint8_t family)
++{
++	if (family == AF_INET) {
++		l_dhcp_client_stop(nc->dhcp_client);
++		l_acd_destroy(l_steal_ptr(nc->acd));
++	} else {
++		netconfig_addr_wait_unregister(nc, false);
++		l_dhcp6_client_stop(nc->dhcp6_client);
++		l_icmp6_client_stop(nc->icmp6_client);
++		l_timeout_remove(l_steal_ptr(nc->ra_timeout));
++	}
++
++	netconfig_emit_event(nc, family, L_NETCONFIG_EVENT_FAILED);
++}
++
+ static struct l_rtnl_route *netconfig_route_new(struct l_netconfig *nc,
+ 						uint8_t family,
+ 						const void *dst,
+@@ -523,8 +541,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
+ 			netconfig_emit_event(nc, AF_INET,
+ 						L_NETCONFIG_EVENT_UNCONFIGURE);
+ 		else
+-			netconfig_emit_event(nc, AF_INET,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET);
+ 
+ 		break;
+ 	case L_DHCP_CLIENT_EVENT_NO_LEASE:
+@@ -539,8 +556,7 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
+ 		 * better yet a configurable timeout.
+ 		 */
+ 		if (!l_dhcp_client_start(nc->dhcp_client))
+-			netconfig_emit_event(nc, AF_INET,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET);
+ 
+ 		break;
+ 	}
+@@ -656,8 +672,7 @@ static void netconfig_dhcp6_event_handler(struct l_dhcp6_client *client,
+ 			netconfig_emit_event(nc, AF_INET6,
+ 						L_NETCONFIG_EVENT_UNCONFIGURE);
+ 		else
+-			netconfig_emit_event(nc, AF_INET6,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET6);
+ 
+ 		break;
+ 	case L_DHCP6_CLIENT_EVENT_LEASE_RENEWED:
+@@ -686,8 +701,7 @@ static void netconfig_dhcp6_event_handler(struct l_dhcp6_client *client,
+ 		 * or better yet a configurable timeout.
+ 		 */
+ 		if (!l_dhcp6_client_start(nc->dhcp6_client))
+-			netconfig_emit_event(nc, AF_INET6,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET6);
+ 
+ 		break;
+ 	}
+@@ -727,11 +741,8 @@ static void netconfig_ra_timeout_cb(struct l_timeout *timeout, void *user_data)
  {
-@@ -1205,7 +1206,7 @@ static int dhcp6_client_validate_message(struct l_dhcp6_client *client,
+ 	struct l_netconfig *nc = user_data;
+ 
+-	l_timeout_remove(l_steal_ptr(nc->ra_timeout));
+-
+ 	/* No Router Advertisements received, assume no DHCPv6 or SLAAC */
+-	l_icmp6_client_stop(nc->icmp6_client);
+-	netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
++	netconfig_failed(nc, AF_INET6);
+ }
+ 
+ static void netconfig_add_slaac_address(struct l_netconfig *nc,
+@@ -1238,8 +1249,7 @@ process_nondefault_routes:
+ 		l_dhcp6_client_set_stateless(nc->dhcp6_client, false);
+ 
+ 		if (!netconfig_check_start_dhcp6(nc)) {
+-			netconfig_emit_event(nc, AF_INET6,
+-						L_NETCONFIG_EVENT_FAILED);
++			netconfig_failed(nc, AF_INET6);
+ 			return;
  		}
+ 
+@@ -1279,7 +1289,7 @@ process_nondefault_routes:
+ 
+ 	/* Neither method seems available, fail */
+ 	if (nc->v6_auto_method == NETCONFIG_V6_METHOD_UNSET) {
+-		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
++		netconfig_failed(nc, AF_INET6);
+ 		return;
  	}
  
--	if (!duid_verified) {
-+	if (expect_client_id && !duid_verified) {
- 		CLIENT_DEBUG("Message %s - no client id option found", mstr);
- 		return -EBADMSG;
+@@ -1777,7 +1787,7 @@ static void netconfig_ipv4_acd_event(enum l_acd_event event, void *user_data)
+ 		 * Conflict found, no IP was actually set or routes added so
+ 		 * just emit the event.
+ 		 */
+-		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
++		netconfig_failed(nc, AF_INET);
+ 		break;
+ 	case L_ACD_EVENT_LOST:
+ 		if (L_WARN_ON(!nc->v4_configured))
+@@ -1790,7 +1800,7 @@ static void netconfig_ipv4_acd_event(enum l_acd_event event, void *user_data)
+ 		 */
+ 		netconfig_remove_v4_address_routes(nc, false);
+ 		nc->v4_configured = false;
+-		netconfig_emit_event(nc, AF_INET, L_NETCONFIG_EVENT_FAILED);
++		netconfig_failed(nc, AF_INET);
+ 		break;
  	}
-@@ -1229,7 +1230,7 @@ static int dhcp6_client_receive_advertise(struct l_dhcp6_client *client,
- 	if (advertise->msg_type != DHCP6_MESSAGE_TYPE_ADVERTISE)
- 		return -EINVAL;
+ }
+@@ -1911,10 +1921,8 @@ static void netconfig_ifaddr_ipv6_added(struct l_netconfig *nc,
+ 	 * Only now that we have a link-local address see if we can start
+ 	 * actual DHCPv6 setup.
+ 	 */
+-	if (new_lla && netconfig_check_start_dhcp6(nc))
+-		return;
+-
+-	netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
++	if (new_lla && !netconfig_check_start_dhcp6(nc))
++		netconfig_failed(nc, AF_INET6);
+ }
  
--	r = dhcp6_client_validate_message(client, advertise, len);
-+	r = dhcp6_client_validate_message(client, true, advertise, len);
- 	if (r < 0)
- 		return r;
+ static void netconfig_ifaddr_ipv6_notify(uint16_t type, const void *data,
+@@ -1951,8 +1959,7 @@ static void netconfig_ifaddr_ipv6_dump_cb(int error, uint16_t type,
+ 		return;
  
-@@ -1311,11 +1312,17 @@ static int dhcp6_client_receive_reply(struct l_dhcp6_client *client,
- 	struct l_dhcp6_lease *lease;
- 	struct dhcp6_option_iter iter;
- 	int r;
-+	/*
-+	 * Per RFC 7844 Section 4.3.1 we never send Client ID options in
-+	 * Information-requests so don't expect the replies to contain them.
-+	 */
-+	bool expect_client_id =
-+		(client->state != DHCP6_STATE_REQUESTING_INFORMATION);
- 
- 	if (reply->msg_type != DHCP6_MESSAGE_TYPE_REPLY)
- 		return -EINVAL;
- 
--	r = dhcp6_client_validate_message(client, reply, len);
-+	r = dhcp6_client_validate_message(client, expect_client_id, reply, len);
- 	if (r < 0)
- 		return r;
+ 	if (error) {
+-		netconfig_addr_wait_unregister(nc, false);
+-		netconfig_emit_event(nc, AF_INET6, L_NETCONFIG_EVENT_FAILED);
++		netconfig_failed(nc, AF_INET6);
+ 		return;
+ 	}
  
 -- 
 2.34.1
