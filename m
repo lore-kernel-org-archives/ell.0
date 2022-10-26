@@ -1,82 +1,78 @@
-Received: from mail-oi1-f174.google.com (mail-oi1-f174.google.com [209.85.167.174])
+Received: from mail-wr1-f48.google.com (mail-wr1-f48.google.com [209.85.221.48])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2FA7F256D
-	for <ell@lists.linux.dev>; Fri,  7 Oct 2022 18:35:20 +0000 (UTC)
-Received: by mail-oi1-f174.google.com with SMTP id v134so6450647oie.10
-        for <ell@lists.linux.dev>; Fri, 07 Oct 2022 11:35:20 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=HqSezCnzfg+Gzn8veR32PA6a1rFH4JYrHQjoy1vBT/8=;
-        b=No0MMUZuHk18SX/bukjxX2UbNcTmLMx7asx1aHNoVNmOMx5HGMrgibbE6VWD25HtHw
-         TdLh9P/T0ZTOXdt8bKeHZ0tu0Df9M8lDsIEB5l5G+/DF9y8j1lZq5wJzlqn0xWzgCxt+
-         SB3YibvuWspSmuz4PG0zLJlxsXi2qf+1aKLMhzdpKPjiS9F8FBUoU3z7EdRDmKcgiknk
-         mC6CRZVP35A0HDOvZSn0b2TChrQkEZjWHTbc0HGYWUV57OvHchBzDfAbruJdbWIuFdIu
-         5glOZyToA9d3fiW31oJ81zvXcsjOTfMelld+U78E1a2mUgC2p7n17Pe5bqMvrBJbjWnz
-         Jj3A==
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 324821374
+	for <ell@lists.linux.dev>; Wed, 26 Oct 2022 13:16:11 +0000 (UTC)
+Received: by mail-wr1-f48.google.com with SMTP id v1so26253371wrt.11
+        for <ell@lists.linux.dev>; Wed, 26 Oct 2022 06:16:11 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=HqSezCnzfg+Gzn8veR32PA6a1rFH4JYrHQjoy1vBT/8=;
-        b=61JLwr1fePFIaznjf6qbM314lZvHslsGPsy75iHadwdZeDvdXuSk6TjqM9wd8GwCPC
-         9uSs6lyARCTyl9VPK7BPD2d1+LBwZz28mZNkNjXba+PpD1Phu/wo4qjw+0JIc8Oc1hwb
-         gsln5L6TUB2iNWl0/OYEum0Pe23A9/NNhCE8USWAlx9RgxIHDmi+1ovDCWzGKjVHIdKk
-         ubwMq9jO1yyZtUx6z222Tzlei9NTTOqbWnQsuP67BMEE77P3ICFhjPsBw06TQ8OzuE80
-         JEojHIFyGKD68nnywJJyBW6MMgALHMKQzPU42SvdkaKcvYuJaftVUtkX2vrfcHsPiV+4
-         hV2Q==
-X-Gm-Message-State: ACrzQf065LoEEIx5ZbYUb669CttpGZlSMpSCrohFMXQOyJOjnuVKcXLj
-	uCIqPPPLQ3qKjFGkckxNaZY=
-X-Google-Smtp-Source: AMsMyM6JPh/GLmcpftSe69jUuVCFemx9am4nGzzv17HQyjuOksrc5bCkDOH8AH78TH6ZCj/RV0GcBQ==
-X-Received: by 2002:a05:6808:1827:b0:354:ee3:30b2 with SMTP id bh39-20020a056808182700b003540ee330b2mr3280839oib.43.1665167719260;
-        Fri, 07 Oct 2022 11:35:19 -0700 (PDT)
-Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id i9-20020a4adf09000000b00476989d42ebsm1246526oou.8.2022.10.07.11.35.18
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 07 Oct 2022 11:35:18 -0700 (PDT)
-Message-ID: <5bc2423a-55bf-3503-12ff-82d1374994da@gmail.com>
-Date: Fri, 7 Oct 2022 13:35:17 -0500
+        h=content-transfer-encoding:mime-version:message-id:date:subject:to
+         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=2vpkRb4tBAOLWpqjQSO7elJhPPYkoNXrzJ3CPJYah7I=;
+        b=HL1SmlhE96Hex7sTMC3yCJYAGe+NZG8xvB46Xq3SnjkVq6o1ReDCp9yeOkvEggeN1N
+         wDKGlEcNWu19Xs3vuth4eX6iHQpQ8P6A5CaGgOAyqKjCX6DoypMjsheVNa6HDlOPxMc8
+         lDlNUtCVlDiY8LFUkJvdFZ8GKC/vq+y/iG7Opu3nslZPtPdpsInTDDMkcMO4PRO7hlfl
+         xrvSfxU+eyU0vI/kAP/ETkCeORx0GuDvLzA6RfDsF7X6J0Y2ytdeLY7kUUqZeaXq4IVO
+         2/WHqlIX4lH0DAObhEfgyIuo71Utsb6Zo+vI4Pm9XKAy5jGvOH39D6fpXNq+z/FogTwB
+         2mXQ==
+X-Gm-Message-State: ACrzQf115ZpLrOhTQup4RTIm6ajpOteg7xx6QLiGqcBIvhqF9dqXr05j
+	aU6+Xllk7lQwD28qAnt0Dp/FMhYEiso=
+X-Google-Smtp-Source: AMsMyM7Db+4BFDAkI4+kjBWGtzBNqKlStmdQh6ghMAzS8DG7XhChubI87zDZmr9H46GPUeR80W0acw==
+X-Received: by 2002:a05:6000:1052:b0:236:6e8e:8403 with SMTP id c18-20020a056000105200b002366e8e8403mr11966019wrx.178.1666790168582;
+        Wed, 26 Oct 2022 06:16:08 -0700 (PDT)
+Received: from localhost.localdomain ([82.213.230.158])
+        by smtp.gmail.com with ESMTPSA id x23-20020a05600c21d700b003a83ca67f73sm1934771wmj.3.2022.10.26.06.16.07
+        for <ell@lists.linux.dev>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 26 Oct 2022 06:16:07 -0700 (PDT)
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+To: ell@lists.linux.dev
+Subject: [PATCH 1/6] time: Add time_realtime_now
+Date: Wed, 26 Oct 2022 15:15:53 +0200
+Message-Id: <20221026131558.2393488-1-andrew.zaborowski@intel.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.11.0
-Subject: Re: [PATCH 1/2] netconfig: Set preferred lifetimes on DHCP addresses
-Content-Language: en-US
-To: Andrew Zaborowski <andrew.zaborowski@intel.com>, ell@lists.linux.dev
-References: <20221007180209.1069526-1-andrew.zaborowski@intel.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20221007180209.1069526-1-andrew.zaborowski@intel.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Andrew,
+---
+ ell/time-private.h | 1 +
+ ell/time.c         | 8 ++++++++
+ 2 files changed, 9 insertions(+)
 
-On 10/7/22 13:02, Andrew Zaborowski wrote:
-> We receive one lease lifetime value for a DHCP lease so we were setting
-> the preferred lifetime for the RTNL address to 0 and the valid lifetime
-> to the lease lifetime.  If either value is non-zero rtnl.c will send
-> both to the kernel and the 0 preferred lifetime is treated as literal
-> zero and the address becomes deprecated immediately.  This doesn't
-> matter for most usages but systemd-resolved would check whether a link
-> has a non-deprecated address before setting the link's
-> "unicast_relevant" flag and internally wouldn't create a DNS "scope" on
-> the link or set its "DefaultRoute" flag both of which are required for
-> it to want to resolve names.
-> ---
->   ell/netconfig.c | 4 ++--
->   1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-
-Both applied, thanks.
-
-Regards,
--Denis
+diff --git a/ell/time-private.h b/ell/time-private.h
+index 83c23dd..e107503 100644
+--- a/ell/time-private.h
++++ b/ell/time-private.h
+@@ -24,3 +24,4 @@ uint64_t _time_pick_interval_secs(uint32_t min_secs, uint32_t max_secs);
+ uint64_t _time_fuzz_msecs(uint64_t ms);
+ uint64_t _time_fuzz_secs(uint32_t secs, uint32_t max_offset);
+ uint64_t _time_realtime_to_boottime(const struct timeval *ts);
++uint64_t time_realtime_now(void);
+diff --git a/ell/time.c b/ell/time.c
+index 41e5725..2eac6c4 100644
+--- a/ell/time.c
++++ b/ell/time.c
+@@ -58,6 +58,14 @@ LIB_EXPORT uint64_t l_time_now(void)
+ 	return _time_from_timespec(&now);
+ }
+ 
++uint64_t time_realtime_now(void)
++{
++	struct timespec now;
++
++	clock_gettime(CLOCK_REALTIME, &now);
++	return _time_from_timespec(&now);
++}
++
+ /**
+  * l_time_after
+  *
+-- 
+2.34.1
 
