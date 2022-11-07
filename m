@@ -1,37 +1,40 @@
-Received: from mail-ej1-f54.google.com (mail-ej1-f54.google.com [209.85.218.54])
+Received: from mail-ed1-f45.google.com (mail-ed1-f45.google.com [209.85.208.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D16C33E3
-	for <ell@lists.linux.dev>; Mon,  7 Nov 2022 11:30:20 +0000 (UTC)
-Received: by mail-ej1-f54.google.com with SMTP id sc25so29137159ejc.12
-        for <ell@lists.linux.dev>; Mon, 07 Nov 2022 03:30:19 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B55D33E4
+	for <ell@lists.linux.dev>; Mon,  7 Nov 2022 11:30:22 +0000 (UTC)
+Received: by mail-ed1-f45.google.com with SMTP id 21so17068826edv.3
+        for <ell@lists.linux.dev>; Mon, 07 Nov 2022 03:30:22 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:to
-         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=N854ROCAdyMTo277+vqKzK0+1V/JUa3UVJMdyz9uLLY=;
-        b=JETvZ+eRx++lwIA4L/aIefC/D6G7vYwHcHXVz5qVXILhcM+a5Nl31dwYjF3ipL38Yv
-         a+QB5jEDxgBoaKTo4eogznSnHuIQnJXSjdvGsxTnenVC3oBSsYsrJ8Gzoz4DUmpTju/3
-         Sv5lrbaIFYen1SGWhgh1LDxXzdaMXHlKB8tSw57kDgHbksZmwNBRTbNZcevJpbF8ShAT
-         upQpvFiiXZCxGhIxthLwg6Fn2sGIjnHpdC7xdZ+OeHN7GZEEX9GollTci7va8ROfNCsN
-         j7xXNZr2x+BHxt6tgfX8lSeeDbc9yfeQDRcEteRlf2T40w0L33Pik+5TqzWxjQu2Ulci
-         LgDA==
-X-Gm-Message-State: ACrzQf3v/pixVe/T2n7JLi9saNYNun+9JAFnObbuFEvNCXPVZUiiQqbK
-	h90GjfSUZsJqB1pZPe44tobldmimPiY=
-X-Google-Smtp-Source: AMsMyM6If3DYRMQlhqlHEmeERo4LRXTzqUvZfcQQKMnT5kGdjCI8DkiHs3WWVSNUMWkE2/457+sKQw==
-X-Received: by 2002:a17:907:2bd1:b0:7ae:41e1:cdfa with SMTP id gv17-20020a1709072bd100b007ae41e1cdfamr13611183ejc.618.1667820617559;
-        Mon, 07 Nov 2022 03:30:17 -0800 (PST)
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=haLBDMsq0WtfBQH2Tp+q8Bvgt/UgTA9GLN2neLQOUvA=;
+        b=BWEImbvFEcIO/VRTT4AFEKOxrHGThPyGx5ISEnvhlmBu7Pe6SBG5UAPHaXsX+0PFAL
+         MgooKMGVJ9eAObsRnHiYa7uZUH0W3KW+WcWuB9ff468T74ds8ABNTvnWi/Mr9zFKBNU8
+         p+F1IyGGOtH8R2fH4kpsVBX1eyNNAW1GJoDEUaufY9sNGD46HvZXX4Le8y3IlRlArPeW
+         Li2t8IpYNOz7vHx9JmjU1W52WztmkKju5FggJ3nCbqwIOpp3Cn+6d8rifa0dweCQsuxw
+         9st8zIeu8GZSj+s7kXPD3IHNECV3cxzIYgimGZi0TKb0AiQWHxeRl6XSveftzgvXuqwc
+         pOVA==
+X-Gm-Message-State: ACrzQf0JMQrHTe4nkG4FPIBEYPzT5Z8nU01eD3wiI0fOwFTsTHZoREkL
+	iuYKA2mP/kTLJe8GPFcAORdaymS5XXs=
+X-Google-Smtp-Source: AMsMyM4+dM8dGWbiMNw4oYFBLZFZrxJdrIm5CLv4dmxCoC6F5BJKFm2VczhufUvu+Jxe56L+ysi0dg==
+X-Received: by 2002:a50:ccc2:0:b0:460:4db2:5006 with SMTP id b2-20020a50ccc2000000b004604db25006mr49909468edj.369.1667820619213;
+        Mon, 07 Nov 2022 03:30:19 -0800 (PST)
 Received: from iss.ger.corp.intel.com ([82.213.230.158])
-        by smtp.gmail.com with ESMTPSA id x16-20020a170906135000b007ae32daf4b9sm3259769ejb.106.2022.11.07.03.30.16
+        by smtp.gmail.com with ESMTPSA id x16-20020a170906135000b007ae32daf4b9sm3259769ejb.106.2022.11.07.03.30.17
         for <ell@lists.linux.dev>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Nov 2022 03:30:16 -0800 (PST)
+        Mon, 07 Nov 2022 03:30:18 -0800 (PST)
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
 To: ell@lists.linux.dev
-Subject: [PATCH 1/3] tls: Refactor session storage for server mode
-Date: Mon,  7 Nov 2022 12:30:10 +0100
-Message-Id: <20221107113012.328918-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/3] tls: Server mode session caching
+Date: Mon,  7 Nov 2022 12:30:11 +0100
+Message-Id: <20221107113012.328918-2-andrew.zaborowski@intel.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20221107113012.328918-1-andrew.zaborowski@intel.com>
+References: <20221107113012.328918-1-andrew.zaborowski@intel.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -40,425 +43,539 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-In TLS server mode we will need to store multiple session states in the
-session cache instead of only one like on the client.  While the
-l_tls_set_session_cache() method is new use to opportunity to make
-incompatible changes: add the cache size limit parameter and strip "TLS"
-prefix from the setting names in the cache's l_settings object since the
-group name can include this part of the context without duplicating it
-across settings.  Rename the group_name parameter to group_prefix since
-in server mode there will be a settings group per session cached so that
-we can use identical keys for each session.  When removing a session
-remove the whole group rather than individual settings potentially
-leaving an empty group.  Factor out the session loading code common to
-client and server into a function.  When saving a server side session
-state skip the SessionID setting since the session ID is in the group
-name as the primary index.  Add a boolean parameter to
-tls_forget_cached_session() to suppress the update_cb callback if
-needed, to allow the caller to make a single callback after multiple
-changes are made in the session cache instead of calling back after each
-individual change.
+Cache session states when they're established, load them when parsing
+the ClientHello.  When loading first expire old sessions, look up the
+requested session among those left and enforce the cache size limit by
+dropping the oldest session if cache is over limit.
 ---
- ell/tls-private.h |   3 +-
- ell/tls.c         | 228 ++++++++++++++++++++++++++--------------------
- ell/tls.h         |   3 +-
- 3 files changed, 133 insertions(+), 101 deletions(-)
+ ell/tls-private.h |   2 +
+ ell/tls.c         | 343 ++++++++++++++++++++++++++++++++++++++++------
+ 2 files changed, 305 insertions(+), 40 deletions(-)
 
 diff --git a/ell/tls-private.h b/ell/tls-private.h
-index 7156666..ce69553 100644
+index ce69553..a3a9393 100644
 --- a/ell/tls-private.h
 +++ b/ell/tls-private.h
-@@ -219,8 +219,9 @@ struct l_tls {
- 	struct tls_cipher_suite **cipher_suite_pref_list;
+@@ -260,6 +260,8 @@ struct l_tls {
  
- 	struct l_settings *session_settings;
--	char *session_group;
-+	char *session_prefix;
- 	uint64_t session_lifetime;
-+	unsigned int session_count_max;
- 	l_tls_session_update_cb_t session_update_cb;
- 	void *session_update_user_data;
- 
+ 	uint8_t session_id[32];
+ 	size_t session_id_size;
++	uint8_t session_id_replaced[32];
++	size_t session_id_size_replaced;
+ 	bool session_id_new;
+ 	uint8_t session_cipher_suite_id[2];
+ 	uint8_t session_compression_method_id;
 diff --git a/ell/tls.c b/ell/tls.c
-index 88ac3d7..a28a455 100644
+index a28a455..98bc682 100644
 --- a/ell/tls.c
 +++ b/ell/tls.c
-@@ -827,47 +827,44 @@ parse_error:
- 	return false;
+@@ -209,6 +209,7 @@ static void tls_reset_handshake(struct l_tls *tls)
+ 	tls->cert_sent = 0;
+ 
+ 	tls->session_id_size = 0;
++	tls->session_id_size_replaced = 0;
+ 	tls->session_id_new = false;
+ 	l_free(l_steal_ptr(tls->session_peer_identity));
+ }
+@@ -392,7 +393,7 @@ static void tls_reset_cipher_spec(struct l_tls *tls, bool txrx)
+ 	tls_change_cipher_spec(tls, txrx, NULL);
  }
  
--static void tls_forget_cached_client_session(struct l_tls *tls)
--{
--	/* Note: might want to l_settings_remove_group() instead. */
--	l_settings_remove_key(tls->session_settings, tls->session_group,
--				"TLSSessionID");
--	l_settings_remove_key(tls->session_settings, tls->session_group,
--				"TLSSessionMasterSecret");
--	l_settings_remove_key(tls->session_settings, tls->session_group,
--				"TLSSessionVersion");
--	l_settings_remove_key(tls->session_settings, tls->session_group,
--				"TLSSessionCipherSuite");
--	l_settings_remove_key(tls->session_settings, tls->session_group,
--				"TLSSessionCompressionMethod");
--	l_settings_remove_key(tls->session_settings, tls->session_group,
--				"TLSSessionExpiryTime");
--	l_settings_remove_key(tls->session_settings, tls->session_group,
--				"TLSSessionPeerIdentity");
+-bool tls_cipher_suite_is_compatible(struct l_tls *tls,
++static bool tls_cipher_suite_is_compatible_no_key_xchg(struct l_tls *tls,
+ 					const struct tls_cipher_suite *suite,
+ 					const char **error)
+ {
+@@ -477,19 +478,6 @@ bool tls_cipher_suite_is_compatible(struct l_tls *tls,
+ 		return false;
+ 	}
+ 
+-	if (suite->key_xchg->need_ffdh &&
+-			!l_key_is_supported(L_KEY_FEATURE_DH)) {
+-		if (error) {
+-			*error = error_buf;
+-			snprintf(error_buf, sizeof(error_buf),
+-					"Cipher suite %s's key exchange "
+-					"mechanism needs kernel DH support",
+-					suite->name);
+-		}
 -
--	if (tls->session_update_cb) {
-+static const char *tls_get_cache_group_name(struct l_tls *tls,
+-		return false;
+-	}
+-
+ 	/*
+ 	 * If the certificate is compatible with the signature algorithm it
+ 	 * also must be compatible with the key exchange mechanism because
+@@ -510,6 +498,38 @@ bool tls_cipher_suite_is_compatible(struct l_tls *tls,
+ 		return false;
+ 	}
+ 
++	return true;
++}
++
++/*
++ * Assumes that Client Hello extensions have been processed and that we
++ * will want to start a new session using this cipher suite, including the
++ * key exchange.  This is unlike tls_cipher_suite_is_compatible_no_key_xchg()
++ * which runs fewer checks and must succeed even for a cipher suite loaded
++ * during session resumption.
++ */
++bool tls_cipher_suite_is_compatible(struct l_tls *tls,
++					const struct tls_cipher_suite *suite,
++					const char **error)
++{
++	static char error_buf[200];
++
++	if (!tls_cipher_suite_is_compatible_no_key_xchg(tls, suite, error))
++		return false;
++
++	if (suite->key_xchg->need_ffdh &&
++			!l_key_is_supported(L_KEY_FEATURE_DH)) {
++		if (error) {
++			*error = error_buf;
++			snprintf(error_buf, sizeof(error_buf),
++					"Cipher suite %s's key exchange "
++					"mechanism needs kernel DH support",
++					suite->name);
++		}
++
++		return false;
++	}
++
+ 	/*
+ 	 * On the server we know what elliptic curve we'll be using as soon
+ 	 * as we've processed the ClientHello so for EC-based key exchange
+@@ -933,8 +953,9 @@ static bool tls_load_cached_session(struct l_tls *tls, const char *group_name,
+ 	 * It is up to the user to keep multiple cache instances if it needs
+ 	 * to save multiple sessions.
+ 	 */
+-	if (unlikely(!tls_cipher_suite_is_compatible(tls, cipher_suite,
+-							&error))) {
++	if (unlikely(!tls_cipher_suite_is_compatible_no_key_xchg(tls,
++								cipher_suite,
++								&error))) {
+ 		TLS_DEBUG("Cached session %s cipher suite not compatible: %s",
+ 				session_id_str, error);
+ 		goto forget;
+@@ -1019,6 +1040,118 @@ static bool tls_load_cached_client_session(struct l_tls *tls)
+ 					session_id_size, session_id_str);
+ }
+ 
++static bool tls_load_cached_server_session(struct l_tls *tls,
 +						const uint8_t *session_id,
 +						size_t session_id_size)
 +{
-+	_auto_(l_free) char *session_id_str = NULL;
-+	static char group_name[256];
-+
-+	if (!tls->server)
-+		return tls->session_prefix;
-+
-+	session_id_str = l_util_hexstring(session_id, session_id_size);
-+	snprintf(group_name, sizeof(group_name), "%s-%s",
-+			tls->session_prefix, session_id_str);
-+	return group_name;
-+}
-+
-+static void tls_forget_cached_session(struct l_tls *tls, const char *group_name,
-+					const uint8_t *session_id,
-+					size_t session_id_size, bool call_back)
-+{
-+	if (!group_name)
-+		group_name = tls_get_cache_group_name(tls, session_id,
-+							session_id_size);
-+
-+	l_settings_remove_group(tls->session_settings, group_name);
-+
-+	if (call_back && tls->session_update_cb) {
- 		tls->in_callback = true;
- 		tls->session_update_cb(tls->session_update_user_data);
- 		tls->in_callback = false;
- 	}
- }
- 
--static bool tls_load_cached_client_session(struct l_tls *tls)
-+static bool tls_load_cached_session(struct l_tls *tls, const char *group_name,
-+					const uint8_t *session_id,
-+					size_t session_id_size,
-+					const char *session_id_str)
- {
--	/*
--	 * The following settings are required:
--	 *   TLSSessionID,
--	 *   TLSSessionMasterSecret,
--	 *   TLSSessionVersion,
--	 *   TLSSessionCipherSuite,
--	 *   TLSSessionCompressionMethod,
--	 * and these two are optional:
--	 *   TLSSessionExpiryTime,
--	 *   TLSSessionPeerIdentity.
--	 */
--	_auto_(l_free) uint8_t *session_id = NULL;
--	size_t session_id_size;
--	_auto_(l_free) char *session_id_str = NULL;
- 	_auto_(l_free) uint8_t *master_secret = NULL;
- 	int version;
- 	_auto_(l_free) uint8_t *cipher_suite_id = NULL;
-@@ -877,34 +874,13 @@ static bool tls_load_cached_client_session(struct l_tls *tls)
- 	size_t size;
- 	const char *error;
- 
--	tls->session_id_size = 0;
--	tls->session_id_new = false;
--
--	if (!tls->session_settings ||
--			!l_settings_has_key(tls->session_settings,
--						tls->session_group,
--						"TLSSessionID"))
--		/* No session cached, no error */
--		return false;
--
--	session_id = l_settings_get_bytes(tls->session_settings,
--						tls->session_group,
--						"TLSSessionID",
--						&session_id_size);
--	if (unlikely(!session_id ||
--			session_id_size < 1 || session_id_size > 32))
--		goto warn_corrupt;
--
--	session_id_str =
--		l_util_hexstring(tls->session_id, tls->session_id_size);
--
--	if (l_settings_has_key(tls->session_settings, tls->session_group,
--				"TLSSessionExpiryTime")) {
-+	if (l_settings_has_key(tls->session_settings, group_name,
-+				"SessionExpiryTime")) {
- 		uint64_t expiry_time;
- 
- 		if (unlikely(!l_settings_get_uint64(tls->session_settings,
--							tls->session_group,
--							"TLSSessionExpiryTime",
-+							group_name,
-+							"SessionExpiryTime",
- 							&expiry_time)))
- 			goto warn_corrupt;
- 
-@@ -917,22 +893,22 @@ static bool tls_load_cached_client_session(struct l_tls *tls)
- 	}
- 
- 	if (unlikely(!l_settings_get_int(tls->session_settings,
--						tls->session_group,
--						"TLSSessionVersion",
-+						group_name,
-+						"SessionVersion",
- 						&version) ||
- 			version < TLS_MIN_VERSION || version > TLS_MAX_VERSION))
- 		goto warn_corrupt;
- 
- 	master_secret = l_settings_get_bytes(tls->session_settings,
--						tls->session_group,
--						"TLSSessionMasterSecret",
-+						group_name,
-+						"SessionMasterSecret",
- 						&size);
- 	if (unlikely(!master_secret || size != 48))
- 		goto warn_corrupt;
- 
- 	cipher_suite_id = l_settings_get_bytes(tls->session_settings,
--						tls->session_group,
--						"TLSSessionCipherSuite",
-+						group_name,
-+						"SessionCipherSuite",
- 						&size);
- 	if (unlikely(!cipher_suite_id || size != 2 ||
- 			!(cipher_suite =
-@@ -964,18 +940,17 @@ static bool tls_load_cached_client_session(struct l_tls *tls)
- 		goto forget;
- 	}
- 
--	if (unlikely(!l_settings_get_uint(tls->session_settings,
--						tls->session_group,
--						"TLSSessionCompressionMethod",
-+	if (unlikely(!l_settings_get_uint(tls->session_settings, group_name,
-+						"SessionCompressionMethod",
- 						&compression_method_id) ||
- 			!tls_find_compression_method(compression_method_id)))
- 		goto warn_corrupt;
- 
--	if (l_settings_has_key(tls->session_settings, tls->session_group,
--				"TLSSessionPeerIdentity")) {
-+	if (l_settings_has_key(tls->session_settings, group_name,
-+				"SessionPeerIdentity")) {
- 		peer_identity = l_settings_get_string(tls->session_settings,
--						tls->session_group,
--						"TLSSessionPeerIdentity");
-+						group_name,
-+						"SessionPeerIdentity");
- 		if (unlikely(!peer_identity || !cipher_suite->signature))
- 			goto warn_corrupt;
- 	}
-@@ -994,13 +969,56 @@ static bool tls_load_cached_client_session(struct l_tls *tls)
- warn_corrupt:
- 	TLS_DEBUG("Cached session %s data is corrupt or has unsupported "
- 			"parameters, removing it, will start a new session",
--			session_id_str ?: "<unknonwn>");
-+			session_id_str);
- 
- forget:
--	tls_forget_cached_client_session(tls);
-+	tls_forget_cached_session(tls, group_name, session_id, session_id_size,
-+					true);
- 	return false;
- }
- 
-+static bool tls_load_cached_client_session(struct l_tls *tls)
-+{
-+	/*
-+	 * The following settings are required:
-+	 *   SessionID,
-+	 *   SessionMasterSecret,
-+	 *   SessionVersion,
-+	 *   SessionCipherSuite,
-+	 *   SessionCompressionMethod,
-+	 * and these two are optional:
-+	 *   SessionExpiryTime,
-+	 *   SessionPeerIdentity.
-+	 */
-+	_auto_(l_free) uint8_t *session_id = NULL;
-+	size_t session_id_size;
-+	_auto_(l_free) char *session_id_str = NULL;
-+	const char *group_name = tls_get_cache_group_name(tls, NULL, 0);
++	_auto_(l_free) char *session_id_str =
++		l_util_hexstring(session_id, session_id_size);
++	const char *target_group_name =
++		tls_get_cache_group_name(tls, session_id, session_id_size);
++	_auto_(l_strv_free) char **groups =
++		l_settings_get_groups(tls->session_settings);
++	char **group;
++	unsigned int cnt = 0;
++	size_t prefix_len = strlen(tls->session_prefix);
++	uint64_t now = time_realtime_now();
++	char *oldest_session_group = NULL;
++	uint64_t oldest_session_expiry = UINT64_MAX;
++	bool found = false;
++	bool changed = false;
++	bool loaded = false;
 +
 +	tls->session_id_size = 0;
 +	tls->session_id_new = false;
 +
-+	if (!tls->session_settings ||
-+			!l_settings_has_key(tls->session_settings, group_name,
-+						"SessionID"))
-+		/* No session cached, no error */
-+		return false;
++	/* Clean up expired entries and enforce session count limit */
++	for (group = groups; *group; group++) {
++		uint64_t expiry_time;
 +
-+	session_id = l_settings_get_bytes(tls->session_settings, group_name,
-+						"SessionID", &session_id_size);
-+	if (unlikely(!session_id ||
-+			session_id_size < 1 || session_id_size > 32)) {
-+		TLS_DEBUG("Bad cached session ID format");
-+		tls_forget_cached_session(tls, group_name, NULL, 0, true);
-+		return false;
++		if (memcmp(*group, tls->session_prefix, prefix_len) ||
++				(*group)[prefix_len] != '-')
++			continue;
++
++		/* Group seems to be a session cache entry */
++
++		if (unlikely(!l_settings_get_uint64(tls->session_settings,
++							*group,
++							"SessionExpiryTime",
++							&expiry_time)) ||
++				expiry_time <= now) {
++			TLS_DEBUG("Cached session %s is expired or invalid, "
++					"purging entry",
++					*group + prefix_len + 1);
++			l_settings_remove_group(tls->session_settings, *group);
++			changed = true;
++		}
++
++		cnt++;
++
++		if (!strcmp(*group + prefix_len + 1,
++				target_group_name + prefix_len + 1)) {
++			found = true;
++			continue; /* Don't purge this entry */
++		}
++
++		if (expiry_time < oldest_session_expiry) {
++			oldest_session_group = *group;
++			oldest_session_expiry = expiry_time;
++		}
 +	}
 +
-+	session_id_str = l_util_hexstring(session_id, session_id_size);
++	/*
++	 * Enforce tls->session_count_max by dropping the entry for the
++	 * oldest session (more specifically the one closest to its expiry
++	 * time) in the cache, that is not the session we're trying to
++	 * load.  If the target session was not found, do this as soon as
++	 * tls->session_count_max is reached rather than when it's exceeded
++	 * so as to make room for a new entry.  If we end up not saving
++	 * a new session due to an error before the handshake finish, we'll
++	 * be left with tls->session_count_max - 1 entries and will have
++	 * purged that entry unnecessarily but the cache will have room for
++	 * a future session.  Same when we did find the target session but
++	 * later had to forget it because of a fatal alert during or after
++	 * the handshake.
++	 *
++	 * If we did find the target session but we later find that we
++	 * can't resume it, we will forget it so the new session can take
++	 * the old session's place and the limit is not exceeded, see
++	 * discussion in tls_server_resume_error.
++	 */
++	if (tls->session_count_max && oldest_session_group &&
++			cnt >= tls->session_count_max + (found ? 1 : 0)) {
++		l_settings_remove_group(tls->session_settings,
++					oldest_session_group);
++		changed = true;
++	}
 +
-+	return tls_load_cached_session(tls, group_name, session_id,
-+					session_id_size, session_id_str);
++	if (!found) {
++		TLS_DEBUG("Requested session %s not found in cache, will "
++				"start a new session", session_id_str);
++		goto call_back;
++	}
++
++	loaded = tls_load_cached_session(tls, target_group_name,
++						session_id, session_id_size,
++						session_id_str);
++
++	/*
++	 * If tls_load_cached_session() returned false it will have called
++	 * session_update_cb for us.
++	 */
++	if (!loaded)
++		changed = false;
++
++call_back:
++	if (changed && tls->session_update_cb) {
++		tls->in_callback = true;
++		tls->session_update_cb(tls->session_update_user_data);
++		tls->in_callback = false;
++	}
++
++	return loaded;
 +}
 +
  #define SWITCH_ENUM_TO_STR(val) \
  	case (val):		\
  		return L_STRINGIFY(val);
-@@ -1083,7 +1101,8 @@ void tls_disconnect(struct l_tls *tls, enum l_tls_alert_desc desc,
- 	tls->ready = false;
+@@ -1068,10 +1201,11 @@ void tls_disconnect(struct l_tls *tls, enum l_tls_alert_desc desc,
+ 			enum l_tls_alert_desc local_desc)
+ {
+ 	bool forget_session = false;
++	/* Save session_id_size before tls_reset_handshake() */
++	size_t session_id_size = tls->session_id_size;
  
- 	if (forget_session) {
--		tls_forget_cached_client_session(tls);
-+		tls_forget_cached_session(tls, NULL, tls->session_id,
-+						session_id_size, true);
+-	if (!tls->server && (desc || local_desc) &&
+-			tls->session_settings && tls->session_id_size &&
+-			!tls->session_id_new)
++	if ((desc || local_desc) && tls->session_settings &&
++			session_id_size && !tls->session_id_new)
+ 		/*
+ 		 * RFC5246 Section 7.2: "Alert messages with a level of fatal
+ 		 * result in the immediate termination of the connection.  In
+@@ -1299,7 +1433,12 @@ static bool tls_send_server_hello(struct l_tls *tls, struct l_queue *extensions)
+ 	memcpy(ptr, tls->pending.server_random, 32);
+ 	ptr += 32;
  
- 		if (tls->pending_destroy)
+-	*ptr++ = 0; /* Sessions are not cached */
++	if (tls->session_id_size) {
++		*ptr++ = tls->session_id_size;
++		memcpy(ptr, tls->session_id, tls->session_id_size);
++		ptr += tls->session_id_size;
++	} else
++		*ptr++ = 0;
+ 
+ 	*ptr++ = tls->pending.cipher_suite->id[0];
+ 	*ptr++ = tls->pending.cipher_suite->id[1];
+@@ -1825,6 +1964,33 @@ decode_error:
+ 	return false;
+ }
+ 
++static void tls_server_resume_error(struct l_tls *tls)
++{
++	/*
++	 * When Client Hello parameters don't match the parameters of the
++	 * cached session that was requested by the client, we'll probably
++	 * start and cache a new session.  Even though RFC 5246 doesn't
++	 * specifically mandate that the requested session be forgotten
++	 * (there's no fatal Alert in that case), we overwrite the old
++	 * session's entry in the cache with the new session's data to
++	 * avoid keeping many sessions related to one client in the cache.
++	 * In theory this allows an attacker to connect as a client and
++	 * invalidate a legitimate client's session entry in our cache,
++	 * DoSing the session resumption mechanism so that clients have
++	 * to go through the full handshake.  In practice there are many
++	 * ways for an attacker to do that even without this.
++	 *
++	 * Our client mode only caches one last session anyway, other
++	 * implementations may work that way too.
++	 */
++	memcpy(tls->session_id_replaced, tls->session_id, tls->session_id_size);
++	tls->session_id_size_replaced = tls->session_id_size;
++
++	tls->session_id_size = 0;
++	tls->session_id_new = false;
++	l_free(l_steal_ptr(tls->session_peer_identity));
++}
++
+ static void tls_handle_client_hello(struct l_tls *tls,
+ 					const uint8_t *buf, size_t len)
+ {
+@@ -1835,6 +2001,10 @@ static void tls_handle_client_hello(struct l_tls *tls,
+ 	int i;
+ 	struct l_queue *extensions_offered = NULL;
+ 	enum l_tls_alert_desc alert_desc = TLS_ALERT_HANDSHAKE_FAIL;
++	bool resuming = false;
++	_auto_(l_free) char *session_id_str = NULL;
++	struct tls_cipher_suite *backup_suite = NULL;
++	struct tls_compression_method *backup_cm = NULL;
+ 
+ 	/* Do we have enough for ProtocolVersion + Random + SessionID size? */
+ 	if (len < 2 + 32 + 1)
+@@ -1844,6 +2014,9 @@ static void tls_handle_client_hello(struct l_tls *tls,
+ 	session_id_size = buf[34];
+ 	len -= 35;
+ 
++	if (unlikely(session_id_size > 32))
++		goto decode_error;
++
+ 	/*
+ 	 * Do we have enough to hold the actual session ID + 2 byte field for
+ 	 * cipher_suite len + minimum of a single cipher suite identifier
+@@ -1876,6 +2049,24 @@ static void tls_handle_client_hello(struct l_tls *tls,
+ 
+ 	len -= compression_methods_size;
+ 
++	if (session_id_size && tls->session_settings &&
++			tls_load_cached_server_session(tls, buf + 35,
++							session_id_size)) {
++		/*
++		 * Attempt a session resumption but don't skip parsing Hello
++		 * extensions just yet because we may decide to start a new
++		 * session instead after our cipher suite and compression
++		 * method checks below and in that case we will need to
++		 * handle the extensions and include them in the Server Hello.
++		 */
++		resuming = true;
++		session_id_str = l_util_hexstring(tls->session_id,
++							tls->session_id_size);
++	}
++
++	if (tls->pending_destroy)
++		return;
++
+ 	extensions_offered = l_queue_new();
+ 
+ 	if (!tls_handle_hello_extensions(tls, compression_methods +
+@@ -1883,13 +2074,6 @@ static void tls_handle_client_hello(struct l_tls *tls,
+ 					len, extensions_offered))
+ 		goto cleanup;
+ 
+-	/*
+-	 * Note: if the client is supplying a SessionID we know it is false
+-	 * because our server implementation never generates any SessionIDs
+-	 * yet so either the client is attempting something strange or was
+-	 * trying to connect somewhere else.  We might want to throw an error.
+-	 */
+-
+ 	/* Save client_version for Premaster Secret verification */
+ 	tls->client_version = l_get_be16(buf);
+ 
+@@ -1944,6 +2128,16 @@ static void tls_handle_client_hello(struct l_tls *tls,
+ 			alert_desc = TLS_ALERT_INSUFFICIENT_SECURITY;
+ 			TLS_DEBUG("non-fatal: Cipher suite %s disallowed "
+ 					"by config", suite->name);
++		} else if (resuming && memcmp(tls->session_cipher_suite_id,
++						suite->id, 2)) {
++			/*
++			 * For now skip this cipher suite because we're trying
++			 * to find the one from the cached session state.  But
++			 * keep it as a backup in case we end up starting a new
++			 * session.
++			 */
++			if (!backup_suite)
++				backup_suite = suite;
+ 		} else {
+ 			tls->pending.cipher_suite = suite;
+ 			break;
+@@ -1953,7 +2147,15 @@ static void tls_handle_client_hello(struct l_tls *tls,
+ 		cipher_suites_size -= 2;
+ 	}
+ 
+-	if (!cipher_suites_size) {
++	if (unlikely(!cipher_suites_size && backup_suite)) {
++		TLS_DEBUG("Cached session %s's cipher suite %04x "
++				"unavailable, will start a new session",
++				session_id_str,
++				l_get_be16(tls->session_cipher_suite_id));
++		tls->pending.cipher_suite = backup_suite;
++		resuming = false;
++		tls_server_resume_error(tls);
++	} else if (unlikely(!cipher_suites_size)) {
+ 		TLS_DISCONNECT(alert_desc, 0,
+ 				"No common cipher suites matching negotiated "
+ 				"TLS version and our certificate's key type");
+@@ -1966,35 +2168,88 @@ static void tls_handle_client_hello(struct l_tls *tls,
+ 		goto cleanup;
+ 	}
+ 
+-	TLS_DEBUG("Negotiated %s", tls->pending.cipher_suite->name);
+-
+ 	/* Select a compression method */
+ 
+ 	/* CompressionMethod.null must be present in the vector */
+ 	while (compression_methods_size) {
+-		tls->pending.compression_method =
++		struct tls_compression_method *cm =
+ 			tls_find_compression_method(*compression_methods);
+ 
+-		if (tls->pending.compression_method)
++		if (!cm)
++			TLS_DEBUG("non-fatal: Compression %02x unknown",
++					*compression_methods);
++		else if (resuming && *compression_methods !=
++				tls->session_compression_method_id) {
++			/*
++			 * For now skip this compression method because we're
++			 * trying to find the one from the cached session state.
++			 * But keep it as a backup in case we end up starting
++			 * a new * session.
++			 */
++			if (!backup_cm)
++				backup_cm = cm;
++		} else {
++			tls->pending.compression_method = cm;
+ 			break;
++		}
+ 
+ 		compression_methods++;
+ 		compression_methods_size--;
+ 	}
+ 
+-	if (!compression_methods_size) {
++	if (unlikely(!compression_methods_size && backup_cm)) {
++		TLS_DEBUG("Cached session %s's compression method %02x "
++				"unavailable, will start a new session",
++				session_id_str,
++				tls->session_compression_method_id);
++		tls->pending.compression_method = backup_cm;
++
++		if (backup_suite)
++			tls->pending.cipher_suite = backup_suite;
++
++		resuming = false;
++		tls_server_resume_error(tls);
++	} else if (unlikely(!compression_methods_size)) {
+ 		TLS_DISCONNECT(TLS_ALERT_HANDSHAKE_FAIL, 0,
+ 				"No common compression methods");
+ 		goto cleanup;
+ 	}
+ 
++	if (resuming)
++		TLS_DEBUG("Negotiated resumption of cached session %s",
++				session_id_str);
++
++	TLS_DEBUG("Negotiated %s", tls->pending.cipher_suite->name);
+ 	TLS_DEBUG("Negotiated %s", tls->pending.compression_method->name);
+ 
+-	if (!tls_send_server_hello(tls, extensions_offered))
++	if (!resuming && tls->session_settings) {
++		tls->session_id_new = true;
++		tls->session_id_size = 32;
++		l_getrandom(tls->session_id, 32);
++	}
++
++	if (!tls_send_server_hello(tls, resuming ? extensions_offered : NULL))
+ 		goto cleanup;
+ 
+ 	l_queue_destroy(extensions_offered, NULL);
+ 
++	if (resuming) {
++		const char *error;
++
++		tls_update_key_block(tls);
++		tls_send_change_cipher_spec(tls);
++
++		if (!tls_change_cipher_spec(tls, 1, &error)) {
++			TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
++					"change_cipher_spec: %s", error);
++			return;
++		}
++
++		tls_send_finished(tls);
++		TLS_SET_STATE(TLS_HANDSHAKE_WAIT_CHANGE_CIPHER_SPEC);
++		return;
++	}
++
+ 	if (tls->pending.cipher_suite->signature && tls->cert)
+ 		if (!tls_send_certificate(tls))
  			return;
-@@ -2661,47 +2680,52 @@ static void tls_finished(struct l_tls *tls)
+@@ -2675,7 +2930,7 @@ static void tls_finished(struct l_tls *tls)
+ 	} else if (tls->peer_authenticated && resuming)
+ 		peer_identity = tls->session_peer_identity;
+ 
+-	if (!tls->server && tls->session_settings && tls->session_id_new) {
++	if (tls->session_settings && tls->session_id_new) {
+ 		_auto_(l_free) char *session_id_str =
  			l_util_hexstring(tls->session_id, tls->session_id_size);
  		uint64_t expiry = tls->session_lifetime ?
- 			time_realtime_now() + tls->session_lifetime : 0;
-+		const char *group_name =
-+			tls_get_cache_group_name(tls, tls->session_id,
-+							tls->session_id_size);
- 
- 		if (tls->peer_authenticated &&
- 				(!expiry || peer_cert_expiry < expiry))
- 			expiry = peer_cert_expiry;
- 
--		l_settings_set_bytes(tls->session_settings, tls->session_group,
--					"TLSSessionID", tls->session_id,
--					tls->session_id_size);
--		l_settings_set_bytes(tls->session_settings, tls->session_group,
--					"TLSSessionMasterSecret",
-+		if (!tls->server)
-+			l_settings_set_bytes(tls->session_settings, group_name,
-+						"SessionID", tls->session_id,
-+						tls->session_id_size);
-+
-+		l_settings_set_bytes(tls->session_settings, group_name,
-+					"SessionMasterSecret",
- 					tls->pending.master_secret, 48);
--		l_settings_set_int(tls->session_settings, tls->session_group,
--					"TLSSessionVersion",
-+		l_settings_set_int(tls->session_settings, group_name,
-+					"SessionVersion",
- 					tls->negotiated_version);
--		l_settings_set_bytes(tls->session_settings, tls->session_group,
--					"TLSSessionCipherSuite",
-+		l_settings_set_bytes(tls->session_settings, group_name,
-+					"SessionCipherSuite",
- 					tls->pending.cipher_suite->id, 2);
--		l_settings_set_uint(tls->session_settings, tls->session_group,
--					"TLSSessionCompressionMethod",
-+		l_settings_set_uint(tls->session_settings, group_name,
-+					"SessionCompressionMethod",
- 					tls->pending.compression_method->id);
- 
- 		if (expiry)
- 			l_settings_set_uint64(tls->session_settings,
--						tls->session_group,
--						"TLSSessionExpiryTime", expiry);
-+						group_name,
-+						"SessionExpiryTime", expiry);
- 		else
- 			/* We may be overwriting an older session's data */
- 			l_settings_remove_key(tls->session_settings,
--						tls->session_group,
--						"TLSSessionExpiryTime");
-+						group_name,
-+						"SessionExpiryTime");
- 
- 		if (tls->peer_authenticated)
- 			l_settings_set_string(tls->session_settings,
--						tls->session_group,
--						"TLSSessionPeerIdentity",
-+						group_name,
-+						"SessionPeerIdentity",
- 						peer_identity);
- 		else
- 			/* We may be overwriting an older session's data */
- 			l_settings_remove_key(tls->session_settings,
--						tls->session_group,
--						"TLSSessionPeerIdentity");
-+						group_name,
-+						"SessionPeerIdentity");
+@@ -2729,6 +2984,14 @@ static void tls_finished(struct l_tls *tls)
  
  		TLS_DEBUG("Saving new session %s to cache", session_id_str);
  		session_update = true;
-@@ -3033,7 +3057,7 @@ LIB_EXPORT void l_tls_free(struct l_tls *tls)
- 	l_tls_set_auth_data(tls, NULL, NULL);
- 	l_tls_set_domain_mask(tls, NULL);
- 	l_tls_set_cert_dump_path(tls, NULL);
--	l_tls_set_session_cache(tls, NULL, NULL, 0, NULL, NULL);
-+	l_tls_set_session_cache(tls, NULL, NULL, 0, 0, NULL, NULL);
++
++		if (tls->session_id_size_replaced) {
++			tls_forget_cached_session(tls, NULL,
++						tls->session_id_replaced,
++						tls->session_id_size_replaced,
++						false);
++			tls->session_id_size_replaced = 0;
++		}
+ 	}
  
- 	tls_reset_handshake(tls);
- 	tls_cleanup_handshake(tls);
-@@ -3434,9 +3458,13 @@ LIB_EXPORT void l_tls_set_domain_mask(struct l_tls *tls, char **mask)
-  * @settings: l_settings object to read and write session data from/to or
-  *   NULL to disable caching session states.  The object must remain valid
-  *   until this method is called with a different value.
-- * @group: group name inside @settings
-+ * @group_prefix: prefix to build group names inside @settings.  Note:
-+ *   existing settings in groups starting with the prefix may be
-+ *   overwritten or removed.
-  * @lifetime: a CLOCK_REALTIME-based microsecond resolution lifetime for
-  *   cached sessions.  The RFC recommends 24 hours.
-+ * @max_sessions: limit on the number of sessions in the cache, or 0 for
-+ *   unlimited.  Ignored in client mode.
-  * @update_cb: a callback to be invoked whenever the settings in @settings
-  *   have been updated and may need to be written to persistent storage if
-  *   desired, or NULL.
-@@ -3459,8 +3487,9 @@ LIB_EXPORT void l_tls_set_domain_mask(struct l_tls *tls, char **mask)
-  */
- LIB_EXPORT void l_tls_set_session_cache(struct l_tls *tls,
- 					struct l_settings *settings,
--					const char *group_name,
-+					const char *group_prefix,
- 					uint64_t lifetime,
-+					unsigned int max_sessions,
- 					l_tls_session_update_cb_t update_cb,
- 					void *user_data)
- {
-@@ -3469,11 +3498,12 @@ LIB_EXPORT void l_tls_set_session_cache(struct l_tls *tls,
+ 	/* Free up the resources used in the handshake */
+@@ -2947,7 +3210,7 @@ static void tls_handle_handshake(struct l_tls *tls, int type,
  
- 	tls->session_settings = settings;
- 	tls->session_lifetime = lifetime;
-+	tls->session_count_max = max_sessions;
- 	tls->session_update_cb = update_cb;
- 	tls->session_update_user_data = user_data;
+ 		resuming = tls->session_id_size && !tls->session_id_new;
  
--	l_free(tls->session_group);
--	tls->session_group = l_strdup(group_name);
-+	l_free(tls->session_prefix);
-+	tls->session_prefix = l_strdup(group_prefix);
- }
+-		if (tls->server || (!tls->server && resuming)) {
++		if ((tls->server && !resuming) || (!tls->server && resuming)) {
+ 			const char *error;
  
- LIB_EXPORT const char *l_tls_alert_to_str(enum l_tls_alert_desc desc)
-diff --git a/ell/tls.h b/ell/tls.h
-index 92d8b9e..e688c7c 100644
---- a/ell/tls.h
-+++ b/ell/tls.h
-@@ -130,7 +130,8 @@ void l_tls_set_version_range(struct l_tls *tls,
- void l_tls_set_domain_mask(struct l_tls *tls, char **mask);
- 
- void l_tls_set_session_cache(struct l_tls *tls, struct l_settings *settings,
--				const char *group_name, uint64_t lifetime,
-+				const char *group_prefix, uint64_t lifetime,
-+				unsigned int max_sessions,
- 				l_tls_session_update_cb_t update_cb,
- 				void *user_data);
+ 			tls_send_change_cipher_spec(tls);
+@@ -2990,11 +3253,11 @@ static void tls_handle_handshake(struct l_tls *tls, int type,
+ 		 *      pair.
+ 		 *
+ 		 * If we're resuming a cached session, we have authenticated
+-		 * this server before and the successful decryption of this
+-		 * message confirms the server identity hasn't changed.
++		 * this peer before and the successful decryption of this
++		 * message confirms their identity hasn't changed.
+ 		 */
+-		if (!tls->server && tls->cipher_suite[0]->signature &&
+-				((!resuming && tls->ca_certs) ||
++		if (tls->cipher_suite[0]->signature &&
++				((!tls->server && !resuming && tls->ca_certs) ||
+ 				 (resuming && tls->session_peer_identity)))
+ 			tls->peer_authenticated = true;
  
 -- 
 2.34.1
