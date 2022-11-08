@@ -1,142 +1,92 @@
-Received: from mail-ej1-f42.google.com (mail-ej1-f42.google.com [209.85.218.42])
+Received: from mail-oi1-f172.google.com (mail-oi1-f172.google.com [209.85.167.172])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DA90C33EE
-	for <ell@lists.linux.dev>; Mon,  7 Nov 2022 11:30:22 +0000 (UTC)
-Received: by mail-ej1-f42.google.com with SMTP id y14so29207449ejd.9
-        for <ell@lists.linux.dev>; Mon, 07 Nov 2022 03:30:22 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BBA68BE7
+	for <ell@lists.linux.dev>; Tue,  8 Nov 2022 15:49:55 +0000 (UTC)
+Received: by mail-oi1-f172.google.com with SMTP id s206so15940575oie.3
+        for <ell@lists.linux.dev>; Tue, 08 Nov 2022 07:49:55 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=c6YXHjUXTtl3UuFuQ7gqA77dGITQHSAcg2pwXextM0I=;
+        b=awpuiTiBdY04kl8/ocTXkVCn0sSMjb5V+2eWf+AIKBDaGmUyFT64Qi9CTPNOI1xO1W
+         ENgUNnOul27qY9XnURYupsFSXM4X4SXD7QNGKLSlrr/HJ8eTjx44BkcrYfA7HiyRpftE
+         xgwalusxYEFjBaDIY+K3n5HU/hRtFO0mVJijd+m0m/rI43yFIvOCoYjx/bn1LreHPite
+         rzcoiePehr4MpRlJ+SBYeXjriTulWgA68bDob5tvO5JPupbTlOQQkMnAIe6cWRtG1A96
+         1xBrbKc74tt32V6YrpVkiWVeZvUWqAhRFxK7Xrk83H22JdGXmuSqauvtWfZ16cDk9sgo
+         i2VQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=00ucuP6atKf0+P2hkGhqHz41HN6Oz1trC/Xfe2PNjEU=;
-        b=1n3q2n4UjyNb0N9dK1jej1mMKfPM/LBk83X9BW0dmVahG/f00Wqzsl6zIRe2Qp9mgM
-         NQYVCnRBkU63OMF1jIgGTxTxBs9OL2Nuxn8WVfyU2uBQWjAvmB1rFNk4vt1iZ8OfA1WZ
-         Ern61vkc87cKnh7gpK6bjAiFJRAEbrtcUZDKBmp7IAPTBMVpoEqzQxj/UhPN3POtrn0E
-         KS2u/vvoNO1z0WYdIvkSUSukKsiiYYsUd+E1kcr/9vot5NPzNPSCXj7xVh9m/G947kke
-         0dB1rUwvjFqxBkbnS44HL6OucBazULTpT/0WtbhLDE+FbXt9aHOLhpQR8VTVy0mHDbMI
-         1HVg==
-X-Gm-Message-State: ACrzQf34BD24OJGYogheKOVWfRgshTANqo2GvqZdlhak/Ufejr1QpQKI
-	u/1Rs4ev2nxtz2ZAvJWGvGpaY5abm9M=
-X-Google-Smtp-Source: AMsMyM4YdeP3Dq9S5aIFs7fvXBgTKYpbt/IF/7K3p8Hx8t/woWPzobU4Pqg9kk47jhODmNGcpWyMew==
-X-Received: by 2002:a17:907:2672:b0:781:dc01:6c5a with SMTP id ci18-20020a170907267200b00781dc016c5amr48242949ejc.191.1667820620218;
-        Mon, 07 Nov 2022 03:30:20 -0800 (PST)
-Received: from iss.ger.corp.intel.com ([82.213.230.158])
-        by smtp.gmail.com with ESMTPSA id x16-20020a170906135000b007ae32daf4b9sm3259769ejb.106.2022.11.07.03.30.19
-        for <ell@lists.linux.dev>
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Nov 2022 03:30:19 -0800 (PST)
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-To: ell@lists.linux.dev
-Subject: [PATCH 3/3] examples: Update https example code
-Date: Mon,  7 Nov 2022 12:30:12 +0100
-Message-Id: <20221107113012.328918-3-andrew.zaborowski@intel.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20221107113012.328918-1-andrew.zaborowski@intel.com>
-References: <20221107113012.328918-1-andrew.zaborowski@intel.com>
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=c6YXHjUXTtl3UuFuQ7gqA77dGITQHSAcg2pwXextM0I=;
+        b=d0TrWVwl0rGf9Tq/S6HJ5Vk7xaZ1tI2f+/Ulje1TkEfsYaFDz32VnlEothCT9vmzNo
+         cEGCOsCVAyzOyZAJ/A4NSnhvvFRzl0c2B8vLlLDnf3EEVFfVbm+kELteSYSKWRc3EYXC
+         kmh57uj9aQ4PtutE6s5EIyZhNIeRmRpA+R/B1lBRE/ry0X62/lc9FZFjLqUMBJQQpbp5
+         MZ98hyire80Pc6jFksMcXJQE1g0eR5FGNMWpERn1Ta62E7x8A5ookalC/GR3wdSByhmZ
+         HvW4Ia6n948dg3R+6fNi6u+7dLMtIiI0jr20xLbgNTjnXnGRW8orT8/o8v1BEJtaFUrw
+         a5mw==
+X-Gm-Message-State: ANoB5pkbP7mKVPHYaNud4YqXuwluWVJi7KR0ZzCyTLMeWBOTpcom4mGw
+	A2fTvXmOHZR8+Ck1tsh8Ccg=
+X-Google-Smtp-Source: AA0mqf5U+EbmSRK1Av2QqLdsQOL/aFrZTdc+drlgsHT7GCDzI1hhlM8xWeiVTHYWRSTBzpnMel+ilQ==
+X-Received: by 2002:a05:6808:23c1:b0:35a:83c6:e6bd with SMTP id bq1-20020a05680823c100b0035a83c6e6bdmr6525832oib.33.1667922594372;
+        Tue, 08 Nov 2022 07:49:54 -0800 (PST)
+Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id s13-20020a056870610d00b0011f22e74d5fsm4777573oae.20.2022.11.08.07.49.53
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 08 Nov 2022 07:49:53 -0800 (PST)
+Message-ID: <72e1944f-9a16-a010-20ef-5c4788ed97f2@gmail.com>
+Date: Tue, 8 Nov 2022 09:49:52 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.11.0
+Subject: Re: [PATCH 1/3] tls: Refactor session storage for server mode
+Content-Language: en-US
+To: Andrew Zaborowski <andrew.zaborowski@intel.com>, ell@lists.linux.dev
+References: <20221107113012.328918-1-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20221107113012.328918-1-andrew.zaborowski@intel.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Update the l_tls_set_session_cache call signature in https-client-test
-and add similar session caching support in https-server-test.
----
- examples/https-client-test.c |  2 +-
- examples/https-server-test.c | 43 ++++++++++++++++++++++++++++++++++++
- 2 files changed, 44 insertions(+), 1 deletion(-)
+Hi Andrew,
 
-diff --git a/examples/https-client-test.c b/examples/https-client-test.c
-index 2c6939a..6b12f77 100644
---- a/examples/https-client-test.c
-+++ b/examples/https-client-test.c
-@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
- 		l_settings_load_from_file(session_cache, session_cache_path);
- 
- 		l_tls_set_session_cache(tls, session_cache, hostname,
--					24 * 3600 * L_USEC_PER_SEC,
-+					24 * 3600 * L_USEC_PER_SEC, 0,
- 					https_tls_session_cache_update_cb,
- 					NULL);
- 	}
-diff --git a/examples/https-server-test.c b/examples/https-server-test.c
-index b626fd2..5e861d5 100644
---- a/examples/https-server-test.c
-+++ b/examples/https-server-test.c
-@@ -32,12 +32,17 @@
- #include <unistd.h>
- #include <errno.h>
- #include <arpa/inet.h>
-+#include <sys/stat.h>
-+#include <fcntl.h>
- 
- #include <ell/ell.h>
-+#include <ell/useful.h>
- 
- static struct l_io *io;
- static struct l_tls *tls;
- bool served;
-+static struct l_settings *session_cache;
-+static char *session_cache_path;
- 
- static void https_io_disconnect(struct l_io *io, void *user_data)
- {
-@@ -115,6 +120,27 @@ static void https_tls_debug_cb(const char *str, void *user_data)
- 	printf("%s\n", str);
- }
- 
-+static void https_tls_session_cache_update_cb(void *user_data)
-+{
-+	size_t len;
-+	char *data = l_settings_to_data(session_cache, &len);
-+	_auto_(close) int fd = L_TFR(creat(session_cache_path, 0600));
-+
-+	if (!data) {
-+		fprintf(stderr, "l_settings_to_data() failed\n");
-+		return;
-+	}
-+
-+	if (fd < 0) {
-+		fprintf(stderr, "can't open %s: %s\n",
-+			session_cache_path, strerror(errno));
-+		return;
-+	}
-+
-+	if (L_TFR(write(fd, data, len)) < (ssize_t) len)
-+		fprintf(stderr, "short write to %s\n", session_cache_path);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	struct sockaddr_in addr = {};
-@@ -210,6 +236,23 @@ int main(int argc, char *argv[])
- 		l_free(str);
- 	}
- 
-+	if (getenv("TLS_CACHE")) {
-+		const char *homedir = getenv("HOME");
-+
-+		if (!homedir)
-+			homedir = "/tmp";
-+
-+		session_cache_path =
-+			l_strdup_printf("%s/.ell-https-server-test", homedir);
-+		session_cache = l_settings_new();
-+		l_settings_load_from_file(session_cache, session_cache_path);
-+
-+		l_tls_set_session_cache(tls, session_cache, "tls-session",
-+					24 * 3600 * L_USEC_PER_SEC, 10,
-+					https_tls_session_cache_update_cb,
-+					NULL);
-+	}
-+
- 	auth_ok = l_tls_set_auth_data(tls, cert, priv_key) &&
- 		(argc <= 4 || l_tls_set_cacert(tls, ca_cert)) &&
- 		l_tls_start(tls);
--- 
-2.34.1
+On 11/7/22 05:30, Andrew Zaborowski wrote:
+> In TLS server mode we will need to store multiple session states in the
+> session cache instead of only one like on the client.  While the
+> l_tls_set_session_cache() method is new use to opportunity to make
+> incompatible changes: add the cache size limit parameter and strip "TLS"
+> prefix from the setting names in the cache's l_settings object since the
+> group name can include this part of the context without duplicating it
+> across settings.  Rename the group_name parameter to group_prefix since
+> in server mode there will be a settings group per session cached so that
+> we can use identical keys for each session.  When removing a session
+> remove the whole group rather than individual settings potentially
+> leaving an empty group.  Factor out the session loading code common to
+> client and server into a function.  When saving a server side session
+> state skip the SessionID setting since the session ID is in the group
+> name as the primary index.  Add a boolean parameter to
+> tls_forget_cached_session() to suppress the update_cb callback if
+> needed, to allow the caller to make a single callback after multiple
+> changes are made in the session cache instead of calling back after each
+> individual change.
+> ---
+>   ell/tls-private.h |   3 +-
+>   ell/tls.c         | 228 ++++++++++++++++++++++++++--------------------
+>   ell/tls.h         |   3 +-
+>   3 files changed, 133 insertions(+), 101 deletions(-)
+> 
+
+All applied, thanks.
+
+Regards,
+-Denis
 
