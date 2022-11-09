@@ -1,37 +1,40 @@
-Received: from mail-wr1-f54.google.com (mail-wr1-f54.google.com [209.85.221.54])
+Received: from mail-wm1-f43.google.com (mail-wm1-f43.google.com [209.85.128.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C15B5EC09
-	for <ell@lists.linux.dev>; Wed,  9 Nov 2022 17:47:58 +0000 (UTC)
-Received: by mail-wr1-f54.google.com with SMTP id o4so26927675wrq.6
-        for <ell@lists.linux.dev>; Wed, 09 Nov 2022 09:47:58 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 638EDA490
+	for <ell@lists.linux.dev>; Wed,  9 Nov 2022 17:48:00 +0000 (UTC)
+Received: by mail-wm1-f43.google.com with SMTP id p16so11324978wmc.3
+        for <ell@lists.linux.dev>; Wed, 09 Nov 2022 09:48:00 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:to
-         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=nenqb8EuS5yI/YfUN+XbLGRrn8OiyE/ZnYXuKMcrn4M=;
-        b=CPJc9SmvdhO4uMhMtyLtQB0YnAOpx3zLp9BhcWZtM+2LUkkvM1GXVYYc8LKb46PHHB
-         B7wFiQ1r24yho7bhIH1fXMN8ZIaKRvB4x21/Wf9T+lRWR+lzMLqkjJc3TtztIEC5tTsl
-         bdtFdqi1oDPMfq8jqbuS2KZqdVxcwirhO8TTSE62FN+KOhzG2+Lu/VO/zKuLbju3mLYN
-         0aTNrD+A3cJJVmgBO4FoAtZE/LDhivRZa/InV3Eycg/gI2mjY04kV6gc1ptnSyuR664q
-         1VE7KVhNDAKoTgH4Nw97yjoVtwI8KVe6P9NT5RKKSBPChaE2nrg1dxrvUKNMI8CSi6gK
-         sNPg==
-X-Gm-Message-State: ACrzQf0oQ2haRm9F+LHjEipJPph7wNxx67FiDpKsMo6MXRJAN4REoOhV
-	wENYdP3BVNTHlpE9E/FOL5wmzf8QEy4=
-X-Google-Smtp-Source: AMsMyM5tsl0iYZFbjeO9JDRDqT9WdIxuO4HMeJAck3OMLCin2gFivO25BA8sL15NDfGpMtSCVrCnSw==
-X-Received: by 2002:a5d:498f:0:b0:236:55e9:6c16 with SMTP id r15-20020a5d498f000000b0023655e96c16mr40094418wrq.331.1668016076330;
-        Wed, 09 Nov 2022 09:47:56 -0800 (PST)
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=a8vwBraGRA/dhXuiy+T63nv5ysR182QLk2bEBU0QJzA=;
+        b=NXIeCP9OwYfODHEiU9r6SLa9WFlwZodcZymQTLOFt9APTRuAbbi7q2KfkWJhG8yfJK
+         Da1XOIfQjlyPI/3G5lHwspsftJTQRadtXe+hYyoa6j9lkrwC+EPndWIr9la0wq3ZaNVJ
+         p4pS/Hw/ilKuVfY9qSBWpTCShckXztMv07cDTjAKTQUy/ia0BD2GXPt6h4b2wZldbqrS
+         PFY8RT56o8Awn1A/MUAWYNaPHW934sXjZkKcqn6JDs+M2RpZielBq4ib0E4LHw8s7KUr
+         ew7Kx0P+veZ5cAM4C346gOjJM8DcINSi7UZrbDoc1b9BdbV9MIyHfW6hFq+ijzFjmPh6
+         x/eg==
+X-Gm-Message-State: ACrzQf0Eif9KDGFcBLKVguukIqgPiMInJWfF8Ba+BHX/WzyIz8S+Tfnn
+	xEDsqpTag2g1FSdSf+/IlIcDL4sVg3c=
+X-Google-Smtp-Source: AMsMyM7WCpZeYXlUOUo2SPfBxi7vwUvVvRr+Q29UbKyJICLhLzaQIyCt/LI3d6fXgEDt0tP7GNb8cw==
+X-Received: by 2002:a7b:cd91:0:b0:3cf:47e7:c8bd with SMTP id y17-20020a7bcd91000000b003cf47e7c8bdmr52241822wmj.139.1668016077879;
+        Wed, 09 Nov 2022 09:47:57 -0800 (PST)
 Received: from localhost.localdomain ([82.213.230.158])
-        by smtp.gmail.com with ESMTPSA id bh2-20020a05600005c200b002366d1cc198sm13934567wrb.41.2022.11.09.09.47.55
+        by smtp.gmail.com with ESMTPSA id bh2-20020a05600005c200b002366d1cc198sm13934567wrb.41.2022.11.09.09.47.56
         for <ell@lists.linux.dev>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 09 Nov 2022 09:47:55 -0800 (PST)
+        Wed, 09 Nov 2022 09:47:56 -0800 (PST)
 From: Andrew Zaborowski <andrew.zaborowski@intel.com>
 To: ell@lists.linux.dev
-Subject: [PATCH 1/4] tls: Allow ServerHello extensions when resuming session
-Date: Wed,  9 Nov 2022 18:47:43 +0100
-Message-Id: <20221109174746.569046-1-andrew.zaborowski@intel.com>
+Subject: [PATCH 2/4] tls: Improve renegotiation
+Date: Wed,  9 Nov 2022 18:47:44 +0100
+Message-Id: <20221109174746.569046-2-andrew.zaborowski@intel.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20221109174746.569046-1-andrew.zaborowski@intel.com>
+References: <20221109174746.569046-1-andrew.zaborowski@intel.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -40,117 +43,69 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-While, as the spec notes, most extensions are not used during the
-resumption of a cached session (are offered in the ClientHello but are
-ignored and not be included in the ServerHello), this not a rule so allow
-each extension to decide whether to skip adding itself to the ServerHello.
-
-Specifically those extensions should rather be ignored by the server
-when it is parsing the ClientHello but at that point we don't yet know
-whether we'll allow the session to be resumed so instead the ServerHello
-writer callbacks decide whether to reply or not.  As an example RFC 4492
-Section 4 says: "In the case of session resumption, the server simply
-ignores the Supported Elliptic Curves Extension and the Supported Point
-Formats Extension appearing in the current ClientHello message.  These
-extensions only play a role during handshakes negotiating a new session."
+On client, allow renegotiation triggered by the server.  Make sure to
+reset tls->peer_authenticated before a new handshake.  Avoid calling the
+ready callback multiple times, only call it after initial handshake.
+While RFC 5746 makes the case for TLS APIs to inform the application
+layer of renegotiations, some ell users don't consider the possiblity of
+the ready callback happening more than once in a session and the name
+implies that the TLS tunnel wasn't ready before the call.
 ---
- ell/tls-extensions.c |  9 +++++++++
- ell/tls.c            | 31 ++++++++++---------------------
- 2 files changed, 19 insertions(+), 21 deletions(-)
+ ell/tls.c | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
 
-diff --git a/ell/tls-extensions.c b/ell/tls-extensions.c
-index 7796825..d03c331 100644
---- a/ell/tls-extensions.c
-+++ b/ell/tls-extensions.c
-@@ -31,6 +31,13 @@
- #include "cert.h"
- #include "tls-private.h"
- 
-+/* Most extensions are not used when resuming a cached session */
-+#define SKIP_ON_RESUMPTION()	\
-+	do {	\
-+		if (tls->session_id_size && !tls->session_id_new)	\
-+			return -ENOMSG;	\
-+	} while (0);
-+
- /* RFC 7919, Section A.1 */
- static const uint8_t tls_ffdhe2048_prime[] = {
- 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xad, 0xf8, 0x54, 0x58,
-@@ -560,6 +567,8 @@ static bool tls_ec_point_formats_client_handle(struct l_tls *tls,
- static ssize_t tls_ec_point_formats_server_write(struct l_tls *tls,
- 						uint8_t *buf, size_t len)
- {
-+	SKIP_ON_RESUMPTION(); /* RFC 4492 Section 4 */
-+
- 	if (len < 2)
- 		return -ENOMEM;
- 
 diff --git a/ell/tls.c b/ell/tls.c
-index 98bc682..5f3b717 100644
+index 5f3b717..14c8550 100644
 --- a/ell/tls.c
 +++ b/ell/tls.c
-@@ -2053,11 +2053,8 @@ static void tls_handle_client_hello(struct l_tls *tls,
- 			tls_load_cached_server_session(tls, buf + 35,
- 							session_id_size)) {
- 		/*
--		 * Attempt a session resumption but don't skip parsing Hello
--		 * extensions just yet because we may decide to start a new
--		 * session instead after our cipher suite and compression
--		 * method checks below and in that case we will need to
--		 * handle the extensions and include them in the Server Hello.
-+		 * Attempt a session resumption but note later checks may
-+		 * spoil this.
+@@ -198,6 +198,7 @@ static void tls_reset_handshake(struct l_tls *tls)
+ 	tls->peer_cert = NULL;
+ 	tls->peer_pubkey = NULL;
+ 	tls->peer_pubkey_size = 0;
++	tls->peer_authenticated = false;
+ 	tls->negotiated_curve = NULL;
+ 	tls->negotiated_ff_group = NULL;
+ 
+@@ -2898,6 +2899,7 @@ static void tls_finished(struct l_tls *tls)
+ 	uint64_t peer_cert_expiry;
+ 	bool resuming = tls->session_id_size && !tls->session_id_new;
+ 	bool session_update = false;
++	bool renegotiation = tls->ready;
+ 
+ 	if (tls->peer_authenticated && !resuming) {
+ 		peer_cert_identity = tls_get_peer_identity_str(tls->peer_cert);
+@@ -2998,9 +3000,11 @@ static void tls_finished(struct l_tls *tls)
+ 			return;
+ 	}
+ 
+-	tls->in_callback = true;
+-	tls->ready_handle(peer_identity, tls->user_data);
+-	tls->in_callback = false;
++	if (!renegotiation) {
++		tls->in_callback = true;
++		tls->ready_handle(peer_identity, tls->user_data);
++		tls->in_callback = false;
++	}
+ 
+ 	tls_cleanup_handshake(tls);
+ }
+@@ -3033,7 +3037,16 @@ static void tls_handle_handshake(struct l_tls *tls, int type,
+ 		 * and "MAY be ignored by the client if it does not wish to
+ 		 * renegotiate a session".
  		 */
- 		resuming = true;
- 		session_id_str = l_util_hexstring(tls->session_id,
-@@ -2228,7 +2225,7 @@ static void tls_handle_client_hello(struct l_tls *tls,
- 		l_getrandom(tls->session_id, 32);
- 	}
++		if (tls->state != TLS_HANDSHAKE_DONE) {
++			TLS_DEBUG("Message invalid in state %s",
++					tls_handshake_state_to_str(tls->state));
++			break;
++		}
++
++		if (!tls_send_client_hello(tls))
++			break;
  
--	if (!tls_send_server_hello(tls, resuming ? extensions_offered : NULL))
-+	if (!tls_send_server_hello(tls, extensions_offered))
- 		goto cleanup;
++		TLS_SET_STATE(TLS_HANDSHAKE_WAIT_HELLO);
+ 		break;
  
- 	l_queue_destroy(extensions_offered, NULL);
-@@ -2324,23 +2321,16 @@ static void tls_handle_server_hello(struct l_tls *tls,
- 			TLS_DEBUG("Negotiated resumption of cached session %s",
- 					session_id_str);
- 			resuming = true;
--
--			/*
--			 * Skip parsing extensions as none of the ones we
--			 * support are used in session resumption.  We could
--			 * as well signal an error if the ServerHello has any
--			 * extensions, for now ignore them.
--			 */
--			goto check_version;
-+		} else {
-+			TLS_DEBUG("Server decided not to resume cached session "
-+					"%s, sent %s session ID",
-+					session_id_str,
-+					session_id_size ? "a new" : "no");
-+			tls->session_id_size = 0;
- 		}
--
--		TLS_DEBUG("Server decided not to resume cached session %s, "
--				"sent %s session ID", session_id_str,
--				session_id_size ? "a new" : "no");
--		tls->session_id_size = 0;
- 	}
- 
--	if (session_id_size && tls->session_settings) {
-+	if (session_id_size && !resuming && tls->session_settings) {
- 		tls->session_id_new = true;
- 		tls->session_id_size = session_id_size;
- 		memcpy(tls->session_id, buf + 35, session_id_size);
-@@ -2354,7 +2344,6 @@ static void tls_handle_server_hello(struct l_tls *tls,
- 	if (!result)
- 		return;
- 
--check_version:
- 	if (version < tls->min_version || version > tls->max_version) {
- 		TLS_DISCONNECT(version < tls->min_version ?
- 				TLS_ALERT_PROTOCOL_VERSION :
+ 	case TLS_CLIENT_HELLO:
 -- 
 2.34.1
 
