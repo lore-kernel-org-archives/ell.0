@@ -1,68 +1,87 @@
-Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
+Received: from mail-oi1-f174.google.com (mail-oi1-f174.google.com [209.85.167.174])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3EDF6EC19
-	for <ell@lists.linux.dev>; Wed,  9 Nov 2022 17:48:04 +0000 (UTC)
-Received: by mail-wm1-f46.google.com with SMTP id ay14-20020a05600c1e0e00b003cf6ab34b61so1762451wmb.2
-        for <ell@lists.linux.dev>; Wed, 09 Nov 2022 09:48:04 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E1DC10797
+	for <ell@lists.linux.dev>; Wed,  9 Nov 2022 20:25:32 +0000 (UTC)
+Received: by mail-oi1-f174.google.com with SMTP id q83so8354087oib.10
+        for <ell@lists.linux.dev>; Wed, 09 Nov 2022 12:25:32 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=xvFlk6VspplkBve7Z51sAxb608l++FZ1U7UYznaWNm4=;
+        b=WlsMkHhzq1a+6hl1RKOBTNW1fJC4F6APQJmRE+vRog5y+PljnrTXU0b+haqzIBql4Z
+         lk8LYFjWiptYnF74z7vUikUjjkC729VnECiBAIxA2Km0ncFPHobFYuMj2kbtuPgiSIK+
+         f0GHWGnro6RUp9EKj08P8sNBXcev7zqCgC14/k8vka9Me7kUozVCV0CxvOUn0EebLksj
+         5DVl0q5lLPcMCUM1SkF3S6pdvEPMqGWCsUix+w0+C4dgcHXBExLm++ufhzHReAtYcorY
+         rrVRuhHyxzvRCv+jnG/ei77qYz7fyWFE1x3r+qq6ZoNK6Yfj4VFKHKh2vqIg9xL3Ek+L
+         +PKg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=btXvHWHpOJr2vDz9YLufMHZU5H+n2bbSEHhPAt4jkVI=;
-        b=DUnh0Dz+bmrGs2K6TE1tyTh4Frevb45kr7zSa5l6WoDZ+usa2SkIEC35nloJrxIJhm
-         M8luPV3+BU3r7fSWnwF5KMXGIrA15LjkZTGLs/EHH1xhNfLbLGx7+fdrSc/9eiQvF5Oa
-         YUndilOd5z5j4fD3Ri1lBhE+zyGLEiCAMU6SPudaVS/FOGmWLbmmV4bqiRsQJn7B1DeP
-         LgMZU6ARIrzaZpsHopmhjvgLf2J4165daJrdBLU6etkCgDdNvUJjKeFrp7cVszHRMa4O
-         I6NulJ+8+MAju2AH3gZfdc0/d53bO6hXbBFK2i6hUtAf8I8ZeLtoeQVfl/z/R72sBOyK
-         VERw==
-X-Gm-Message-State: ACrzQf2qSprr9Jnc1DQ9eOll2Z5fvxGhRAwwiREbORMeLOZZdjX9Q0kH
-	V2S2FVzqPnzTGo8IvfwEE995PNGhTqk=
-X-Google-Smtp-Source: AMsMyM5V2wyP1x3uKJVhdHZx/dYHez8NB+Pzex2RMuhpHtRZiZZcPjJrKYJs7L/yrTUji+seHZbsgg==
-X-Received: by 2002:a05:600c:6d3:b0:3cf:9b42:b5f5 with SMTP id b19-20020a05600c06d300b003cf9b42b5f5mr19656360wmn.196.1668016082004;
-        Wed, 09 Nov 2022 09:48:02 -0800 (PST)
-Received: from localhost.localdomain ([82.213.230.158])
-        by smtp.gmail.com with ESMTPSA id bh2-20020a05600005c200b002366d1cc198sm13934567wrb.41.2022.11.09.09.48.00
-        for <ell@lists.linux.dev>
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 09 Nov 2022 09:48:00 -0800 (PST)
-From: Andrew Zaborowski <andrew.zaborowski@intel.com>
-To: ell@lists.linux.dev
-Subject: [PATCH 4/4] tls: Add missing continue in tls_load_cached_server_session
-Date: Wed,  9 Nov 2022 18:47:46 +0100
-Message-Id: <20221109174746.569046-4-andrew.zaborowski@intel.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20221109174746.569046-1-andrew.zaborowski@intel.com>
-References: <20221109174746.569046-1-andrew.zaborowski@intel.com>
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=xvFlk6VspplkBve7Z51sAxb608l++FZ1U7UYznaWNm4=;
+        b=cuL4WLJVR/CW6tpqbO6a7177wMYJ0SM/hcYhX6tpbDggvqW4QAhUNRvP39wUiL/0Gv
+         YoROAaXQKNgFEe1pHLUfuQ1zaWvu6PRoHOtHwhX00C0Hw+H4LIx4pEjVmDknKvt4wbJ7
+         7L5kUOnQFHz/noAKjNilaTrC9n09Ft+XkhpzCLGnIrD6I9d/Csr+ZbhMrq5c4rFhtHXz
+         Y66uT1YaGc3xDyF8pEfAo0gke5dctoIFleU9OeMOMnfUQYfa8s32GhULFFV+AvRqHXyR
+         j4X0agx+aYZ7p0xC4R+jXVQYxlmCUn1oXBfIMdAhz4b9pZYVdIH2CJX9JSWvMaR/aR8K
+         7bZg==
+X-Gm-Message-State: ACrzQf1oMdEN5k7UQ84ywMqCbue1sF0lXqrSOrSctsmPmNagdLjHMLQp
+	PLp5AHjwHuwRmxN0Z1x0lH/ULtHHHgY=
+X-Google-Smtp-Source: AMsMyM505drhopQ0+iXZSTp1e1N8pSm/jijyTWgky/2AA+dEhAEMBjUnTnXfXVMPeD+mPqNSepnA9w==
+X-Received: by 2002:a54:4098:0:b0:35a:296f:9479 with SMTP id i24-20020a544098000000b0035a296f9479mr24468861oii.130.1668025531147;
+        Wed, 09 Nov 2022 12:25:31 -0800 (PST)
+Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id q5-20020a9d6645000000b0066c15490a55sm5657477otm.19.2022.11.09.12.25.30
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 09 Nov 2022 12:25:30 -0800 (PST)
+Message-ID: <c0659db1-4cb8-4950-6ac5-6504457f8d18@gmail.com>
+Date: Wed, 9 Nov 2022 14:25:29 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.11.0
+Subject: Re: [PATCH 1/4] tls: Allow ServerHello extensions when resuming
+ session
+Content-Language: en-US
+To: Andrew Zaborowski <andrew.zaborowski@intel.com>, ell@lists.linux.dev
+References: <20221109174746.569046-1-andrew.zaborowski@intel.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20221109174746.569046-1-andrew.zaborowski@intel.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-After we removed an expired session cache entry, move on to the next
-entry in the loop.  Ignore the removed entry in the count, in the search
-for the requested session ID, etc.  Not ignoring it would cause some
-warnings to be logged later and other minor issues.
----
- ell/tls.c | 1 +
- 1 file changed, 1 insertion(+)
+Hi Andrew,
 
-diff --git a/ell/tls.c b/ell/tls.c
-index 2a8d509..d363765 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -1084,6 +1084,7 @@ static bool tls_load_cached_server_session(struct l_tls *tls,
- 					*group + prefix_len + 1);
- 			l_settings_remove_group(tls->session_settings, *group);
- 			changed = true;
-+			continue;
- 		}
- 
- 		cnt++;
--- 
-2.34.1
+On 11/9/22 11:47, Andrew Zaborowski wrote:
+> While, as the spec notes, most extensions are not used during the
+> resumption of a cached session (are offered in the ClientHello but are
+> ignored and not be included in the ServerHello), this not a rule so allow
+> each extension to decide whether to skip adding itself to the ServerHello.
+> 
+> Specifically those extensions should rather be ignored by the server
+> when it is parsing the ClientHello but at that point we don't yet know
+> whether we'll allow the session to be resumed so instead the ServerHello
+> writer callbacks decide whether to reply or not.  As an example RFC 4492
+> Section 4 says: "In the case of session resumption, the server simply
+> ignores the Supported Elliptic Curves Extension and the Supported Point
+> Formats Extension appearing in the current ClientHello message.  These
+> extensions only play a role during handshakes negotiating a new session."
+> ---
+>   ell/tls-extensions.c |  9 +++++++++
+>   ell/tls.c            | 31 ++++++++++---------------------
+>   2 files changed, 19 insertions(+), 21 deletions(-)
+> 
+
+All applied, thanks.
+
+Regards,
+-Denis
 
