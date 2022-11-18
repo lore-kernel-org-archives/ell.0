@@ -1,87 +1,93 @@
-Received: from mail-oi1-f174.google.com (mail-oi1-f174.google.com [209.85.167.174])
+Received: from mail-pj1-f54.google.com (mail-pj1-f54.google.com [209.85.216.54])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E1DC10797
-	for <ell@lists.linux.dev>; Wed,  9 Nov 2022 20:25:32 +0000 (UTC)
-Received: by mail-oi1-f174.google.com with SMTP id q83so8354087oib.10
-        for <ell@lists.linux.dev>; Wed, 09 Nov 2022 12:25:32 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0FBEA486
+	for <ell@lists.linux.dev>; Fri, 18 Nov 2022 21:16:39 +0000 (UTC)
+Received: by mail-pj1-f54.google.com with SMTP id e7-20020a17090a77c700b00216928a3917so9389779pjs.4
+        for <ell@lists.linux.dev>; Fri, 18 Nov 2022 13:16:39 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=xvFlk6VspplkBve7Z51sAxb608l++FZ1U7UYznaWNm4=;
-        b=WlsMkHhzq1a+6hl1RKOBTNW1fJC4F6APQJmRE+vRog5y+PljnrTXU0b+haqzIBql4Z
-         lk8LYFjWiptYnF74z7vUikUjjkC729VnECiBAIxA2Km0ncFPHobFYuMj2kbtuPgiSIK+
-         f0GHWGnro6RUp9EKj08P8sNBXcev7zqCgC14/k8vka9Me7kUozVCV0CxvOUn0EebLksj
-         5DVl0q5lLPcMCUM1SkF3S6pdvEPMqGWCsUix+w0+C4dgcHXBExLm++ufhzHReAtYcorY
-         rrVRuhHyxzvRCv+jnG/ei77qYz7fyWFE1x3r+qq6ZoNK6Yfj4VFKHKh2vqIg9xL3Ek+L
-         +PKg==
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=iKzhesTFajQVvwTbLAvwUZNKcxRxw/E6jJUq8iKxE5E=;
+        b=R7ToEBNNsXC+Lr4su+C7gBG9thb24sHxcODmeG8PTw/ekF9BAZ4crYTR7tsRZzY4iz
+         y3oFzlnKtVDmcL2qOTsBfuJv3jSFZdq+fTuZrfkgr/xmtgsvLEbj1Y6GBSd1oWolFkkz
+         flTWdbli7f0u2fcM+HVQG2NtqDHksZT+XAdkkJZuSNNutd2+WKFfD5VmnAtLmDdjySEq
+         EpdoTUHCuKsaRbSaJLPnLCBQ1oWRyEA5lcaGuo4MIMk3GSzqzVxe/0GSkZyc2wXrrgNB
+         UQd4ZU829YfC6H+U01iEc5+oIQB/qHrgvqMZ7l7kv5SUpFQsJbZ4/eOxEvd5T30noEhD
+         UOdA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=xvFlk6VspplkBve7Z51sAxb608l++FZ1U7UYznaWNm4=;
-        b=cuL4WLJVR/CW6tpqbO6a7177wMYJ0SM/hcYhX6tpbDggvqW4QAhUNRvP39wUiL/0Gv
-         YoROAaXQKNgFEe1pHLUfuQ1zaWvu6PRoHOtHwhX00C0Hw+H4LIx4pEjVmDknKvt4wbJ7
-         7L5kUOnQFHz/noAKjNilaTrC9n09Ft+XkhpzCLGnIrD6I9d/Csr+ZbhMrq5c4rFhtHXz
-         Y66uT1YaGc3xDyF8pEfAo0gke5dctoIFleU9OeMOMnfUQYfa8s32GhULFFV+AvRqHXyR
-         j4X0agx+aYZ7p0xC4R+jXVQYxlmCUn1oXBfIMdAhz4b9pZYVdIH2CJX9JSWvMaR/aR8K
-         7bZg==
-X-Gm-Message-State: ACrzQf1oMdEN5k7UQ84ywMqCbue1sF0lXqrSOrSctsmPmNagdLjHMLQp
-	PLp5AHjwHuwRmxN0Z1x0lH/ULtHHHgY=
-X-Google-Smtp-Source: AMsMyM505drhopQ0+iXZSTp1e1N8pSm/jijyTWgky/2AA+dEhAEMBjUnTnXfXVMPeD+mPqNSepnA9w==
-X-Received: by 2002:a54:4098:0:b0:35a:296f:9479 with SMTP id i24-20020a544098000000b0035a296f9479mr24468861oii.130.1668025531147;
-        Wed, 09 Nov 2022 12:25:31 -0800 (PST)
-Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id q5-20020a9d6645000000b0066c15490a55sm5657477otm.19.2022.11.09.12.25.30
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 09 Nov 2022 12:25:30 -0800 (PST)
-Message-ID: <c0659db1-4cb8-4950-6ac5-6504457f8d18@gmail.com>
-Date: Wed, 9 Nov 2022 14:25:29 -0600
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=iKzhesTFajQVvwTbLAvwUZNKcxRxw/E6jJUq8iKxE5E=;
+        b=JqPN96wF2NUCDAxXDfp4h5Y5JC4Xp028GmsSoFf6VdAE/I7Mi22AKYQ2SGYgxK057f
+         3mzzkT5N93NQIyhgZur/F2dDMlA7+5mIE5WT6EUfHhK+iqnPxh3RBwqkq7clwPp8A41+
+         eJpkHq+3Mmq2R56oT2t6ugnNAAbS5T4Y4REwMuV7OS+ppnmgt1VKFWpwQxclT9m1WoE1
+         awng65rnLmh/gpdVoL8QGHQr3RaOh8TtWlwOw2q+QbxA0+i4D3nKYiZ1OUutPAxQx3yJ
+         C8M/cQ9eDeLHQivt5PcJixesFBb8H1H2hPlZl/yS9KkqYhui+noVUJA4MswHN/iq4JZ6
+         SvIA==
+X-Gm-Message-State: ANoB5pm/BM1jHeRrGZQUbhG9/KOMc+Ybc60F4nTQ6QEd0VwZx2l+a6JL
+	BIN4gJcIwKtZhyH6LEk02V1nk0fh+4Y=
+X-Google-Smtp-Source: AA0mqf7JzG2+QYeezdPTVJxntGwCmZdev5j+6kNie+X4aBDBLgdZ96WLOpPEZ8mPhYtPV/z4UXYiUQ==
+X-Received: by 2002:a17:902:ccce:b0:185:4880:91cd with SMTP id z14-20020a170902ccce00b00185488091cdmr1203929ple.130.1668806198930;
+        Fri, 18 Nov 2022 13:16:38 -0800 (PST)
+Received: from jprestwo-xps.none ([50.39.160.234])
+        by smtp.gmail.com with ESMTPSA id y12-20020aa79aec000000b0056ee49d6e95sm3630142pfp.86.2022.11.18.13.16.38
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 18 Nov 2022 13:16:38 -0800 (PST)
+From: James Prestwood <prestwoj@gmail.com>
+To: ell@lists.linux.dev
+Cc: James Prestwood <prestwoj@gmail.com>
+Subject: [RFC 0/8] Crypto operations by key ID
+Date: Fri, 18 Nov 2022 13:16:16 -0800
+Message-Id: <20221118211624.19298-1-prestwoj@gmail.com>
+X-Mailer: git-send-email 2.34.3
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.11.0
-Subject: Re: [PATCH 1/4] tls: Allow ServerHello extensions when resuming
- session
-Content-Language: en-US
-To: Andrew Zaborowski <andrew.zaborowski@intel.com>, ell@lists.linux.dev
-References: <20221109174746.569046-1-andrew.zaborowski@intel.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20221109174746.569046-1-andrew.zaborowski@intel.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi Andrew,
+This adds support for several key based crypto opterations but
+instead of using a key directly it uses a key ID. This avoids
+the need for ELL to ever hold a copy of the key assuming it
+already exists in the kernel.
 
-On 11/9/22 11:47, Andrew Zaborowski wrote:
-> While, as the spec notes, most extensions are not used during the
-> resumption of a cached session (are offered in the ClientHello but are
-> ignored and not be included in the ServerHello), this not a rule so allow
-> each extension to decide whether to skip adding itself to the ServerHello.
-> 
-> Specifically those extensions should rather be ignored by the server
-> when it is parsing the ClientHello but at that point we don't yet know
-> whether we'll allow the session to be resumed so instead the ServerHello
-> writer callbacks decide whether to reply or not.  As an example RFC 4492
-> Section 4 says: "In the case of session resumption, the server simply
-> ignores the Supported Elliptic Curves Extension and the Supported Point
-> Formats Extension appearing in the current ClientHello message.  These
-> extensions only play a role during handshakes negotiating a new session."
-> ---
->   ell/tls-extensions.c |  9 +++++++++
->   ell/tls.c            | 31 ++++++++++---------------------
->   2 files changed, 19 insertions(+), 21 deletions(-)
-> 
+The motivation behind this is to enhance IWDs profile encryption.
+Currently this uses a systemd feature but ultimately the secret
+key is decrypted and put onto the file system for IWD to use.
+This isn't desirable and it would be better if the key never hits
+the FS, and even better if IWD never even sees it. This would
+allow some external, trusted, entity (e.g. PAM/systemd-logind) to
+set a secret key into the kernel upon user login (e.g. the users
+password). This key ID could then be used by IWD to encrypt
+profiles without ever seeing the actual key.
 
-All applied, thanks.
+James Prestwood (8):
+  key: add l_key_search
+  unit: add key search test
+  checksum: commonize checksum creation
+  checksum: add l_checksum_new_hmac_from_key_id
+  cert-crypto: refactor l_cert_pkcs5_pbkdf2
+  cert: add l_cert_pkcs5_pbkdf2_from_key_id
+  cert: add explicit length to l_cert_pkcs5_pbkdf2
+  unit: update test-pbkdf2 with API change
 
-Regards,
--Denis
+ ell/cert-crypto.c  |  97 +++++++++++++++++++++++++++-----------
+ ell/cert.h         |   7 ++-
+ ell/checksum.c     | 114 ++++++++++++++++++++-------------------------
+ ell/checksum.h     |   2 +
+ ell/ell.sym        |   3 ++
+ ell/key.c          |  46 ++++++++++++++++++
+ ell/key.h          |   3 ++
+ unit/test-key.c    |  26 +++++++++++
+ unit/test-pbkdf2.c |   1 +
+ 9 files changed, 208 insertions(+), 91 deletions(-)
+
+-- 
+2.34.3
 
