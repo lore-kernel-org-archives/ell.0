@@ -1,49 +1,49 @@
-Received: from mail-pg1-f172.google.com (mail-pg1-f172.google.com [209.85.215.172])
+Received: from mail-pg1-f179.google.com (mail-pg1-f179.google.com [209.85.215.179])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 25EDEA48B
-	for <ell@lists.linux.dev>; Fri, 18 Nov 2022 21:16:40 +0000 (UTC)
-Received: by mail-pg1-f172.google.com with SMTP id 130so6034237pgc.5
-        for <ell@lists.linux.dev>; Fri, 18 Nov 2022 13:16:40 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 75977A48D
+	for <ell@lists.linux.dev>; Fri, 18 Nov 2022 21:16:41 +0000 (UTC)
+Received: by mail-pg1-f179.google.com with SMTP id f3so6051788pgc.2
+        for <ell@lists.linux.dev>; Fri, 18 Nov 2022 13:16:41 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=b3MhY5Dkv8FZ2EdJDG4v6fQgnFZHvUgwGe4CVer0pqg=;
-        b=axLgn3M+4a67dxHj7Bgxu6+o1A8yPpI58U3Jj/cy/7r9XuKhvY4Bl7rhp0Srgk7L/V
-         VViwiBILiU9WQDqZuRdpXVYb4MLCsjmkiqfmv1Acj44Pfk93seOsL/xxtjoYrsJ89DKq
-         2Al4QtMsSOjNpUkxVsiHmdtUeh5M1wBACII1CjbLI8mgLQDBd5qgrrTcb3hGdo4WgoYw
-         DlAkM32kocpVSO5HDwaf4ErRyLT5irAwYwlNUmgaSS8LZgqfzSYUrdUQnnzjeesT8UDc
-         Ec2FrYU5myC2q2lyjYaRrCG36lxGrnA/IDhVtBHutfMaV/Ge//JaTYN5nzeeWOHtUwYm
-         nj1w==
+        bh=X5GC5gLzE1EINRN6KowrVk/o57xY4IZpmv+uiURo/Lo=;
+        b=GrHu7KwNwui23n8PyWDosw4w4N2LzZgKOAnNfHhklLvxbk3cyGrGiMznx49+vV8Bb4
+         CGryAQX7SIkY83gWTdxDV6VRg4Cpz2c25TPlsvJ6UWKzmIX/PiC21IWixRsWzSM+g7nI
+         wv4neJAsW7H3KUdyA+N6rAifiFi9sFeHPEO+SzWLqjyhccZMEFcg2yZRpE0AWqmkPu1f
+         ylvLcDRW+6yi5Fg9IbZWcVSG0YniLFevmX2PRti+DREP0DqW7uvY+mWucHTk13PNvJoq
+         Aix5nNw/LxZc2Ki52k297WeUonOmiWdO6bMHC0Zpmn0gjX43iggxfakNlCqf61En5Va7
+         7pyw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=b3MhY5Dkv8FZ2EdJDG4v6fQgnFZHvUgwGe4CVer0pqg=;
-        b=tmAj8C+TqWW4qVmtfS3h+JtdupPxPjZ3ulRO8idhEhg+S4k4I6W30rpqhDqf9Nqi+r
-         KtC8GvG5nSEpIeQ7WdSUZEyhD2ARg169ncKg2osTcWegdXIQKtHKf8f6eCo/QaCnqX2z
-         Py6h/WAa0Te8XnF+G7vfKgUWXW5KwR0EUcJ4khsIzflJ6jJkV0Dy2974zeuIXyJqAjYr
-         EMmbCs+ORIximk99DKc/X+QetRQN6UzNXCcV9YKcv/PN707g7CKHEy6YNOeWZ5bhKysU
-         OMMnPC/zKr5CdgJ76A5P+VHBlU/eOgBMt5HI0dLr60wgxosr1AwVYEhMw3UcuFJRBgzk
-         NrfQ==
-X-Gm-Message-State: ANoB5pmw+31bHSLFncvFlhjwZeQc3MIDzfnL41LW5brUEMO/VpIEZdqm
-	2mF6DXOjDoGHl8tROr1ikE4tWk9icj8=
-X-Google-Smtp-Source: AA0mqf5y8zb8A0qvpiOW3fYO5Bj8MN3PYipa5FkWUA5NQ0/vZhmkv+hgOw9M+Qu4sdv9ooWQ0QFTGA==
-X-Received: by 2002:aa7:9159:0:b0:572:24c7:34da with SMTP id 25-20020aa79159000000b0057224c734damr9673122pfi.73.1668806199429;
-        Fri, 18 Nov 2022 13:16:39 -0800 (PST)
+        bh=X5GC5gLzE1EINRN6KowrVk/o57xY4IZpmv+uiURo/Lo=;
+        b=qxxmVpW/RYrq1smpRiA4zz67ALyCgpadiW8n3C6Yua48+oD0Br8ArK3ijRUdJtoAQ6
+         1Lh7nJqcfqXVaB6musp2FUv9+pIIcyePsDQkpf8GnvRBnEH+ziuKqo/1qm256TECN1bC
+         iEsw+jLBYEHCenD13g030pCEJyTNM1Xb981ULTAboFEuaMu/nnXHK+H2MWy3cjY5SMfy
+         xTiAO5e5MkIUInWSYx9tz4bYnr74mv2H+idvpDHg5V6//vplq6FJJruGBf0uIlBK8mps
+         uBa99GDfafYtMQhrO9kCps/KfMm5sk6tPxjRpSCEJ5rdreBRq46MHMd2CzqqM3TeEfeg
+         x5ZA==
+X-Gm-Message-State: ANoB5plCr3DcpTu7cCQbN+h0pcbf3GllVjWhyrpV8qBLOtX6muARBHhQ
+	fOreprEx0II2B69WrSbIjFh0uysOLkQ=
+X-Google-Smtp-Source: AA0mqf6Hy5x7M0AUJYCkzgKlFxMio2225MMxTzwQAdL9aKYEBeHvE8v2YoJkQOIz5vFOZ8tRr19xrg==
+X-Received: by 2002:a05:6a00:3029:b0:572:8c05:6e2c with SMTP id ay41-20020a056a00302900b005728c056e2cmr9554656pfb.85.1668806200779;
+        Fri, 18 Nov 2022 13:16:40 -0800 (PST)
 Received: from jprestwo-xps.none ([50.39.160.234])
-        by smtp.gmail.com with ESMTPSA id y12-20020aa79aec000000b0056ee49d6e95sm3630142pfp.86.2022.11.18.13.16.39
+        by smtp.gmail.com with ESMTPSA id y12-20020aa79aec000000b0056ee49d6e95sm3630142pfp.86.2022.11.18.13.16.40
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 18 Nov 2022 13:16:39 -0800 (PST)
+        Fri, 18 Nov 2022 13:16:40 -0800 (PST)
 From: James Prestwood <prestwoj@gmail.com>
 To: ell@lists.linux.dev
 Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [RFC 1/8] key: add l_key_search
-Date: Fri, 18 Nov 2022 13:16:17 -0800
-Message-Id: <20221118211624.19298-2-prestwoj@gmail.com>
+Subject: [RFC 3/8] checksum: commonize checksum creation
+Date: Fri, 18 Nov 2022 13:16:19 -0800
+Message-Id: <20221118211624.19298-4-prestwoj@gmail.com>
 X-Mailer: git-send-email 2.34.3
 In-Reply-To: <20221118211624.19298-1-prestwoj@gmail.com>
 References: <20221118211624.19298-1-prestwoj@gmail.com>
@@ -55,104 +55,151 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Search for a key by type, keyring name, and description. Returns the
-key ID or an error if not found.
+The various checksums were using virutally the same init code. Make
+this common which will make initialization by key ID much simpler
+to add.
 ---
- ell/ell.sym |  1 +
- ell/key.c   | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- ell/key.h   |  3 +++
- 3 files changed, 50 insertions(+)
+ ell/checksum.c | 103 ++++++++++++++++++-------------------------------
+ 1 file changed, 37 insertions(+), 66 deletions(-)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 6df9024..414b288 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -387,6 +387,7 @@ global:
- 	l_key_decrypt;
- 	l_key_sign;
- 	l_key_verify;
-+	l_key_search;
- 	l_keyring_new;
- 	l_keyring_restrict;
- 	l_keyring_free;
-diff --git a/ell/key.c b/ell/key.c
-index 24374a5..5a82531 100644
---- a/ell/key.c
-+++ b/ell/key.c
-@@ -270,6 +270,26 @@ static long kernel_key_verify(int32_t serial,
- 	return result >= 0 ? result : -errno;
+diff --git a/ell/checksum.c b/ell/checksum.c
+index c71205a..e17f070 100644
+--- a/ell/checksum.c
++++ b/ell/checksum.c
+@@ -146,55 +146,22 @@ static int create_alg(const char *alg)
+ 	return sk;
  }
  
-+static long kernel_key_request(const char *type, const char *description)
-+{
-+	long result;
-+
-+	result = syscall(__NR_request_key, type, description, NULL, 0);
-+
-+	return result >= 0 ? result : -errno;
-+}
-+
-+static long kernel_key_search(int32_t keyring_id, const char *type,
-+				const char *description)
-+{
-+	long result;
-+
-+	result = syscall(__NR_keyctl, KEYCTL_SEARCH, keyring_id, type,
-+				description, 0);
-+
-+	return result >= 0 ? result : -errno;
-+}
-+
- static bool setup_internal_keyring(void)
+-/**
+- * l_checksum_new:
+- * @type: checksum type
+- *
+- * Creates new #l_checksum, using the checksum algorithm @type.
+- *
+- * Returns: a newly allocated #l_checksum object.
+- **/
+-LIB_EXPORT struct l_checksum *l_checksum_new(enum l_checksum_type type)
+-{
+-	struct l_checksum *checksum;
+-	int fd;
+-
+-	if (!is_valid_index(checksum_algs, type) || !checksum_algs[type].name)
+-		return NULL;
+-
+-	checksum = l_new(struct l_checksum, 1);
+-	checksum->alg_info = &checksum_algs[type];
+-
+-	fd = create_alg(checksum->alg_info->name);
+-	if (fd < 0)
+-		goto error;
+-
+-	checksum->sk = accept4(fd, NULL, 0, SOCK_CLOEXEC);
+-	close(fd);
+-
+-	if (checksum->sk < 0)
+-		goto error;
+-
+-	return checksum;
+-
+-error:
+-	l_free(checksum);
+-	return NULL;
+-}
+-
+-LIB_EXPORT struct l_checksum *l_checksum_new_cmac_aes(const void *key,
+-							size_t key_len)
++static struct l_checksum *checksum_new_common(const char *alg, int sockopt,
++						const void *data, size_t len,
++						struct checksum_info *info)
  {
- 	internal_keyring = kernel_add_key("keyring", "ell-internal", NULL, 0,
-@@ -283,6 +303,32 @@ static bool setup_internal_keyring(void)
- 	return true;
+ 	struct l_checksum *checksum;
+ 	int fd;
+ 
+-	fd = create_alg("cmac(aes)");
++	fd = create_alg(alg);
+ 	if (fd < 0)
+ 		return NULL;
+ 
+-	if (setsockopt(fd, SOL_ALG, ALG_SET_KEY, key, key_len) < 0) {
+-		close(fd);
+-		return NULL;
++	if (data) {
++		if (setsockopt(fd, SOL_ALG, sockopt, data, len) < 0) {
++			close(fd);
++			return NULL;
++		}
+ 	}
+ 
+ 	checksum = l_new(struct l_checksum, 1);
+@@ -206,40 +173,44 @@ LIB_EXPORT struct l_checksum *l_checksum_new_cmac_aes(const void *key,
+ 		return NULL;
+ 	}
+ 
+-	checksum->alg_info = &checksum_cmac_aes_alg;
++	checksum->alg_info = info;
+ 	return checksum;
  }
  
-+LIB_EXPORT int32_t l_key_search(enum l_key_type type, const char *keyring,
-+					const char *description)
-+{
-+	long keyring_id;
-+	long key_id;
-+
-+	if (unlikely((size_t)type >= L_ARRAY_SIZE(key_type_names)))
-+		return -EINVAL;
-+
-+	if (unlikely(!keyring || !description))
-+		return -EINVAL;
-+
-+	/* Find the ID of the keyring */
-+	keyring_id = kernel_key_request("keyring", keyring);
-+	if (keyring_id < 0)
-+		return -ENOENT;
-+
-+	/* Search for the key by type/description */
-+	key_id = kernel_key_search(keyring_id, key_type_names[type],
-+					description);
-+	if (key_id < 0)
-+		return -ENOENT;
-+
-+	return key_id;
-+}
-+
- LIB_EXPORT struct l_key *l_key_new(enum l_key_type type, const void *payload,
- 					size_t payload_length)
+-LIB_EXPORT struct l_checksum *l_checksum_new_hmac(enum l_checksum_type type,
+-					  const void *key, size_t key_len)
++/**
++ * l_checksum_new:
++ * @type: checksum type
++ *
++ * Creates new #l_checksum, using the checksum algorithm @type.
++ *
++ * Returns: a newly allocated #l_checksum object.
++ **/
++LIB_EXPORT struct l_checksum *l_checksum_new(enum l_checksum_type type)
  {
-diff --git a/ell/key.h b/ell/key.h
-index 6897105..5fe8e00 100644
---- a/ell/key.h
-+++ b/ell/key.h
-@@ -62,6 +62,9 @@ enum l_key_cipher_type {
- struct l_key *l_key_new(enum l_key_type type, const void *payload,
- 			size_t payload_length);
+-	struct l_checksum *checksum;
+-	int fd;
+-
+-	if (!is_valid_index(checksum_hmac_algs, type) ||
+-			!checksum_hmac_algs[type].name)
+-		return NULL;
+-
+-	fd = create_alg(checksum_hmac_algs[type].name);
+-	if (fd < 0)
++	if (!is_valid_index(checksum_algs, type) || !checksum_algs[type].name)
+ 		return NULL;
  
-+int32_t l_key_search(enum l_key_type type, const char *keyring,
-+					const char *description);
-+
- void l_key_free(struct l_key *key);
- void l_key_free_norevoke(struct l_key *key);
+-	if (setsockopt(fd, SOL_ALG, ALG_SET_KEY, key, key_len) < 0) {
+-		close(fd);
+-		return NULL;
+-	}
++	return checksum_new_common(checksum_algs[type].name, 0, NULL, 0,
++					&checksum_algs[type]);
++}
  
+-	checksum = l_new(struct l_checksum, 1);
+-	checksum->sk = accept4(fd, NULL, 0, SOCK_CLOEXEC);
+-	close(fd);
++LIB_EXPORT struct l_checksum *l_checksum_new_cmac_aes(const void *key,
++							size_t key_len)
++{
++	return checksum_new_common("cmac(aes)", ALG_SET_KEY, key, key_len,
++					&checksum_cmac_aes_alg);
++}
+ 
+-	if (checksum->sk < 0) {
+-		l_free(checksum);
++LIB_EXPORT struct l_checksum *l_checksum_new_hmac(enum l_checksum_type type,
++					  const void *key, size_t key_len)
++{
++	if (!is_valid_index(checksum_hmac_algs, type) ||
++			!checksum_hmac_algs[type].name)
+ 		return NULL;
+-	}
+ 
+-	checksum->alg_info = &checksum_hmac_algs[type];
+-	return checksum;
++	return checksum_new_common(checksum_hmac_algs[type].name,
++					ALG_SET_KEY, key, key_len,
++					&checksum_hmac_algs[type]);
+ }
+ 
+ /**
 -- 
 2.34.3
 
