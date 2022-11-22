@@ -1,45 +1,45 @@
-Received: from mail-oi1-f171.google.com (mail-oi1-f171.google.com [209.85.167.171])
+Received: from mail-oi1-f175.google.com (mail-oi1-f175.google.com [209.85.167.175])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF7A5A491
-	for <ell@lists.linux.dev>; Tue, 22 Nov 2022 16:59:55 +0000 (UTC)
-Received: by mail-oi1-f171.google.com with SMTP id q186so16446271oia.9
-        for <ell@lists.linux.dev>; Tue, 22 Nov 2022 08:59:55 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96453746C
+	for <ell@lists.linux.dev>; Tue, 22 Nov 2022 17:05:59 +0000 (UTC)
+Received: by mail-oi1-f175.google.com with SMTP id r76so16449388oie.13
+        for <ell@lists.linux.dev>; Tue, 22 Nov 2022 09:05:59 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:in-reply-to:from:references:to
          :content-language:subject:user-agent:mime-version:date:message-id
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=0Ckh+ib5E8DxYUI6TzfvwxVyMFTE3sYUxo61MrjrPpU=;
-        b=CNIzQOZETcU3aQOy9I9OPdsj6wX/6cdYEXEC8pHUUVqZzzL7yeyVcoQBavnTxgj8Ei
-         L0awLdkwEqtQfgU5f2r0mqsnhGJugAi0xCCAupEJWA1xW3N4KFlMdQzje/L9JylB09Mq
-         fGq+icDgwny554wboOtPJ57ZWOBe3Ejf2a/8r8m26yGIDnpnrz5jzQVNN7/PKci9Nz/T
-         vcnukyCMrmK/Nm6vTDk7tnuFre2WaDbTHHk0piyHBhHpmfwTg264ezFpZCkhK1lruGls
-         RG5a0vC7u1OmY5vCcsdR9BXguHcGPwQtzvy8Jxc04EJ2Q1PCYrYnkaOA0ID3Z+Vpso39
-         YYaw==
+        bh=vPbNYjgkPjvW+wWfe4Ny9G3w+6S/I2LDUWBold7jGtk=;
+        b=MxA4uzOeETjTObHP5CI+eNhsXBU4hHH0v2VQCgEwq+Wf04UiFZswIVP/xm08cC4ptI
+         Ei9g4II6B4hGPxouQG7DPJwzVibOAFcXyJn2vlhYquL1/Uj5FgfHAR8X7HCQLBsl3vR+
+         30goxjJdsCSKU85pfAuXflJP/lIwDDk26Z2S+ywIbLfmxEQSCY562nfXt5VX+MbfUfsa
+         o5WBxGrvaJ/EjTI4/kRkaRZAmThPpYaF2xS5rc3rj+n6ObG8dCKQRGlpQN74q26nkei3
+         wYgY4/SLYvrESm2XchSz6hyQgAycXhkFMqX1iCeWGRN2fNw6GjlHt+hbh1aKYXpPDWjH
+         nORQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:in-reply-to:from:references:to
          :content-language:subject:user-agent:mime-version:date:message-id
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=0Ckh+ib5E8DxYUI6TzfvwxVyMFTE3sYUxo61MrjrPpU=;
-        b=dkhfguovlsmUARWs/TZRywXht2Kw+ayVYTBEasfTD2jHrt+aW1W10tElSIZrUHDInl
-         f1jCBGcMqul5l9ttOpIs56/2h5JwBz6tlMLWkpJ+TEHPlAGtZbrEZCeWotprpjKm3hHq
-         MIuGFSb+b0SK9E1degg2t3KmdNNAJzZBIiI5KeD7QF+DNq8I3h/YdMFzO4Hy7lLdUr3j
-         PeFGkkpcwjvfj/WzH6XbyP94baKBiEGerQkiGDBvud2wparoa/CvpShNNVjBOsOquCRb
-         9CRwIuxEtimIRd/n+Ycq24PixX6HY9RAYeMXkTJkxXBEJg929LyX9dNZ8w2d/RXFD2Tq
-         dOoA==
-X-Gm-Message-State: ANoB5plgdUFNzVzURCzpuad6Z7WfIcIJUng1mTQcb+43o1Rnw/9pSRUA
-	jhe6avaeBotbFB27O/0KstWO1pB3XG0=
-X-Google-Smtp-Source: AA0mqf7Ab4ImF5w8ceZDPGAPSy1oS+T1Hp3eiihVSInAUXh4WkcA3TxXGZEofP7Xv359QNqaslIWEQ==
-X-Received: by 2002:a05:6808:180a:b0:35a:58c7:7f5f with SMTP id bh10-20020a056808180a00b0035a58c77f5fmr2207604oib.252.1669136394998;
-        Tue, 22 Nov 2022 08:59:54 -0800 (PST)
+        bh=vPbNYjgkPjvW+wWfe4Ny9G3w+6S/I2LDUWBold7jGtk=;
+        b=pADnKSylI1RqsSZs1MyoeKIYqJvNfDZU/SfNc4ZeNDDw9abLTxUm+T6EXiWxa6x8rF
+         XffVmgrJE8KNBKB1W5/zWjU8j1veEPQRA7F3yUesDdMDs4pQK0/xhqGlfGbFfR9/cF2R
+         Tj5fO7pPcW/Tdl30guFElio6UiG8mNwTjhz8h3mGAvea3nJWZik1ipEQdkKqQWGRRrpE
+         Iyqwk+rpBEEsiYZZMZ1k2vaJR+tbEP9hCYVbjD30tyL7ZS7uRQ+Fu3S+CZ7jD+OFSoIa
+         +4Ayfap6wGfFqGfd0X8xH5CXhsbEdJOsF1HYrMnbeynDJSGZ5rxkaJATVzEaAqVKuhYL
+         h/GQ==
+X-Gm-Message-State: ANoB5pn12iFq+CGPSOoYozI12P+2TS+Yvn2t5LhYog1cjB578ykp1/+7
+	80BOou+0sF38BwtUiwK4HYPT6ho5R3U=
+X-Google-Smtp-Source: AA0mqf5DkGVuOifvs4jiv7dOpIbEYlwallT+90rQmIJ1IiyTCqQ7d80K5iO8lum4VLm5F5Y0nfz2ew==
+X-Received: by 2002:a54:4796:0:b0:355:7ae5:4fe with SMTP id o22-20020a544796000000b003557ae504femr5761570oic.54.1669136758705;
+        Tue, 22 Nov 2022 09:05:58 -0800 (PST)
 Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id v15-20020a4aad8f000000b004805b00b2cdsm5337972oom.28.2022.11.22.08.59.53
+        by smtp.googlemail.com with ESMTPSA id f38-20020a05687089a600b00141a2618121sm7700757oaq.56.2022.11.22.09.05.57
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 22 Nov 2022 08:59:54 -0800 (PST)
-Message-ID: <e20d4df9-d148-fe81-6c72-5237d4f74ac8@gmail.com>
-Date: Tue, 22 Nov 2022 10:46:55 -0600
+        Tue, 22 Nov 2022 09:05:57 -0800 (PST)
+Message-ID: <325d9738-a755-2a54-1e78-7792e818a1cf@gmail.com>
+Date: Tue, 22 Nov 2022 10:53:03 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -48,29 +48,53 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
  Thunderbird/91.11.0
-Subject: Re: [RFC 3/8] checksum: commonize checksum creation
+Subject: Re: [RFC 4/8] checksum: add l_checksum_new_hmac_from_key_id
 Content-Language: en-US
 To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
 References: <20221118211624.19298-1-prestwoj@gmail.com>
- <20221118211624.19298-4-prestwoj@gmail.com>
+ <20221118211624.19298-5-prestwoj@gmail.com>
 From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20221118211624.19298-4-prestwoj@gmail.com>
+In-Reply-To: <20221118211624.19298-5-prestwoj@gmail.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
 Hi James,
 
 On 11/18/22 15:16, James Prestwood wrote:
-> The various checksums were using virutally the same init code. Make
-> this common which will make initialization by key ID much simpler
-> to add.
+> Same as l_checksum_new_hmac but uses a key ID rather than a
+> key directly.
 > ---
->   ell/checksum.c | 103 ++++++++++++++++++-------------------------------
->   1 file changed, 37 insertions(+), 66 deletions(-)
+>   ell/checksum.c | 17 +++++++++++++++++
+>   ell/checksum.h |  2 ++
+>   ell/ell.sym    |  1 +
+>   3 files changed, 20 insertions(+)
 > 
 
-Applied, thanks.
+<snip>
+
+> @@ -213,6 +217,19 @@ LIB_EXPORT struct l_checksum *l_checksum_new_hmac(enum l_checksum_type type,
+>   					&checksum_hmac_algs[type]);
+>   }
+>   
+> +struct l_checksum *l_checksum_new_hmac_from_key_id(enum l_checksum_type type,
+> +							int32_t key_id)
+
+Missing LIB_EXPORT?
+
+> +{
+> +	if (!is_valid_index(checksum_hmac_algs, type) ||
+> +			!checksum_hmac_algs[type].name)
+> +		return NULL;
+> +
+> +	return checksum_new_common(checksum_hmac_algs[type].name,
+> +					ALG_SET_KEY_BY_KEY_SERIAL,
+> +					&key_id, sizeof(key_id),
+> +					&checksum_hmac_algs[type]);
+> +}
+> +
+>   /**
+>    * l_checksum_clone:
+>    * @checksum: parent checksum object
 
 Regards,
 -Denis
-
