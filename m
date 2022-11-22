@@ -1,98 +1,126 @@
-Received: from mail-ot1-f41.google.com (mail-ot1-f41.google.com [209.85.210.41])
+Received: from mail-pf1-f169.google.com (mail-pf1-f169.google.com [209.85.210.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 879EB746C
-	for <ell@lists.linux.dev>; Tue, 22 Nov 2022 17:16:02 +0000 (UTC)
-Received: by mail-ot1-f41.google.com with SMTP id p8-20020a056830130800b0066bb73cf3bcso9688919otq.11
-        for <ell@lists.linux.dev>; Tue, 22 Nov 2022 09:16:02 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 554A4746C
+	for <ell@lists.linux.dev>; Tue, 22 Nov 2022 17:16:38 +0000 (UTC)
+Received: by mail-pf1-f169.google.com with SMTP id x66so6355995pfx.3
+        for <ell@lists.linux.dev>; Tue, 22 Nov 2022 09:16:38 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=pxg0MElmBIgecwJvYgE7gF5FQH5AxZezx8G0a4Wqhks=;
-        b=MNtvPNIe4up3eUtb+IWvmtR1gRxJ6DVvPv3hawBR/DPll/6yR1AA4aa11iqNMaKlcb
-         qLvmOkT+DnEh/itsomiux+uEELPz43p7M2jM/a9BuAS1otOIxf0k9s17JAOf2Us2K3qQ
-         B86ruYSdgFqeucitpaJXbt1kNLE7bsNF+5ZXoRXPVcov9Fyy5LTb7GyyUlcM7q9CBeux
-         of0ZsXPxNa9IzucIbtX2uWRYUUrzdfcnbUbDDF5l1XZ6GvY/ja1AiBouk9WzmFavcnW4
-         kAB6frtZoHhX4MSLBC0sVdtQ+gTBkp1vOt7HkIEilF7PngixpWHQHEYB2+inB16zkZEh
-         tovw==
+        h=content-transfer-encoding:mime-version:user-agent:references
+         :in-reply-to:date:to:from:subject:message-id:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=e/fYYlSj7SfcyA+qYgOeyl7GlLMvL5zYuePTt6i/CtE=;
+        b=I7kWB2e74P+3AX1UEo3eIWFq96Jt3OsmGbAX/2w/Bjnv///AVNjvBgPhRydIlKuZix
+         TlPwq+Me8RDLx98WVOaWKSLzgOBahiubfXs31XbKnmU7P+RcVq1k3Z53L1joNuZPGgm3
+         m632h4pZxNCoFMTY0Lw3wRMCTTxhsrblRj46TTB4LamKybdLCduoax3suC9hbHyL9o/R
+         Aa/nVdxkQ9z2uoZK8nd6GH2aH+qh7XuEXaU0DrsrndNR4nJQl+YjUAaxYrrfQxFl2CPu
+         ciAHkQuPU9TfObkKnXNYLDc5PR1qj1Zay4azbxNdzm0C0x3ZcMhuGXGyvxD6RWeXUnEv
+         EBmA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=pxg0MElmBIgecwJvYgE7gF5FQH5AxZezx8G0a4Wqhks=;
-        b=h3erc+tT6AgCSHje3Ga/5AgJtTSjo15Syi9Cib4jztXEQzirF3Cm1v0EfQvtPx9w6N
-         I4XYKmgr1Z4eWCxNF9pCZnBJtkyBxkiAnilxCZaGnqORClef02kvQCbIhOct2jGhS/Xb
-         Ulk06ipY/WjhrmcvolQ9TYrIZKdCNuEFpUnY87hEIKuJhoxL+4AFIvK7btCE1OqjQI6k
-         HZ8to0HMaV/ivwH8D5U7k+b9w/OHYMlz5fF74VnjIyfFFJf0H3qLLelsl7ZukZdu1Ujr
-         R+T9+jYFge6jGjcyqJl7+wdf+sAPFtpl9Z3lE4ux8yuW8vt/9lb9lGYGx1BN6n/HUDwH
-         yzow==
-X-Gm-Message-State: ANoB5pk60wqDtBqOtAo30C6IWP+/KwvdrFTefxQvypFh1iSScjGEdwZE
-	sjFT9vdz2cgfb1kmaD9AeDs=
-X-Google-Smtp-Source: AA0mqf7sHB+ym/A+dK+xEX76H2I0CAnqCjnvheZBGwIyyZb3q8641MOsRdJx8NXx5kssodXihoCQIw==
-X-Received: by 2002:a9d:5e8c:0:b0:66e:a4c:be4f with SMTP id f12-20020a9d5e8c000000b0066e0a4cbe4fmr2166362otl.314.1669137361649;
-        Tue, 22 Nov 2022 09:16:01 -0800 (PST)
-Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id g2-20020a4ad302000000b00492f9f46aa4sm5394990oos.36.2022.11.22.09.16.00
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 22 Nov 2022 09:16:01 -0800 (PST)
-Message-ID: <0bc6c87e-2e9c-d569-60e4-fcda84ca3991@gmail.com>
-Date: Tue, 22 Nov 2022 11:03:08 -0600
+        h=content-transfer-encoding:mime-version:user-agent:references
+         :in-reply-to:date:to:from:subject:message-id:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=e/fYYlSj7SfcyA+qYgOeyl7GlLMvL5zYuePTt6i/CtE=;
+        b=E9Xh+vagGCEH24xRjGEIdWct+49OXCLbyCSuAPXnU2O/rcqlK8+3tY3AA+hq/uR1NT
+         DDgB5JiRsDWXZrgOQncmYmC1SpAonLpXIa7LHxiQBP3l4Q5/hoa5UHNgL/TaxOyT155W
+         VCtscYjDLN4cVYWb4cdJ5o89D8U9TL+J9NKfvY5RiAgIx5kA3uVL7JYg7Sm9DrYSH47y
+         TTOH3FjXYJMnrc0+kbRKI0sY6pDcLMiWH5Xsy8EKedmYx+4c1l2Q8TFzwFaDSMtSz9fc
+         NNJdbwQAMVH8vzB4AwslEZOgw9zYv2N9CiE5Z336rvHOGqOEMN2lfeqYITQqPRHhvwnw
+         tQpA==
+X-Gm-Message-State: ANoB5pmuGAmxl5nlHdEFGJ6iL2ZgRnVuNlRScp3KEAruej//wl4wZlEe
+	b2d5zX4nJ0YpTgURR0aladrpaLf5f58=
+X-Google-Smtp-Source: AA0mqf7XpeQaZfagSQXZkkbfMPlgsDYHLAwvLCCL9BBAYKmxmYABkyh7RlO6q8W598fvBwHpzcppcQ==
+X-Received: by 2002:a62:e80b:0:b0:56e:ad31:b98b with SMTP id c11-20020a62e80b000000b0056ead31b98bmr9219934pfi.40.1669137397586;
+        Tue, 22 Nov 2022 09:16:37 -0800 (PST)
+Received: from [192.168.254.55] ([50.39.160.234])
+        by smtp.gmail.com with ESMTPSA id q4-20020a17090311c400b001865c298588sm12229895plh.258.2022.11.22.09.16.36
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 22 Nov 2022 09:16:37 -0800 (PST)
+Message-ID: <176cde43f3fe383fbb096eeb3b4f7be8b212a19f.camel@gmail.com>
+Subject: Re: [RFC 1/8] key: add l_key_search
+From: James Prestwood <prestwoj@gmail.com>
+To: Denis Kenzior <denkenz@gmail.com>, ell@lists.linux.dev
+Date: Tue, 22 Nov 2022 09:16:36 -0800
+In-Reply-To: <f4f33ae6-ba6f-e19a-89cb-6ba5c9a101f1@gmail.com>
+References: <20221118211624.19298-1-prestwoj@gmail.com>
+	 <20221118211624.19298-2-prestwoj@gmail.com>
+	 <f4f33ae6-ba6f-e19a-89cb-6ba5c9a101f1@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.40.4 (3.40.4-5.fc34) 
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.11.0
-Subject: Re: [RFC 6/8] cert: add l_cert_pkcs5_pbkdf2_from_key_id
-Content-Language: en-US
-To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
-References: <20221118211624.19298-1-prestwoj@gmail.com>
- <20221118211624.19298-7-prestwoj@gmail.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20221118211624.19298-7-prestwoj@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi James,
-
-On 11/18/22 15:16, James Prestwood wrote:
-> The same pbkdf2 algorithm but uses a key ID as the password.
-> ---
->   ell/cert-crypto.c | 27 +++++++++++++++++++++++++++
->   ell/cert.h        |  6 +++++-
->   ell/ell.sym       |  1 +
->   3 files changed, 33 insertions(+), 1 deletion(-)
+On Tue, 2022-11-22 at 10:43 -0600, Denis Kenzior wrote:
+> Hi James,
 > 
+> On 11/18/22 15:16, James Prestwood wrote:
+> > Search for a key by type, keyring name, and description. Returns
+> > the
+> > key ID or an error if not found.
+> > ---
+> >   ell/ell.sym |  1 +
+> >   ell/key.c   | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+> >   ell/key.h   |  3 +++
+> >   3 files changed, 50 insertions(+)
+> > 
+> 
+> <snip>
+> 
+> > @@ -283,6 +303,32 @@ static bool setup_internal_keyring(void)
+> >         return true;
+> >   }
+> >   
+> > +LIB_EXPORT int32_t l_key_search(enum l_key_type type, const char
+> > *keyring,
+> 
+> How likely are we to search some custom keyring?  Wouldn't we
+> generally be 
+> searching a user/default user session keyrings?
 
-<snip>
+I was just leaning on the side of flexibility. I don't really care
+either way but figured an extra argument was fine even if we end up
+calling it with "user".
 
-> diff --git a/ell/cert.h b/ell/cert.h
-> index f637588..ce430fa 100644
-> --- a/ell/cert.h
-> +++ b/ell/cert.h
-> @@ -76,7 +76,11 @@ bool l_cert_pkcs5_pbkdf2(enum l_checksum_type type, const char *password,
->   				const uint8_t *salt, size_t salt_len,
->   				unsigned int iter_count,
->   				uint8_t *out_dk, size_t dk_len);
-> -
-> +bool l_cert_pkcs5_pbkdf2_from_key_id(enum l_checksum_type type,
+> 
+> > +                                       const char *description)
+> > +{
+> > +       long keyring_id;
+> > +       long key_id;
+> > +
+> > +       if (unlikely((size_t)type >= L_ARRAY_SIZE(key_type_names)))
+> > +               return -EINVAL;
+> > +
+> > +       if (unlikely(!keyring || !description))
+> > +               return -EINVAL;
+> > +
+> > +       /* Find the ID of the keyring */
+> > +       keyring_id = kernel_key_request("keyring", keyring);
+> > +       if (keyring_id < 0)
+> > +               return -ENOENT;
+> > +
+> > +       /* Search for the key by type/description */
+> > +       key_id = kernel_key_search(keyring_id,
+> > key_type_names[type],
+> > +                                       description);
+> > +       if (key_id < 0)
+> > +               return -ENOENT;
+> > +
+> > +       return key_id;
+> > +}
+> > +
+> >   LIB_EXPORT struct l_key *l_key_new(enum l_key_type type, const
+> > void *payload,
+> >                                         size_t payload_length)
+> >   {
+> 
+> Regards,
+> -Denis
 
-missing LIB_EXPORT?
 
-> +					int32_t key_id, const uint8_t *salt,
-> +					size_t salt_len,
-> +					unsigned int iter_count,
-> +					uint8_t *out_dk, size_t dk_len);
-
-So personally I'd rather have l_cert_pkcs5_pbkdf2 take a struct l_checksum * as 
-the first parameter instead of creating two almost identical constructors. 
-Especially since we already would have a special l_checksum_hmac_* constructor 
-that takes a key id.
-
-Regards,
--Denis
