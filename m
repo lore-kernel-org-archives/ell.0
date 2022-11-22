@@ -1,45 +1,45 @@
-Received: from mail-oo1-f44.google.com (mail-oo1-f44.google.com [209.85.161.44])
+Received: from mail-ot1-f41.google.com (mail-ot1-f41.google.com [209.85.210.41])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 607E5746C
-	for <ell@lists.linux.dev>; Tue, 22 Nov 2022 17:13:38 +0000 (UTC)
-Received: by mail-oo1-f44.google.com with SMTP id q2-20020a4a3302000000b0049ee5fe3ab7so2349165ooq.8
-        for <ell@lists.linux.dev>; Tue, 22 Nov 2022 09:13:38 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 879EB746C
+	for <ell@lists.linux.dev>; Tue, 22 Nov 2022 17:16:02 +0000 (UTC)
+Received: by mail-ot1-f41.google.com with SMTP id p8-20020a056830130800b0066bb73cf3bcso9688919otq.11
+        for <ell@lists.linux.dev>; Tue, 22 Nov 2022 09:16:02 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:in-reply-to:from:references:to
          :content-language:subject:user-agent:mime-version:date:message-id
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=G8BKW1ac1klsOZTUt663reGYuapdkwLjLdKnTmWTMus=;
-        b=fEB1X5bRssTpshO5HH+7qEcdFTxt7NLIp3LVpefGXqpwMtLf2spoT9utvKxjofnJX2
-         9eLJuuSALRxI6V1gsOxIhqg1MkhGZIna3gF8Wwt52HQhXJajcr/oVrtTXnTo5R++x3sO
-         yPryd1g1XoWTW6/8/N91QRIA7Yb5NZa+4Qbx6UfB8puMJCWeG4T++VnKpfH2qPdXk3jU
-         mo3iUZINNeyyGdSmoo9ckHLGeERbYPdNmYJ9dT4f0BoGA2Ccth1ryooK1V7KAWtcJIpV
-         WzVmz5Utz7dNyWX/ZZpDwEzdssOO8Fn3DNRa8AW6sB1IAaR1g+05TdP+Mh2mnMXyjLkV
-         XKdA==
+        bh=pxg0MElmBIgecwJvYgE7gF5FQH5AxZezx8G0a4Wqhks=;
+        b=MNtvPNIe4up3eUtb+IWvmtR1gRxJ6DVvPv3hawBR/DPll/6yR1AA4aa11iqNMaKlcb
+         qLvmOkT+DnEh/itsomiux+uEELPz43p7M2jM/a9BuAS1otOIxf0k9s17JAOf2Us2K3qQ
+         B86ruYSdgFqeucitpaJXbt1kNLE7bsNF+5ZXoRXPVcov9Fyy5LTb7GyyUlcM7q9CBeux
+         of0ZsXPxNa9IzucIbtX2uWRYUUrzdfcnbUbDDF5l1XZ6GvY/ja1AiBouk9WzmFavcnW4
+         kAB6frtZoHhX4MSLBC0sVdtQ+gTBkp1vOt7HkIEilF7PngixpWHQHEYB2+inB16zkZEh
+         tovw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:in-reply-to:from:references:to
          :content-language:subject:user-agent:mime-version:date:message-id
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=G8BKW1ac1klsOZTUt663reGYuapdkwLjLdKnTmWTMus=;
-        b=hHzd07rApJhHrAoYdPmR8gMTgWcnV1gQdtywmARudnhT+2ATkq9rdC7cn5kkROTQpM
-         3YdL4Aqvy8NMAx9AMGvzxtG/VPRZr5NsRBGXLGgEKZvXJeBhafZcejWFjYAJxBX9/Q3Q
-         l07yWrvuUQbs57fD0uAf6wdR4yfQoiqnBw6MijAMU75GbF9hfOz06RNgqraAjMNwjZS+
-         J7gKnxu7IxjdFj0iyvd7w9QoAIL6OK14gh+y5s0VxukFVuwSGqm2qga050iyql0oONQh
-         S3eAnkKhjcwdorwqhoEDmvzuUggaxfXBEtH+CMZsfaM44HoRTFGyYwTZ0OViqijtr494
-         Oupw==
-X-Gm-Message-State: ANoB5pmJl/iNvm/CNz5RX28RWPVSFgiv7Xe1z+DgK6AEtPJ/q5pKiyv1
-	QbfBTdQSS4PJCn+k47537xw=
-X-Google-Smtp-Source: AA0mqf5gXObRNWI8L256QHQ2LPhWhzI9cXsmhzWjGZgWNK95sKlbFbfeU7HbWGvAhWb1Ea6XZt66nQ==
-X-Received: by 2002:a4a:37c9:0:b0:49f:f9d3:de9e with SMTP id r192-20020a4a37c9000000b0049ff9d3de9emr2093087oor.4.1669137217412;
-        Tue, 22 Nov 2022 09:13:37 -0800 (PST)
+        bh=pxg0MElmBIgecwJvYgE7gF5FQH5AxZezx8G0a4Wqhks=;
+        b=h3erc+tT6AgCSHje3Ga/5AgJtTSjo15Syi9Cib4jztXEQzirF3Cm1v0EfQvtPx9w6N
+         I4XYKmgr1Z4eWCxNF9pCZnBJtkyBxkiAnilxCZaGnqORClef02kvQCbIhOct2jGhS/Xb
+         Ulk06ipY/WjhrmcvolQ9TYrIZKdCNuEFpUnY87hEIKuJhoxL+4AFIvK7btCE1OqjQI6k
+         HZ8to0HMaV/ivwH8D5U7k+b9w/OHYMlz5fF74VnjIyfFFJf0H3qLLelsl7ZukZdu1Ujr
+         R+T9+jYFge6jGjcyqJl7+wdf+sAPFtpl9Z3lE4ux8yuW8vt/9lb9lGYGx1BN6n/HUDwH
+         yzow==
+X-Gm-Message-State: ANoB5pk60wqDtBqOtAo30C6IWP+/KwvdrFTefxQvypFh1iSScjGEdwZE
+	sjFT9vdz2cgfb1kmaD9AeDs=
+X-Google-Smtp-Source: AA0mqf7sHB+ym/A+dK+xEX76H2I0CAnqCjnvheZBGwIyyZb3q8641MOsRdJx8NXx5kssodXihoCQIw==
+X-Received: by 2002:a9d:5e8c:0:b0:66e:a4c:be4f with SMTP id f12-20020a9d5e8c000000b0066e0a4cbe4fmr2166362otl.314.1669137361649;
+        Tue, 22 Nov 2022 09:16:01 -0800 (PST)
 Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id r1-20020a4ae5c1000000b004968311a31asm5308176oov.39.2022.11.22.09.13.36
+        by smtp.googlemail.com with ESMTPSA id g2-20020a4ad302000000b00492f9f46aa4sm5394990oos.36.2022.11.22.09.16.00
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 22 Nov 2022 09:13:36 -0800 (PST)
-Message-ID: <6cb99e58-e7c3-cda4-9744-91d9463da173@gmail.com>
-Date: Tue, 22 Nov 2022 11:00:43 -0600
+        Tue, 22 Nov 2022 09:16:01 -0800 (PST)
+Message-ID: <0bc6c87e-2e9c-d569-60e4-fcda84ca3991@gmail.com>
+Date: Tue, 22 Nov 2022 11:03:08 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -48,92 +48,51 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
  Thunderbird/91.11.0
-Subject: Re: [RFC 5/8] cert-crypto: refactor l_cert_pkcs5_pbkdf2
+Subject: Re: [RFC 6/8] cert: add l_cert_pkcs5_pbkdf2_from_key_id
 Content-Language: en-US
 To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
 References: <20221118211624.19298-1-prestwoj@gmail.com>
- <20221118211624.19298-6-prestwoj@gmail.com>
+ <20221118211624.19298-7-prestwoj@gmail.com>
 From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20221118211624.19298-6-prestwoj@gmail.com>
+In-Reply-To: <20221118211624.19298-7-prestwoj@gmail.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
 Hi James,
 
 On 11/18/22 15:16, James Prestwood wrote:
-> This makes the actual algorithm common to prepare for adding a
-> new variant which uses a key ID rather than password.
+> The same pbkdf2 algorithm but uses a key ID as the password.
 > ---
->   ell/cert-crypto.c | 67 +++++++++++++++++++++++++++++------------------
->   1 file changed, 41 insertions(+), 26 deletions(-)
+>   ell/cert-crypto.c | 27 +++++++++++++++++++++++++++
+>   ell/cert.h        |  6 +++++-
+>   ell/ell.sym       |  1 +
+>   3 files changed, 33 insertions(+), 1 deletion(-)
 > 
-> diff --git a/ell/cert-crypto.c b/ell/cert-crypto.c
-> index e6e8876..bf748b0 100644
-> --- a/ell/cert-crypto.c
-> +++ b/ell/cert-crypto.c
-> @@ -103,44 +103,34 @@ LIB_EXPORT bool l_cert_pkcs5_pbkdf1(enum l_checksum_type type,
->   	return !iter_count;
->   }
->   
-> -/* RFC8018 section 5.2 */
-> -LIB_EXPORT bool l_cert_pkcs5_pbkdf2(enum l_checksum_type type,
-> -					const char *password,
-> -					const uint8_t *salt, size_t salt_len,
-> -					unsigned int iter_count,
-> -					uint8_t *out_dk, size_t dk_len)
-> +static size_t cert_checksum_to_length(enum l_checksum_type type)
 
-We already have l_checksum_digest_length().  Should we use that?
+<snip>
 
->   {
-> -	size_t h_len;
-> -	struct l_checksum *checksum;
-> -	unsigned int i;
+> diff --git a/ell/cert.h b/ell/cert.h
+> index f637588..ce430fa 100644
+> --- a/ell/cert.h
+> +++ b/ell/cert.h
+> @@ -76,7 +76,11 @@ bool l_cert_pkcs5_pbkdf2(enum l_checksum_type type, const char *password,
+>   				const uint8_t *salt, size_t salt_len,
+>   				unsigned int iter_count,
+>   				uint8_t *out_dk, size_t dk_len);
 > -
->   	switch (type) {
->   	case L_CHECKSUM_SHA1:
-> -		h_len = 20;
-> -		break;
-> +		return 20;
->   	case L_CHECKSUM_SHA224:
-> -		h_len = 28;
-> -		break;
-> +		return 28;
->   	case L_CHECKSUM_SHA256:
-> -		h_len = 32;
-> -		break;
-> +		return 32;
->   	case L_CHECKSUM_SHA384:
-> -		h_len = 48;
-> -		break;
-> +		return 48;
->   	case L_CHECKSUM_SHA512:
-> -		h_len = 64;
-> -		break;
-> +		return 64;
->   	case L_CHECKSUM_NONE:
->   	case L_CHECKSUM_MD4:
->   	case L_CHECKSUM_MD5:
-> -		return false;
-> +		return 0;
->   	default:
-> -		return false;
-> +		return 0;
->   	}
-> +}
->   
-> -	checksum = l_checksum_new_hmac(type, password, strlen(password));
-> -	if (!checksum)
-> -		return false;
-> +static bool cert_pkcs5_pbkdf2(struct l_checksum *checksum, const uint8_t *salt,
-> +				size_t salt_len, size_t h_len,
-> +				unsigned int iter_count, uint8_t *out_dk,
-> +				size_t dk_len)
-> +{
-> +	unsigned int i;
->   
->   	for (i = 1; dk_len; i++) {
->   		unsigned int j, k;
+> +bool l_cert_pkcs5_pbkdf2_from_key_id(enum l_checksum_type type,
+
+missing LIB_EXPORT?
+
+> +					int32_t key_id, const uint8_t *salt,
+> +					size_t salt_len,
+> +					unsigned int iter_count,
+> +					uint8_t *out_dk, size_t dk_len);
+
+So personally I'd rather have l_cert_pkcs5_pbkdf2 take a struct l_checksum * as 
+the first parameter instead of creating two almost identical constructors. 
+Especially since we already would have a special l_checksum_hmac_* constructor 
+that takes a key id.
 
 Regards,
 -Denis
