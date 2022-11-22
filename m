@@ -1,76 +1,114 @@
-Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
+Received: from mail-ot1-f53.google.com (mail-ot1-f53.google.com [209.85.210.53])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99A80A492
-	for <ell@lists.linux.dev>; Fri, 18 Nov 2022 21:16:44 +0000 (UTC)
-Received: by mail-pj1-f41.google.com with SMTP id k2-20020a17090a4c8200b002187cce2f92so4195768pjh.2
-        for <ell@lists.linux.dev>; Fri, 18 Nov 2022 13:16:44 -0800 (PST)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0687ED0
+	for <ell@lists.linux.dev>; Tue, 22 Nov 2022 16:56:37 +0000 (UTC)
+Received: by mail-ot1-f53.google.com with SMTP id p27-20020a056830319b00b0066d7a348e20so9659107ots.8
+        for <ell@lists.linux.dev>; Tue, 22 Nov 2022 08:56:37 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=Lakz4iyOJ09x8nvUgCiLLujzVUcwk8jT6aN4/3Fx8UA=;
-        b=c7gCXyFI2t02Oguv5KQ8Fm30KBKao7o032/AZMO8JhcE3DBZty71WAITsXcEgsQ9nf
-         rgSayRqJlFBundvyhkQTYFWRGieeTcqHCEtAUomys+oJslmM3lNdEWQrEAfpTidU7OSN
-         D8xEEbYM7PJcIsuL1WRnQuD22bRbUCIcOp+KE5RhF67y4JsbgOXiiGjpqSvCeVq2bnss
-         U8/61n/4es60uyG69NHMPjKQ/+1wGTnnUKv14rR2lWf1NL5jwMg3spUafzxSwfI0f1nO
-         QFb3iaymlR0NhHkjHyVMEFKHsqVpnZepa9+0XzXa2bT+SO5E3UpGq25cTOtLVKWUIQd1
-         4keQ==
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=8Gfbe88FJcsN7NsST5aLQUGaKZ2iNmDn/dCOlpMf1B8=;
+        b=SXxHx3KrIa4B5xQSbXKzLL9PaHkloqodi7zxPEF9F7ptFma4DD4o86PbtaMmEknpul
+         krKFZM1r1CgPFh9Pfm4hF7GLWTSigT1AJ9EYBX7d/MLDAhQRlUckKM0T4eYVd1M1Awxr
+         XxDpBEu7jaUzcxPPs9v+q/9MmJoidUA6q6wh4Ka/ved+9B9o/ROcj4glhmNRGZ4RprYn
+         N6/wTq41TgEtZcNjDCtHA7bqkweNLbzFGBlmohueIs8JD7ov9UeuZfnVivqSQapn4QLp
+         ndaXBXeSZt6/44Ia2IVvoNHpoB0OIpPDlDqiYnzGxgcPu7bVrCoCxi2iyO3tWJa1kkRP
+         TC6Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=Lakz4iyOJ09x8nvUgCiLLujzVUcwk8jT6aN4/3Fx8UA=;
-        b=6jdWfXAkLkP4TDyTj4t0pYFx2A67Hs1mOJiEnSgWDbnaRNk8qTEI0c91mVJGFT9WMs
-         sBWYll4YREl6zI/zQDUa5DsfuB94f1nVLH7pN9C28K6TereSadAmNAlqnCg68Mjd4PPz
-         r83PNrhpABuYyYC4c+89TJixfoJ1hTxSgWYVPH/6VaZ2sfqE/1e5D/BkCzBn+6QbvZpd
-         L00UNVRI4S6kBQrCHA8ySYCafEn8mUVn9Ed3324kSkPI0sUOFczMshY9ESiXG4a7iBzQ
-         VsOyTwk+XsW3El7XhSir+l8BzSlhIDylc6Dt11jl7UVu8qyGXeazI/hLh2C6l7KYs+yi
-         Q3PQ==
-X-Gm-Message-State: ANoB5pkAdsmIGXeugjYq8ElOwO9+A6Tpl0KRJGxOmVkTOdRB9WBG1MFZ
-	+F+xiuCY4MVSNWuJF/soDoY1h7XxjwQ=
-X-Google-Smtp-Source: AA0mqf4PrpfbQf7ROhEr3FvJx/4jvT/HOCxag+ZqCQuxPESsWsD9YTMk33UEcn63sBhMtTXgE9q+Dw==
-X-Received: by 2002:a17:902:ee53:b0:186:9fb9:1f84 with SMTP id 19-20020a170902ee5300b001869fb91f84mr1358229plo.45.1668806203937;
-        Fri, 18 Nov 2022 13:16:43 -0800 (PST)
-Received: from jprestwo-xps.none ([50.39.160.234])
-        by smtp.gmail.com with ESMTPSA id y12-20020aa79aec000000b0056ee49d6e95sm3630142pfp.86.2022.11.18.13.16.43
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 18 Nov 2022 13:16:43 -0800 (PST)
-From: James Prestwood <prestwoj@gmail.com>
-To: ell@lists.linux.dev
-Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [RFC 8/8] unit: update test-pbkdf2 with API change
-Date: Fri, 18 Nov 2022 13:16:24 -0800
-Message-Id: <20221118211624.19298-9-prestwoj@gmail.com>
-X-Mailer: git-send-email 2.34.3
-In-Reply-To: <20221118211624.19298-1-prestwoj@gmail.com>
-References: <20221118211624.19298-1-prestwoj@gmail.com>
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=8Gfbe88FJcsN7NsST5aLQUGaKZ2iNmDn/dCOlpMf1B8=;
+        b=5ZGMXiMGLfFMt8VxMwj+4Fhbjukwpgm4QkcRs20+tacybyu+2tiIc2scKqeuf5x6an
+         iCDsD/3s2JVTNYHCsgHrRHiqYCaUHHtddKjdl9bR+71UxT+hZjcg44py1Ksx5dYTqocZ
+         rBKV4lRQGiwaK2M3Qy/iHBG09YBiNPayoKZ8y0wZbLYgXxBkBJoFaBrGaKmiTYzqCRH+
+         V3QkwThzgMJ7A+jaQvWqOECPZOdi+KpFj0niC0qUvm1E/XANKdEyadKD8osMM1wcZH57
+         r7t8vwfgROyyKlV3yq+lrRZjjOGisu97OOso+sM8TS8tQONUsdIEPwJFCihTrIQIWuKR
+         7gKg==
+X-Gm-Message-State: ANoB5pkjoj6L/m2lZ8g1v9m/QG1la3ZXj3eTRKYy7kHHauT6pjZNVt02
+	Lxq+ettkn0fu78feEthaBdA=
+X-Google-Smtp-Source: AA0mqf6SCUTfItgLed9KoRWZQ9b0XRPMQxE3BfsacvNuPuEdovM+/vocXFrv5OU4x1M03d6sz8mxeQ==
+X-Received: by 2002:a9d:7f0d:0:b0:66c:9183:20e2 with SMTP id j13-20020a9d7f0d000000b0066c918320e2mr2360384otq.260.1669136196744;
+        Tue, 22 Nov 2022 08:56:36 -0800 (PST)
+Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id x45-20020a05683040ad00b0066871c3adb3sm6294971ott.28.2022.11.22.08.56.35
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 22 Nov 2022 08:56:35 -0800 (PST)
+Message-ID: <f4f33ae6-ba6f-e19a-89cb-6ba5c9a101f1@gmail.com>
+Date: Tue, 22 Nov 2022 10:43:42 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.11.0
+Subject: Re: [RFC 1/8] key: add l_key_search
+Content-Language: en-US
+To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
+References: <20221118211624.19298-1-prestwoj@gmail.com>
+ <20221118211624.19298-2-prestwoj@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20221118211624.19298-2-prestwoj@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
----
- unit/test-pbkdf2.c | 1 +
- 1 file changed, 1 insertion(+)
+Hi James,
 
-diff --git a/unit/test-pbkdf2.c b/unit/test-pbkdf2.c
-index 3f272ce..1053de2 100644
---- a/unit/test-pbkdf2.c
-+++ b/unit/test-pbkdf2.c
-@@ -52,6 +52,7 @@ static void pbkdf2_test(const void *data)
- 	key_len = test->key_len ? : (strlen(test->key) / 2);
- 
- 	result = l_cert_pkcs5_pbkdf2(L_CHECKSUM_SHA1, test->password,
-+					strlen(test->password),
- 					(const uint8_t *) test->salt, salt_len,
- 					test->count, output, key_len);
- 
--- 
-2.34.3
+On 11/18/22 15:16, James Prestwood wrote:
+> Search for a key by type, keyring name, and description. Returns the
+> key ID or an error if not found.
+> ---
+>   ell/ell.sym |  1 +
+>   ell/key.c   | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+>   ell/key.h   |  3 +++
+>   3 files changed, 50 insertions(+)
+> 
 
+<snip>
+
+> @@ -283,6 +303,32 @@ static bool setup_internal_keyring(void)
+>   	return true;
+>   }
+>   
+> +LIB_EXPORT int32_t l_key_search(enum l_key_type type, const char *keyring,
+
+How likely are we to search some custom keyring?  Wouldn't we generally be 
+searching a user/default user session keyrings?
+
+> +					const char *description)
+> +{
+> +	long keyring_id;
+> +	long key_id;
+> +
+> +	if (unlikely((size_t)type >= L_ARRAY_SIZE(key_type_names)))
+> +		return -EINVAL;
+> +
+> +	if (unlikely(!keyring || !description))
+> +		return -EINVAL;
+> +
+> +	/* Find the ID of the keyring */
+> +	keyring_id = kernel_key_request("keyring", keyring);
+> +	if (keyring_id < 0)
+> +		return -ENOENT;
+> +
+> +	/* Search for the key by type/description */
+> +	key_id = kernel_key_search(keyring_id, key_type_names[type],
+> +					description);
+> +	if (key_id < 0)
+> +		return -ENOENT;
+> +
+> +	return key_id;
+> +}
+> +
+>   LIB_EXPORT struct l_key *l_key_new(enum l_key_type type, const void *payload,
+>   					size_t payload_length)
+>   {
+
+Regards,
+-Denis
