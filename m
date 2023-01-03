@@ -1,15 +1,15 @@
 Received: from mail.holtmann.org (coyote.holtmann.net [212.227.132.17])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 03B398F76
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 00A188F6B
 	for <ell@lists.linux.dev>; Tue,  3 Jan 2023 22:02:56 +0000 (UTC)
 Received: from fedora.. (p4ff9ff43.dip0.t-ipconnect.de [79.249.255.67])
-	by mail.holtmann.org (Postfix) with ESMTPSA id 97953CECF4;
+	by mail.holtmann.org (Postfix) with ESMTPSA id 45A3FCECF2;
 	Tue,  3 Jan 2023 23:02:53 +0100 (CET)
 From: Marcel Holtmann <marcel@holtmann.org>
 To: ell@lists.linux.dev
 Cc: andrew.zaborowski@intel.com
-Subject: [PATCH 3/3] tls: Add support l_tls_set_alpn_list() and ALPN extension
-Date: Tue,  3 Jan 2023 23:02:50 +0100
-Message-Id: <20230103220250.717876-3-marcel@holtmann.org>
+Subject: [PATCH 1/3] tls: Make mask parameter in l_tls_set_domain_mask() const
+Date: Tue,  3 Jan 2023 23:02:48 +0100
+Message-Id: <20230103220250.717876-1-marcel@holtmann.org>
 X-Mailer: git-send-email 2.39.0
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
@@ -19,187 +19,188 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Add support for application layer protocol negotiation (ALPN) and
-provide API for setting the list of client protocols and for getting the
-server selected protocol.
----
- ell/ell.sym          |  2 ++
- ell/tls-extensions.c | 73 ++++++++++++++++++++++++++++++++++++++++++++
- ell/tls-private.h    |  2 ++
- ell/tls.c            | 21 +++++++++++++
- ell/tls.h            |  3 ++
- 5 files changed, 101 insertions(+)
+While using l_strv_copy and const char ** is a problem, it is a problem
+of the C language and should not affect public API. The public API
+should make it clear that a string array is not going to be modified by
+that function by making it const. Also allowing to feed a const string
+array to that function is useful. The required casting is pushed into
+the implementation.
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index f8148f257eb1..81c0cb7f5b94 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -515,6 +515,8 @@ global:
- 	l_tls_close;
- 	l_tls_reset;
- 	l_tls_set_server_name;
-+	l_tls_set_alpn_list;
-+	l_tls_get_alpn;
- 	l_tls_set_cacert;
- 	l_tls_set_auth_data;
- 	l_tls_set_version_range;
-diff --git a/ell/tls-extensions.c b/ell/tls-extensions.c
-index 75f47f6ba548..e5a7c7994b7d 100644
---- a/ell/tls-extensions.c
-+++ b/ell/tls-extensions.c
-@@ -52,6 +52,70 @@ static ssize_t tls_server_name_client_write(struct l_tls *tls,
- 	return hlen + 5;
- }
- 
-+static ssize_t tls_alpn_client_write(struct l_tls *tls,
-+						uint8_t *buf, size_t len)
-+{
-+	uint8_t *ptr = buf + 2;
-+	uint16_t ext_len = 0;
-+	int i;
-+
-+	if (!tls->alpn_list)
-+		return -ENOMSG;
-+
-+	if (len < 2)
-+		return -ENOMEM;
-+
-+	for (i = 0; tls->alpn_list[i]; i++) {
-+		uint8_t str_len = strlen(tls->alpn_list[i]);
-+		l_put_u8(str_len, ptr);
-+		memcpy(ptr + 1, tls->alpn_list[i], str_len);
-+		ptr += str_len + 1;
-+		ext_len += str_len + 1;
-+	}
-+
-+	l_put_be16(ext_len, buf);
-+
-+	return ext_len + 2;
-+}
-+
-+static bool tls_alpn_server_handle(struct l_tls *tls,
-+						const uint8_t *buf, size_t len)
-+{
-+	uint16_t ext_len;
-+	uint8_t str_len;
-+
-+	if (len < 2)
-+		return false;
-+
-+	ext_len = l_get_be16(buf);
-+	if (ext_len != len - 2)
-+		return false;
-+
-+	str_len = l_get_u8(buf + 2);
-+	if (str_len != len - 3)
-+		return false;
-+
-+	l_free(tls->selected_alpn);
-+	tls->selected_alpn = l_strndup((const char *) buf + 3, str_len);
-+
-+	TLS_DEBUG("Negotiated ALPN %s", tls->selected_alpn);
-+
-+	return true;
-+}
-+
-+static bool tls_alpn_server_absent(struct l_tls *tls)
-+{
-+	if (!tls->alpn_list)
-+		return false;
-+
-+	l_free(tls->selected_alpn);
-+	tls->selected_alpn = NULL;
-+
-+	TLS_DEBUG("ALPN not supported");
-+
-+	return true;
-+}
-+
- /* Most extensions are not used when resuming a cached session */
- #define SKIP_ON_RESUMPTION()	\
- 	do {	\
-@@ -1025,6 +1089,15 @@ const struct tls_hello_extension tls_extensions[] = {
- 		tls_signature_algorithms_client_absent,
- 		NULL, NULL, NULL,
- 	},
-+	{
-+		"ALPN", "application_layer_protocol_negotiation", 16,
-+		tls_alpn_client_write,
-+		NULL,
-+		NULL,
-+		NULL,
-+		tls_alpn_server_handle,
-+		tls_alpn_server_absent,
-+	},
- 	{
- 		"Secure Renegotiation", "renegotiation_info", 0xff01,
- 		tls_renegotiation_info_client_write,
-diff --git a/ell/tls-private.h b/ell/tls-private.h
-index ac477885c5f7..dbc5457ef091 100644
---- a/ell/tls-private.h
-+++ b/ell/tls-private.h
-@@ -218,6 +218,8 @@ struct l_tls {
- 
- 	struct tls_cipher_suite **cipher_suite_pref_list;
- 	char *server_name;
-+	char **alpn_list;
-+	char *selected_alpn;
- 
- 	struct l_settings *session_settings;
- 	char *session_prefix;
+In addition check if the struct l_tls object is valid.
+---
+ ell/tls.c       |  8 +++++---
+ ell/tls.h       |  2 +-
+ unit/test-tls.c | 32 ++++++++++++++++++--------------
+ 3 files changed, 24 insertions(+), 18 deletions(-)
+
 diff --git a/ell/tls.c b/ell/tls.c
-index 9556efd932bc..8c1c9040ff89 100644
+index 207f6c3ae40f..330ad4841e25 100644
 --- a/ell/tls.c
 +++ b/ell/tls.c
-@@ -3421,6 +3421,8 @@ LIB_EXPORT void l_tls_free(struct l_tls *tls)
- 		l_free(tls->cipher_suite_pref_list);
- 
- 	l_free(tls->server_name);
-+	l_strv_free(tls->alpn_list);
-+	l_free(tls->selected_alpn);
- 	l_free(tls);
- }
- 
-@@ -3668,6 +3670,25 @@ LIB_EXPORT bool l_tls_set_server_name(struct l_tls *tls, const char *name)
- 	return true;
- }
- 
-+LIB_EXPORT bool l_tls_set_alpn_list(struct l_tls *tls, const char **list)
-+{
-+	if (!tls)
-+		return false;
-+
-+	l_strv_free(tls->alpn_list);
-+	tls->alpn_list = l_strv_copy((char **) list);
-+
-+	return true;
-+}
-+
-+LIB_EXPORT const char *l_tls_get_alpn(struct l_tls *tls)
-+{
-+	if (!tls)
-+		return NULL;
-+
-+	return tls->selected_alpn;
-+}
-+
- LIB_EXPORT bool l_tls_set_cacert(struct l_tls *tls, struct l_queue *ca_certs)
+@@ -3786,11 +3786,13 @@ LIB_EXPORT void l_tls_set_version_range(struct l_tls *tls,
+  * beginning of the mask matches one or more consecutive labels from
+  * the beginning of the domain string.
+  */
+-LIB_EXPORT void l_tls_set_domain_mask(struct l_tls *tls, char **mask)
++LIB_EXPORT void l_tls_set_domain_mask(struct l_tls *tls, const char **mask)
  {
- 	if (tls->ca_certs) {
+-	l_strv_free(tls->subject_mask);
++	if (!tls)
++		return;
+ 
+-	tls->subject_mask = l_strv_copy(mask);
++	l_strv_free(tls->subject_mask);
++	tls->subject_mask = l_strv_copy((char **) mask);
+ }
+ 
+ /**
 diff --git a/ell/tls.h b/ell/tls.h
-index c931b5db0a54..e33f7c070008 100644
+index 6964380ab84f..cca8792a3262 100644
 --- a/ell/tls.h
 +++ b/ell/tls.h
-@@ -105,6 +105,9 @@ void l_tls_handle_rx(struct l_tls *tls, const uint8_t *data, size_t len);
+@@ -127,7 +127,7 @@ void l_tls_set_version_range(struct l_tls *tls,
+ 				enum l_tls_version min_version,
+ 				enum l_tls_version max_version);
  
- bool l_tls_set_server_name(struct l_tls *tls, const char *name);
+-void l_tls_set_domain_mask(struct l_tls *tls, char **mask);
++void l_tls_set_domain_mask(struct l_tls *tls, const char **mask);
  
-+bool l_tls_set_alpn_list(struct l_tls *tls, const char **list);
-+const char *l_tls_get_alpn(struct l_tls *tls);
-+
- /*
-  * If peer is to be authenticated, supply the CA certificates.  On success
-  * the l_tls object takes ownership of the queue and the individual l_cert
+ void l_tls_set_session_cache(struct l_tls *tls, struct l_settings *settings,
+ 				const char *group_prefix, uint64_t lifetime,
+diff --git a/unit/test-tls.c b/unit/test-tls.c
+index e0898593536d..b981f577d5eb 100644
+--- a/unit/test-tls.c
++++ b/unit/test-tls.c
+@@ -374,7 +374,7 @@ struct tls_conn_test {
+ 	const char *client_ca_cert_path;
+ 	const char *client_expect_identity;
+ 	const char **client_cipher_suites;
+-	char **client_domain_mask;
++	const char **client_domain_mask;
+ 	bool expect_alert;
+ 	bool expect_client_start_fail;
+ 	enum l_tls_alert_desc alert_desc;
+@@ -736,7 +736,9 @@ static const struct tls_conn_test tls_conn_test_domain_match1 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Bar Example Organization"
+ 		"/CN=Bar Example Organization/emailAddress=bar@mail.example",
+-	.client_domain_mask = (char *[]) { "Bar Example Organization", NULL },
++	.client_domain_mask = (const char *[]) {
++		"Bar Example Organization", NULL
++	},
+ };
+ 
+ static const struct tls_conn_test tls_conn_test_domain_match2 = {
+@@ -750,7 +752,7 @@ static const struct tls_conn_test tls_conn_test_domain_match2 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Bar Example Organization"
+ 		"/CN=Bar Example Organization/emailAddress=bar@mail.example",
+-	.client_domain_mask = (char *[]) {
++	.client_domain_mask = (const char *[]) {
+ 		"Bar Example Organization", "Foo Example Organization", NULL
+ 	},
+ };
+@@ -766,7 +768,7 @@ static const struct tls_conn_test tls_conn_test_domain_match3 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Bar Example Organization"
+ 		"/CN=Bar Example Organization/emailAddress=bar@mail.example",
+-	.client_domain_mask = (char *[]) {
++	.client_domain_mask = (const char *[]) {
+ 		"Foo Example Organization", "Bar Example Organization", NULL
+ 	},
+ };
+@@ -782,7 +784,7 @@ static const struct tls_conn_test tls_conn_test_domain_match4 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Bar Example Organization"
+ 		"/CN=Bar Example Organization/emailAddress=bar@mail.example",
+-	.client_domain_mask = (char *[]) { "*", NULL },
++	.client_domain_mask = (const char *[]) { "*", NULL },
+ };
+ 
+ static const struct tls_conn_test tls_conn_test_domain_match5 = {
+@@ -796,7 +798,7 @@ static const struct tls_conn_test tls_conn_test_domain_match5 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Foo Example Organization"
+ 		"/CN=Foo Example Organization/emailAddress=foo@mail.example",
+-	.client_domain_mask = (char *[]) { "foo.int.com", NULL },
++	.client_domain_mask = (const char *[]) { "foo.int.com", NULL },
+ };
+ 
+ static const struct tls_conn_test tls_conn_test_domain_match6 = {
+@@ -810,7 +812,7 @@ static const struct tls_conn_test tls_conn_test_domain_match6 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Foo Example Organization"
+ 		"/CN=Foo Example Organization/emailAddress=foo@mail.example",
+-	.client_domain_mask = (char *[]) { "*.*", NULL },
++	.client_domain_mask = (const char *[]) { "*.*", NULL },
+ };
+ 
+ static const struct tls_conn_test tls_conn_test_domain_match7 = {
+@@ -824,7 +826,7 @@ static const struct tls_conn_test tls_conn_test_domain_match7 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Foo Example Organization"
+ 		"/CN=Foo Example Organization/emailAddress=foo@mail.example",
+-	.client_domain_mask = (char *[]) { "*.*.*", NULL },
++	.client_domain_mask = (const char *[]) { "*.*.*", NULL },
+ };
+ 
+ static const struct tls_conn_test tls_conn_test_domain_mismatch1 = {
+@@ -838,7 +840,7 @@ static const struct tls_conn_test tls_conn_test_domain_mismatch1 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Bar Example Organization"
+ 		"/CN=Bar Example Organization/emailAddress=bar@mail.example",
+-	.client_domain_mask = (char *[]) { "", NULL },
++	.client_domain_mask = (const char *[]) { "", NULL },
+ 	.expect_alert = true,
+ 	.alert_desc = TLS_ALERT_BAD_CERT,
+ };
+@@ -854,7 +856,9 @@ static const struct tls_conn_test tls_conn_test_domain_mismatch2 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Bar Example Organization"
+ 		"/CN=Bar Example Organization/emailAddress=bar@mail.example",
+-	.client_domain_mask = (char *[]) { "Foo Example Organization", NULL },
++	.client_domain_mask = (const char *[]) {
++		"Foo Example Organization", NULL
++	},
+ 	.expect_alert = true,
+ 	.alert_desc = TLS_ALERT_BAD_CERT,
+ };
+@@ -870,7 +874,7 @@ static const struct tls_conn_test tls_conn_test_domain_mismatch3 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Bar Example Organization"
+ 		"/CN=Bar Example Organization/emailAddress=bar@mail.example",
+-	.client_domain_mask = (char *[]) {
++	.client_domain_mask = (const char *[]) {
+ 		"Bar Example Organization.com", NULL
+ 	},
+ 	.expect_alert = true,
+@@ -888,7 +892,7 @@ static const struct tls_conn_test tls_conn_test_domain_mismatch4 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Bar Example Organization"
+ 		"/CN=Bar Example Organization/emailAddress=bar@mail.example",
+-	.client_domain_mask = (char *[]) {
++	.client_domain_mask = (const char *[]) {
+ 		"Bar Example Organization.*", NULL
+ 	},
+ 	.expect_alert = true,
+@@ -906,7 +910,7 @@ static const struct tls_conn_test tls_conn_test_domain_mismatch5 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Bar Example Organization"
+ 		"/CN=Bar Example Organization/emailAddress=bar@mail.example",
+-	.client_domain_mask = (char *[]) {
++	.client_domain_mask = (const char *[]) {
+ 		"*.Bar Example Organization", NULL
+ 	},
+ 	.expect_alert = true,
+@@ -924,7 +928,7 @@ static const struct tls_conn_test tls_conn_test_domain_mismatch6 = {
+ 	.client_ca_cert_path = CERTDIR "cert-ca.pem",
+ 	.client_expect_identity = "/O=Foo Example Organization"
+ 		"/CN=Foo Example Organization/emailAddress=foo@mail.example",
+-	.client_domain_mask = (char *[]) {
++	.client_domain_mask = (const char *[]) {
+ 		"foo.*", NULL
+ 	},
+ 	.expect_alert = true,
 -- 
 2.39.0
 
