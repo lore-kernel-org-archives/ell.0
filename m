@@ -1,15 +1,15 @@
 Received: from mail.holtmann.org (coyote.holtmann.net [212.227.132.17])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 61FE58460
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 63AF78466
 	for <ell@lists.linux.dev>; Tue,  3 Jan 2023 14:47:05 +0000 (UTC)
 Received: from fedora.. (p4ff9ff43.dip0.t-ipconnect.de [79.249.255.67])
-	by mail.holtmann.org (Postfix) with ESMTPSA id CC18DCECF1;
+	by mail.holtmann.org (Postfix) with ESMTPSA id A08E8CECF0;
 	Tue,  3 Jan 2023 15:40:03 +0100 (CET)
 From: Marcel Holtmann <marcel@holtmann.org>
 To: ell@lists.linux.dev
 Cc: andrew.zaborowski@intel.com
-Subject: [PATCH 2/3] tls: Replace tls->ready_handle with tls->ready_handler
-Date: Tue,  3 Jan 2023 15:39:59 +0100
-Message-Id: <20230103144000.641471-2-marcel@holtmann.org>
+Subject: [PATCH 1/3] tls: Use l_put_be64 for IV creation in case of AEAD ciphers
+Date: Tue,  3 Jan 2023 15:39:58 +0100
+Message-Id: <20230103144000.641471-1-marcel@holtmann.org>
 X-Mailer: git-send-email 2.39.0
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
@@ -19,48 +19,26 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-In general the naming should be "handler" instead of "handle" if it is a
-callback function.
+The usage of l_put_le64 for encryption ciphers seems weird since
+normally all its input is big endian. So change this here to also use
+big endian version to store the sequence number.
 ---
- ell/tls-private.h | 2 +-
- ell/tls.c         | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ ell/tls-record.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/ell/tls-private.h b/ell/tls-private.h
-index 46889ad86769..bfd20b10cf88 100644
---- a/ell/tls-private.h
-+++ b/ell/tls-private.h
-@@ -200,7 +200,7 @@ struct l_tls {
- 	bool server;
+diff --git a/ell/tls-record.c b/ell/tls-record.c
+index cdbd0b8040bb..6ac095629abe 100644
+--- a/ell/tls-record.c
++++ b/ell/tls-record.c
+@@ -177,7 +177,7 @@ static void tls_tx_record_plaintext(struct l_tls *tls,
+ 		 * be used to build the IV.
+ 		 */
+ 		memcpy(iv, tls->fixed_iv[1], tls->fixed_iv_length[1]);
+-		l_put_le64(tls->seq_num[1], iv + tls->fixed_iv_length[1]);
++		l_put_be64(tls->seq_num[1], iv + tls->fixed_iv_length[1]);
  
- 	l_tls_write_cb_t tx, rx;
--	l_tls_ready_cb_t ready_handle;
-+	l_tls_ready_cb_t ready_handler;
- 	l_tls_disconnect_cb_t disconnected;
- 	void *user_data;
- 	l_tls_debug_cb_t debug_handler;
-diff --git a/ell/tls.c b/ell/tls.c
-index 72ff4d7723ec..687797f1e466 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -3072,7 +3072,7 @@ static void tls_finished(struct l_tls *tls)
- 
- 	if (!renegotiation) {
- 		tls->in_callback = true;
--		tls->ready_handle(peer_identity, tls->user_data);
-+		tls->ready_handler(peer_identity, tls->user_data);
- 		tls->in_callback = false;
- 	}
- 
-@@ -3361,7 +3361,7 @@ LIB_EXPORT struct l_tls *l_tls_new(bool server,
- 	tls->server = server;
- 	tls->rx = app_data_handler;
- 	tls->tx = tx_handler;
--	tls->ready_handle = ready_handler;
-+	tls->ready_handler = ready_handler;
- 	tls->disconnected = disconnect_handler;
- 	tls->user_data = user_data;
- 	tls->cipher_suite_pref_list = tls_cipher_suite_pref;
+ 		if (tls->record_iv_length[1] > 8)
+ 			memset(iv + tls->fixed_iv_length[1] + 8, 42,
 -- 
 2.39.0
 
