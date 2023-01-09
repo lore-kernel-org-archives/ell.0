@@ -1,168 +1,71 @@
-Received: from mail.holtmann.org (coyote.holtmann.net [212.227.132.17])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id E478E2F27
-	for <ell@lists.linux.dev>; Thu,  5 Jan 2023 15:15:27 +0000 (UTC)
-Received: from smtpclient.apple (p4ff9ff43.dip0.t-ipconnect.de [79.249.255.67])
-	by mail.holtmann.org (Postfix) with ESMTPSA id 82080CECC8;
-	Thu,  5 Jan 2023 16:15:21 +0100 (CET)
-Content-Type: text/plain;
-	charset=us-ascii
+Received: from mail-lf1-f47.google.com (mail-lf1-f47.google.com [209.85.167.47])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E54DE2F24
+	for <ell@lists.linux.dev>; Mon,  9 Jan 2023 12:21:45 +0000 (UTC)
+Received: by mail-lf1-f47.google.com with SMTP id m6so12632600lfj.11
+        for <ell@lists.linux.dev>; Mon, 09 Jan 2023 04:21:45 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=D0e3x7itN9s99rIxPnNY781dLpYPfTM5IxTYxOmBOwM=;
+        b=YYQDLBjMAaVNDMBSzIoSKYTvBO/xG7iPZfHREC9PhMkHX5T1pk0Vns+6uvk9oix2AJ
+         4kejOFt6ll/Egs1mmyvrVXCdf3NsE1t48qjNSz6nse8Sga8f3VZZ3igSNYDBsGunvlcd
+         E0BU6DrXQJq5aqGTG5pJFsrH0kh0qRy85BXQ+URnDvYZ/LBYgKzHcch9Y+lHUCYZcWqJ
+         MuXxlBZcxRNg/uc12ZKEsEO3UnCgdiNRNVw3eBJygchslfHV7+ttV0HYpEXP1axIyZt5
+         Tx6rocNpdm28sopkg1rlYoH7moUdXrjwOtjpp0/vkSWWJJVXpA0rXPt3Goxtdf1PRVoh
+         xITg==
+X-Gm-Message-State: AFqh2kp937FH9miz24v/WKGD0ZiqpOUCV7j71TmpoAEf934KD06/f1Wa
+	HIYH5BvWP+5qOIB7dI2zxCjgKYVFH8ZqIw==
+X-Google-Smtp-Source: AMrXdXu8UjQO+nMNVV6B8TYR5e/w0VTrHcdpuJLDNASxVhtjgVPNqcOobo1FjgsXKOcwFcq0wiIqCA==
+X-Received: by 2002:a05:6512:23a9:b0:4cb:4371:f14d with SMTP id c41-20020a05651223a900b004cb4371f14dmr6725635lfv.17.1673266903402;
+        Mon, 09 Jan 2023 04:21:43 -0800 (PST)
+Received: from mail-lj1-f170.google.com (mail-lj1-f170.google.com. [209.85.208.170])
+        by smtp.gmail.com with ESMTPSA id u4-20020a05651220c400b004b4b600c093sm1587087lfr.92.2023.01.09.04.21.42
+        for <ell@lists.linux.dev>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 09 Jan 2023 04:21:42 -0800 (PST)
+Received: by mail-lj1-f170.google.com with SMTP id n5so8124870ljc.9
+        for <ell@lists.linux.dev>; Mon, 09 Jan 2023 04:21:42 -0800 (PST)
+X-Received: by 2002:a2e:a882:0:b0:280:51a:7297 with SMTP id
+ m2-20020a2ea882000000b00280051a7297mr1156595ljq.49.1673266902018; Mon, 09 Jan
+ 2023 04:21:42 -0800 (PST)
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3696.120.41.1.1\))
-Subject: Re: [PATCH 3/3] tls: Add support l_tls_set_alpn_list() and ALPN
- extension
-From: Marcel Holtmann <marcel@holtmann.org>
-In-Reply-To: <CAOq732KFvqDu94GGkUfBBszgR-yrCqUj2Lqx3=oPGdKDem0Zjw@mail.gmail.com>
-Date: Thu, 5 Jan 2023 16:15:21 +0100
+MIME-Version: 1.0
+References: <20230103220250.717876-3-marcel@holtmann.org> <CAOq732KFvqDu94GGkUfBBszgR-yrCqUj2Lqx3=oPGdKDem0Zjw@mail.gmail.com>
+ <1E8A2AE4-86F5-4D0A-A0A0-DC0359466523@holtmann.org>
+In-Reply-To: <1E8A2AE4-86F5-4D0A-A0A0-DC0359466523@holtmann.org>
+From: Andrew Zaborowski <andrew.zaborowski@intel.com>
+Date: Mon, 9 Jan 2023 13:21:29 +0100
+X-Gmail-Original-Message-ID: <CAOq732KFWmSjq1LWzpQ_V4ZQVjEZ4WUHcyGzZ5UXHc6TH9UvRA@mail.gmail.com>
+Message-ID: <CAOq732KFWmSjq1LWzpQ_V4ZQVjEZ4WUHcyGzZ5UXHc6TH9UvRA@mail.gmail.com>
+Subject: Re: [PATCH 3/3] tls: Add support l_tls_set_alpn_list() and ALPN extension
+To: Marcel Holtmann <marcel@holtmann.org>
 Cc: ell@lists.linux.dev
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <1E8A2AE4-86F5-4D0A-A0A0-DC0359466523@holtmann.org>
-References: <20230103220250.717876-3-marcel@holtmann.org>
- <CAOq732KFvqDu94GGkUfBBszgR-yrCqUj2Lqx3=oPGdKDem0Zjw@mail.gmail.com>
-To: Andrew Zaborowski <andrew.zaborowski@intel.com>
-X-Mailer: Apple Mail (2.3696.120.41.1.1)
+Content-Type: text/plain; charset="UTF-8"
 
-Hi Andrew,
+Hi Marcel,
 
->> +static bool tls_alpn_server_absent(struct l_tls *tls)
->> +{
->> +       if (!tls->alpn_list)
->> +               return false;
->=20
-> I believe this returning false will break most usages of l_tls.
+On Thu, 5 Jan 2023 at 16:15, Marcel Holtmann <marcel@holtmann.org> wrote:
+> >> +static bool tls_alpn_server_absent(struct l_tls *tls)
+> >> +{
+> >> +       if (!tls->alpn_list)
+> >> +               return false;
+> >
+> > I believe this returning false will break most usages of l_tls.
+>
+> can you elaborate why? When are you allowed to return false.
 
-can you elaborate why? When are you allowed to return false.
+false here means that the extension should have been present, i.e. we
+signal an error.  If the extension code thinks we're fine to proceed
+it returns true.
 
->=20
->> +
->> +       l_free(tls->selected_alpn);
->> +       tls->selected_alpn =3D NULL;
->> +
->> +       TLS_DEBUG("ALPN not supported");
->> +
->> +       return true;
->> +}
->> +
->> /* Most extensions are not used when resuming a cached session */
->> #define SKIP_ON_RESUMPTION()   \
->>        do {    \
->> @@ -1025,6 +1089,15 @@ const struct tls_hello_extension =
-tls_extensions[] =3D {
->>                tls_signature_algorithms_client_absent,
->>                NULL, NULL, NULL,
->>        },
->> +       {
->> +               "ALPN", "application_layer_protocol_negotiation", 16,
->> +               tls_alpn_client_write,
->> +               NULL,
->> +               NULL,
->> +               NULL,
->> +               tls_alpn_server_handle,
->> +               tls_alpn_server_absent,
->> +       },
->=20
-> If only the client side is implemented you might want to add a hint
-> either in the .h comment for l_tls_set_alpn_list(), or even in its
-> name.
+This also makes the unit test fail.
 
-Good point, I think that I just implement the server side since that
-is generally useful there as well. I was just focused on the client.
-
->>        {
->>                "Secure Renegotiation", "renegotiation_info", 0xff01,
->>                tls_renegotiation_info_client_write,
->> diff --git a/ell/tls-private.h b/ell/tls-private.h
->> index ac477885c5f7..dbc5457ef091 100644
->> --- a/ell/tls-private.h
->> +++ b/ell/tls-private.h
->> @@ -218,6 +218,8 @@ struct l_tls {
->>=20
->>        struct tls_cipher_suite **cipher_suite_pref_list;
->>        char *server_name;
->> +       char **alpn_list;
->> +       char *selected_alpn;
->>=20
->>        struct l_settings *session_settings;
->>        char *session_prefix;
->> diff --git a/ell/tls.c b/ell/tls.c
->> index 9556efd932bc..8c1c9040ff89 100644
->> --- a/ell/tls.c
->> +++ b/ell/tls.c
->> @@ -3421,6 +3421,8 @@ LIB_EXPORT void l_tls_free(struct l_tls *tls)
->>                l_free(tls->cipher_suite_pref_list);
->>=20
->>        l_free(tls->server_name);
->> +       l_strv_free(tls->alpn_list);
->=20
-> Would perhaps l_tls_set_alpn_list(tls, NULL) be more future proof?
-
-Let me check when I have the server side done.
-
->> +       l_free(tls->selected_alpn);
->>        l_free(tls);
->> }
->>=20
->> @@ -3668,6 +3670,25 @@ LIB_EXPORT bool l_tls_set_server_name(struct =
-l_tls *tls, const char *name)
->>        return true;
->> }
->>=20
->> +LIB_EXPORT bool l_tls_set_alpn_list(struct l_tls *tls, const char =
-**list)
->> +{
->> +       if (!tls)
->> +               return false;
->> +
->> +       l_strv_free(tls->alpn_list);
->> +       tls->alpn_list =3D l_strv_copy((char **) list);
->> +
->> +       return true;
->> +}
->> +
->> +LIB_EXPORT const char *l_tls_get_alpn(struct l_tls *tls)
->> +{
->> +       if (!tls)
->> +               return NULL;
->> +
->> +       return tls->selected_alpn;
->> +}
->> +
->> LIB_EXPORT bool l_tls_set_cacert(struct l_tls *tls, struct l_queue =
-*ca_certs)
->> {
->>        if (tls->ca_certs) {
->> diff --git a/ell/tls.h b/ell/tls.h
->> index c931b5db0a54..e33f7c070008 100644
->> --- a/ell/tls.h
->> +++ b/ell/tls.h
->> @@ -105,6 +105,9 @@ void l_tls_handle_rx(struct l_tls *tls, const =
-uint8_t *data, size_t len);
->>=20
->> bool l_tls_set_server_name(struct l_tls *tls, const char *name);
->>=20
->> +bool l_tls_set_alpn_list(struct l_tls *tls, const char **list);
->> +const char *l_tls_get_alpn(struct l_tls *tls);
->=20
-> Since these and l_tls_set_server_name are extensions, I'd move them
-> further down in the file after the basic API, maybe aronud
-> l_tls_set_domain_mask.  Both patchsets look good otherwise.
-
-Generally I would agree, but since with TLS 1.3 everything is an
-extension anyway, I think such argument is void these days. And
-logically the SNI and ALPN are pretty much core concept of TLS
-these days. TLS 1.3 requires SNI to be supported even while the
-usage is optional. There are really just only rare cases where
-you would not use SNI and thus making this pretty much a core
-feature of TLS now.
-
-The same applies to ALPN and what I have seen from IETF, they did
-make sure ALPN is in their RFCs and gets used to identify the
-application protocol.
-
-Regards
-
-Marcel
-
+Best regards and happy new year
