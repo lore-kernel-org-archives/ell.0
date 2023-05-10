@@ -1,94 +1,105 @@
-Received: from mail-oa1-f53.google.com (mail-oa1-f53.google.com [209.85.160.53])
+Received: from mail-pj1-f50.google.com (mail-pj1-f50.google.com [209.85.216.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12CDE3222
-	for <ell@lists.linux.dev>; Sun, 30 Apr 2023 18:24:00 +0000 (UTC)
-Received: by mail-oa1-f53.google.com with SMTP id 586e51a60fabf-1878f1ebf46so1493771fac.1
-        for <ell@lists.linux.dev>; Sun, 30 Apr 2023 11:24:00 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91BAC6AA8
+	for <ell@lists.linux.dev>; Wed, 10 May 2023 15:44:06 +0000 (UTC)
+Received: by mail-pj1-f50.google.com with SMTP id 98e67ed59e1d1-24dec03ad8fso5335691a91.1
+        for <ell@lists.linux.dev>; Wed, 10 May 2023 08:44:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1682879040; x=1685471040;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=7ZrYwlCTAd6AYZjRwcv7nQgRqz/EYx/BTeMmQ+Vatb4=;
-        b=I04D5nm2i3u0eMkwH9aPB1gExwsjGqycDlNlWkMlmAPalDLhYLpOqplLKIpDrMI9LI
-         cDZjKye8akNIaSA8VAPF2A2Fkf/8oSJejJlfRO1hJ6yDAct1gzp76YwMtR7rMJpESRn1
-         u7tNa9gbYZcn7Ni+zkBOhisk8ZvQIEo7hPfzJbR6TxDVBFLD+2PJ6MNaYGJUdTPuhEY2
-         BkToSpW7Fw9Nl9dol3oBjh3rnewryE02JkSGcIEBpgEAk7o+CTYuX+lTkIlfM76QI2y7
-         MJOq9dfnHfd4I28+HssOJwdr6IYBaFHevlpxxCJYav1o/DHo8PdkVVJH1bO4/2YNI5PV
-         HLHQ==
+        d=gmail.com; s=20221208; t=1683733446; x=1686325446;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=+oHYdkPuhp0DLOXB/F/0GU/By51HEnbYb0ExuZkMNGo=;
+        b=XxBq6CdHpm3UHJ6B/nc6LZDwpV9/CXQLyW5vBMttY/94tBPWfJd6YLvcWEtsLif0Ib
+         mMqlK9oAvy9+8gLNZ4DJAzw1Epq7Tz9M1IaL9cXtwToBfDgqAMeBeoRhW0ZrWXc8VEH1
+         qeI8Nxo0i/TpOvPw5o4G8dyDECLPvUmGkiybnU04ZpS5fOdJbABeLc0fbu6Ia1aYT+y6
+         iTgQ7PP8nDI/eUBj+JsJjXHraCebRJO4sjI4NbAf8e/MilfUjMUnjNY7BcpeVDrvIJC3
+         9CF73XANFLyGr1mHLq5ehZvEbPdDqHGxY2fhMuu7NTtX6hI6CnBir4QGqiHKGB6Fhe0G
+         ROhA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1682879040; x=1685471040;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=7ZrYwlCTAd6AYZjRwcv7nQgRqz/EYx/BTeMmQ+Vatb4=;
-        b=WxjM+UzbJdxEhETm0Fq1C/qXlvpEKMa7qu8vBwXUe2bm2/P+N3nhWMuMgno0XuBJbx
-         O3L+LzzAftXFSmrPqP0OAsUecLDYiCEOScz2dOSRwIGFVv5GU0uquSpRlVXnp2OjKuZE
-         ZegoWzmTLp9h6/vpbInIKqWsBV09zfXZX6+EtJXxXI8C9nfOGz8auQrbaVvRNbrC3c/l
-         cILEu6FELYhZtyDSvtqLgrMBNorbZXAZ3DzG6wBdwNxpIa5pMMx8rnkw1gl/d8xI6tOS
-         tGueR3WkvoEOfnm+5HX6xhkA1StmW7PYlNLGdpOUmoOujFw0GbZ7H8TkyFyByyDUohls
-         cumQ==
-X-Gm-Message-State: AC+VfDwhmoBfIbwUUobsb9psKpLcXvbC9K1lbULuBLjZwI7p7L1oTt+4
-	syspbZbFansEbiBfw2odJLbXVAXop9hF0g==
-X-Google-Smtp-Source: ACHHUZ76UsqTFetWKdefnfhaHDCRnL32DrL2WeGkVYw/XfK0vKObW9ugji6Gwchb0THX/+Uu/hX9/g==
-X-Received: by 2002:a05:6870:9182:b0:177:dfdb:63 with SMTP id b2-20020a056870918200b00177dfdb0063mr5417609oaf.44.1682879040117;
-        Sun, 30 Apr 2023 11:24:00 -0700 (PDT)
-Received: from [10.0.2.15] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id i20-20020a4a8d94000000b0052a77e38722sm11918170ook.26.2023.04.30.11.23.59
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sun, 30 Apr 2023 11:23:59 -0700 (PDT)
-Message-ID: <517bc712-06cf-98c2-c799-eda3d2a9db36@gmail.com>
-Date: Sun, 30 Apr 2023 13:13:09 -0500
+        d=1e100.net; s=20221208; t=1683733446; x=1686325446;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=+oHYdkPuhp0DLOXB/F/0GU/By51HEnbYb0ExuZkMNGo=;
+        b=g1Rie32PjSm/42yas/hzf+hjapeDmZQ3r8XFe6MomimMCJL2Ct+KKuDikxVik9Akj6
+         YiSpcH5OpwGeWoalmtV3ts5wFExVPtwRpr82TDb8XhQUMOu3mJB325emPWZq8PzX8UbP
+         TMAN60Y39VtdKj+wKsUGQIHWoyDrz8BO9aeKSvDtm0VIbVadVBBmnNWWOmcpXPkC/BSH
+         TtkM+2BaC/JBPNX0O6Zgttzydy+qpo/wxzjIjuDKnaB6cWZ6jo4L/CJuHmKM8R+394uH
+         OGJ8+vtLFYoLFhBBCPe5uTkILjRz+LmHpXiXOdSri8wDoSWtBK/Wy+Qe4MKknwofxZ/d
+         /h/g==
+X-Gm-Message-State: AC+VfDxYqzjGP2cdUsF2l4iu6BUdE6pplL8DMPLvwQ4UD0unSwE1+akM
+	KyMtWUJNPt3MbRk+sc55O2gl1igrW/NlD5WudOJSPbna
+X-Google-Smtp-Source: ACHHUZ6nBo7Js7C3U95eZSoLU+tvVL7UYKJuTYsEntN3MMC14oA/56LC6YEwZwhK5Innq1OFET9kUXr4JRXR0xeR90Y=
+X-Received: by 2002:a17:90b:1243:b0:24e:1df5:103f with SMTP id
+ gx3-20020a17090b124300b0024e1df5103fmr18852092pjb.42.1683733445976; Wed, 10
+ May 2023 08:44:05 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.11.0
+References: <20230428122025.117834-1-fusibrandon13@gmail.com> <517bc712-06cf-98c2-c799-eda3d2a9db36@gmail.com>
+In-Reply-To: <517bc712-06cf-98c2-c799-eda3d2a9db36@gmail.com>
+From: Brandon Cheo Fusi <fusibrandon13@gmail.com>
+Date: Wed, 10 May 2023 16:43:54 +0100
+Message-ID: <CAEVJM+pD_CafRK=B+OXqJZHx-MDz-PsCRDkO43fji1VmZ_cjew@mail.gmail.com>
 Subject: Re: [PATCH] ell: Make public headers compilable with C++
-Content-Language: en-US
-To: Brandon Cheo Fusi <fusibrandon13@gmail.com>, marcel@holtmann.org
-Cc: ell@lists.linux.dev
-References: <20230428122025.117834-1-fusibrandon13@gmail.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20230428122025.117834-1-fusibrandon13@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+To: Denis Kenzior <denkenz@gmail.com>
+Cc: Marcel Holtmann <marcel@holtmann.org>, ell@lists.linux.dev
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Hi Brandon,
+Hi Dennis,
 
-On 4/28/23 07:20, Brandon Cheo Fusi wrote:
-> This patch allows ell/ell.h to be included in C++ code by removing
-> 'only C' features. These comprise
-> 
-> i)  implicit casts from void* to other types which are now made
->      explicit
-> ii) C99 Static array indices.
+Sorry for the delay in responding.
 
-<snip>
-
->   bool l_icmp6_client_set_address(struct l_icmp6_client *client,
-> -					const uint8_t addr[static 6]);
-> +					const uint8_t addr[]);
-
-You can't really do that because l_icmp6_client_set_address implementation 
-doesn't do any NULL/size checking.  It assumes an array of 6+ bytes.  And that 
-is sort of the whole point of using the 'static 6' syntax.
-
-Maybe there's a way to come up with an alternative declaration, using 
-'__attribute__ nonnull'?  Perhaps combined with using a pointer to an array?
-
->   uint32_t l_rtnl_set_mac(struct l_netlink *rtnl, int ifindex,
-> -					const uint8_t addr[static 6],
-> +					const uint8_t addr[],
->   					bool power_up,
->   					l_netlink_command_func_t cb,
->   					void *user_data,
-
-Same comments here.
+Thanks for pointing that out. Wouldn't it be better to not assume an
+array of 6+ bytes and instead
+do NULL and size checking in the implementations?
 
 Regards,
--Denis
+Brandon
+
+On Sun, Apr 30, 2023 at 7:24=E2=80=AFPM Denis Kenzior <denkenz@gmail.com> w=
+rote:
+>
+> Hi Brandon,
+>
+> On 4/28/23 07:20, Brandon Cheo Fusi wrote:
+> > This patch allows ell/ell.h to be included in C++ code by removing
+> > 'only C' features. These comprise
+> >
+> > i)  implicit casts from void* to other types which are now made
+> >      explicit
+> > ii) C99 Static array indices.
+>
+> <snip>
+>
+> >   bool l_icmp6_client_set_address(struct l_icmp6_client *client,
+> > -                                     const uint8_t addr[static 6]);
+> > +                                     const uint8_t addr[]);
+>
+> You can't really do that because l_icmp6_client_set_address implementatio=
+n
+> doesn't do any NULL/size checking.  It assumes an array of 6+ bytes.  And=
+ that
+> is sort of the whole point of using the 'static 6' syntax.
+>
+> Maybe there's a way to come up with an alternative declaration, using
+> '__attribute__ nonnull'?  Perhaps combined with using a pointer to an arr=
+ay?
+>
+> >   uint32_t l_rtnl_set_mac(struct l_netlink *rtnl, int ifindex,
+> > -                                     const uint8_t addr[static 6],
+> > +                                     const uint8_t addr[],
+> >                                       bool power_up,
+> >                                       l_netlink_command_func_t cb,
+> >                                       void *user_data,
+>
+> Same comments here.
+>
+> Regards,
+> -Denis
