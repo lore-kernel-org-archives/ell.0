@@ -1,109 +1,86 @@
-Received: from mail-pf1-f181.google.com (mail-pf1-f181.google.com [209.85.210.181])
+Received: from mail-ot1-f41.google.com (mail-ot1-f41.google.com [209.85.210.41])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4BA3924C93
-	for <ell@lists.linux.dev>; Tue, 10 Oct 2023 14:25:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C0AC1BDDA
+	for <ell@lists.linux.dev>; Wed, 11 Oct 2023 14:56:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jWR2j3Q7"
-Received: by mail-pf1-f181.google.com with SMTP id d2e1a72fcca58-692ada71d79so4392503b3a.1
-        for <ell@lists.linux.dev>; Tue, 10 Oct 2023 07:25:12 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UbCXg2t/"
+Received: by mail-ot1-f41.google.com with SMTP id 46e09a7af769-6c67060fdfbso5009981a34.2
+        for <ell@lists.linux.dev>; Wed, 11 Oct 2023 07:56:00 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1696947911; x=1697552711; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=P8DWwQrY7OVf9LshCKNuxve4d2T82hYFhHS8/ahsG7A=;
-        b=jWR2j3Q7cyNVDixcFR43I16HyoP6h2bkzwvbfXB6kXdpY7EVejswSldN3J6bd24eXh
-         lPMjU5lUOxtIvzXn4+o2BMhhDtXZbasr6SnfD4IDc7Cmqwo6w2Na+M3wssd/zwyS6tYa
-         PwO8K0LmrA89HliJL13rvWhOxnBR9TkVxhLG4FpDdagVwJIxaHBLHUBcaugNZLM12/aC
-         qSVYGRb2LV/z964q+y1hAP+BS6YVWW4aoYn59AGp/Y8tz0UvweSMOnVDO7eiLy/vTpF/
-         m/nZ3NdN5PeJQZuwnrxWE1DiOPIZhk/DYCsdCUgfR2rQXofp1bwuRdqrqy+o4mPh3WhA
-         zD1g==
+        d=gmail.com; s=20230601; t=1697036159; x=1697640959; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=SmL9Vq+dmOBvqitHJOA9MnA95s/5hSmcEs2pH/hhYjU=;
+        b=UbCXg2t/QSk3w3xFlSzbTw2uOYl+sFE0OOO2ZOudSo/IEwjik6eUiiPGuPIx/8qXtq
+         17uh5S1OH7lZjL6dZpGFrti4bQtoPbhzerzPNVxCGX/L0+9qZ/y8kZS+uITmnApz7J6f
+         2jdGd4xBRGPz8Oy13Cxc+d0tZB9/+9jiB4GAoRinOvgiJLF2KlVvRClmn2D4flkyIf6b
+         9ruEZaO1R9aW359Tglprax8hlaIE+xGswdUazPKcolPrKNi0Ih7UBHRiVMT702dL7+ro
+         bXHPR01IYN757ew79HnI8jqZJDjVvX54IGf+c461M7N9oGWGEDCGcsbcOMY8zbDim1h+
+         ZyAw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1696947911; x=1697552711;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=P8DWwQrY7OVf9LshCKNuxve4d2T82hYFhHS8/ahsG7A=;
-        b=twmdz7sYoFQTfsOx3iJ+BfcVh8PoUFoEMpe5CNIe+Kp8SycGzcUiiG2LDZ++YzEsgl
-         o4XjZW6t9mFewh13JbzWQY4Sn49sicIBfdba7k4Yn/b8X7Mx02P0ODRJSYgjqrz/v4ft
-         Rp/8cZSKkWsb1C6EYpwdLZ73yoZYDEplk8cooOVt4TH0a/lO+vEWniDeADFLD42agWOI
-         yaCD42rWx4OAl6JCLdKpHWqnOTK5QzT+R4os089zqB4rav1Bx5fydrOtTVg8AT2JGPsK
-         VRGdzkUPlhLsTxhllBU87/UoqedNCcMFZMrkDtM+muKx9lJzEBAWhgQUMCsgPiV/Yrls
-         YzRg==
-X-Gm-Message-State: AOJu0Yw5HuGr3KawSv/R1d5idW5O8BaAgZ9wMwicSE/fgPljuDnibZFn
-	7tSMAi/0rQuRbkOglCDsnAv9zYynXMY=
-X-Google-Smtp-Source: AGHT+IHtEZvhwOrR3Wwh9LxVbZrLhQuhR9TECYM+aHo+dxyccQPqe4wp8UGBzd7P48DGGY3n/OLdbw==
-X-Received: by 2002:a05:6a21:47c8:b0:172:15c8:1fa2 with SMTP id as8-20020a056a2147c800b0017215c81fa2mr1724487pzc.53.1696947911361;
-        Tue, 10 Oct 2023 07:25:11 -0700 (PDT)
-Received: from localhost.localdomain ([50.39.172.77])
-        by smtp.gmail.com with ESMTPSA id z9-20020aa785c9000000b006926e3dc2besm8348563pfn.108.2023.10.10.07.25.10
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 10 Oct 2023 07:25:11 -0700 (PDT)
-From: James Prestwood <prestwoj@gmail.com>
-To: ell@lists.linux.dev
-Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v2 2/2] unit: update test-ecc with compressed point bug fix
-Date: Tue, 10 Oct 2023 07:25:06 -0700
-Message-Id: <20231010142506.261152-2-prestwoj@gmail.com>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20231010142506.261152-1-prestwoj@gmail.com>
-References: <20231010142506.261152-1-prestwoj@gmail.com>
+        d=1e100.net; s=20230601; t=1697036159; x=1697640959;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=SmL9Vq+dmOBvqitHJOA9MnA95s/5hSmcEs2pH/hhYjU=;
+        b=q5eVz1KCtnVvzTGyGdIpcbw8c+qOJdHh19rrU/ztfROiLOSJq+xzogY2afXMIrFQSk
+         sMptLhwlj5Bm7nfuhpIqkd0Yb6T68lMlogO6RB32nGTwdH13VaeGofdt+sUuQra/7cE2
+         uXXQlQ28ntF2WZb0AkPqkMbYiI6CSQ8sM3LJXg+8jhjW5r/pd0aA7Onn8lAxcW0i3Cut
+         EsUOa3fA9+J6snhuGNcg6OPPZfZcx8odH0/a2rI5I93AHlU9H01wLf3H1n7133j88KpG
+         zkWyS1duqP8Oso4GZcSR3RUQ1MOhR513z2/sFFqV80lDzIMHNUi1EZkbMRsNOjZ0gLOv
+         0P3g==
+X-Gm-Message-State: AOJu0YzvbWiIS3U5+m5gQPuYF6YAidQdoXZSrSXUVBBKacSUxB95OIsu
+	EvlCy3oQFRCUdy2ox/FEu8U=
+X-Google-Smtp-Source: AGHT+IG+1pnJSgIybQ6DhWoKYjcuBUnzGIqWPHBy8HisNbJMP9FWV+KxhVu1Ng1GANuIOWtpXXpLRg==
+X-Received: by 2002:a05:6870:2b06:b0:1e9:83ae:a128 with SMTP id ld6-20020a0568702b0600b001e983aea128mr3995841oab.32.1697036158349;
+        Wed, 11 Oct 2023 07:55:58 -0700 (PDT)
+Received: from [172.16.49.130] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id zf39-20020a0568716aa700b001e126575e1bsm1452oab.34.2023.10.11.07.55.57
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 11 Oct 2023 07:55:57 -0700 (PDT)
+Message-ID: <bc8f7101-6deb-4016-8244-3ecdd13869aa@gmail.com>
+Date: Wed, 11 Oct 2023 09:55:56 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2 1/2] ecc: fix incorrect derivation of compressed points
+Content-Language: en-US
+To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
+References: <20231010142506.261152-1-prestwoj@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20231010142506.261152-1-prestwoj@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
----
- unit/test-ecc.c | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+Hi James,
 
-diff --git a/unit/test-ecc.c b/unit/test-ecc.c
-index 21f73f1..05a89ab 100644
---- a/unit/test-ecc.c
-+++ b/unit/test-ecc.c
-@@ -374,28 +374,28 @@ struct compressed_point_data {
- 
- static struct compressed_point_data compressed_tests[] = {
- 	{
--		/* BIT1, subtraction performed */
-+		/* BIT0, computed Y is odd, subtraction performed */
- 		.x = "19b3fec1c000a888ee9c44272e4d7317e6e36577fc9d53e1edfb4e296b0b7ce1",
- 		.exp_y = "a8f9efd0ab526cd930870779621f4e9a53d4e78887ac9f4ed45ff75ded32b158",
--		.type = L_ECC_POINT_TYPE_COMPRESSED_BIT1,
-+		.type = L_ECC_POINT_TYPE_COMPRESSED_BIT0,
- 	},
- 	{
--		/* BIT1, no subtraction */
-+		/* BIT0, computed Y is even, no subtraction */
- 		.x = "958df5997362a9695ad73938c86be34a4730da877eccaaf8b189e73ff20e67c3",
- 		.exp_y = "1042f37262ded34d8424c1728a1ed23a726645b71db30a38f2932001a2027f46",
--		.type = L_ECC_POINT_TYPE_COMPRESSED_BIT1,
-+		.type = L_ECC_POINT_TYPE_COMPRESSED_BIT0,
- 	},
- 	{
--		/* BIT0, subtraction performed */
-+		/* BIT1, computed Y is even, subtraction performed */
- 		.x = "069bd56634454ca76e7ba434244137509141cbbf532586c6b36e9b5be8a2cc34",
- 		.exp_y = "f4f34d46e4bdc1473fec4b4c8724f349375a8a602f5e83c260d6724e64ec7e99",
--		.type = L_ECC_POINT_TYPE_COMPRESSED_BIT0,
-+		.type = L_ECC_POINT_TYPE_COMPRESSED_BIT1,
- 	},
- 	{
--		/* BIT0, no subtraction */
-+		/* BIT1, computed Y is odd, no subtraction */
- 		.x = "8cade296a68e0c40bcf45a049f1993263bdc8524825e2be44b14ce114e475df0",
- 		.exp_y = "94ed7d09b2a0e95d8df993eaf81eb64d5ff734d01da57e53b2e0277199bc5897",
--		.type = L_ECC_POINT_TYPE_COMPRESSED_BIT0,
-+		.type = L_ECC_POINT_TYPE_COMPRESSED_BIT1,
- 	},
- };
- 
--- 
-2.25.1
+On 10/10/23 09:25, James Prestwood wrote:
+> The logic was inversed here and was performing a subtraction if:
+>   - Y was even and type == BIT0
+>   - Y was odd and type == BIT1
+> 
+> This is not correct according to the ANSI spec. IWD relied on this
+> API but had matching incorrect logic so things "worked" up until
+> a compressed point needed to be parsed from an source that
+> explicitly specified the type (e.g. an ASN1 DER in DPP). All other
+> uses (PWD/SAE) the point type was only used to force a subtraction
+> so since both locations used the incorrect logic the points would
+> compute correctly.
+> ---
+>   ell/ecc.c | 18 +++++++++++++++++-
+>   1 file changed, 17 insertions(+), 1 deletion(-)
+> 
+
+Both applied, thanks.
+
+Regards,
+-Denis
 
