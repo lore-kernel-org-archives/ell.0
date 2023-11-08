@@ -1,53 +1,53 @@
-Received: from mail-oa1-f45.google.com (mail-oa1-f45.google.com [209.85.160.45])
+Received: from mail-oa1-f54.google.com (mail-oa1-f54.google.com [209.85.160.54])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 52660374E3
-	for <ell@lists.linux.dev>; Wed,  8 Nov 2023 23:46:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2221632C66
+	for <ell@lists.linux.dev>; Wed,  8 Nov 2023 23:46:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TPFXGRwg"
-Received: by mail-oa1-f45.google.com with SMTP id 586e51a60fabf-1f0f94a08a0so134119fac.2
-        for <ell@lists.linux.dev>; Wed, 08 Nov 2023 15:46:37 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cTWmM1Io"
+Received: by mail-oa1-f54.google.com with SMTP id 586e51a60fabf-1eb39505ba4so143054fac.0
+        for <ell@lists.linux.dev>; Wed, 08 Nov 2023 15:46:38 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1699487195; x=1700091995; darn=lists.linux.dev;
+        d=gmail.com; s=20230601; t=1699487197; x=1700091997; darn=lists.linux.dev;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=3ysg522WjRLjCaiB8xOVGVDlh6PFsLP8odaA3WKDiJc=;
-        b=TPFXGRwgeSk+6ARmt7l/dPib0GpkV7rlmQNsr8pN5HOFVTMvZolRQhlkehZW1sut8P
-         ira5Q0+q+UNK/I8FEf3ZVqk0cYGLAY9Dswatzb8nVDuBy6Si1ITK7d6eZKMGL1dHUf8u
-         H9W7Zv9skZe1P0w+XxR8Kp3bonAk8CO8GStJ5+Z2XJb6ZPm88YNb4w/F6af3J0lpac6w
-         0ukz2GBpv80GkKmMMn9ZrnGlRmOwFm0hxS3nRIE6VQ53ckK1CoWlp/BY64etoCocGK+r
-         Og5p6uU8jS5gYOZcDU3hwBpjVLGZf/3VljvxH/G6fR/i/5p+Cn/qEFDc7C4uHdDSR5kf
-         HgAw==
+        bh=ZTWJtJANShOxxK7NFGgiZPjwOLP1pmCaGyPC9iXedkw=;
+        b=cTWmM1Ioq+6/idvKwMKdyaCbPGcHyXTZ8Xg680zGSuK4Enra9V40tpxZOPXZl7aA8K
+         S1G2Hso79qD+IxW5u3sThwxk1WUv5TPY3mgCaEG7OpDA7Nb2BjQ6QdR+eeSToz/6Rzoj
+         1y4MBQrXCqb7EEAcSSat/Gj0LwqW7DmGqz/drL0jMHMHeHiwWq7rMPRpyOPkWybGi6ps
+         HiO00+Z8moaOo0IpWgchR8eYrWXppBXFejikeJDTmCeC5gf8My6ugDgAucEVAX+5LdB/
+         XfuiGwb13rMzRLg52ZbYqUFgRVxq7gbuELo7mGMwu5jXvmuCjzLznkjkb+98yNFZZvIw
+         DrMQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1699487195; x=1700091995;
+        d=1e100.net; s=20230601; t=1699487197; x=1700091997;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=3ysg522WjRLjCaiB8xOVGVDlh6PFsLP8odaA3WKDiJc=;
-        b=uPlPc2Fd/uFDlq/KuzVJr0OdUz+l/hno3HuMi9IAFXYzJiNEVjkwvM6kBreAcvwZlC
-         bw1qb3Ahzg22b1WFMCxHOMGSCQ87E5Uvtzszq+dNU6hsCYElXmK0a5ATxWlLsSicEEOr
-         /zj6pF9Jm6gtLwG4LQf4FF9B7lkJOvy5J2Lhc+5L4xjoYlyVbw/VkWnOya4ELNQNa3RC
-         1UDzjyWjjt9HSoSpo8Thdck2dWlx8+Tw6UpB74hsW8h7HqbcvMz4foKAnDM+2mMZDyBd
-         DTvdIs6RXzL9aOaClaB6ZLFgCiHApFmy416IbCOpgwA+qXG/NZhEZ2hOCbvyD5S1d+En
-         SAXg==
-X-Gm-Message-State: AOJu0Yxx6l0XhLPBJV1cEQbMDFmu9A3MdiulDcy4QTRC718ON3+7wfbl
-	hMxkO/r27iKRldZ1nJ2m/v8i/PH7ABc=
-X-Google-Smtp-Source: AGHT+IHckRtM01KJvYG4MzxlJmwc4mexIwiEtqPRbnMCH/0zexox3efFOV/YRhoM0MsY386ZXwLr8g==
-X-Received: by 2002:a05:6870:93cc:b0:1f0:3fdc:5995 with SMTP id c12-20020a05687093cc00b001f03fdc5995mr3442120oal.50.1699487195512;
-        Wed, 08 Nov 2023 15:46:35 -0800 (PST)
+        bh=ZTWJtJANShOxxK7NFGgiZPjwOLP1pmCaGyPC9iXedkw=;
+        b=VSwo9c6/dhrTmk4qcl6dyzeGBB1YrwwJdOT45z/zYoSPIGh9rfakKGM3iDKsy39F6m
+         yX8DPukt6DBqMzWGjmk0/MAjGzqBP9gmZ8rAioAE9i1kQmJhG6yS3mUr39bur8dtXGRN
+         wHd/tnINh+/MmN9mNM5uYQ9xTJZK6ZIgsVDiHrNwvy5/9pUNHagTQu+d8VQ9TUwp/23a
+         1ZZ+tuzgUeGHxgcl6N2HCTfAVoKGa7B+4dM6AADf9ZST7ru8BlNqNjgdLU+wsnj+GLYX
+         u4C+WbpoiZOxc7Ag96B6hq3wdkgsmLAEEX02wtGAsU3/fm4Sb3w16Z0LCMuASAAN1Knn
+         0TEA==
+X-Gm-Message-State: AOJu0YxFraB1oydnceEDf1p/AIZw4RAUbvuVnOy3N6p0dk9PLVEgC+5P
+	PyIxtondhFjxHLSPWia9KDr8wgy16p4=
+X-Google-Smtp-Source: AGHT+IFmhuGS2qVTK24qifU0aeIZ4shxcz4BbJSAG5Afz6x3Aeq01N3/KdWxjnMC1ukPkrPMFHaJRw==
+X-Received: by 2002:a05:6870:6984:b0:1ea:7bd1:c491 with SMTP id my4-20020a056870698400b001ea7bd1c491mr4734022oab.41.1699487197082;
+        Wed, 08 Nov 2023 15:46:37 -0800 (PST)
 Received: from localhost.localdomain (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id h5-20020a056870a3c500b001e5c7cc54d3sm491116oak.55.2023.11.08.15.46.34
+        by smtp.gmail.com with ESMTPSA id h5-20020a056870a3c500b001e5c7cc54d3sm491116oak.55.2023.11.08.15.46.35
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 08 Nov 2023 15:46:34 -0800 (PST)
+        Wed, 08 Nov 2023 15:46:36 -0800 (PST)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH 2/4] netlink: Fix compilation on really old platforms
-Date: Wed,  8 Nov 2023 17:45:21 -0600
-Message-ID: <20231108234544.1050199-2-denkenz@gmail.com>
+Subject: [PATCH 3/4] rtnl: Fix compilation on really old platforms
+Date: Wed,  8 Nov 2023 17:45:22 -0600
+Message-ID: <20231108234544.1050199-3-denkenz@gmail.com>
 X-Mailer: git-send-email 2.42.0
 In-Reply-To: <20231108234544.1050199-1-denkenz@gmail.com>
 References: <20231108234544.1050199-1-denkenz@gmail.com>
@@ -60,436 +60,873 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-Some platforms lack definitions of new netlink features.  Fix this
-by including a local copy of the most up to date netlink.h header.
+Some old platforms lack definitions of rtnl features we depend on.  Fix
+this by including a local copy of the most up to date rtnetlink.h
+header.
 
-  CC       ell/netlink.lo
-ell/netlink.c: In function ‘l_netlink_set_debug’:
-ell/netlink.c:629:56: error: ‘NETLINK_EXT_ACK’ undeclared (first use in this function)
-  if (setsockopt(l_io_get_fd(netlink->io), SOL_NETLINK, NETLINK_EXT_ACK,
-                                                        ^
-ell/netlink.c:629:56: note: each undeclared identifier is reported only once for each function it appears in
-ell/netlink.c: In function ‘netlink_parse_ext_ack_error’:
-ell/netlink.c:649:29: error: ‘NLM_F_ACK_TLVS’ undeclared (first use in this function)
-  if (!(nlmsg->nlmsg_flags & NLM_F_ACK_TLVS))
-                             ^
-ell/netlink.c:657:29: error: ‘NLM_F_CAPPED’ undeclared (first use in this function)
-  if (!(nlmsg->nlmsg_flags & NLM_F_CAPPED))
-                             ^
-ell/netlink.c:677:8: error: ‘NLMSGERR_ATTR_MSG’ undeclared (first use in this function)
-   case NLMSGERR_ATTR_MSG:
-        ^
-ell/netlink.c:681:8: error: ‘NLMSGERR_ATTR_OFFS’ undeclared (first use in this function)
-   case NLMSGERR_ATTR_OFFS:
-        ^
+  CC       ell/rtnl.lo
+ell/rtnl.c: In function ‘_rtnl_route_change’:
+ell/rtnl.c:1408:35: error: ‘RTA_EXPIRES’ undeclared (first use in this function)
+   rta_buf += rta_add_u32(rta_buf, RTA_EXPIRES,
+                                   ^
+ell/rtnl.c:1408:35: note: each undeclared identifier is reported only once for each function it appears in
 ---
- Makefile.am     |   2 +-
- linux/netlink.h | 383 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 384 insertions(+), 1 deletion(-)
- create mode 100644 linux/netlink.h
+ Makefile.am       |   2 +-
+ linux/rtnetlink.h | 832 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 833 insertions(+), 1 deletion(-)
+ create mode 100644 linux/rtnetlink.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 6c86e94e963e..ec75bb46ed44 100644
+index ec75bb46ed44..1bcfc7093d76 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -12,7 +12,7 @@ ELL_CURRENT = 0
  ELL_REVISION = 2
  ELL_AGE = 0
  
--linux_headers = linux/gpio.h
-+linux_headers = linux/gpio.h linux/netlink.h
+-linux_headers = linux/gpio.h linux/netlink.h
++linux_headers = linux/gpio.h linux/netlink.h linux/rtnetlink.h
  
  pkginclude_HEADERS = ell/ell.h \
  			ell/util.h \
-diff --git a/linux/netlink.h b/linux/netlink.h
+diff --git a/linux/rtnetlink.h b/linux/rtnetlink.h
 new file mode 100644
-index 000000000000..f87aaf28a649
+index 000000000000..3b687d20c9ed
 --- /dev/null
-+++ b/linux/netlink.h
-@@ -0,0 +1,383 @@
++++ b/linux/rtnetlink.h
+@@ -0,0 +1,832 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
-+#ifndef _UAPI__LINUX_NETLINK_H
-+#define _UAPI__LINUX_NETLINK_H
++#ifndef _UAPI__LINUX_RTNETLINK_H
++#define _UAPI__LINUX_RTNETLINK_H
 +
-+#include <linux/const.h>
-+#include <linux/socket.h> /* for __kernel_sa_family_t */
 +#include <linux/types.h>
++#include <linux/netlink.h>
++#include <linux/if_link.h>
++#include <linux/if_addr.h>
++#include <linux/neighbour.h>
 +
-+#define NETLINK_ROUTE		0	/* Routing/device hook				*/
-+#define NETLINK_UNUSED		1	/* Unused number				*/
-+#define NETLINK_USERSOCK	2	/* Reserved for user mode socket protocols 	*/
-+#define NETLINK_FIREWALL	3	/* Unused number, formerly ip_queue		*/
-+#define NETLINK_SOCK_DIAG	4	/* socket monitoring				*/
-+#define NETLINK_NFLOG		5	/* netfilter/iptables ULOG */
-+#define NETLINK_XFRM		6	/* ipsec */
-+#define NETLINK_SELINUX		7	/* SELinux event notifications */
-+#define NETLINK_ISCSI		8	/* Open-iSCSI */
-+#define NETLINK_AUDIT		9	/* auditing */
-+#define NETLINK_FIB_LOOKUP	10	
-+#define NETLINK_CONNECTOR	11
-+#define NETLINK_NETFILTER	12	/* netfilter subsystem */
-+#define NETLINK_IP6_FW		13
-+#define NETLINK_DNRTMSG		14	/* DECnet routing messages (obsolete) */
-+#define NETLINK_KOBJECT_UEVENT	15	/* Kernel messages to userspace */
-+#define NETLINK_GENERIC		16
-+/* leave room for NETLINK_DM (DM Events) */
-+#define NETLINK_SCSITRANSPORT	18	/* SCSI Transports */
-+#define NETLINK_ECRYPTFS	19
-+#define NETLINK_RDMA		20
-+#define NETLINK_CRYPTO		21	/* Crypto layer */
-+#define NETLINK_SMC		22	/* SMC monitoring */
-+
-+#define NETLINK_INET_DIAG	NETLINK_SOCK_DIAG
-+
-+#define MAX_LINKS 32		
-+
-+struct sockaddr_nl {
-+	__kernel_sa_family_t	nl_family;	/* AF_NETLINK	*/
-+	unsigned short	nl_pad;		/* zero		*/
-+	__u32		nl_pid;		/* port ID	*/
-+       	__u32		nl_groups;	/* multicast groups mask */
-+};
-+
-+/**
-+ * struct nlmsghdr - fixed format metadata header of Netlink messages
-+ * @nlmsg_len:   Length of message including header
-+ * @nlmsg_type:  Message content type
-+ * @nlmsg_flags: Additional flags
-+ * @nlmsg_seq:   Sequence number
-+ * @nlmsg_pid:   Sending process port ID
++/* rtnetlink families. Values up to 127 are reserved for real address
++ * families, values above 128 may be used arbitrarily.
 + */
-+struct nlmsghdr {
-+	__u32		nlmsg_len;
-+	__u16		nlmsg_type;
-+	__u16		nlmsg_flags;
-+	__u32		nlmsg_seq;
-+	__u32		nlmsg_pid;
-+};
++#define RTNL_FAMILY_IPMR		128
++#define RTNL_FAMILY_IP6MR		129
++#define RTNL_FAMILY_MAX			129
 +
-+/* Flags values */
++/****
++ *		Routing/neighbour discovery messages.
++ ****/
 +
-+#define NLM_F_REQUEST		0x01	/* It is request message. 	*/
-+#define NLM_F_MULTI		0x02	/* Multipart message, terminated by NLMSG_DONE */
-+#define NLM_F_ACK		0x04	/* Reply with ack, with zero or error code */
-+#define NLM_F_ECHO		0x08	/* Receive resulting notifications */
-+#define NLM_F_DUMP_INTR		0x10	/* Dump was inconsistent due to sequence change */
-+#define NLM_F_DUMP_FILTERED	0x20	/* Dump was filtered as requested */
-+
-+/* Modifiers to GET request */
-+#define NLM_F_ROOT	0x100	/* specify tree	root	*/
-+#define NLM_F_MATCH	0x200	/* return all matching	*/
-+#define NLM_F_ATOMIC	0x400	/* atomic GET		*/
-+#define NLM_F_DUMP	(NLM_F_ROOT|NLM_F_MATCH)
-+
-+/* Modifiers to NEW request */
-+#define NLM_F_REPLACE	0x100	/* Override existing		*/
-+#define NLM_F_EXCL	0x200	/* Do not touch, if it exists	*/
-+#define NLM_F_CREATE	0x400	/* Create, if it does not exist	*/
-+#define NLM_F_APPEND	0x800	/* Add to end of list		*/
-+
-+/* Modifiers to DELETE request */
-+#define NLM_F_NONREC	0x100	/* Do not delete recursively	*/
-+#define NLM_F_BULK	0x200	/* Delete multiple objects	*/
-+
-+/* Flags for ACK message */
-+#define NLM_F_CAPPED	0x100	/* request was capped */
-+#define NLM_F_ACK_TLVS	0x200	/* extended ACK TVLs were included */
-+
-+/*
-+   4.4BSD ADD		NLM_F_CREATE|NLM_F_EXCL
-+   4.4BSD CHANGE	NLM_F_REPLACE
-+
-+   True CHANGE		NLM_F_CREATE|NLM_F_REPLACE
-+   Append		NLM_F_CREATE
-+   Check		NLM_F_EXCL
-+ */
-+
-+#define NLMSG_ALIGNTO	4U
-+#define NLMSG_ALIGN(len) ( ((len)+NLMSG_ALIGNTO-1) & ~(NLMSG_ALIGNTO-1) )
-+#define NLMSG_HDRLEN	 ((int) NLMSG_ALIGN(sizeof(struct nlmsghdr)))
-+#define NLMSG_LENGTH(len) ((len) + NLMSG_HDRLEN)
-+#define NLMSG_SPACE(len) NLMSG_ALIGN(NLMSG_LENGTH(len))
-+#define NLMSG_DATA(nlh)  ((void *)(((char *)nlh) + NLMSG_HDRLEN))
-+#define NLMSG_NEXT(nlh,len)	 ((len) -= NLMSG_ALIGN((nlh)->nlmsg_len), \
-+				  (struct nlmsghdr *)(((char *)(nlh)) + \
-+				  NLMSG_ALIGN((nlh)->nlmsg_len)))
-+#define NLMSG_OK(nlh,len) ((len) >= (int)sizeof(struct nlmsghdr) && \
-+			   (nlh)->nlmsg_len >= sizeof(struct nlmsghdr) && \
-+			   (nlh)->nlmsg_len <= (len))
-+#define NLMSG_PAYLOAD(nlh,len) ((nlh)->nlmsg_len - NLMSG_SPACE((len)))
-+
-+#define NLMSG_NOOP		0x1	/* Nothing.		*/
-+#define NLMSG_ERROR		0x2	/* Error		*/
-+#define NLMSG_DONE		0x3	/* End of a dump	*/
-+#define NLMSG_OVERRUN		0x4	/* Data lost		*/
-+
-+#define NLMSG_MIN_TYPE		0x10	/* < 0x10: reserved control messages */
-+
-+struct nlmsgerr {
-+	int		error;
-+	struct nlmsghdr msg;
-+	/*
-+	 * followed by the message contents unless NETLINK_CAP_ACK was set
-+	 * or the ACK indicates success (error == 0)
-+	 * message length is aligned with NLMSG_ALIGN()
-+	 */
-+	/*
-+	 * followed by TLVs defined in enum nlmsgerr_attrs
-+	 * if NETLINK_EXT_ACK was set
-+	 */
-+};
-+
-+/**
-+ * enum nlmsgerr_attrs - nlmsgerr attributes
-+ * @NLMSGERR_ATTR_UNUSED: unused
-+ * @NLMSGERR_ATTR_MSG: error message string (string)
-+ * @NLMSGERR_ATTR_OFFS: offset of the invalid attribute in the original
-+ *	 message, counting from the beginning of the header (u32)
-+ * @NLMSGERR_ATTR_COOKIE: arbitrary subsystem specific cookie to
-+ *	be used - in the success case - to identify a created
-+ *	object or operation or similar (binary)
-+ * @NLMSGERR_ATTR_POLICY: policy for a rejected attribute
-+ * @NLMSGERR_ATTR_MISS_TYPE: type of a missing required attribute,
-+ *	%NLMSGERR_ATTR_MISS_NEST will not be present if the attribute was
-+ *	missing at the message level
-+ * @NLMSGERR_ATTR_MISS_NEST: offset of the nest where attribute was missing
-+ * @__NLMSGERR_ATTR_MAX: number of attributes
-+ * @NLMSGERR_ATTR_MAX: highest attribute number
-+ */
-+enum nlmsgerr_attrs {
-+	NLMSGERR_ATTR_UNUSED,
-+	NLMSGERR_ATTR_MSG,
-+	NLMSGERR_ATTR_OFFS,
-+	NLMSGERR_ATTR_COOKIE,
-+	NLMSGERR_ATTR_POLICY,
-+	NLMSGERR_ATTR_MISS_TYPE,
-+	NLMSGERR_ATTR_MISS_NEST,
-+
-+	__NLMSGERR_ATTR_MAX,
-+	NLMSGERR_ATTR_MAX = __NLMSGERR_ATTR_MAX - 1
-+};
-+
-+#define NETLINK_ADD_MEMBERSHIP		1
-+#define NETLINK_DROP_MEMBERSHIP		2
-+#define NETLINK_PKTINFO			3
-+#define NETLINK_BROADCAST_ERROR		4
-+#define NETLINK_NO_ENOBUFS		5
-+#ifndef __KERNEL__
-+#define NETLINK_RX_RING			6
-+#define NETLINK_TX_RING			7
-+#endif
-+#define NETLINK_LISTEN_ALL_NSID		8
-+#define NETLINK_LIST_MEMBERSHIPS	9
-+#define NETLINK_CAP_ACK			10
-+#define NETLINK_EXT_ACK			11
-+#define NETLINK_GET_STRICT_CHK		12
-+
-+struct nl_pktinfo {
-+	__u32	group;
-+};
-+
-+struct nl_mmap_req {
-+	unsigned int	nm_block_size;
-+	unsigned int	nm_block_nr;
-+	unsigned int	nm_frame_size;
-+	unsigned int	nm_frame_nr;
-+};
-+
-+struct nl_mmap_hdr {
-+	unsigned int	nm_status;
-+	unsigned int	nm_len;
-+	__u32		nm_group;
-+	/* credentials */
-+	__u32		nm_pid;
-+	__u32		nm_uid;
-+	__u32		nm_gid;
-+};
-+
-+#ifndef __KERNEL__
-+enum nl_mmap_status {
-+	NL_MMAP_STATUS_UNUSED,
-+	NL_MMAP_STATUS_RESERVED,
-+	NL_MMAP_STATUS_VALID,
-+	NL_MMAP_STATUS_COPY,
-+	NL_MMAP_STATUS_SKIP,
-+};
-+
-+#define NL_MMAP_MSG_ALIGNMENT		NLMSG_ALIGNTO
-+#define NL_MMAP_MSG_ALIGN(sz)		__ALIGN_KERNEL(sz, NL_MMAP_MSG_ALIGNMENT)
-+#define NL_MMAP_HDRLEN			NL_MMAP_MSG_ALIGN(sizeof(struct nl_mmap_hdr))
-+#endif
-+
-+#define NET_MAJOR 36		/* Major 36 is reserved for networking 						*/
++/* Types of messages */
 +
 +enum {
-+	NETLINK_UNCONNECTED = 0,
-+	NETLINK_CONNECTED,
++	RTM_BASE	= 16,
++#define RTM_BASE	RTM_BASE
++
++	RTM_NEWLINK	= 16,
++#define RTM_NEWLINK	RTM_NEWLINK
++	RTM_DELLINK,
++#define RTM_DELLINK	RTM_DELLINK
++	RTM_GETLINK,
++#define RTM_GETLINK	RTM_GETLINK
++	RTM_SETLINK,
++#define RTM_SETLINK	RTM_SETLINK
++
++	RTM_NEWADDR	= 20,
++#define RTM_NEWADDR	RTM_NEWADDR
++	RTM_DELADDR,
++#define RTM_DELADDR	RTM_DELADDR
++	RTM_GETADDR,
++#define RTM_GETADDR	RTM_GETADDR
++
++	RTM_NEWROUTE	= 24,
++#define RTM_NEWROUTE	RTM_NEWROUTE
++	RTM_DELROUTE,
++#define RTM_DELROUTE	RTM_DELROUTE
++	RTM_GETROUTE,
++#define RTM_GETROUTE	RTM_GETROUTE
++
++	RTM_NEWNEIGH	= 28,
++#define RTM_NEWNEIGH	RTM_NEWNEIGH
++	RTM_DELNEIGH,
++#define RTM_DELNEIGH	RTM_DELNEIGH
++	RTM_GETNEIGH,
++#define RTM_GETNEIGH	RTM_GETNEIGH
++
++	RTM_NEWRULE	= 32,
++#define RTM_NEWRULE	RTM_NEWRULE
++	RTM_DELRULE,
++#define RTM_DELRULE	RTM_DELRULE
++	RTM_GETRULE,
++#define RTM_GETRULE	RTM_GETRULE
++
++	RTM_NEWQDISC	= 36,
++#define RTM_NEWQDISC	RTM_NEWQDISC
++	RTM_DELQDISC,
++#define RTM_DELQDISC	RTM_DELQDISC
++	RTM_GETQDISC,
++#define RTM_GETQDISC	RTM_GETQDISC
++
++	RTM_NEWTCLASS	= 40,
++#define RTM_NEWTCLASS	RTM_NEWTCLASS
++	RTM_DELTCLASS,
++#define RTM_DELTCLASS	RTM_DELTCLASS
++	RTM_GETTCLASS,
++#define RTM_GETTCLASS	RTM_GETTCLASS
++
++	RTM_NEWTFILTER	= 44,
++#define RTM_NEWTFILTER	RTM_NEWTFILTER
++	RTM_DELTFILTER,
++#define RTM_DELTFILTER	RTM_DELTFILTER
++	RTM_GETTFILTER,
++#define RTM_GETTFILTER	RTM_GETTFILTER
++
++	RTM_NEWACTION	= 48,
++#define RTM_NEWACTION   RTM_NEWACTION
++	RTM_DELACTION,
++#define RTM_DELACTION   RTM_DELACTION
++	RTM_GETACTION,
++#define RTM_GETACTION   RTM_GETACTION
++
++	RTM_NEWPREFIX	= 52,
++#define RTM_NEWPREFIX	RTM_NEWPREFIX
++
++	RTM_GETMULTICAST = 58,
++#define RTM_GETMULTICAST RTM_GETMULTICAST
++
++	RTM_GETANYCAST	= 62,
++#define RTM_GETANYCAST	RTM_GETANYCAST
++
++	RTM_NEWNEIGHTBL	= 64,
++#define RTM_NEWNEIGHTBL	RTM_NEWNEIGHTBL
++	RTM_GETNEIGHTBL	= 66,
++#define RTM_GETNEIGHTBL	RTM_GETNEIGHTBL
++	RTM_SETNEIGHTBL,
++#define RTM_SETNEIGHTBL	RTM_SETNEIGHTBL
++
++	RTM_NEWNDUSEROPT = 68,
++#define RTM_NEWNDUSEROPT RTM_NEWNDUSEROPT
++
++	RTM_NEWADDRLABEL = 72,
++#define RTM_NEWADDRLABEL RTM_NEWADDRLABEL
++	RTM_DELADDRLABEL,
++#define RTM_DELADDRLABEL RTM_DELADDRLABEL
++	RTM_GETADDRLABEL,
++#define RTM_GETADDRLABEL RTM_GETADDRLABEL
++
++	RTM_GETDCB = 78,
++#define RTM_GETDCB RTM_GETDCB
++	RTM_SETDCB,
++#define RTM_SETDCB RTM_SETDCB
++
++	RTM_NEWNETCONF = 80,
++#define RTM_NEWNETCONF RTM_NEWNETCONF
++	RTM_DELNETCONF,
++#define RTM_DELNETCONF RTM_DELNETCONF
++	RTM_GETNETCONF = 82,
++#define RTM_GETNETCONF RTM_GETNETCONF
++
++	RTM_NEWMDB = 84,
++#define RTM_NEWMDB RTM_NEWMDB
++	RTM_DELMDB = 85,
++#define RTM_DELMDB RTM_DELMDB
++	RTM_GETMDB = 86,
++#define RTM_GETMDB RTM_GETMDB
++
++	RTM_NEWNSID = 88,
++#define RTM_NEWNSID RTM_NEWNSID
++	RTM_DELNSID = 89,
++#define RTM_DELNSID RTM_DELNSID
++	RTM_GETNSID = 90,
++#define RTM_GETNSID RTM_GETNSID
++
++	RTM_NEWSTATS = 92,
++#define RTM_NEWSTATS RTM_NEWSTATS
++	RTM_GETSTATS = 94,
++#define RTM_GETSTATS RTM_GETSTATS
++	RTM_SETSTATS,
++#define RTM_SETSTATS RTM_SETSTATS
++
++	RTM_NEWCACHEREPORT = 96,
++#define RTM_NEWCACHEREPORT RTM_NEWCACHEREPORT
++
++	RTM_NEWCHAIN = 100,
++#define RTM_NEWCHAIN RTM_NEWCHAIN
++	RTM_DELCHAIN,
++#define RTM_DELCHAIN RTM_DELCHAIN
++	RTM_GETCHAIN,
++#define RTM_GETCHAIN RTM_GETCHAIN
++
++	RTM_NEWNEXTHOP = 104,
++#define RTM_NEWNEXTHOP	RTM_NEWNEXTHOP
++	RTM_DELNEXTHOP,
++#define RTM_DELNEXTHOP	RTM_DELNEXTHOP
++	RTM_GETNEXTHOP,
++#define RTM_GETNEXTHOP	RTM_GETNEXTHOP
++
++	RTM_NEWLINKPROP = 108,
++#define RTM_NEWLINKPROP	RTM_NEWLINKPROP
++	RTM_DELLINKPROP,
++#define RTM_DELLINKPROP	RTM_DELLINKPROP
++	RTM_GETLINKPROP,
++#define RTM_GETLINKPROP	RTM_GETLINKPROP
++
++	RTM_NEWVLAN = 112,
++#define RTM_NEWNVLAN	RTM_NEWVLAN
++	RTM_DELVLAN,
++#define RTM_DELVLAN	RTM_DELVLAN
++	RTM_GETVLAN,
++#define RTM_GETVLAN	RTM_GETVLAN
++
++	RTM_NEWNEXTHOPBUCKET = 116,
++#define RTM_NEWNEXTHOPBUCKET	RTM_NEWNEXTHOPBUCKET
++	RTM_DELNEXTHOPBUCKET,
++#define RTM_DELNEXTHOPBUCKET	RTM_DELNEXTHOPBUCKET
++	RTM_GETNEXTHOPBUCKET,
++#define RTM_GETNEXTHOPBUCKET	RTM_GETNEXTHOPBUCKET
++
++	RTM_NEWTUNNEL = 120,
++#define RTM_NEWTUNNEL	RTM_NEWTUNNEL
++	RTM_DELTUNNEL,
++#define RTM_DELTUNNEL	RTM_DELTUNNEL
++	RTM_GETTUNNEL,
++#define RTM_GETTUNNEL	RTM_GETTUNNEL
++
++	__RTM_MAX,
++#define RTM_MAX		(((__RTM_MAX + 3) & ~3) - 1)
 +};
 +
-+/*
-+ *  <------- NLA_HDRLEN ------> <-- NLA_ALIGN(payload)-->
-+ * +---------------------+- - -+- - - - - - - - - -+- - -+
-+ * |        Header       | Pad |     Payload       | Pad |
-+ * |   (struct nlattr)   | ing |                   | ing |
-+ * +---------------------+- - -+- - - - - - - - - -+- - -+
-+ *  <-------------- nlattr->nla_len -------------->
++#define RTM_NR_MSGTYPES	(RTM_MAX + 1 - RTM_BASE)
++#define RTM_NR_FAMILIES	(RTM_NR_MSGTYPES >> 2)
++#define RTM_FAM(cmd)	(((cmd) - RTM_BASE) >> 2)
++
++/* 
++   Generic structure for encapsulation of optional route information.
++   It is reminiscent of sockaddr, but with sa_family replaced
++   with attribute type.
 + */
 +
-+struct nlattr {
-+	__u16           nla_len;
-+	__u16           nla_type;
++struct rtattr {
++	unsigned short	rta_len;
++	unsigned short	rta_type;
 +};
 +
-+/*
-+ * nla_type (16 bits)
-+ * +---+---+-------------------------------+
-+ * | N | O | Attribute Type                |
-+ * +---+---+-------------------------------+
-+ * N := Carries nested attributes
-+ * O := Payload stored in network byte order
-+ *
-+ * Note: The N and O flag are mutually exclusive.
-+ */
-+#define NLA_F_NESTED		(1 << 15)
-+#define NLA_F_NET_BYTEORDER	(1 << 14)
-+#define NLA_TYPE_MASK		~(NLA_F_NESTED | NLA_F_NET_BYTEORDER)
++/* Macros to handle rtattributes */
 +
-+#define NLA_ALIGNTO		4
-+#define NLA_ALIGN(len)		(((len) + NLA_ALIGNTO - 1) & ~(NLA_ALIGNTO - 1))
-+#define NLA_HDRLEN		((int) NLA_ALIGN(sizeof(struct nlattr)))
++#define RTA_ALIGNTO	4U
++#define RTA_ALIGN(len) ( ((len)+RTA_ALIGNTO-1) & ~(RTA_ALIGNTO-1) )
++#define RTA_OK(rta,len) ((len) >= (int)sizeof(struct rtattr) && \
++			 (rta)->rta_len >= sizeof(struct rtattr) && \
++			 (rta)->rta_len <= (len))
++#define RTA_NEXT(rta,attrlen)	((attrlen) -= RTA_ALIGN((rta)->rta_len), \
++				 (struct rtattr*)(((char*)(rta)) + RTA_ALIGN((rta)->rta_len)))
++#define RTA_LENGTH(len)	(RTA_ALIGN(sizeof(struct rtattr)) + (len))
++#define RTA_SPACE(len)	RTA_ALIGN(RTA_LENGTH(len))
++#define RTA_DATA(rta)   ((void*)(((char*)(rta)) + RTA_LENGTH(0)))
++#define RTA_PAYLOAD(rta) ((int)((rta)->rta_len) - RTA_LENGTH(0))
 +
-+/* Generic 32 bitflags attribute content sent to the kernel.
-+ *
-+ * The value is a bitmap that defines the values being set
-+ * The selector is a bitmask that defines which value is legit
-+ *
-+ * Examples:
-+ *  value = 0x0, and selector = 0x1
-+ *  implies we are selecting bit 1 and we want to set its value to 0.
-+ *
-+ *  value = 0x2, and selector = 0x2
-+ *  implies we are selecting bit 2 and we want to set its value to 1.
-+ *
-+ */
-+struct nla_bitfield32 {
-+	__u32 value;
-+	__u32 selector;
++
++
++
++/******************************************************************************
++ *		Definitions used in routing table administration.
++ ****/
++
++struct rtmsg {
++	unsigned char		rtm_family;
++	unsigned char		rtm_dst_len;
++	unsigned char		rtm_src_len;
++	unsigned char		rtm_tos;
++
++	unsigned char		rtm_table;	/* Routing table id */
++	unsigned char		rtm_protocol;	/* Routing protocol; see below	*/
++	unsigned char		rtm_scope;	/* See below */	
++	unsigned char		rtm_type;	/* See below	*/
++
++	unsigned		rtm_flags;
 +};
 +
-+/*
-+ * policy descriptions - it's specific to each family how this is used
-+ * Normally, it should be retrieved via a dump inside another attribute
-+ * specifying where it applies.
-+ */
++/* rtm_type */
 +
-+/**
-+ * enum netlink_attribute_type - type of an attribute
-+ * @NL_ATTR_TYPE_INVALID: unused
-+ * @NL_ATTR_TYPE_FLAG: flag attribute (present/not present)
-+ * @NL_ATTR_TYPE_U8: 8-bit unsigned attribute
-+ * @NL_ATTR_TYPE_U16: 16-bit unsigned attribute
-+ * @NL_ATTR_TYPE_U32: 32-bit unsigned attribute
-+ * @NL_ATTR_TYPE_U64: 64-bit unsigned attribute
-+ * @NL_ATTR_TYPE_S8: 8-bit signed attribute
-+ * @NL_ATTR_TYPE_S16: 16-bit signed attribute
-+ * @NL_ATTR_TYPE_S32: 32-bit signed attribute
-+ * @NL_ATTR_TYPE_S64: 64-bit signed attribute
-+ * @NL_ATTR_TYPE_BINARY: binary data, min/max length may be specified
-+ * @NL_ATTR_TYPE_STRING: string, min/max length may be specified
-+ * @NL_ATTR_TYPE_NUL_STRING: NUL-terminated string,
-+ *	min/max length may be specified
-+ * @NL_ATTR_TYPE_NESTED: nested, i.e. the content of this attribute
-+ *	consists of sub-attributes. The nested policy and maxtype
-+ *	inside may be specified.
-+ * @NL_ATTR_TYPE_NESTED_ARRAY: nested array, i.e. the content of this
-+ *	attribute contains sub-attributes whose type is irrelevant
-+ *	(just used to separate the array entries) and each such array
-+ *	entry has attributes again, the policy for those inner ones
-+ *	and the corresponding maxtype may be specified.
-+ * @NL_ATTR_TYPE_BITFIELD32: &struct nla_bitfield32 attribute
-+ * @NL_ATTR_TYPE_SINT: 32-bit or 64-bit signed attribute, aligned to 4B
-+ * @NL_ATTR_TYPE_UINT: 32-bit or 64-bit unsigned attribute, aligned to 4B
-+ */
-+enum netlink_attribute_type {
-+	NL_ATTR_TYPE_INVALID,
-+
-+	NL_ATTR_TYPE_FLAG,
-+
-+	NL_ATTR_TYPE_U8,
-+	NL_ATTR_TYPE_U16,
-+	NL_ATTR_TYPE_U32,
-+	NL_ATTR_TYPE_U64,
-+
-+	NL_ATTR_TYPE_S8,
-+	NL_ATTR_TYPE_S16,
-+	NL_ATTR_TYPE_S32,
-+	NL_ATTR_TYPE_S64,
-+
-+	NL_ATTR_TYPE_BINARY,
-+	NL_ATTR_TYPE_STRING,
-+	NL_ATTR_TYPE_NUL_STRING,
-+
-+	NL_ATTR_TYPE_NESTED,
-+	NL_ATTR_TYPE_NESTED_ARRAY,
-+
-+	NL_ATTR_TYPE_BITFIELD32,
-+
-+	NL_ATTR_TYPE_SINT,
-+	NL_ATTR_TYPE_UINT,
++enum {
++	RTN_UNSPEC,
++	RTN_UNICAST,		/* Gateway or direct route	*/
++	RTN_LOCAL,		/* Accept locally		*/
++	RTN_BROADCAST,		/* Accept locally as broadcast,
++				   send as broadcast */
++	RTN_ANYCAST,		/* Accept locally as broadcast,
++				   but send as unicast */
++	RTN_MULTICAST,		/* Multicast route		*/
++	RTN_BLACKHOLE,		/* Drop				*/
++	RTN_UNREACHABLE,	/* Destination is unreachable   */
++	RTN_PROHIBIT,		/* Administratively prohibited	*/
++	RTN_THROW,		/* Not in this table		*/
++	RTN_NAT,		/* Translate this address	*/
++	RTN_XRESOLVE,		/* Use external resolver	*/
++	__RTN_MAX
 +};
 +
-+/**
-+ * enum netlink_policy_type_attr - policy type attributes
-+ * @NL_POLICY_TYPE_ATTR_UNSPEC: unused
-+ * @NL_POLICY_TYPE_ATTR_TYPE: type of the attribute,
-+ *	&enum netlink_attribute_type (U32)
-+ * @NL_POLICY_TYPE_ATTR_MIN_VALUE_S: minimum value for signed
-+ *	integers (S64)
-+ * @NL_POLICY_TYPE_ATTR_MAX_VALUE_S: maximum value for signed
-+ *	integers (S64)
-+ * @NL_POLICY_TYPE_ATTR_MIN_VALUE_U: minimum value for unsigned
-+ *	integers (U64)
-+ * @NL_POLICY_TYPE_ATTR_MAX_VALUE_U: maximum value for unsigned
-+ *	integers (U64)
-+ * @NL_POLICY_TYPE_ATTR_MIN_LENGTH: minimum length for binary
-+ *	attributes, no minimum if not given (U32)
-+ * @NL_POLICY_TYPE_ATTR_MAX_LENGTH: maximum length for binary
-+ *	attributes, no maximum if not given (U32)
-+ * @NL_POLICY_TYPE_ATTR_POLICY_IDX: sub policy for nested and
-+ *	nested array types (U32)
-+ * @NL_POLICY_TYPE_ATTR_POLICY_MAXTYPE: maximum sub policy
-+ *	attribute for nested and nested array types, this can
-+ *	in theory be < the size of the policy pointed to by
-+ *	the index, if limited inside the nesting (U32)
-+ * @NL_POLICY_TYPE_ATTR_BITFIELD32_MASK: valid mask for the
-+ *	bitfield32 type (U32)
-+ * @NL_POLICY_TYPE_ATTR_MASK: mask of valid bits for unsigned integers (U64)
-+ * @NL_POLICY_TYPE_ATTR_PAD: pad attribute for 64-bit alignment
++#define RTN_MAX (__RTN_MAX - 1)
++
++
++/* rtm_protocol */
++
++#define RTPROT_UNSPEC		0
++#define RTPROT_REDIRECT		1	/* Route installed by ICMP redirects;
++					   not used by current IPv4 */
++#define RTPROT_KERNEL		2	/* Route installed by kernel		*/
++#define RTPROT_BOOT		3	/* Route installed during boot		*/
++#define RTPROT_STATIC		4	/* Route installed by administrator	*/
++
++/* Values of protocol >= RTPROT_STATIC are not interpreted by kernel;
++   they are just passed from user and back as is.
++   It will be used by hypothetical multiple routing daemons.
++   Note that protocol values should be standardized in order to
++   avoid conflicts.
++ */
++
++#define RTPROT_GATED		8	/* Apparently, GateD */
++#define RTPROT_RA		9	/* RDISC/ND router advertisements */
++#define RTPROT_MRT		10	/* Merit MRT */
++#define RTPROT_ZEBRA		11	/* Zebra */
++#define RTPROT_BIRD		12	/* BIRD */
++#define RTPROT_DNROUTED		13	/* DECnet routing daemon */
++#define RTPROT_XORP		14	/* XORP */
++#define RTPROT_NTK		15	/* Netsukuku */
++#define RTPROT_DHCP		16	/* DHCP client */
++#define RTPROT_MROUTED		17	/* Multicast daemon */
++#define RTPROT_KEEPALIVED	18	/* Keepalived daemon */
++#define RTPROT_BABEL		42	/* Babel daemon */
++#define RTPROT_OPENR		99	/* Open Routing (Open/R) Routes */
++#define RTPROT_BGP		186	/* BGP Routes */
++#define RTPROT_ISIS		187	/* ISIS Routes */
++#define RTPROT_OSPF		188	/* OSPF Routes */
++#define RTPROT_RIP		189	/* RIP Routes */
++#define RTPROT_EIGRP		192	/* EIGRP Routes */
++
++/* rtm_scope
++
++   Really it is not scope, but sort of distance to the destination.
++   NOWHERE are reserved for not existing destinations, HOST is our
++   local addresses, LINK are destinations, located on directly attached
++   link and UNIVERSE is everywhere in the Universe.
++
++   Intermediate values are also possible f.e. interior routes
++   could be assigned a value between UNIVERSE and LINK.
++*/
++
++enum rt_scope_t {
++	RT_SCOPE_UNIVERSE=0,
++/* User defined values  */
++	RT_SCOPE_SITE=200,
++	RT_SCOPE_LINK=253,
++	RT_SCOPE_HOST=254,
++	RT_SCOPE_NOWHERE=255
++};
++
++/* rtm_flags */
++
++#define RTM_F_NOTIFY		0x100	/* Notify user of route change	*/
++#define RTM_F_CLONED		0x200	/* This route is cloned		*/
++#define RTM_F_EQUALIZE		0x400	/* Multipath equalizer: NI	*/
++#define RTM_F_PREFIX		0x800	/* Prefix addresses		*/
++#define RTM_F_LOOKUP_TABLE	0x1000	/* set rtm_table to FIB lookup result */
++#define RTM_F_FIB_MATCH	        0x2000	/* return full fib lookup match */
++#define RTM_F_OFFLOAD		0x4000	/* route is offloaded */
++#define RTM_F_TRAP		0x8000	/* route is trapping packets */
++#define RTM_F_OFFLOAD_FAILED	0x20000000 /* route offload failed, this value
++					    * is chosen to avoid conflicts with
++					    * other flags defined in
++					    * include/uapi/linux/ipv6_route.h
++					    */
++
++/* Reserved table identifiers */
++
++enum rt_class_t {
++	RT_TABLE_UNSPEC=0,
++/* User defined values */
++	RT_TABLE_COMPAT=252,
++	RT_TABLE_DEFAULT=253,
++	RT_TABLE_MAIN=254,
++	RT_TABLE_LOCAL=255,
++	RT_TABLE_MAX=0xFFFFFFFF
++};
++
++
++/* Routing message attributes */
++
++enum rtattr_type_t {
++	RTA_UNSPEC,
++	RTA_DST,
++	RTA_SRC,
++	RTA_IIF,
++	RTA_OIF,
++	RTA_GATEWAY,
++	RTA_PRIORITY,
++	RTA_PREFSRC,
++	RTA_METRICS,
++	RTA_MULTIPATH,
++	RTA_PROTOINFO, /* no longer used */
++	RTA_FLOW,
++	RTA_CACHEINFO,
++	RTA_SESSION, /* no longer used */
++	RTA_MP_ALGO, /* no longer used */
++	RTA_TABLE,
++	RTA_MARK,
++	RTA_MFC_STATS,
++	RTA_VIA,
++	RTA_NEWDST,
++	RTA_PREF,
++	RTA_ENCAP_TYPE,
++	RTA_ENCAP,
++	RTA_EXPIRES,
++	RTA_PAD,
++	RTA_UID,
++	RTA_TTL_PROPAGATE,
++	RTA_IP_PROTO,
++	RTA_SPORT,
++	RTA_DPORT,
++	RTA_NH_ID,
++	__RTA_MAX
++};
++
++#define RTA_MAX (__RTA_MAX - 1)
++
++#define RTM_RTA(r)  ((struct rtattr*)(((char*)(r)) + NLMSG_ALIGN(sizeof(struct rtmsg))))
++#define RTM_PAYLOAD(n) NLMSG_PAYLOAD(n,sizeof(struct rtmsg))
++
++/* RTM_MULTIPATH --- array of struct rtnexthop.
 + *
-+ * @__NL_POLICY_TYPE_ATTR_MAX: number of attributes
-+ * @NL_POLICY_TYPE_ATTR_MAX: highest attribute number
++ * "struct rtnexthop" describes all necessary nexthop information,
++ * i.e. parameters of path to a destination via this nexthop.
++ *
++ * At the moment it is impossible to set different prefsrc, mtu, window
++ * and rtt for different paths from multipath.
 + */
-+enum netlink_policy_type_attr {
-+	NL_POLICY_TYPE_ATTR_UNSPEC,
-+	NL_POLICY_TYPE_ATTR_TYPE,
-+	NL_POLICY_TYPE_ATTR_MIN_VALUE_S,
-+	NL_POLICY_TYPE_ATTR_MAX_VALUE_S,
-+	NL_POLICY_TYPE_ATTR_MIN_VALUE_U,
-+	NL_POLICY_TYPE_ATTR_MAX_VALUE_U,
-+	NL_POLICY_TYPE_ATTR_MIN_LENGTH,
-+	NL_POLICY_TYPE_ATTR_MAX_LENGTH,
-+	NL_POLICY_TYPE_ATTR_POLICY_IDX,
-+	NL_POLICY_TYPE_ATTR_POLICY_MAXTYPE,
-+	NL_POLICY_TYPE_ATTR_BITFIELD32_MASK,
-+	NL_POLICY_TYPE_ATTR_PAD,
-+	NL_POLICY_TYPE_ATTR_MASK,
 +
-+	/* keep last */
-+	__NL_POLICY_TYPE_ATTR_MAX,
-+	NL_POLICY_TYPE_ATTR_MAX = __NL_POLICY_TYPE_ATTR_MAX - 1
++struct rtnexthop {
++	unsigned short		rtnh_len;
++	unsigned char		rtnh_flags;
++	unsigned char		rtnh_hops;
++	int			rtnh_ifindex;
 +};
 +
-+#endif /* _UAPI__LINUX_NETLINK_H */
++/* rtnh_flags */
++
++#define RTNH_F_DEAD		1	/* Nexthop is dead (used by multipath)	*/
++#define RTNH_F_PERVASIVE	2	/* Do recursive gateway lookup	*/
++#define RTNH_F_ONLINK		4	/* Gateway is forced on link	*/
++#define RTNH_F_OFFLOAD		8	/* Nexthop is offloaded */
++#define RTNH_F_LINKDOWN		16	/* carrier-down on nexthop */
++#define RTNH_F_UNRESOLVED	32	/* The entry is unresolved (ipmr) */
++#define RTNH_F_TRAP		64	/* Nexthop is trapping packets */
++
++#define RTNH_COMPARE_MASK	(RTNH_F_DEAD | RTNH_F_LINKDOWN | \
++				 RTNH_F_OFFLOAD | RTNH_F_TRAP)
++
++/* Macros to handle hexthops */
++
++#define RTNH_ALIGNTO	4
++#define RTNH_ALIGN(len) ( ((len)+RTNH_ALIGNTO-1) & ~(RTNH_ALIGNTO-1) )
++#define RTNH_OK(rtnh,len) ((rtnh)->rtnh_len >= sizeof(struct rtnexthop) && \
++			   ((int)(rtnh)->rtnh_len) <= (len))
++#define RTNH_NEXT(rtnh)	((struct rtnexthop*)(((char*)(rtnh)) + RTNH_ALIGN((rtnh)->rtnh_len)))
++#define RTNH_LENGTH(len) (RTNH_ALIGN(sizeof(struct rtnexthop)) + (len))
++#define RTNH_SPACE(len)	RTNH_ALIGN(RTNH_LENGTH(len))
++#define RTNH_DATA(rtnh)   ((struct rtattr*)(((char*)(rtnh)) + RTNH_LENGTH(0)))
++
++/* RTA_VIA */
++struct rtvia {
++	__kernel_sa_family_t	rtvia_family;
++	__u8			rtvia_addr[];
++};
++
++/* RTM_CACHEINFO */
++
++struct rta_cacheinfo {
++	__u32	rta_clntref;
++	__u32	rta_lastuse;
++	__s32	rta_expires;
++	__u32	rta_error;
++	__u32	rta_used;
++
++#define RTNETLINK_HAVE_PEERINFO 1
++	__u32	rta_id;
++	__u32	rta_ts;
++	__u32	rta_tsage;
++};
++
++/* RTM_METRICS --- array of struct rtattr with types of RTAX_* */
++
++enum {
++	RTAX_UNSPEC,
++#define RTAX_UNSPEC RTAX_UNSPEC
++	RTAX_LOCK,
++#define RTAX_LOCK RTAX_LOCK
++	RTAX_MTU,
++#define RTAX_MTU RTAX_MTU
++	RTAX_WINDOW,
++#define RTAX_WINDOW RTAX_WINDOW
++	RTAX_RTT,
++#define RTAX_RTT RTAX_RTT
++	RTAX_RTTVAR,
++#define RTAX_RTTVAR RTAX_RTTVAR
++	RTAX_SSTHRESH,
++#define RTAX_SSTHRESH RTAX_SSTHRESH
++	RTAX_CWND,
++#define RTAX_CWND RTAX_CWND
++	RTAX_ADVMSS,
++#define RTAX_ADVMSS RTAX_ADVMSS
++	RTAX_REORDERING,
++#define RTAX_REORDERING RTAX_REORDERING
++	RTAX_HOPLIMIT,
++#define RTAX_HOPLIMIT RTAX_HOPLIMIT
++	RTAX_INITCWND,
++#define RTAX_INITCWND RTAX_INITCWND
++	RTAX_FEATURES,
++#define RTAX_FEATURES RTAX_FEATURES
++	RTAX_RTO_MIN,
++#define RTAX_RTO_MIN RTAX_RTO_MIN
++	RTAX_INITRWND,
++#define RTAX_INITRWND RTAX_INITRWND
++	RTAX_QUICKACK,
++#define RTAX_QUICKACK RTAX_QUICKACK
++	RTAX_CC_ALGO,
++#define RTAX_CC_ALGO RTAX_CC_ALGO
++	RTAX_FASTOPEN_NO_COOKIE,
++#define RTAX_FASTOPEN_NO_COOKIE RTAX_FASTOPEN_NO_COOKIE
++	__RTAX_MAX
++};
++
++#define RTAX_MAX (__RTAX_MAX - 1)
++
++#define RTAX_FEATURE_ECN		(1 << 0)
++#define RTAX_FEATURE_SACK		(1 << 1) /* unused */
++#define RTAX_FEATURE_TIMESTAMP		(1 << 2) /* unused */
++#define RTAX_FEATURE_ALLFRAG		(1 << 3) /* unused */
++#define RTAX_FEATURE_TCP_USEC_TS	(1 << 4)
++
++#define RTAX_FEATURE_MASK	(RTAX_FEATURE_ECN |		\
++				 RTAX_FEATURE_SACK |		\
++				 RTAX_FEATURE_TIMESTAMP |	\
++				 RTAX_FEATURE_ALLFRAG |		\
++				 RTAX_FEATURE_TCP_USEC_TS)
++
++struct rta_session {
++	__u8	proto;
++	__u8	pad1;
++	__u16	pad2;
++
++	union {
++		struct {
++			__u16	sport;
++			__u16	dport;
++		} ports;
++
++		struct {
++			__u8	type;
++			__u8	code;
++			__u16	ident;
++		} icmpt;
++
++		__u32		spi;
++	} u;
++};
++
++struct rta_mfc_stats {
++	__u64	mfcs_packets;
++	__u64	mfcs_bytes;
++	__u64	mfcs_wrong_if;
++};
++
++/****
++ *		General form of address family dependent message.
++ ****/
++
++struct rtgenmsg {
++	unsigned char		rtgen_family;
++};
++
++/*****************************************************************
++ *		Link layer specific messages.
++ ****/
++
++/* struct ifinfomsg
++ * passes link level specific information, not dependent
++ * on network protocol.
++ */
++
++struct ifinfomsg {
++	unsigned char	ifi_family;
++	unsigned char	__ifi_pad;
++	unsigned short	ifi_type;		/* ARPHRD_* */
++	int		ifi_index;		/* Link index	*/
++	unsigned	ifi_flags;		/* IFF_* flags	*/
++	unsigned	ifi_change;		/* IFF_* change mask */
++};
++
++/********************************************************************
++ *		prefix information 
++ ****/
++
++struct prefixmsg {
++	unsigned char	prefix_family;
++	unsigned char	prefix_pad1;
++	unsigned short	prefix_pad2;
++	int		prefix_ifindex;
++	unsigned char	prefix_type;
++	unsigned char	prefix_len;
++	unsigned char	prefix_flags;
++	unsigned char	prefix_pad3;
++};
++
++enum 
++{
++	PREFIX_UNSPEC,
++	PREFIX_ADDRESS,
++	PREFIX_CACHEINFO,
++	__PREFIX_MAX
++};
++
++#define PREFIX_MAX	(__PREFIX_MAX - 1)
++
++struct prefix_cacheinfo {
++	__u32	preferred_time;
++	__u32	valid_time;
++};
++
++
++/*****************************************************************
++ *		Traffic control messages.
++ ****/
++
++struct tcmsg {
++	unsigned char	tcm_family;
++	unsigned char	tcm__pad1;
++	unsigned short	tcm__pad2;
++	int		tcm_ifindex;
++	__u32		tcm_handle;
++	__u32		tcm_parent;
++/* tcm_block_index is used instead of tcm_parent
++ * in case tcm_ifindex == TCM_IFINDEX_MAGIC_BLOCK
++ */
++#define tcm_block_index tcm_parent
++	__u32		tcm_info;
++};
++
++/* For manipulation of filters in shared block, tcm_ifindex is set to
++ * TCM_IFINDEX_MAGIC_BLOCK, and tcm_parent is aliased to tcm_block_index
++ * which is the block index.
++ */
++#define TCM_IFINDEX_MAGIC_BLOCK (0xFFFFFFFFU)
++
++enum {
++	TCA_UNSPEC,
++	TCA_KIND,
++	TCA_OPTIONS,
++	TCA_STATS,
++	TCA_XSTATS,
++	TCA_RATE,
++	TCA_FCNT,
++	TCA_STATS2,
++	TCA_STAB,
++	TCA_PAD,
++	TCA_DUMP_INVISIBLE,
++	TCA_CHAIN,
++	TCA_HW_OFFLOAD,
++	TCA_INGRESS_BLOCK,
++	TCA_EGRESS_BLOCK,
++	TCA_DUMP_FLAGS,
++	TCA_EXT_WARN_MSG,
++	__TCA_MAX
++};
++
++#define TCA_MAX (__TCA_MAX - 1)
++
++#define TCA_DUMP_FLAGS_TERSE (1 << 0) /* Means that in dump user gets only basic
++				       * data necessary to identify the objects
++				       * (handle, cookie, etc.) and stats.
++				       */
++
++#define TCA_RTA(r)  ((struct rtattr*)(((char*)(r)) + NLMSG_ALIGN(sizeof(struct tcmsg))))
++#define TCA_PAYLOAD(n) NLMSG_PAYLOAD(n,sizeof(struct tcmsg))
++
++/********************************************************************
++ *		Neighbor Discovery userland options
++ ****/
++
++struct nduseroptmsg {
++	unsigned char	nduseropt_family;
++	unsigned char	nduseropt_pad1;
++	unsigned short	nduseropt_opts_len;	/* Total length of options */
++	int		nduseropt_ifindex;
++	__u8		nduseropt_icmp_type;
++	__u8		nduseropt_icmp_code;
++	unsigned short	nduseropt_pad2;
++	unsigned int	nduseropt_pad3;
++	/* Followed by one or more ND options */
++};
++
++enum {
++	NDUSEROPT_UNSPEC,
++	NDUSEROPT_SRCADDR,
++	__NDUSEROPT_MAX
++};
++
++#define NDUSEROPT_MAX	(__NDUSEROPT_MAX - 1)
++
++#ifndef __KERNEL__
++/* RTnetlink multicast groups - backwards compatibility for userspace */
++#define RTMGRP_LINK		1
++#define RTMGRP_NOTIFY		2
++#define RTMGRP_NEIGH		4
++#define RTMGRP_TC		8
++
++#define RTMGRP_IPV4_IFADDR	0x10
++#define RTMGRP_IPV4_MROUTE	0x20
++#define RTMGRP_IPV4_ROUTE	0x40
++#define RTMGRP_IPV4_RULE	0x80
++
++#define RTMGRP_IPV6_IFADDR	0x100
++#define RTMGRP_IPV6_MROUTE	0x200
++#define RTMGRP_IPV6_ROUTE	0x400
++#define RTMGRP_IPV6_IFINFO	0x800
++
++#define RTMGRP_DECnet_IFADDR    0x1000
++#define RTMGRP_DECnet_ROUTE     0x4000
++
++#define RTMGRP_IPV6_PREFIX	0x20000
++#endif
++
++/* RTnetlink multicast groups */
++enum rtnetlink_groups {
++	RTNLGRP_NONE,
++#define RTNLGRP_NONE		RTNLGRP_NONE
++	RTNLGRP_LINK,
++#define RTNLGRP_LINK		RTNLGRP_LINK
++	RTNLGRP_NOTIFY,
++#define RTNLGRP_NOTIFY		RTNLGRP_NOTIFY
++	RTNLGRP_NEIGH,
++#define RTNLGRP_NEIGH		RTNLGRP_NEIGH
++	RTNLGRP_TC,
++#define RTNLGRP_TC		RTNLGRP_TC
++	RTNLGRP_IPV4_IFADDR,
++#define RTNLGRP_IPV4_IFADDR	RTNLGRP_IPV4_IFADDR
++	RTNLGRP_IPV4_MROUTE,
++#define	RTNLGRP_IPV4_MROUTE	RTNLGRP_IPV4_MROUTE
++	RTNLGRP_IPV4_ROUTE,
++#define RTNLGRP_IPV4_ROUTE	RTNLGRP_IPV4_ROUTE
++	RTNLGRP_IPV4_RULE,
++#define RTNLGRP_IPV4_RULE	RTNLGRP_IPV4_RULE
++	RTNLGRP_IPV6_IFADDR,
++#define RTNLGRP_IPV6_IFADDR	RTNLGRP_IPV6_IFADDR
++	RTNLGRP_IPV6_MROUTE,
++#define RTNLGRP_IPV6_MROUTE	RTNLGRP_IPV6_MROUTE
++	RTNLGRP_IPV6_ROUTE,
++#define RTNLGRP_IPV6_ROUTE	RTNLGRP_IPV6_ROUTE
++	RTNLGRP_IPV6_IFINFO,
++#define RTNLGRP_IPV6_IFINFO	RTNLGRP_IPV6_IFINFO
++	RTNLGRP_DECnet_IFADDR,
++#define RTNLGRP_DECnet_IFADDR	RTNLGRP_DECnet_IFADDR
++	RTNLGRP_NOP2,
++	RTNLGRP_DECnet_ROUTE,
++#define RTNLGRP_DECnet_ROUTE	RTNLGRP_DECnet_ROUTE
++	RTNLGRP_DECnet_RULE,
++#define RTNLGRP_DECnet_RULE	RTNLGRP_DECnet_RULE
++	RTNLGRP_NOP4,
++	RTNLGRP_IPV6_PREFIX,
++#define RTNLGRP_IPV6_PREFIX	RTNLGRP_IPV6_PREFIX
++	RTNLGRP_IPV6_RULE,
++#define RTNLGRP_IPV6_RULE	RTNLGRP_IPV6_RULE
++	RTNLGRP_ND_USEROPT,
++#define RTNLGRP_ND_USEROPT	RTNLGRP_ND_USEROPT
++	RTNLGRP_PHONET_IFADDR,
++#define RTNLGRP_PHONET_IFADDR	RTNLGRP_PHONET_IFADDR
++	RTNLGRP_PHONET_ROUTE,
++#define RTNLGRP_PHONET_ROUTE	RTNLGRP_PHONET_ROUTE
++	RTNLGRP_DCB,
++#define RTNLGRP_DCB		RTNLGRP_DCB
++	RTNLGRP_IPV4_NETCONF,
++#define RTNLGRP_IPV4_NETCONF	RTNLGRP_IPV4_NETCONF
++	RTNLGRP_IPV6_NETCONF,
++#define RTNLGRP_IPV6_NETCONF	RTNLGRP_IPV6_NETCONF
++	RTNLGRP_MDB,
++#define RTNLGRP_MDB		RTNLGRP_MDB
++	RTNLGRP_MPLS_ROUTE,
++#define RTNLGRP_MPLS_ROUTE	RTNLGRP_MPLS_ROUTE
++	RTNLGRP_NSID,
++#define RTNLGRP_NSID		RTNLGRP_NSID
++	RTNLGRP_MPLS_NETCONF,
++#define RTNLGRP_MPLS_NETCONF	RTNLGRP_MPLS_NETCONF
++	RTNLGRP_IPV4_MROUTE_R,
++#define RTNLGRP_IPV4_MROUTE_R	RTNLGRP_IPV4_MROUTE_R
++	RTNLGRP_IPV6_MROUTE_R,
++#define RTNLGRP_IPV6_MROUTE_R	RTNLGRP_IPV6_MROUTE_R
++	RTNLGRP_NEXTHOP,
++#define RTNLGRP_NEXTHOP		RTNLGRP_NEXTHOP
++	RTNLGRP_BRVLAN,
++#define RTNLGRP_BRVLAN		RTNLGRP_BRVLAN
++	RTNLGRP_MCTP_IFADDR,
++#define RTNLGRP_MCTP_IFADDR	RTNLGRP_MCTP_IFADDR
++	RTNLGRP_TUNNEL,
++#define RTNLGRP_TUNNEL		RTNLGRP_TUNNEL
++	RTNLGRP_STATS,
++#define RTNLGRP_STATS		RTNLGRP_STATS
++	__RTNLGRP_MAX
++};
++#define RTNLGRP_MAX	(__RTNLGRP_MAX - 1)
++
++/* TC action piece */
++struct tcamsg {
++	unsigned char	tca_family;
++	unsigned char	tca__pad1;
++	unsigned short	tca__pad2;
++};
++
++enum {
++	TCA_ROOT_UNSPEC,
++	TCA_ROOT_TAB,
++#define TCA_ACT_TAB TCA_ROOT_TAB
++#define TCAA_MAX TCA_ROOT_TAB
++	TCA_ROOT_FLAGS,
++	TCA_ROOT_COUNT,
++	TCA_ROOT_TIME_DELTA, /* in msecs */
++	TCA_ROOT_EXT_WARN_MSG,
++	__TCA_ROOT_MAX,
++#define	TCA_ROOT_MAX (__TCA_ROOT_MAX - 1)
++};
++
++#define TA_RTA(r)  ((struct rtattr*)(((char*)(r)) + NLMSG_ALIGN(sizeof(struct tcamsg))))
++#define TA_PAYLOAD(n) NLMSG_PAYLOAD(n,sizeof(struct tcamsg))
++/* tcamsg flags stored in attribute TCA_ROOT_FLAGS
++ *
++ * TCA_ACT_FLAG_LARGE_DUMP_ON user->kernel to request for larger than
++ * TCA_ACT_MAX_PRIO actions in a dump. All dump responses will contain the
++ * number of actions being dumped stored in for user app's consumption in
++ * TCA_ROOT_COUNT
++ *
++ * TCA_ACT_FLAG_TERSE_DUMP user->kernel to request terse (brief) dump that only
++ * includes essential action info (kind, index, etc.)
++ *
++ */
++#define TCA_FLAG_LARGE_DUMP_ON		(1 << 0)
++#define TCA_ACT_FLAG_LARGE_DUMP_ON	TCA_FLAG_LARGE_DUMP_ON
++#define TCA_ACT_FLAG_TERSE_DUMP		(1 << 1)
++
++/* New extended info filters for IFLA_EXT_MASK */
++#define RTEXT_FILTER_VF		(1 << 0)
++#define RTEXT_FILTER_BRVLAN	(1 << 1)
++#define RTEXT_FILTER_BRVLAN_COMPRESSED	(1 << 2)
++#define	RTEXT_FILTER_SKIP_STATS	(1 << 3)
++#define RTEXT_FILTER_MRP	(1 << 4)
++#define RTEXT_FILTER_CFM_CONFIG	(1 << 5)
++#define RTEXT_FILTER_CFM_STATUS	(1 << 6)
++#define RTEXT_FILTER_MST	(1 << 7)
++
++/* End of information exported to user level */
++
++
++
++#endif /* _UAPI__LINUX_RTNETLINK_H */
 -- 
 2.42.0
 
