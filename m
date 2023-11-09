@@ -1,80 +1,87 @@
-Received: from mohas.pair.com (mohas.pair.com [209.68.5.112])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oa1-f41.google.com (mail-oa1-f41.google.com [209.85.160.41])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE2B1360
-	for <ell@lists.linux.dev>; Thu,  9 Nov 2023 00:08:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nuovations.com
-Authentication-Results: smtp.subspace.kernel.org; dkim=none
-Received: from mohas.pair.com (localhost [127.0.0.1])
-	by mohas.pair.com (Postfix) with ESMTP id 9A8EC731EB;
-	Wed,  8 Nov 2023 19:08:08 -0500 (EST)
-Received: from [IPv6:2601:647:5a00:15c1:ec32:172b:4c97:6a74] (unknown [IPv6:2601:647:5a00:15c1:ec32:172b:4c97:6a74])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mohas.pair.com (Postfix) with ESMTPSA id 3B56273232;
-	Wed,  8 Nov 2023 19:08:08 -0500 (EST)
-Content-Type: text/plain;
-	charset=utf-8
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D41810E1
+	for <ell@lists.linux.dev>; Thu,  9 Nov 2023 00:41:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bUAAwK3m"
+Received: by mail-oa1-f41.google.com with SMTP id 586e51a60fabf-1eb7a8e9dd0so148105fac.3
+        for <ell@lists.linux.dev>; Wed, 08 Nov 2023 16:41:50 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1699490509; x=1700095309; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=oUjCxGm4CxiAkhTmi/mqQUI9QY0aaC85uUdCJUihahw=;
+        b=bUAAwK3mtNjTTwDojLKn3VivMW3SzM9WavMU4gZ8Cdkp+4gwEcMJTjrHhuGitj6/zI
+         yvH2OvJjshIganHAb39FVA7wySmUINkn4f1KpEKQxyX7gM0+pkgy1PGbGKyuv98Kr0Ui
+         aEFs0iJXBgWJpYXvHkhYWQbij7eSKTrmYIw7ZlkO1dl/o2Uy1AJcCKNHAtpVHLsDjFl8
+         FMpQeCJg7NS7GQKV01YmRE9BeCMdH/EagXh16REZd1Nx6HR8vzAFhDzRW7o1010VUhcr
+         dCC6lw/62xyt+zCZSXAI+Ebevhj8LI8tgcK2c08eUkKOskLATjtQMkHZSDYhB6eWTEaq
+         KWkg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1699490509; x=1700095309;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=oUjCxGm4CxiAkhTmi/mqQUI9QY0aaC85uUdCJUihahw=;
+        b=rbbkQP49n/Qd/qWD59vg4R62hhlxxRAjDlIGcwJHA/r2Hc635CHpJu7nKNMictU1xo
+         XVgt3sFD21vbjxHD2EcjFYbeDHl+NCVK7SwY3/lGRnwfxK3iKXPkh9ndUZkvcyw74Deg
+         3INkNDJdxNUZ8T5Wtg3STVCKKOd2FAYDsnxb5tjrZe3RYmCAh4IhLaw5fDpZ5BiU8LZq
+         ejfbjjChEC6jMytA7IptVIYgxK3PCRiwgNhnP9Y9z/faAK2KxDK8HWXPttCoI6X4cjvD
+         ngEY2NWaQq+KLcdseUanwxHnF1SNw6wASjVL824weqTdqTQ1SlaN8whhRLfLMtat198O
+         5N0g==
+X-Gm-Message-State: AOJu0YzjbRwHUuPXag6XFHDueMlC5Gr4C/UzsnfZFZOChCrzSoQ3hk19
+	t9ghEz4YAB2o6+LfaxOEbgbSFMV/7EQ=
+X-Google-Smtp-Source: AGHT+IHhSxECsAbkqgmaJcuNPlbxoTj70OcHid8FXrwKhM7jhw+deIVvL+2TEgIgs4TbpP1GUErozw==
+X-Received: by 2002:a05:6870:9d0f:b0:1e9:9989:33a5 with SMTP id pp15-20020a0568709d0f00b001e9998933a5mr3983191oab.5.1699490509557;
+        Wed, 08 Nov 2023 16:41:49 -0800 (PST)
+Received: from [172.16.49.130] (cpe-70-114-247-242.austin.res.rr.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id v3-20020a056870e28300b001f40abd9fdbsm52950oad.2.2023.11.08.16.41.48
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 08 Nov 2023 16:41:49 -0800 (PST)
+Message-ID: <9e8fe433-ffb9-4846-90f9-83cb52e9e4c1@gmail.com>
+Date: Wed, 8 Nov 2023 18:41:47 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
 Subject: Re: ELL 0.59 Does Not Compile against Linux-4.9.212 and/or GLibC-2.28
-From: Grant Erickson <gerickson@nuovations.com>
-In-Reply-To: <2b9a12a2-87a9-4e10-b24d-77268369d01d@gmail.com>
-Date: Wed, 8 Nov 2023 16:08:07 -0800
-Cc: ell@lists.linux.dev,
- Marcel Holtmann <marcel@holtmann.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <124DF4B5-4611-458F-8F68-E386891838AD@nuovations.com>
+Content-Language: en-US
+To: Grant Erickson <gerickson@nuovations.com>
+Cc: ell@lists.linux.dev, Marcel Holtmann <marcel@holtmann.org>
 References: <EE577BA9-358B-44E1-BC6E-810EBFA4998F@nuovations.com>
  <2b9a12a2-87a9-4e10-b24d-77268369d01d@gmail.com>
-To: Denis Kenzior <denkenz@gmail.com>
-X-Mailer: Apple Mail (2.3608.120.23.2.4)
-X-Scanned-By: mailmunge 3.11 on 209.68.5.112
+ <124DF4B5-4611-458F-8F68-E386891838AD@nuovations.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <124DF4B5-4611-458F-8F68-E386891838AD@nuovations.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
 
-Denis,
+Hi Grant,
 
-Thanks for the fast turn around on the patches and response.
+> 
+> I’ve no requirement for EAP, so all good there.
 
-More below.
+Then if openssl gives you trouble, try doing:
 
-On Nov 8, 2023, at 3:56 PM, Denis Kenzior <denkenz@gmail.com> wrote:
-> On 11/8/23 15:21, Grant Erickson wrote:
->> ELL Community:
->> Over on the connman mailing list, Marcel and Denis have been =
-advocating, rightly so, for iwd over wpa_supplicant for Wi-Fi.
->> Is there a kernel version expectation of ELL?
->=20
-> For the most part, no.  It should work with pretty old kernels.  But =
-most of our development started post 4.15 or so.  If you need iwd to =
-work with EAP, then 4.19 is required.  Otherwise, older kernels should =
-work fine.
+have_openssl=no ./configure ...
 
-I=E2=80=99ve no requirement for EAP, so all good there.
+This will disable certificate tests in ell (which are only useful for EAP).
 
->> For the current project I am engaged on, the kernel is locked at =
-linux-4.9.212, glibc-2.28, and GCC 8.2. With that combination, I have =
-found that the absolutely latest version of ELL I can build is 0.28. =
-Regrettably, iwd requires a more recent version than that. However, =
-neither the version of ELL that iwd embeds nor the latest independent =
-version of ELL, 0.59 compile against the aforementioned combination. I =
-see the following errors:
->=20
-> Try the 4 patches I sent out.  Depending on your openssl version, you =
-might see some weirdness there.  The detection logic seems to not work =
-on _really_ old openssl versions.
+> 
+> Regarding the patches, won’t inclusion of an uprev netlink header result in a -ENOSYS or -EINVAL when those symbols hit the downrev kernel? Or were they privately defined in the 4.x series but not publicly exported?
 
-Will do. I=E2=80=99m running openssl-1.1.1w.
+The EXT_ACK support is purely for debugging.  If we fail to set that option on 
+the socket, we ignore it, so that should be safe.
 
-Regarding the patches, won=E2=80=99t inclusion of an uprev netlink =
-header result in a -ENOSYS or -EINVAL when those symbols hit the downrev =
-kernel? Or were they privately defined in the 4.x series but not =
-publicly exported?
+The missing RTA_EXPIRES should hopefully just be ignored by the kernel.  But it 
+was introduced in 4.5, so you should be fine ?
 
-Best,
-
-Grant=
+Regards,
+-Denis
