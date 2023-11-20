@@ -1,109 +1,70 @@
 Received: from mail.holtmann.org (coyote.holtmann.net [212.227.132.17])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 2A1881427B
-	for <ell@lists.linux.dev>; Sun, 19 Nov 2023 16:50:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 1B1271B279
+	for <ell@lists.linux.dev>; Mon, 20 Nov 2023 14:55:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=holtmann.org
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=holtmann.org
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from smtpclient.apple (p4fefc822.dip0.t-ipconnect.de [79.239.200.34])
-	by mail.holtmann.org (Postfix) with ESMTPSA id D926ACECD0
-	for <ell@lists.linux.dev>; Sun, 19 Nov 2023 17:50:57 +0100 (CET)
-From: Marcel Holtmann <marcel@holtmann.org>
+	by mail.holtmann.org (Postfix) with ESMTPSA id 6C519CECC4;
+	Mon, 20 Nov 2023 15:55:19 +0100 (CET)
 Content-Type: text/plain;
 	charset=utf-8
-Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3774.200.91.1.1\))
-Subject: Re: [RFC PATCH 2/2] rtnl: Check if RTA_EXPIRES enum value is
- available
-Date: Sun, 19 Nov 2023 17:50:47 +0100
-References: <20231111180753.51488-2-marcel@holtmann.org>
-To: ell@lists.linux.dev
-In-Reply-To: <20231111180753.51488-2-marcel@holtmann.org>
-Message-Id: <5A84029F-7CEA-4F04-ABEA-389DE0D123A6@holtmann.org>
+Subject: Re: ELL 0.59 Does Not Compile against Linux-4.9.212 and/or GLibC-2.28
+From: Marcel Holtmann <marcel@holtmann.org>
+In-Reply-To: <124DF4B5-4611-458F-8F68-E386891838AD@nuovations.com>
+Date: Mon, 20 Nov 2023 15:55:08 +0100
+Cc: Denis Kenzior <denkenz@gmail.com>,
+ ell@lists.linux.dev
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <DC4C03D7-B99E-475A-86AD-CB0AAD934BE3@holtmann.org>
+References: <EE577BA9-358B-44E1-BC6E-810EBFA4998F@nuovations.com>
+ <2b9a12a2-87a9-4e10-b24d-77268369d01d@gmail.com>
+ <124DF4B5-4611-458F-8F68-E386891838AD@nuovations.com>
+To: Grant Erickson <gerickson@nuovations.com>
 X-Mailer: Apple Mail (2.3774.200.91.1.1)
 
-Hi,
+Hi Grant,
 
-> Work around the missing RTA_EXPIRES settings of really really old
-> kernels and disable setting that attribute if the enum value is not
-> present.
-> ---
-> acinclude.m4 | 15 +++++++++++++++
-> configure.ac |  2 ++
-> ell/rtnl.c   |  4 ++++
-> 3 files changed, 21 insertions(+)
+>>> ELL Community:
+>>> Over on the connman mailing list, Marcel and Denis have been =
+advocating, rightly so, for iwd over wpa_supplicant for Wi-Fi.
+>>> Is there a kernel version expectation of ELL?
+>>=20
+>> For the most part, no.  It should work with pretty old kernels.  But =
+most of our development started post 4.15 or so.  If you need iwd to =
+work with EAP, then 4.19 is required.  Otherwise, older kernels should =
+work fine.
 >=20
-> diff --git a/acinclude.m4 b/acinclude.m4
-> index 6fb1de565a1d..3bb7b51d9ee6 100644
-> --- a/acinclude.m4
-> +++ b/acinclude.m4
-> @@ -75,3 +75,18 @@ AC_DEFUN([COMPILER_FLAGS], [
-> CFLAGS+=3D" -Wno-unknown-pragmas"
-> fi
-> ])
-> +
-> +AC_DEFUN([TEST_RTNL], [
-> + AC_MSG_CHECKING([for RTA_EXPIRES])
-> + AC_LANG_PUSH([C])
-> + ac_rtnl_save_CFLAGS=3D"$CFLAGS"
-> + CFLAGS=3D""
-> + AC_COMPILE_IFELSE([
-> + AC_LANG_PROGRAM([#include <linux/rtnetlink.h>],
-> + [enum rtattr_type_t t =3D RTA_EXPIRES;])],
-> + AC_DEFINE(HAVE_RTA_EXPIRES, 1,
-> + [Define to 1 if you have the RTA_EXPIRES enum value.])
-> + AC_MSG_RESULT([yes]), AC_MSG_RESULT([no]))
-> + CFLAGS=3D$ac_rtnl_save_CFLAGS
-> + AC_LANG_POP([C])
-> +])
-> diff --git a/configure.ac b/configure.ac
-> index cf3b53cfb574..44084bc4384b 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -111,6 +111,8 @@ AC_CHECK_FUNC(epoll_create, dummy=3Dyes,
+> I=E2=80=99ve no requirement for EAP, so all good there.
 >=20
-> AC_CHECK_HEADERS(linux/types.h linux/if_alg.h)
+>>> For the current project I am engaged on, the kernel is locked at =
+linux-4.9.212, glibc-2.28, and GCC 8.2. With that combination, I have =
+found that the absolutely latest version of ELL I can build is 0.28. =
+Regrettably, iwd requires a more recent version than that. However, =
+neither the version of ELL that iwd embeds nor the latest independent =
+version of ELL, 0.59 compile against the aforementioned combination. I =
+see the following errors:
+>>=20
+>> Try the 4 patches I sent out.  Depending on your openssl version, you =
+might see some weirdness there.  The detection logic seems to not work =
+on _really_ old openssl versions.
 >=20
-> +TEST_RTNL
-> +
-> AC_ARG_ENABLE(glib, AS_HELP_STRING([--enable-glib],
-> [enable ell/glib main loop example]),
-> [enable_glib=3D${enableval}])
-> diff --git a/ell/rtnl.c b/ell/rtnl.c
-> index ad2dca2f9e3c..5b392eae3fb3 100644
-> --- a/ell/rtnl.c
-> +++ b/ell/rtnl.c
-> @@ -1348,7 +1348,9 @@ static uint32_t _rtnl_route_change(struct =
-l_netlink *rtnl,
-> size_t bufsize;
-> void *rta_buf;
-> uint16_t flags;
-> +#ifdef HAVE_RTA_EXPIRES
-> uint64_t now =3D l_time_now();
-> +#endif
+> Will do. I=E2=80=99m running openssl-1.1.1w.
 >=20
-> bufsize =3D NLMSG_ALIGN(sizeof(struct rtmsg)) +
-> RTA_SPACE(sizeof(uint32_t)) +        /* RTA_OIF */
-> @@ -1404,9 +1406,11 @@ static uint32_t _rtnl_route_change(struct =
-l_netlink *rtnl,
-> if (rt->preference)
-> rta_buf +=3D rta_add_u8(rta_buf, RTA_PREF, rt->preference);
->=20
-> +#ifdef HAVE_RTA_EXPIRES
-> if (rt->expiry_time > now)
-> rta_buf +=3D rta_add_u32(rta_buf, RTA_EXPIRES,
-> l_time_to_secs(rt->expiry_time - now));
-> +#endif
+> Regarding the patches, won=E2=80=99t inclusion of an uprev netlink =
+header result in a -ENOSYS or -EINVAL when those symbols hit the downrev =
+kernel? Or were they privately defined in the 4.x series but not =
+publicly exported?
 
-while I think this is simple enough, it might make sense to actually add =
-RTA_EXPIRES even if older kernels don=E2=80=99t support it.
-
-What other obstacles do we have to get ELL compiled and working on older =
-kernels?
+any chance you can give ell-0.60 a spin and let me know if this helps. =
+The only thing we left out was the RTA_EXPIRES workaround and I need to =
+think about this a bit harder on how to work around it.
 
 Regards
 
