@@ -1,105 +1,77 @@
-Received: from mail-oi1-f171.google.com (mail-oi1-f171.google.com [209.85.167.171])
+Received: from mail-oa1-f49.google.com (mail-oa1-f49.google.com [209.85.160.49])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B06B15AEB
-	for <ell@lists.linux.dev>; Fri, 24 Nov 2023 16:18:31 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF411364C1
+	for <ell@lists.linux.dev>; Fri, 24 Nov 2023 18:40:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SqFjdrlq"
-Received: by mail-oi1-f171.google.com with SMTP id 5614622812f47-3b83c4c5aefso1254432b6e.1
-        for <ell@lists.linux.dev>; Fri, 24 Nov 2023 08:18:31 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FlEH7S3n"
+Received: by mail-oa1-f49.google.com with SMTP id 586e51a60fabf-1f9ec5dac5bso604118fac.3
+        for <ell@lists.linux.dev>; Fri, 24 Nov 2023 10:40:24 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1700842710; x=1701447510; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=Wxr02uL6kvNSFmxjpc1K16JrLbeAmKvM37TVWz9Igm4=;
-        b=SqFjdrlqKqMzj3jONxqey5Q/WIAvzKOvMwLnnIX4bs40pYEvlbWC2FP1bJj8kwn8o+
-         4/2b5WUuyUSse2Nd3UnoZHxAN6TE6Au0O1NKR7vJc4YzNcOvxfOGpNVWNQKt05YfgCDm
-         8M9MGKKmozKPCeh5itI+lKcYu8t1y6VN+0Jt6YhTXsfeSJr16gV4XIJ4xAydjrqzifEd
-         xQtj+7Dcu/0xSE1B+KPHh2b0STLpqFPRWT1dufyA/sP5LE7VwWNspZnQDnsbCWL057ol
-         7JwlujUIUW7YUo7KA+dEe5MyadOEhDfkLHP1DxjhJWBGxjTdIRcp+yGajJrs6Q7OcMoc
-         WdrA==
+        d=gmail.com; s=20230601; t=1700851223; x=1701456023; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=U4w9NusNitzkfRErJydlrb+3SUAlVpqdhe+ewGCEHUA=;
+        b=FlEH7S3nnXGb/NU8Fms8letjasKPYQqVvBZW38o5/1/WxTNvgnDd1LQxEvQqEaIcRP
+         /FxML+HhduCqNF2A1xmMhQAQV8SyoeHw2ynhuxtd4go1t9ly/P6Mqzxl5UY8uBOYbsK5
+         U9E/txu0NPWPV5P3wzSDIum26+YKr3YH7xW869SzkesL9TfQ4nlkeTITvziLfj72XY9D
+         BnJ3N6Evfxv6/m98ZIXHrE7+ReZdWWoF2Nw2WbUs6qtIdjIp2E/H8iGAyrijIXv4rNQ3
+         DDdj15gGZb0FGM72aPb4sACCHgjCYVePWkFZ9V4P3m7Tf+fRqGcKZ+z7/E2oP1NMCskT
+         8yuw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1700842710; x=1701447510;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=Wxr02uL6kvNSFmxjpc1K16JrLbeAmKvM37TVWz9Igm4=;
-        b=cHa5QmhbwLtj9p5U/Dx4OJgdOSFMWf0/LBRCFIWetKvDiJmOf+Fmbuz73MmT20kOiO
-         20iRLpk4+KQGfPhRI/yRNGNcvFT1kpHUMKoygCiZ0AEIuZuRn50Lie2kcUZRdBLQswdl
-         VxPErCFnjnF8Pg7kM0AnMdWBskF5wg2tDvaZTzs/2YzRK24a4SsQhZokB5+FjLcxtUEj
-         t+lM5N9sNMTXPSGzRkY1dXh139OpvMZ6TS5rQHpGiXj0E9hHZqxC9QZwqwrvnyKS3T0F
-         SitC3BoW3Q+01EQMuHUe7CnlD+1UfZlbQQaTo0TzX+wjoIRj4P7BuPRFeCCN0rJjCc46
-         OMJw==
-X-Gm-Message-State: AOJu0YxB1/Knr31u1+2zBVHdsVrkLVzNhV7xDu/pn4svmHKh633JRJgW
-	VSs23fp30TXCjMFkJJZRz4V9URKhSHs=
-X-Google-Smtp-Source: AGHT+IFFPySENwM7RY/sMXWtqRPmG+q/uUOrVQ6hSeft1/goZsXzq8CC8xoTNwxKseMmlUYD3KsQGQ==
-X-Received: by 2002:a05:6808:6411:b0:3a8:1877:2d28 with SMTP id fg17-20020a056808641100b003a818772d28mr4103233oib.50.1700842710109;
-        Fri, 24 Nov 2023 08:18:30 -0800 (PST)
-Received: from localhost.localdomain (070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id w9-20020a056808090900b003b2daf09267sm530815oih.48.2023.11.24.08.18.29
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 24 Nov 2023 08:18:29 -0800 (PST)
-From: Denis Kenzior <denkenz@gmail.com>
-To: ell@lists.linux.dev
-Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH] netconfig: Always set DHCP MAC address on start
-Date: Fri, 24 Nov 2023 10:17:26 -0600
-Message-ID: <20231124161740.1243946-1-denkenz@gmail.com>
-X-Mailer: git-send-email 2.42.0
+        d=1e100.net; s=20230601; t=1700851223; x=1701456023;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=U4w9NusNitzkfRErJydlrb+3SUAlVpqdhe+ewGCEHUA=;
+        b=NPNdRrilbse9SCA4VvZMdk6fK/Dco+7NBRavkqEIEymlW9w7yXU9t74EH8Ot2a+K99
+         5cAgZV0ybYd+CHCS775c56kkUm5+dtCJ6eI5x2Huo10QZ8CgVrBC6Cf8DVGw/mLanmaK
+         5yHwDRA/GgpqIjlyZkCeVy+Y/U9kHfOurRbaYAsMUZLxlfKNnqeYkmnI+qHK0m3MTeg9
+         Ff+sChjI1dmhYVK4f/74e6oT1/9WBw4FUncy5DeD4LJZaVhGJ4PEdbkpMbjjb1ZfMhrS
+         xpE/kXOtsbhDCrklYOmd9kbv+pxmD7egU30aS3q+T6mO/NKK0k1FqTXJUpqmSenNSWP9
+         vyNw==
+X-Gm-Message-State: AOJu0Yx2KP/C+wbH8Stngi1kx5nEd+ysmYN9jVTHFO0FTnFpl/ZTXww1
+	xoBPxqUznt3ogXjblbKYqJEjjtsfgd0=
+X-Google-Smtp-Source: AGHT+IEO0q5Hkva52YscBW69bFKcV2pHnFIIW1EE1BuurODPNZi5uM0Olp2Pji9shpYFrutkvSV5bg==
+X-Received: by 2002:a05:6870:d14e:b0:1f5:cd37:34e with SMTP id f14-20020a056870d14e00b001f5cd37034emr4273497oac.20.1700851222860;
+        Fri, 24 Nov 2023 10:40:22 -0800 (PST)
+Received: from [172.16.49.130] (070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id oi8-20020a0568702e0800b001efb3910402sm898595oab.0.2023.11.24.10.40.21
+        for <ell@lists.linux.dev>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 24 Nov 2023 10:40:22 -0800 (PST)
+Message-ID: <364f8062-060d-4b43-be0b-ff0723e0c61c@gmail.com>
+Date: Fri, 24 Nov 2023 12:40:21 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] netconfig: Always set DHCP MAC address on start
+Content-Language: en-US
+To: ell@lists.linux.dev
+References: <20231124161740.1243946-1-denkenz@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20231124161740.1243946-1-denkenz@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-l_netconfig_stop() calls l_dhcp_client_stop which does not reset the
-client MAC address being used.  Since the underlying MAC might have
-changed (for example, due to per-network MAC address generation in iwd),
-make sure that any subsequent l_netconfig_start() invocations will
-update the DHCP client MAC.  This already happens for DHCPv6, but
-somehow did not happen for DHCPv4.
----
- ell/netconfig.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+On 11/24/23 10:17, Denis Kenzior wrote:
+> l_netconfig_stop() calls l_dhcp_client_stop which does not reset the
+> client MAC address being used.  Since the underlying MAC might have
+> changed (for example, due to per-network MAC address generation in iwd),
+> make sure that any subsequent l_netconfig_start() invocations will
+> update the DHCP client MAC.  This already happens for DHCPv6, but
+> somehow did not happen for DHCPv4.
+> ---
+>   ell/netconfig.c | 9 ++++++---
+>   1 file changed, 6 insertions(+), 3 deletions(-)
+> 
 
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index 9b01581fff45..dc6cb0f6a8d9 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -1970,6 +1970,9 @@ LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
- 	if (!netconfig_check_config(netconfig))
- 		return false;
- 
-+	if (!l_net_get_mac_address(netconfig->ifindex, netconfig->mac))
-+		return false;
-+
- 	if (!netconfig->v4_enabled)
- 		goto configure_ipv6;
- 
-@@ -1984,6 +1987,9 @@ LIB_EXPORT bool l_netconfig_start(struct l_netconfig *netconfig)
- 		goto configure_ipv6;
- 	}
- 
-+	l_dhcp_client_set_address(netconfig->dhcp_client, ARPHRD_ETHER,
-+					netconfig->mac, ETH_ALEN);
-+
- 	if (!l_dhcp_client_start(netconfig->dhcp_client))
- 		return false;
- 
-@@ -2064,9 +2070,6 @@ configure_ipv6:
- 	l_queue_push_tail(addr_wait_list, netconfig);
- 	netconfig->have_lla = false;
- 
--	if (!l_net_get_mac_address(netconfig->ifindex, netconfig->mac))
--		goto unregister;
--
- 	l_dhcp6_client_set_address(netconfig->dhcp6_client, ARPHRD_ETHER,
- 					netconfig->mac, ETH_ALEN);
- 	l_icmp6_client_set_address(netconfig->icmp6_client, netconfig->mac);
--- 
-2.42.0
+Applied.
 
