@@ -1,144 +1,81 @@
-Received: from mail-qk1-f181.google.com (mail-qk1-f181.google.com [209.85.222.181])
+Received: from mail-oo1-f41.google.com (mail-oo1-f41.google.com [209.85.161.41])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12DAD3B195
-	for <ell@lists.linux.dev>; Thu, 11 Jan 2024 13:33:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 863191AAB3
+	for <ell@lists.linux.dev>; Fri, 12 Jan 2024 17:11:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JLcDR7vl"
-Received: by mail-qk1-f181.google.com with SMTP id af79cd13be357-7831389c7daso427419585a.2
-        for <ell@lists.linux.dev>; Thu, 11 Jan 2024 05:33:36 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NxqPVnoU"
+Received: by mail-oo1-f41.google.com with SMTP id 006d021491bc7-59883168a83so1691405eaf.2
+        for <ell@lists.linux.dev>; Fri, 12 Jan 2024 09:11:35 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1704980015; x=1705584815; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=Mc2BGraBkjUiLgyjiI/DYcl5yg7mOxTpE7J1NNLYt+0=;
-        b=JLcDR7vleutdRMRsSl0gi4nXkWxzyXmw/0X8/Fea47hUEGcmyl3nucAryt9n9ybEWS
-         YMxocE2MaBAS34GvRXwq1JkXGc+hknY7KMxb1aveXKY36LRPZVJw7sm8nUwjEEATW2KC
-         HVJ+RYoEDdeQaYXQ+i5sXqTSgiFPE2Vh7bpWxxS+04pX30L/YVbsyf1X7dT4CLkzqpp2
-         EZEcZ+5YECfyOWQ5TCeL37vJIC1zJcDU6ORb6/18JcSfYNMqQJH+iFsm84XNptEEqOZ/
-         9eYKsg9YqG2L40YCumBr9dNQfEXcdIKI+TNO7coUOyOxNt+RSwDH52f61WdkMd4Vijan
-         qYKw==
+        d=gmail.com; s=20230601; t=1705079494; x=1705684294; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=hhEC4pSwvcJZ2ybrsWcBft47bSieRegSfK93zLQ6PQo=;
+        b=NxqPVnoURfVNTk6GNmv4voi1vYecFo1BfOO9wxlwwP/Q5y3gs6Jr2YCAzeKqGbg3Kb
+         bKmk3KUsfnr8M2U/IIlFyH/7oGFv2slqrkkZhMSdoivHK1WyXpBJj1HCtLyYOx3pf8rH
+         vGEoJqFg05jcbbhOvU/DN7pCmd975JHpZsPYTMI5KR6uSMrw7sjvK2Q6wJnB+PT+ADgE
+         gPpuoAByCm3qTZGq6GlEL7SfwlpOLBgYTXOd60p250DlMSDlw4P5UCtsqMNKgWncv9eJ
+         9uaK9ZntVwxwk3aSV8wCiFmV2GB8S1ROIrwpNAfUfJV/qnPpcQ6FmtGHE9LcrJCKXO87
+         G3OA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1704980015; x=1705584815;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=Mc2BGraBkjUiLgyjiI/DYcl5yg7mOxTpE7J1NNLYt+0=;
-        b=cqT4i97QUqfdOXBsrfkSkadcWQz6rY2JdagLRgCjYDU7Vaxc0LP+59Q9WBd1hSazTn
-         94v6m12QpUGA9IsEU8H6TpRPjjXNNQrTbE0+bfeIwLbj2LiNd2PR2BSKnVWoUbVSffiP
-         64zRkvTpcBZJkbq7SQmRacnjlXUYy4263EOFviwamqty3CVDCAtokdNaOJU7hJuOJzHn
-         i0Rrx4B+kABoSshPZD3UnWC5ACbT6c1QeUytA2btH+GuQJUFk9Nw0RjLcyTcJYEO1mAT
-         tpc1Zt8HyeHxLtkfA8eJ7eJnLwQo836vvr3yoehv4+WOj8sNZMyXnOOWfJ81KWjICU0m
-         KXqw==
-X-Gm-Message-State: AOJu0YzvbpIvnf5axkJHw5NQ/CQk/Ql8IKjUKxP9APnSXV1nVmAnDt2k
-	zTxSA6d+EJ8TPBt92Ba3QBUR04DwXd0=
-X-Google-Smtp-Source: AGHT+IG02JOzbHHkDpRosTzVcze6OwlsL1yFjGc4jAucXykH/eOnF5uprQ3wvVPYlCP1yP62bL0jtw==
-X-Received: by 2002:a05:6214:5001:b0:67f:6ea8:b2a1 with SMTP id jo1-20020a056214500100b0067f6ea8b2a1mr1165393qvb.19.1704980015623;
-        Thu, 11 Jan 2024 05:33:35 -0800 (PST)
-Received: from LOCLAP699.rst-02.locus (50-78-19-50-static.hfc.comcastbusiness.net. [50.78.19.50])
-        by smtp.gmail.com with ESMTPSA id dz19-20020ad45893000000b00680b1a92322sm301238qvb.77.2024.01.11.05.33.34
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 11 Jan 2024 05:33:35 -0800 (PST)
-From: James Prestwood <prestwoj@gmail.com>
-To: ell@lists.linux.dev
-Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v2] dhcp: fix overflow causing retries to stop
-Date: Thu, 11 Jan 2024 05:33:31 -0800
-Message-Id: <20240111133331.1423853-1-prestwoj@gmail.com>
-X-Mailer: git-send-email 2.34.1
+        d=1e100.net; s=20230601; t=1705079494; x=1705684294;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=hhEC4pSwvcJZ2ybrsWcBft47bSieRegSfK93zLQ6PQo=;
+        b=t2jG927OKUcP99KQUIKZLAcEVBP3WZjScNpdp7p+c1EuHDGKWXla5f3IjuRNgQV4PB
+         fvFFAxhfjyIl9WM3R5/hyyNRo1FjFDf0HucotfCZnlIBF7FcKM+pzkER9cRlAl9b40JY
+         6f0+hzD9glrd/MX2pQ5FrmSFmvWPcWdRU32nMN2U3arcwStgnZBKReMsSmMv77rhIbia
+         eHPJbImi6EQy8E7bymNB7HwBbWp3MUrzmuDO7yFMDwWzCd/7Rxc4vNd8b31YyG8QVQn7
+         vO7pZrckBoZnElLpG5fPWqKszE3ylbCjWGfzyz2t6WQEO/pM4LYWOM8cfqdpYghJoIm/
+         oUQA==
+X-Gm-Message-State: AOJu0YxUSIOyQutfdG562sKZEIlJdvKH+IJ2zhVzzuHhNAUwInIcicy2
+	xLnm0xqawdaVwDADSmJ/BrawzW1kOr8=
+X-Google-Smtp-Source: AGHT+IEF1mKJhKtICzW2XXcNU827FdxxDBR1csZXc8Ns2BMUsE5IRa3781wxTMB/t2hX4cuFWWPQ8g==
+X-Received: by 2002:a05:6820:609:b0:598:8344:c86 with SMTP id e9-20020a056820060900b0059883440c86mr1013823oow.14.1705079494490;
+        Fri, 12 Jan 2024 09:11:34 -0800 (PST)
+Received: from [172.16.49.130] (070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id v190-20020a4a5ac7000000b00595a3e41e2csm764381ooa.37.2024.01.12.09.11.33
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 12 Jan 2024 09:11:34 -0800 (PST)
+Message-ID: <55a3b50e-637b-4df1-960b-a4af96002e78@gmail.com>
+Date: Fri, 12 Jan 2024 11:11:33 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] dhcp: fix overflow causing retries to stop
+Content-Language: en-US
+To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
+References: <20240111133331.1423853-1-prestwoj@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20240111133331.1423853-1-prestwoj@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-If DHCP is in a SELECTING/REQUESTING state and the number of attempts
-reached a value where 2 << attempts overflowed an unsigned int the
-next timeout would become zero, causing DHCP to never retry without
-any event notification.
+Hi James,
 
-Roughly 2 minutes has passed when we reach >5 attempts so it makes
-little sense to retry indefinitely, at least without notifying the
-upper layers (which could decided to retry themselves).
+On 1/11/24 07:33, James Prestwood wrote:
+> If DHCP is in a SELECTING/REQUESTING state and the number of attempts
+> reached a value where 2 << attempts overflowed an unsigned int the
+> next timeout would become zero, causing DHCP to never retry without
+> any event notification.
+> 
+> Roughly 2 minutes has passed when we reach >5 attempts so it makes
+> little sense to retry indefinitely, at least without notifying the
+> upper layers (which could decided to retry themselves).
 
-Add a new event L_DHCP_CLIENT_EVENT_MAX_RETRIES_REACHED to notify
-netconfig of the situation. Netconfig will then send a failure event
-and the consumer can decide how to proceed.
+Okay, but '5' is just a magic number in the code with no context.  Lets avoid that.
 
-Fixes: f130c448 ("dhcp: Introduce timeout fuzzing")
----
- ell/dhcp.c      | 19 ++++++++++++++++---
- ell/dhcp.h      |  1 +
- ell/netconfig.c |  6 ++++++
- 3 files changed, 23 insertions(+), 3 deletions(-)
+Can we make this limit configurable?  Say between 3..30?  For iwd, even 2 
+minutes might be too long.
 
-v2:
- * Added new event instead of retry forever.
-
-diff --git a/ell/dhcp.c b/ell/dhcp.c
-index ece3e23..79fc54c 100644
---- a/ell/dhcp.c
-+++ b/ell/dhcp.c
-@@ -557,10 +557,23 @@ static void dhcp_client_timeout_resend(struct l_timeout *timeout,
- 		 * RFC 2131 Section 4.1:
- 		 * "The retransmission delay SHOULD be doubled with subsequent
- 		 * retransmissions up to a maximum of 64 seconds.
-+		 *
-+		 * The maximum is hit after 5 attempts (2 << 5 == 64)
- 		 */
--		client->attempt += 1;
--		next_timeout = minsize(2 << client->attempt, 64);
--		break;
-+		if (client->attempt <= 5) {
-+			next_timeout = 2 << client->attempt++;
-+			break;
-+		}
-+
-+		/*
-+		 * DHCP server is non-responsive after ~2 minutes, relay this to
-+		 * upper layers do decide how to proceed
-+		 */
-+		CLIENT_DEBUG("Max request/discover retires reached");
-+
-+		dhcp_client_event_notify(client,
-+				L_DHCP_CLIENT_EVENT_MAX_RETRIES_REACHED);
-+		return;
- 	case DHCP_STATE_INIT:
- 	case DHCP_STATE_INIT_REBOOT:
- 	case DHCP_STATE_REBOOTING:
-diff --git a/ell/dhcp.h b/ell/dhcp.h
-index 6ce4dde..4db573d 100644
---- a/ell/dhcp.h
-+++ b/ell/dhcp.h
-@@ -41,6 +41,7 @@ enum l_dhcp_client_event {
- 	L_DHCP_CLIENT_EVENT_LEASE_EXPIRED,
- 	L_DHCP_CLIENT_EVENT_LEASE_RENEWED,
- 	L_DHCP_CLIENT_EVENT_NO_LEASE,
-+	L_DHCP_CLIENT_EVENT_MAX_RETRIES_REACHED,
- };
- 
- enum l_dhcp_server_event {
-diff --git a/ell/netconfig.c b/ell/netconfig.c
-index ab59299..1e6912a 100644
---- a/ell/netconfig.c
-+++ b/ell/netconfig.c
-@@ -548,6 +548,12 @@ static void netconfig_dhcp_event_handler(struct l_dhcp_client *client,
- 		if (!l_dhcp_client_start(nc->dhcp_client))
- 			netconfig_failed(nc, AF_INET);
- 
-+		break;
-+	case L_DHCP_CLIENT_EVENT_MAX_RETRIES_REACHED:
-+		L_WARN_ON(nc->v4_configured);
-+
-+		netconfig_failed(nc, AF_INET);
-+
- 		break;
- 	}
- }
--- 
-2.34.1
-
+Regards,
+-Denis
