@@ -1,61 +1,65 @@
-Received: from mail-ot1-f42.google.com (mail-ot1-f42.google.com [209.85.210.42])
+Received: from mail-oa1-f54.google.com (mail-oa1-f54.google.com [209.85.160.54])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F76E4C61F
-	for <ell@lists.linux.dev>; Mon, 29 Jan 2024 19:42:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.42
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7D494C631
+	for <ell@lists.linux.dev>; Mon, 29 Jan 2024 19:42:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.54
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706557349; cv=none; b=qcXo6Oj6VpZLWqtv83aQtUfHganM/bL3bZvRRoG+Qew4t79LIsbQGXvBBmo2BpxuBHUoREAUPKvT03eGjp44ief1/X8NpUAsuGL17frTghHoI0YMVDgSSJ5bUt9PpPkstCA2LfQbvse/81hJfG1Xq2ghwJvE7qr1h5U38RKurpg=
+	t=1706557350; cv=none; b=b/BAu/vKWYWlqUJs814yeZfZfjOfGPtyUWsj1e5kv7HywUs22duOnP9B44WaNs3av+u5UiaKTlZH1IgrqspWCz0YTEpl8Wav+hyjIcYj1cyBwEALBc/KukQUV5mwOAFUzpHUFjdegVp7gJbzFQQ6K0YJZ81MSjlLYsPJXHgTuiY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706557349; c=relaxed/simple;
-	bh=iXQXUa05zMSL1XhrD18wnoR5SRZGYeJZt59G7Mv5Rgk=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=TWOzysbkP5BKb4GryLIIoLp8fAgHFMZ4HKbOwlgd8anJ/ngMsfsNPWPiWkQ6VRLWKYiJP25TflnM9qwgtDmEVdCJ/CZ3DgDPTCxuQcJ7j3LjWz1QexlwYZiDnHjcV5cSoe1VLsuuqqL6l0KVv90tKxZH5tYlHxdn6lX3RJPi/9I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=nh7WTgYb; arc=none smtp.client-ip=209.85.210.42
+	s=arc-20240116; t=1706557350; c=relaxed/simple;
+	bh=ux3r4nTs20pYd4F8EanBionz0JPTBFCu2wHJRldk+sw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=ZQSmHaJzswkeF2bfhdwpjLgnCXpSMQhFBO1L58yndZ/ym5ogC4mmUkVLmJ1m60MkVwSQlx1wsDYIBfwHa05JmbXpSxM15dKPMdP+3FFngp2CCa0EZP7XUNRzWADIMhBhsDd0XEU0tr33p3Fj+RqODFriQXx2v0uXeU4gLH0OIi0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=SSvRXJyq; arc=none smtp.client-ip=209.85.160.54
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nh7WTgYb"
-Received: by mail-ot1-f42.google.com with SMTP id 46e09a7af769-6e1226b30ffso748703a34.0
-        for <ell@lists.linux.dev>; Mon, 29 Jan 2024 11:42:27 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SSvRXJyq"
+Received: by mail-oa1-f54.google.com with SMTP id 586e51a60fabf-214c940145bso1474281fac.1
+        for <ell@lists.linux.dev>; Mon, 29 Jan 2024 11:42:28 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20230601; t=1706557347; x=1707162147; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=vpFd0FOMQX83VUTki9RI2CieTwVjnsnYF+4CAw4FZTI=;
-        b=nh7WTgYbn0GQbptaI946y+T/9xQYnz/x5UsXCgoKa+rjaC1NTcFnrvbtIFEvsCElCo
-         mWtRk5enj0n88nNL1dKFwFMwD9QNqRzHImnmWtFhSFaPIZoPSbS1CCmlZE6MMr4q2f0U
-         ZOF9gjY6qPOhrc0RLtN1nuinGZlD5wTreeNqkcNw52CogO01viDe7PJUEQYNO198dZoV
-         7Cbh7/m4aZTjDLLLLg2ZrqgLXcKuKz0PRvz2X7YMJqsDmLar+EEiBr/7U3xxC6yQzFtZ
-         4e4DN2nghrHNJkzkDpaAO0EFcwevXUMtxgcx8KUa6sj+arLWQUROIUxapHXX1YO8GK9h
-         QlwQ==
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=7HSQi70AoannJuAQoAdEZ1HI6LdcgKf+0N0or9le8IE=;
+        b=SSvRXJyqnzFvQl7YPEbVzrVadxibn9ZAW/KMAzVwVjdQla0V0pdSLP30MhQD3WhIv5
+         h117tWUPEldTZ5KliJMrvZdX3m0Zl2FL1AYsXRiRlovFw3j8aoeHwJMpaKvwdIekkcwA
+         OWFEuBaCgoYH5x4tIqsNIfXGIDrWOsEuRf0p+COL4IKrUAq43IfFdRzmzSU42iMfmYGO
+         XkRHJmrqPavFYgemCBHwjUq1t/QlR3LXrM8fnAc3aAnX5f+Ayvbqnxu5+OmcoOYFWK28
+         OiI1ONRQoVO6rbqst5YAU5hqwFOLynCtrLLs/7PjUqBuKZ4fWKYr/GCDycgOF7fs/jVx
+         ojDQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20230601; t=1706557347; x=1707162147;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=vpFd0FOMQX83VUTki9RI2CieTwVjnsnYF+4CAw4FZTI=;
-        b=onEV/FUsP/HvRlTzWdZOe7dYClKw5tDoLG96R08fn9Yz9YO+kyFuXTNdsdBRRaj8Q/
-         fR5/AcVmu4rskuYED90yvvV7Oa3tlcedJ9VNlyQOhlwcPxtXZ9sFv7f71qlxA9rxb5up
-         ZyZjbUqcGSd4wKlGMtAqAdHRdw7Bs74pgIiRHx4KpXiF3aosDnYJa0YYyZExX6MIOXJ9
-         CDhAbSNdZsqSvG4vEcw/PQFVd00UtxQ2JVGS2CiAkgN4L2TSgTenI73uva0XxxHccmKL
-         hTAAs09YxgSDWtqTe/JlI0HzAhikngo2Qv9n6/IlbrIupND2jK1KTwgE04BBDZV9SdhC
-         37HQ==
-X-Gm-Message-State: AOJu0Yw9e1YdDKlnl0M6nWFQoGnN5AXqkdaoCcAkx7I+Y63a0IigGKpX
-	QrslM07TOUn4hJ1vk4LSLZdd74jMZ8h/c+uH5zm9gF21R2Glu4CNdxofqZEg
-X-Google-Smtp-Source: AGHT+IG0VSnqv/mg3lLTh8+YyOBxqsn8FZJOGV9c5ZJwy2/NZkeE71NR5Yg1aOKy+RG0Rnx5bXRmxw==
-X-Received: by 2002:a9d:3e17:0:b0:6dc:455:e923 with SMTP id a23-20020a9d3e17000000b006dc0455e923mr4799744otd.11.1706557346739;
-        Mon, 29 Jan 2024 11:42:26 -0800 (PST)
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=7HSQi70AoannJuAQoAdEZ1HI6LdcgKf+0N0or9le8IE=;
+        b=Zd5+sjvmYaUGgZesfEwGTvwyNNADNgsPXZVXORch/OUD8vXMwiEg5yt9RauLe0n9xX
+         nVN83gzMeGRpZcduCNjP4GUGsFWpMQVNADeEN67F1UmT2aOmDt3eu7UoAE/J820/fGZg
+         qbq6AWwZyojI0ReY7HytGbzRV7lYjFlUOW6Yz2ndhlbql5bFTFbqz2BfHW+uWX6Fy3Jf
+         KVB/ulTinqa4AaD/Q75lgrPP/sOgk43bgujuyl/nrKAEJI30WDcPDHFymmbbTIKZvX/R
+         5LtKnmbf7ULjyX1oafmR+IE5G6Dwf9Fih7PxeTsqNfGoOsh3JBI9hQgScSHK3xTIRQ0Y
+         IGVA==
+X-Gm-Message-State: AOJu0YyT8ufgV/dqWgykkJp8FwVoVZEGklyqz0PitI4+2or/SvYZdcK6
+	7gMziWxOuBL7frrdvkhJe5q1yB5fX59JbIAf109en6PTPsUmLuw8RuWwXg2j
+X-Google-Smtp-Source: AGHT+IHdUuyF2KhnGCMXeaYpp8fhTPvzfoKJXTjf135vKHqLauhEw21a1e+A8XhP2NGkJDLxJ2LNSQ==
+X-Received: by 2002:a05:6870:c192:b0:210:c59c:dae8 with SMTP id h18-20020a056870c19200b00210c59cdae8mr3532075oad.55.1706557347488;
+        Mon, 29 Jan 2024 11:42:27 -0800 (PST)
 Received: from localhost.localdomain (070-114-247-242.res.spectrum.com. [70.114.247.242])
         by smtp.gmail.com with ESMTPSA id e1-20020a0568301e4100b006e1164fdbc3sm1327850otj.73.2024.01.29.11.42.26
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 29 Jan 2024 11:42:26 -0800 (PST)
+        Mon, 29 Jan 2024 11:42:27 -0800 (PST)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH 1/2] dir: Add l_dir_create
-Date: Mon, 29 Jan 2024 13:41:36 -0600
-Message-ID: <20240129194139.714209-1-denkenz@gmail.com>
+Subject: [PATCH 2/2] file: Add l_file_set_contents
+Date: Mon, 29 Jan 2024 13:41:37 -0600
+Message-ID: <20240129194139.714209-2-denkenz@gmail.com>
 X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20240129194139.714209-1-denkenz@gmail.com>
+References: <20240129194139.714209-1-denkenz@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -65,105 +69,109 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
 ---
- ell/dir.c   | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/dir.h   |  2 ++
  ell/ell.sym |  1 +
- 3 files changed, 55 insertions(+)
+ ell/file.c  | 56 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/file.h  |  1 +
+ 3 files changed, 58 insertions(+)
 
-diff --git a/ell/dir.c b/ell/dir.c
-index f55382f82508..5f13f8afa0c5 100644
---- a/ell/dir.c
-+++ b/ell/dir.c
-@@ -15,8 +15,10 @@
- #include <limits.h>
- #include <sys/inotify.h>
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 17acd40683e8..6ef885dd9d83 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -312,6 +312,7 @@ global:
+ 	l_dir_watch_destroy;
+ 	/* file */
+ 	l_file_get_contents;
++	l_file_set_contents;
+ 	/* genl */
+ 	l_genl_new;
+ 	l_genl_ref;
+diff --git a/ell/file.c b/ell/file.c
+index fb510d17fb4a..6f0a909f88e5 100644
+--- a/ell/file.c
++++ b/ell/file.c
+@@ -15,9 +15,12 @@
+ #include <fcntl.h>
+ #include <unistd.h>
  #include <errno.h>
-+#include <sys/stat.h>
++#include <stdlib.h>
++#include <stdio.h>
  
+ #include "file.h"
  #include "private.h"
 +#include "useful.h"
- #include "queue.h"
- #include "io.h"
- #include "dir.h"
-@@ -336,3 +338,53 @@ done:
  
- 	l_free(watch);
+ /**
+  * l_file_get_contents:
+@@ -72,3 +75,56 @@ error:
+ 	close(fd);
+ 	return NULL;
  }
 +
 +/**
-+ * l_dir_create:
-+ * @abspath: Absolute path of the directory to create
++ * l_file_set_contents:
++ * @filename: Destination filename
++ * @contents: Pointer to the contents
++ * @len: Length in bytes of the contents buffer
 + *
-+ * Attempts to create a directory tree given by @abspath.  @abspath must be
-+ * an absolute path.
++ * Given a content buffer, write it to a file named @filename.  This function
++ * ensures that the contents are consistent (i.e. due to a crash right after
++ * opening or during write() by writing the contents to a tempoary which is then
++ * renamed to @filename.
 + *
 + * Returns: 0 if successful, a negative errno otherwise
 + **/
-+LIB_EXPORT int l_dir_create(const char *abspath)
++LIB_EXPORT int l_file_set_contents(const char *filename,
++					const void *contents, size_t len)
 +{
-+	static const mode_t create_mode = S_IRUSR | S_IWUSR | S_IXUSR;
-+	struct stat st;
-+	_auto_(l_free) char *dir = NULL;
-+	const char *prev, *next;
-+	int err;
++	_auto_(l_free) char *tmp_path = NULL;
++	ssize_t r;
++	int fd;
 +
-+	if (!abspath || abspath[0] != '/')
++	if (!filename || !contents)
 +		return -EINVAL;
 +
-+	err = stat(abspath, &st);
-+	if (!err) {
-+		/* File exists */
-+		if (S_ISDIR(st.st_mode))
-+			return 0;
++	tmp_path = l_strdup_printf("%s.XXXXXX.tmp", filename);
 +
-+		return -ENOTDIR;
-+	}
-+
-+	if (errno != ENOENT)
++	fd = L_TFR(mkostemps(tmp_path, 4, O_CLOEXEC));
++	if (fd == -1)
 +		return -errno;
 +
-+	dir = l_malloc(strlen(abspath) + 1);
-+	dir[0] = '\0';
++	r = L_TFR(write(fd, contents, len));
++	L_TFR(close(fd));
 +
-+	for (prev = abspath; prev[0] && (next = strchrnul(prev + 1, '/'));
-+								prev = next) {
-+		/* Skip consecutive '/' characters */
-+		if (next - prev == 1)
-+			continue;
-+
-+		strncat(dir, prev, next - prev);
-+
-+		if (mkdir(dir, create_mode) == -1 && errno != EEXIST)
-+			return -errno;
++	if (r != (ssize_t) len) {
++		r = -EIO;
++		goto error_write;
 +	}
 +
-+	return 0;
-+}
-diff --git a/ell/dir.h b/ell/dir.h
-index 8b786f9f36b3..3da4f82bdbb4 100644
---- a/ell/dir.h
-+++ b/ell/dir.h
-@@ -33,6 +33,8 @@ struct l_dir_watch *l_dir_watch_new(const char *pathname,
- 					l_dir_watch_destroy_func_t destroy);
- void l_dir_watch_destroy(struct l_dir_watch *watch);
- 
-+int l_dir_create(const char *abspath);
++	/*
++	 * Now that the file contents are written, rename to the real
++	 * file name; this way we are uniquely sure that the whole
++	 * thing is there.
++	 * conserve @r's value from 'write'
++	 */
++	if (rename(tmp_path, filename) == -1)
++		r = -errno;
 +
++error_write:
++	if (r < 0)
++		unlink(tmp_path);
++
++	return r < 0 ? r : 0;
++}
+diff --git a/ell/file.h b/ell/file.h
+index a93d8e9c27c2..f1ed8790fd02 100644
+--- a/ell/file.h
++++ b/ell/file.h
+@@ -13,6 +13,7 @@ extern "C" {
+ #endif
+ 
+ void *l_file_get_contents(const char *filename, size_t *out_len);
++int l_file_set_contents(const char *filename, const void *data, size_t len);
+ 
  #ifdef __cplusplus
  }
- #endif
-diff --git a/ell/ell.sym b/ell/ell.sym
-index e12fd0e825b8..17acd40683e8 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -307,6 +307,7 @@ global:
- 	l_dhcp6_lease_get_preferred_lifetime;
- 	l_dhcp6_lease_get_start_time;
- 	/* dir */
-+	l_dir_create;
- 	l_dir_watch_new;
- 	l_dir_watch_destroy;
- 	/* file */
 -- 
 2.43.0
 
