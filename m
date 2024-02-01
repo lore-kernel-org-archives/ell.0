@@ -1,126 +1,82 @@
-Received: from mail-oo1-f43.google.com (mail-oo1-f43.google.com [209.85.161.43])
+Received: from mail-oa1-f51.google.com (mail-oa1-f51.google.com [209.85.160.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A6E981649C7
-	for <ell@lists.linux.dev>; Thu,  1 Feb 2024 15:18:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.43
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5302D5F49A
+	for <ell@lists.linux.dev>; Thu,  1 Feb 2024 16:07:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706800722; cv=none; b=ENp1KdQm1RvmpxQxkEl3N/99TnLgVkJT6BBpLJYf+6eis4ZVrUxefZ669intdyj24huIm3xcwHL46pKsXyd7nzftOOQVNkB4GwenEyVT6/0aeDVwVi1hNTS5r/AbJmOy4QifNjk2mT7iWz8TkwoEyCfpIM3l3PfgY3z/VUhvtXY=
+	t=1706803636; cv=none; b=YtqmyJpj8noRtlD5vOxrhk8+iepgadmp/DIIpa4QCN9mYXOrtgizm5I5Y0kfWMNMMLcLeGXc2AKq7Q8O1waEAIhqFijnIPKHcxDb02VkjhVbEfqU94bnukT9gwxBghAwCHoJfm17+XptWpMU2s+VHPJp8s4gYZMAuh5oMoh2RFo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706800722; c=relaxed/simple;
-	bh=deiuispV5WCU4Ydn/x3JNlAwg/9aJzC3zZR+5sTlSdQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=lPhtAXh26Jg5rNZ7dbMFAmubccw5zKMt21WYwpi/OJPnDaTBDKwZ7kz2JWAzG3hlSM9/21avnR3iIUNH47bmI4vgq7Q65Kpsw7L5M8VwnWlf5cTfsvE+S44o90oQin+hfNQgaok/BkQaahM/Feu8OxKlZ6wQw+m3cy1SY8lVUVY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=m/4g+qx9; arc=none smtp.client-ip=209.85.161.43
+	s=arc-20240116; t=1706803636; c=relaxed/simple;
+	bh=Eeck0DF93CQ8n7BN8gQ0uUvqDdFIlF1l12MSMHRBFxw=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=bdDUGH3fbp22o9zNA09ADn5oY8ZMC93o1XhIhmf5Iic/BxEvB+Qz6KVOh/tV4rPJT7NcYdtZaLh6Ax0sMwqPH6Fj7ydLY2y/eBadD9aQ2alXuz2wjDowRf+/cDm2oWvb4gZOgI2OdzG+pzEHEOMKdqhViiThuCw/emqtgyQ3VFw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=bX3oDs9d; arc=none smtp.client-ip=209.85.160.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="m/4g+qx9"
-Received: by mail-oo1-f43.google.com with SMTP id 006d021491bc7-5957ede4deaso672215eaf.1
-        for <ell@lists.linux.dev>; Thu, 01 Feb 2024 07:18:40 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bX3oDs9d"
+Received: by mail-oa1-f51.google.com with SMTP id 586e51a60fabf-218dcbd1584so688137fac.2
+        for <ell@lists.linux.dev>; Thu, 01 Feb 2024 08:07:15 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1706800719; x=1707405519; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=KB/gFFbQX0N0sOMvTtWqlAdzmlo+BNpSVuKL7ZoXmpE=;
-        b=m/4g+qx9Aiy1A4uhWgpBCHs0CyHgQVWLezuh3mJVBF0EbayMXlRQvUmF2t1IQ97xyK
-         x2ea5osfF1NQBT7EIpPpcALeOpaqLL5rvkaBbqlbEpeQV/zWsdxZv0QkdU6EfbGdxBhC
-         9+QTNlOp9XgKz139SeTOI03lY+57XkeAhrKtQpv3UeWBn3Q0jG5jBnWbXw03O4YHGy+C
-         agIf0CxN1TpmmrALWs5kiMIAik8ETgTbAvUKOlmJzrQW6yanD8mXUkE5YGob83L1Il2j
-         OmmjAXLaKpnCs6QIzDnJODhq+/m2kdTzRvRctKoKGwbXmlQ7iKC7b7LgeNl1li0N/8Zv
-         McGw==
+        d=gmail.com; s=20230601; t=1706803634; x=1707408434; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=QDIMmXh7PbqylYx3ymlu2mDZPATwuNW4WbheSgB5XcQ=;
+        b=bX3oDs9dSKliMzHma17jg8ztY52P1HtfKSAj/9IglOWVlTguBJj3QX+ABPHrL9cpWn
+         zfoGoibnvAgZACLmER3lnWRWwQWEsv9gysp4vX9xsN27u2WISqFogv2wnQK8Umxp4NQG
+         c3i7HHm9gF09VQzjL6GH7NxKvBlsaDNrXultNG/UbkNBKAKvZ2NFdsEj72VFC9dC/627
+         HluC4mt4bR7nl5lILWrPm0NmK7x85bz+aCtzYGx6h8FjI0pTE6Icam05H4xX3ONCV8Nf
+         oibXW2Gk1binwd65qN9F1Xc2oE9pfSCW4im1U37sa8iA1KsA9ZBpFLwracFpBMDsZzth
+         RqkQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1706800719; x=1707405519;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=KB/gFFbQX0N0sOMvTtWqlAdzmlo+BNpSVuKL7ZoXmpE=;
-        b=wc7PJkmPT34RpzusMJgc1BRNhhCLelzmiFAHQthiI8rhjaXN5fCVC87mIT0WUdcj6x
-         tAQ2eVtgODh8ky4tqO+JWVr8qsuQu+xlqbBurPyiyB7VCs/ZlJYc+EEYvN9Yd04BAcDv
-         nl7FDqb4US8S71163cizfTIjOl5cY7qHI8ZvYnffNbOwtAULCNHppQDwmD3t3unmNm+s
-         /Mrujz7LKxGUB+Pq8B0W6CA+ar5OotfHAtApUxELHyGn6Vt4N3fHxsm181a3oJLHAaj/
-         IkiLCdj4gRYeTGRbnAWkmF2KB8Hod16ouf1Cj0HtYFgBC8ZmdNRzM2DgUuiUM9F/4vQt
-         jIDg==
-X-Gm-Message-State: AOJu0YxlNHrn73JkexUTugaxvL7ciztvglkXe6Y+R9+syCi5PAd8uAIK
-	pkjMM8Wiv/FuC972U8EsoUCeMlOOSERaoscVVL90qLMC7fVk+iOtHB7ynh4b
-X-Google-Smtp-Source: AGHT+IFZc5X/SWy9+b2ULX4rsgAu7iS6RnVDucAseLKWc1W9UKe/YUSX8M+937mm5VEm6xLUdM+tWA==
-X-Received: by 2002:a05:6870:c387:b0:218:550b:d6a with SMTP id g7-20020a056870c38700b00218550b0d6amr5636431oao.48.1706800719565;
-        Thu, 01 Feb 2024 07:18:39 -0800 (PST)
-Received: from localhost.localdomain (070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id e12-20020a056870450c00b00218496d80b7sm3153326oao.29.2024.02.01.07.18.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 01 Feb 2024 07:18:39 -0800 (PST)
-From: Denis Kenzior <denkenz@gmail.com>
-To: ell@lists.linux.dev
-Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH 2/2] cleanup: Use _l_ preffix for all cleanup functions
-Date: Thu,  1 Feb 2024 09:17:34 -0600
-Message-ID: <20240201151751.880279-2-denkenz@gmail.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240201151751.880279-1-denkenz@gmail.com>
-References: <20240201151751.880279-1-denkenz@gmail.com>
+        d=1e100.net; s=20230601; t=1706803634; x=1707408434;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=QDIMmXh7PbqylYx3ymlu2mDZPATwuNW4WbheSgB5XcQ=;
+        b=bfQHcTyyEVhEkSYbYI89iC66ZiKDQVRbDOpVR0nig51+5DgRD7RZWMHXPPQsj38yec
+         SNoTdZavQBzjbz2tbSeW2lqY1aHLfLfoeYaaE/hQl3yn0WVc1sOiGv1EBGWqBir4fPRA
+         78kZcXK8I0K1rLu7ZpNdmuQ/qHeAeIKowfwl4HsOoCTiU563NKqsGeeIcQ64GRukcLvT
+         OKVfCZB5LVfl1AGKFwLeMjFEnp30jtCVu8P2PahM2+I1E0aPWahoihUby2ohlgxTHT/V
+         OKZShz/o3ocB1eOqx3SikW0wlKIkH0z0uGi94JPA6ENsgg5Va+lERv5HlCvXyyWDmFo8
+         7Pmw==
+X-Gm-Message-State: AOJu0YzeUn1skbmWzDTDkH8DXVeyLWsFSuaNLLmcXhd98vXfEE0vgXk6
+	Q1BSnq9Y3i0OtVPtpWXMZ04Wouy/RVdvR+0kD0OLqS4Mu798yGdrprcUuqCT
+X-Google-Smtp-Source: AGHT+IFfPBE/pJFeHIeh9YoTh9MLoyhmVHHp6IlHCP1xO2/ZjYiBnQuuGUGFZ3txAzAzFYSyAqNQ3g==
+X-Received: by 2002:a05:6870:6c0a:b0:206:85a2:643b with SMTP id na10-20020a0568706c0a00b0020685a2643bmr6202513oab.35.1706803634223;
+        Thu, 01 Feb 2024 08:07:14 -0800 (PST)
+Received: from [172.16.49.130] (070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id pv16-20020a0568709d9000b00214ccbdc81fsm7690oab.21.2024.02.01.08.07.13
+        for <ell@lists.linux.dev>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 01 Feb 2024 08:07:14 -0800 (PST)
+Message-ID: <be187371-208c-4b0a-b564-2edcf104f24c@gmail.com>
+Date: Thu, 1 Feb 2024 10:07:13 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/2] useful: Move close cleanup into ell/util.h
+Content-Language: en-US
+To: ell@lists.linux.dev
+References: <20240201151751.880279-1-denkenz@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20240201151751.880279-1-denkenz@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Also while here, move the __AUTODESTRUCT macro to cleanup.h and prefix
-it with _L
----
- ell/cleanup.h | 5 ++++-
- ell/useful.h  | 5 +----
- ell/util.h    | 2 +-
- 3 files changed, 6 insertions(+), 6 deletions(-)
+On 2/1/24 09:17, Denis Kenzior wrote:
+> ---
+>   ell/useful.h | 14 --------------
+>   ell/util.h   | 11 +++++++++++
+>   2 files changed, 11 insertions(+), 14 deletions(-)
+> 
 
-diff --git a/ell/cleanup.h b/ell/cleanup.h
-index 337c8ad5d753..ac9f5a894b24 100644
---- a/ell/cleanup.h
-+++ b/ell/cleanup.h
-@@ -7,6 +7,9 @@
- 
- #pragma once
- 
-+#define __L_AUTODESTRUCT(func)				\
-+	__attribute((cleanup(_l_ ## func ## _cleanup)))
-+
- #define DEFINE_CLEANUP_FUNC(func)			\
- 	inline __attribute__((always_inline))		\
--	void func ## _cleanup(void *p) { func(*(void **) p); }
-+	void _l_ ## func ## _cleanup(void *p) { func(*(void **) p); }
-diff --git a/ell/useful.h b/ell/useful.h
-index 8a4bf2ce70c9..ab88f52556f5 100644
---- a/ell/useful.h
-+++ b/ell/useful.h
-@@ -59,11 +59,8 @@ static inline unsigned char bit_field(const unsigned char oct,
- 	_x / _d;					\
- })
- 
--#define __AUTODESTRUCT(func)				\
--	__attribute((cleanup(func ## _cleanup)))
--
- #define _auto_(func)					\
--	__AUTODESTRUCT(func)
-+	__L_AUTODESTRUCT(func)
- 
- /*
-  * Trick the compiler into thinking that var might be changed somehow by
-diff --git a/ell/util.h b/ell/util.h
-index db86bfe278ea..4ae03095d013 100644
---- a/ell/util.h
-+++ b/ell/util.h
-@@ -317,7 +317,7 @@ const char *l_util_get_debugfs_path(void);
-        __result; }))
- 
- /* Enables declaring _auto_(close) int fd = <-1 or L_TFR(open(...))>; */
--inline __attribute__((always_inline)) void close_cleanup(void *p)
-+inline __attribute__((always_inline)) void _l_close_cleanup(void *p)
- {
- 	int fd = *(int *) p;
- 
--- 
-2.43.0
+Both applied.
+
 
