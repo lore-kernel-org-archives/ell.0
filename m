@@ -1,89 +1,63 @@
-Received: from mail-oo1-f52.google.com (mail-oo1-f52.google.com [209.85.161.52])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F1BB35FDD5
-	for <ell@lists.linux.dev>; Wed, 14 Feb 2024 16:18:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.52
+Received: from mail.holtmann.org (coyote.holtmann.net [212.227.132.17])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 098F06025A
+	for <ell@lists.linux.dev>; Wed, 14 Feb 2024 16:27:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.132.17
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1707927530; cv=none; b=XsNMjD0j+RJbIHP/G6qYwvFuj+/clh21opBRPOdy9hzFC2C4wDHfMTblNyikR9SYA2HUhZpWwu//hCoWIGIQCT7HXbyGjIQvw3Bx6ZZS4zVx+J0yNeRJ/GUZGxXZFuFL21YSTDW1lKJNFqoAbMnRVDgxaxgac3Vrs1+DE46nmnA=
+	t=1707928082; cv=none; b=eBa1fevqA6/JM06t+UCO48YBkNJ0NbUo7X1qPoDwqpbsqzyHnwsdAvFRrqCWQ0gUtL0mUoxc0HlcLBw25hQExAIud4yNiaGB3w5Onc3vE0BGakq1Wl3stwrevTjQsvLnNR8XpoEgTZnnkyC7peEBLRxJ/7devF3BjcmGRMo69HM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1707927530; c=relaxed/simple;
-	bh=6QjA6/KqHugxg43wabZrAn5gIyfRuBn8z4wQp+P3yNo=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=Z+/eDw4aJDOkXVMtxXVyPIkBLZtN7Fi+TePb7+k508iu39zG1jHEA6re9NwwXeexzO+xf2dT/nIehorEUzzZu6mnmHobv9xMxrq+R6F7brw317rXb+EjKvqslYLLP5H3gE8Nb2sMGVu/nDaS9B0ris0ddap2w4ZzTvyl6Pp2Puk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=bQ1tOboO; arc=none smtp.client-ip=209.85.161.52
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bQ1tOboO"
-Received: by mail-oo1-f52.google.com with SMTP id 006d021491bc7-5986d902ae6so3041807eaf.3
-        for <ell@lists.linux.dev>; Wed, 14 Feb 2024 08:18:48 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1707927528; x=1708532328; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=g/lnDb0MMfMwFkfUw88h5Sx/XFez2Z2KOeYTE5GfBqA=;
-        b=bQ1tOboOKmw5nV05nTO0E+R0XX7a2o4gBxzgXF74+lIrpGUTf0bicEvJg097SdLkPF
-         lsEv9SpmHTjd5GD7f/ivE2x5MiUpmN1QDdZo2vT5NJkHfuNnG4XJtLaD2uzdSt82nzAv
-         mpNB1Gfq9h8fIsR0ah3Vid3tKopQSm6Khve1MXGvCKGzmS+3YGvLDvPBneB5BxUTHVyo
-         clrBXQkn2AjzLKpBIeCzVgRLrZvnpkAiDESJjEquwVeIZJZJ5+A5qst/nThjcW3o8d5p
-         D8wZN65v/UAhBpG5dngyz3dKOl9vzwuzhfNC8enRPx5+zKB2gwnM57xslw6XPtX8O69H
-         eN6g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1707927528; x=1708532328;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=g/lnDb0MMfMwFkfUw88h5Sx/XFez2Z2KOeYTE5GfBqA=;
-        b=aVIJlLG8/3eWwII6Ly+9ti+5C1CWApaa4Nv+dys2nBaMtCUVHZ3qnyLnWcMNjKl4KI
-         c6iUnH/R4Qd/C8Ha9XLlKVXAwx4p199IHs0TaYi4ypIiDcL0oVYdyu9VP8qGEdQ6/JG4
-         7hXu+Zxo4rBKFkW378gjzUB9e7TjeubuytD+9P1wZg+ol21Q2VRMmLXvfzD142LrKsEp
-         ye06O9tJsSG9JkoAwG2Y2q9V9c5kDroJx13bV+f346aHEZXPOJEn0NowJ1lPuucq2g0m
-         56LL+PVEYM2e9BOvmeI3jC6p6G/uK/xEQMby7tOb4L2/+KKUogn4HEFX6mezvRDmcVJ+
-         iyHg==
-X-Gm-Message-State: AOJu0YxYy8yXktgEcbIe+XxoFPMi7tSuu+ga/sQkTFYihkx2OzExpL5H
-	TEpzwZD4elajT3l5WbK1oi/5lg9BsxAlM9dFhCZrkQIudVjzS5NL
-X-Google-Smtp-Source: AGHT+IH8WXUZn6EIPXQiqKGc6dqwquf5TEGC9KxwdYFZzYHKZ7CFakv+qqpdNVY37EI2EF+wn4c43Q==
-X-Received: by 2002:a4a:9d16:0:b0:59f:74ce:6a5c with SMTP id w22-20020a4a9d16000000b0059f74ce6a5cmr1027705ooj.8.1707927527078;
-        Wed, 14 Feb 2024 08:18:47 -0800 (PST)
-X-Forwarded-Encrypted: i=1; AJvYcCWIQlqFZWQa3cwZabBl62GR2bqobgnmIiZSAppqNjyjI2Aw1bmKQ7R8kSNt3naLf226SESGTCcey9ndYCoUyw1NWWQ=
-Received: from [172.16.49.130] (070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id g25-20020a4a2519000000b0059a826dcf53sm869240ooa.40.2024.02.14.08.18.46
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 14 Feb 2024 08:18:46 -0800 (PST)
-Message-ID: <da1ddff5-80c7-46a4-9187-6cd8d5b2854b@gmail.com>
-Date: Wed, 14 Feb 2024 10:18:45 -0600
+	s=arc-20240116; t=1707928082; c=relaxed/simple;
+	bh=NVMDP0YPI+KYpTWwRY2wik+c7x2Kw0UuE4hobcl0fcQ=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=iXeItTuRvFxIc7nUjx8SCsIRJbT6MxgAiXopB0hOy+DXeqqe6TSpAXm6/jt+XpmklO1vuASLU0H1ZGBjHOPG13os4s5fFznFYLNKomM5CtY/FhcFydNd1OsUIgqoDa5Eej6+nrPg7U1cZVFEKM+RHjokkAU7a0b2eAhYGywZ47E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=holtmann.org; spf=pass smtp.mailfrom=holtmann.org; arc=none smtp.client-ip=212.227.132.17
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=holtmann.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=holtmann.org
+Received: from smtpclient.apple (p4ff9fa23.dip0.t-ipconnect.de [79.249.250.35])
+	by mail.holtmann.org (Postfix) with ESMTPSA id 5C54ECECBE;
+	Wed, 14 Feb 2024 17:27:53 +0100 (CET)
+Content-Type: text/plain;
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
-MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3774.400.31\))
 Subject: Re: [PATCH] log: add l_notice
-Content-Language: en-US
-To: Marcel Holtmann <marcel@holtmann.org>,
- James Prestwood <prestwoj@gmail.com>
-Cc: ell@lists.linux.dev
+From: Marcel Holtmann <marcel@holtmann.org>
+In-Reply-To: <da1ddff5-80c7-46a4-9187-6cd8d5b2854b@gmail.com>
+Date: Wed, 14 Feb 2024 17:27:42 +0100
+Cc: James Prestwood <prestwoj@gmail.com>,
+ ell@lists.linux.dev
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <3129778E-09AF-46D9-97DE-44EC89C996DB@holtmann.org>
 References: <20240213131619.828613-1-prestwoj@gmail.com>
  <0D7EFC7E-C3D9-43E0-823E-6C06498C6B3D@holtmann.org>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <0D7EFC7E-C3D9-43E0-823E-6C06498C6B3D@holtmann.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+ <da1ddff5-80c7-46a4-9187-6cd8d5b2854b@gmail.com>
+To: Denis Kenzior <denkenz@gmail.com>
+X-Mailer: Apple Mail (2.3774.400.31)
 
-Hi Marcel,
+Hi Denis,
 
->> #define L_LOG_WARNING 4
->> +#define L_LOG_NOTICE 5
->> #define L_LOG_INFO 6
->> #define L_LOG_DEBUG 7
-> 
-> for what? What is the difference to just use l_info?
+>>> #define L_LOG_WARNING 4
+>>> +#define L_LOG_NOTICE 5
+>>> #define L_LOG_INFO 6
+>>> #define L_LOG_DEBUG 7
+>> for what? What is the difference to just use l_info?
+>=20
+> Per conversation on Slack, James wants to categorize certain messages =
+for easier searching.  Since NOTICE level exists, I suggested it would =
+fit the usecase.
 
-Per conversation on Slack, James wants to categorize certain messages for easier 
-searching.  Since NOTICE level exists, I suggested it would fit the usecase.
+I never really liked having many different levels. That was the reason I =
+left l_notice out initially. I see no real benefit of it except us =
+discussing "is this suppose to be l_info and l_notice" and in the end it =
+will be just random.
 
-Regards,
--Denis
+So if you tell me / convince me when to use l_notice of l_info or use =
+l_warn instead of l_notice, then we can talk.
+
+Regards
+
+Marcel
+
