@@ -1,62 +1,62 @@
-Received: from mail-pl1-f180.google.com (mail-pl1-f180.google.com [209.85.214.180])
+Received: from mail-pl1-f177.google.com (mail-pl1-f177.google.com [209.85.214.177])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 047B885645
-	for <ell@lists.linux.dev>; Tue,  5 Mar 2024 13:28:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.180
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 93B1458ADC
+	for <ell@lists.linux.dev>; Tue,  5 Mar 2024 13:28:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.177
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709645293; cv=none; b=cBplH+MmdQwJfdkCc6fo4dXy7hPdS1nsIYJiEjjipmyVySWqpkNdJGbnuCV9esglfAwyvGxCA7YVYhx0wTvr7A8kb95miW5zFJa9nW+dQwL6eq+u936UrVdnxNqihTLyF9sdSTAV0JjulM/yb8A/JOf6uwH088VdgNW84TymUf4=
+	t=1709645293; cv=none; b=TEPFCf5zF5yy1VTbU39pLUHB6cDKDIgk6Yg8GVWxiN7zwDPr0S3gIsmGySd5Be9EDgdv4JuzvtjUGEhVZvT72EpXmfLuvhgcXC+bD7sx8APCo2c7TTCHoVngnDU4LdmljWP2aYu7nDqA8bbiSLJ93aET+I1vSEbZoR0JjdUDO28=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1709645293; c=relaxed/simple;
-	bh=Tp+ANjtGrfyd7VlK+KV0wZAZbfTgmPCogOTb5Bn5iSQ=;
+	bh=gRVG+5rEWFAd6eRUaZublcBONbEZD0u4Kr59icHF1+4=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=u8GKvz7KIsdrSXUimPqxLe/F+SenG21brGXLQ4z5JfJp7ba6fIkUsY69dbtbQD2EQxZhwV2AGANxlaOPdgJ14o5P2o2bTbCPioZxnnq5vMrC8gz4FLOCSChZTgikkplRrAaiG9ezEbbB0xEWvrHVf9hgX/fEwBkvVcV9mDSILCw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=RCblxtdA; arc=none smtp.client-ip=209.85.214.180
+	 MIME-Version; b=jO/Gor2Xehd8mujlowdt1V4s7hsHDmeUcr0f1XawTaLSeKBzYGyOps0f/iZY6ODEnPJLioPJRP1KwpLkJ1uCOyo4tcHHaEn8A/Lf//KWSpR+/a1XjIfW1Y8DLHx2s6Vzk+hcSMYKLvW0fiN5TbiHPAfPKVBANrR+UElRKCExMaU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=RtSbp56K; arc=none smtp.client-ip=209.85.214.177
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RCblxtdA"
-Received: by mail-pl1-f180.google.com with SMTP id d9443c01a7336-1dc29f1956cso44381875ad.0
-        for <ell@lists.linux.dev>; Tue, 05 Mar 2024 05:28:11 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RtSbp56K"
+Received: by mail-pl1-f177.google.com with SMTP id d9443c01a7336-1dc418fa351so48426195ad.1
+        for <ell@lists.linux.dev>; Tue, 05 Mar 2024 05:28:12 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20230601; t=1709645291; x=1710250091; darn=lists.linux.dev;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=+x/WqBrbPSzfFYVPpjZkKT07an++eB2M422wbN+o4cA=;
-        b=RCblxtdAElfDU0Gc6Kb8254msHTcwZ3iIR3FBMQq6D0JbIuSU4RaH8GwYSeZGG3/Fb
-         F0Mfa2dos78HW+9SThdvmrX+4eyZI7lHnimTIaNFRs00+TR6jhzC2rNtBcJcYVtU2moe
-         FnVccjQ+pjjLWmePykt1+G2zJ5wTp7o6yjh2DXJqhVEwqkzFM2a/1/B5VvTkNCrASXMP
-         G3rxDaan8Kso13RsWLqp5dfhv3lRknJmdu+/F8Oh+mIb0VRPcjdttlROpCqi59BizppA
-         P6sf1+T93fXy3tDqCBk9X/i01Ted/y0RI5xEEYbX1dBfOMlZKlXfEqd0YrQq1PaLoGi8
-         EzPg==
+        bh=K5XY6E+dKQAXK5icK+7YYYas90wBpH6iMsKhCSqE+wA=;
+        b=RtSbp56KDqDC52QEodnJoGQ6R5ZPzuO21p/vdmKsxC6P4vx69mNZEsHHNNQsObx0ID
+         NjMNCZUpTWobEjdcQH4486e5fu7PQWE/5leCmYItNQmYEo5UmPBmXZrLYF/9VYynt5Vr
+         /tfhs/miwfb0dykirhpUb679qxwrmynSWkLchtctrHP+QPcXc9r+JA3yXyul62R8Mw0f
+         xk4A3mGb3viLvXm8Ga2+He/jDIMUUb8SUs45RVnC2AG0xaV2rBXTZCVniTPqgGxFFpx9
+         lliiGZyb/ttwsQKdu6s9bTXCPuzUKQ81tCrLaJWbkvR9myZfiWOh+4//eEOHgeSVyus6
+         FDGQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20230601; t=1709645291; x=1710250091;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=+x/WqBrbPSzfFYVPpjZkKT07an++eB2M422wbN+o4cA=;
-        b=m+jJbmEUYRTYXKxNHXox0MBgV/yOHcMIansIfy6RzicDELY9NVegnaEzp0DldxMwdK
-         gEb6P22PHOQGuQ9jlub3Nu/VL3IQLeGQE1CVBXN/1N3fHCbIebY7uUUVg+4NrXZjhu0j
-         sP51N1Y28j3iyivBWU4OPt4cts8CXR2PuXtbHv8TWQ+9O28IcWKZ9J4+L7AX2tV2xipn
-         mc+7QdyKEqS067PILXVQ27+OndVxxdFjEogkFnciGjWeQR9hWEilyZK9VswS/4CX8VOg
-         ZYtqV73KxnuVzEeEeu2p2VLHfJYOb/oh7rASPxDZOqtSFnkTk77GAAUkMWncW9V40O5+
-         P5MA==
-X-Gm-Message-State: AOJu0YycIDPWg777dHz3vyKZ0C8w4bg2fIjcCC4tPymPN75IHEFN0Jub
-	7q5/8SowilrmKi8cqXuaj7bImK3UQReDbl35HIKfD4rMWewouI1EESV7+pMN
-X-Google-Smtp-Source: AGHT+IFKB1J411dP+mpMzcWKA7+BVLPErjoF17ay1NSGFzOx2ZKkJZpjm8VBDcqS75P/EnEzlFB3Xw==
-X-Received: by 2002:a17:903:41cc:b0:1dc:abe7:a1a6 with SMTP id u12-20020a17090341cc00b001dcabe7a1a6mr1907970ple.17.1709645290783;
-        Tue, 05 Mar 2024 05:28:10 -0800 (PST)
+        bh=K5XY6E+dKQAXK5icK+7YYYas90wBpH6iMsKhCSqE+wA=;
+        b=gMBVvWWDVUGV3dU5RkiEeqQD+UTaRQX9URaS6yIaa9RRZ7TZZnTDM3Zf8OXdGg64qF
+         ZmGppHL4pfHbBo94k1JuhMzWjsVTTtHcBI/fpoz6vMQR8smLOOtPdlg5b6j7yeUfNY7Z
+         eQez5AAf9HYjpVns48KlcEu03ELAoGXbszFrTmU520RTirdTRWAczMRucoMsRZ59Cno9
+         wvta7wAuIAoZl+pMGh4o5vquLNWt60uvHs9NcZRWN/0TK0Mrrk8JkHqhgKS0dVoyEIxJ
+         mysS4Q+X0su9DUB2rnWS2CM8mjsEsIGFU+Cilk4DnEfqKeUuVWnkCL3g+mXowSgQVut7
+         5klQ==
+X-Gm-Message-State: AOJu0Yzh1Hc+eQWjYnUwp0USLj0JKfQsFKTU/3VIogUZAWma94sSS6T7
+	2W/L2p7W98WPyOgKX3l4SZZHLm7XIkwHxJpkhgISTfiFSm0oRBXMrp+v6p1B
+X-Google-Smtp-Source: AGHT+IFOpF/cD/6O61oYjfuLeHGqd5tys6va4iYbVwcTQdqzBD/oaAVDnJxtzjuK3Bmq+/bEW+VfGQ==
+X-Received: by 2002:a17:902:ec8f:b0:1dc:fc84:198 with SMTP id x15-20020a170902ec8f00b001dcfc840198mr2620803plg.29.1709645291344;
+        Tue, 05 Mar 2024 05:28:11 -0800 (PST)
 Received: from LOCLAP699.. ([50.39.172.77])
         by smtp.gmail.com with ESMTPSA id 4-20020a170902e9c400b001d7252fef6bsm10489493plk.299.2024.03.05.05.28.10
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 05 Mar 2024 05:28:10 -0800 (PST)
+        Tue, 05 Mar 2024 05:28:11 -0800 (PST)
 From: James Prestwood <prestwoj@gmail.com>
 To: ell@lists.linux.dev
 Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 3/5] gvariant-util: remove unneeded initializer
-Date: Tue,  5 Mar 2024 05:28:05 -0800
-Message-Id: <20240305132807.85724-3-prestwoj@gmail.com>
+Subject: [PATCH 4/5] queue: remove unneeded entry advancement
+Date: Tue,  5 Mar 2024 05:28:06 -0800
+Message-Id: <20240305132807.85724-4-prestwoj@gmail.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20240305132807.85724-1-prestwoj@gmail.com>
 References: <20240305132807.85724-1-prestwoj@gmail.com>
@@ -68,24 +68,25 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-'i' is initialized inside the for loop, so remove this extra
-initialization prior.
+At this point the loop is over and there is no point advancing
+the entry pointer.
 ---
- ell/gvariant-util.c | 1 -
- 1 file changed, 1 deletion(-)
+ ell/queue.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
-index 6a695d4..6482e24 100644
---- a/ell/gvariant-util.c
-+++ b/ell/gvariant-util.c
-@@ -843,7 +843,6 @@ static void container_append_struct_offsets(struct container *container,
+diff --git a/ell/queue.c b/ell/queue.c
+index 487a949..9018402 100644
+--- a/ell/queue.c
++++ b/ell/queue.c
+@@ -511,8 +511,6 @@ LIB_EXPORT void *l_queue_remove_if(struct l_queue *queue,
+ 			if (!entry->next)
+ 				queue->tail = prev;
  
- 	offset_size = offset_length(builder->body_pos,
- 						container->offset_index);
--	i = container->offset_index - 1;
+-			entry = entry->next;
+-
+ 			data = tmp->data;
  
- 	start = grow_body(builder, offset_size * container->offset_index, 1);
- 
+ 			l_free(tmp);
 -- 
 2.34.1
 
