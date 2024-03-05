@@ -1,62 +1,62 @@
-Received: from mail-pl1-f182.google.com (mail-pl1-f182.google.com [209.85.214.182])
+Received: from mail-pl1-f180.google.com (mail-pl1-f180.google.com [209.85.214.180])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 41B6343AB0
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 047B885645
 	for <ell@lists.linux.dev>; Tue,  5 Mar 2024 13:28:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.182
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.180
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709645292; cv=none; b=Zu3sn4qkDT6wDz28OwAW2EtVvpJDjNi59fQPg3Z2AmcXr771jpHT8GueLY68rANsi41FgHjj7sXq6p7UgkCVV86rzXPOlHS5OMLD6ULDdHYL9Iz+l7qmKfv/GiHBSBVcPry9sgaEqeN+U72PBg/LXHieMSaaoeISQ+ja8d685N8=
+	t=1709645293; cv=none; b=cBplH+MmdQwJfdkCc6fo4dXy7hPdS1nsIYJiEjjipmyVySWqpkNdJGbnuCV9esglfAwyvGxCA7YVYhx0wTvr7A8kb95miW5zFJa9nW+dQwL6eq+u936UrVdnxNqihTLyF9sdSTAV0JjulM/yb8A/JOf6uwH088VdgNW84TymUf4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709645292; c=relaxed/simple;
-	bh=6j98bvrjC1+NNisRDXENnTK39qGosH6ABglUJuv0NdM=;
+	s=arc-20240116; t=1709645293; c=relaxed/simple;
+	bh=Tp+ANjtGrfyd7VlK+KV0wZAZbfTgmPCogOTb5Bn5iSQ=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=aKQ7lOkNME1zzNKFJXiJZ4M/lcKd4CCE2Pq7mtCnAaEchHOL7tI8+IyRXSV1dAfPO7aKILn8QNfmQSJ5LURDGLa07/3VqYm781CYknOZu3nt7J8scoEjnumyFW5xImJzc2RHPJjU60X2a9obtEfU/FjLLCQm0S3xLGi8Cx+/nL8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=iQReyKDG; arc=none smtp.client-ip=209.85.214.182
+	 MIME-Version; b=u8GKvz7KIsdrSXUimPqxLe/F+SenG21brGXLQ4z5JfJp7ba6fIkUsY69dbtbQD2EQxZhwV2AGANxlaOPdgJ14o5P2o2bTbCPioZxnnq5vMrC8gz4FLOCSChZTgikkplRrAaiG9ezEbbB0xEWvrHVf9hgX/fEwBkvVcV9mDSILCw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=RCblxtdA; arc=none smtp.client-ip=209.85.214.180
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iQReyKDG"
-Received: by mail-pl1-f182.google.com with SMTP id d9443c01a7336-1dc1ff3ba1aso42936825ad.3
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RCblxtdA"
+Received: by mail-pl1-f180.google.com with SMTP id d9443c01a7336-1dc29f1956cso44381875ad.0
         for <ell@lists.linux.dev>; Tue, 05 Mar 2024 05:28:11 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1709645290; x=1710250090; darn=lists.linux.dev;
+        d=gmail.com; s=20230601; t=1709645291; x=1710250091; darn=lists.linux.dev;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=RtFV3wS5Erf96aY7Nr0XYLChlZBBHrnmq5Ei7fR5b94=;
-        b=iQReyKDG+go6Q13tw+zA5u3b+9Olw67/DYR0zWbozysCi9bkV7DEBZpgc32RTrT40F
-         8W8ov1SdIaZMdvAQ7RMjLg7xtYIcmTVAoBik6PZedEU5OAYxrQow2nleCwSfRhsboQol
-         60gsS9dR+Lh4qi/bo6mUE1wCCSTzkGNXdxuZHTe43bYWshsv7GCapAsRN62FtJdMJnzM
-         W/NPVEu6IHB1NmoT45O5t49Cl2hjahj26pmgBzlbJ8VxjKqL9oBj8V+qIKzkwh82Erb8
-         3VomHT/OQN0w/oKQ+xUWzooqoKw8XXaYVZyb9jIVSdHwNZwj7va1dH5/G9jPCS8SpCeJ
-         pOlA==
+        bh=+x/WqBrbPSzfFYVPpjZkKT07an++eB2M422wbN+o4cA=;
+        b=RCblxtdAElfDU0Gc6Kb8254msHTcwZ3iIR3FBMQq6D0JbIuSU4RaH8GwYSeZGG3/Fb
+         F0Mfa2dos78HW+9SThdvmrX+4eyZI7lHnimTIaNFRs00+TR6jhzC2rNtBcJcYVtU2moe
+         FnVccjQ+pjjLWmePykt1+G2zJ5wTp7o6yjh2DXJqhVEwqkzFM2a/1/B5VvTkNCrASXMP
+         G3rxDaan8Kso13RsWLqp5dfhv3lRknJmdu+/F8Oh+mIb0VRPcjdttlROpCqi59BizppA
+         P6sf1+T93fXy3tDqCBk9X/i01Ted/y0RI5xEEYbX1dBfOMlZKlXfEqd0YrQq1PaLoGi8
+         EzPg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1709645290; x=1710250090;
+        d=1e100.net; s=20230601; t=1709645291; x=1710250091;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=RtFV3wS5Erf96aY7Nr0XYLChlZBBHrnmq5Ei7fR5b94=;
-        b=RCzZ3ouGktDN2QR9xCmZ3dSoG0VlAD2TAjY/sAdzEE1UZqayZpU6AqkFHAt1OYJgrn
-         PdgGBS7/JYakGmn1f9HI94cw48107yp7uWVa1fWKYNL2brqOYIigv9Okcz2GoDz/BccJ
-         7GBXW3XmBZILrL3OhX88ahElVh4+gVtLboM5c/GW/50llWO7k0Zu9YqErOum++DjcC4b
-         uaHNdx99tbcWMZ2S3rHkys2GDuyVU0nibWad0eMqsrfEMuPCIfdpNTiDOIx8NUIbrdb4
-         Y1gAOyDK/1zuu04zZkpGQ+X8vWJHL765cVw1rPe6+bY2/nnfuGvV2a+PVvD9CWPK6Pdf
-         Sawg==
-X-Gm-Message-State: AOJu0Yw7xVZli37/uyJNG68O6sGZAREfj/3V8Jx8KwIww+RlMCdB8vSU
-	4CE3AuOaUejWWT7aaYu44dm9fIamM0N7M/RU39QzezeJ6KZuE+6fNuk/MY4I
-X-Google-Smtp-Source: AGHT+IHrLHEnr3/YhP2Y/b9X6e+TOQZpMPDa/8iHqZx6QxlOM0sf+H3t+dQDfbJTAlkDgp6JXSo17w==
-X-Received: by 2002:a17:902:e544:b0:1db:7195:5fca with SMTP id n4-20020a170902e54400b001db71955fcamr2106055plf.34.1709645290219;
+        bh=+x/WqBrbPSzfFYVPpjZkKT07an++eB2M422wbN+o4cA=;
+        b=m+jJbmEUYRTYXKxNHXox0MBgV/yOHcMIansIfy6RzicDELY9NVegnaEzp0DldxMwdK
+         gEb6P22PHOQGuQ9jlub3Nu/VL3IQLeGQE1CVBXN/1N3fHCbIebY7uUUVg+4NrXZjhu0j
+         sP51N1Y28j3iyivBWU4OPt4cts8CXR2PuXtbHv8TWQ+9O28IcWKZ9J4+L7AX2tV2xipn
+         mc+7QdyKEqS067PILXVQ27+OndVxxdFjEogkFnciGjWeQR9hWEilyZK9VswS/4CX8VOg
+         ZYtqV73KxnuVzEeEeu2p2VLHfJYOb/oh7rASPxDZOqtSFnkTk77GAAUkMWncW9V40O5+
+         P5MA==
+X-Gm-Message-State: AOJu0YycIDPWg777dHz3vyKZ0C8w4bg2fIjcCC4tPymPN75IHEFN0Jub
+	7q5/8SowilrmKi8cqXuaj7bImK3UQReDbl35HIKfD4rMWewouI1EESV7+pMN
+X-Google-Smtp-Source: AGHT+IFKB1J411dP+mpMzcWKA7+BVLPErjoF17ay1NSGFzOx2ZKkJZpjm8VBDcqS75P/EnEzlFB3Xw==
+X-Received: by 2002:a17:903:41cc:b0:1dc:abe7:a1a6 with SMTP id u12-20020a17090341cc00b001dcabe7a1a6mr1907970ple.17.1709645290783;
         Tue, 05 Mar 2024 05:28:10 -0800 (PST)
 Received: from LOCLAP699.. ([50.39.172.77])
-        by smtp.gmail.com with ESMTPSA id 4-20020a170902e9c400b001d7252fef6bsm10489493plk.299.2024.03.05.05.28.09
+        by smtp.gmail.com with ESMTPSA id 4-20020a170902e9c400b001d7252fef6bsm10489493plk.299.2024.03.05.05.28.10
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 05 Mar 2024 05:28:09 -0800 (PST)
+        Tue, 05 Mar 2024 05:28:10 -0800 (PST)
 From: James Prestwood <prestwoj@gmail.com>
 To: ell@lists.linux.dev
 Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 2/5] dbus: remove unused 'type' variable
-Date: Tue,  5 Mar 2024 05:28:04 -0800
-Message-Id: <20240305132807.85724-2-prestwoj@gmail.com>
+Subject: [PATCH 3/5] gvariant-util: remove unneeded initializer
+Date: Tue,  5 Mar 2024 05:28:05 -0800
+Message-Id: <20240305132807.85724-3-prestwoj@gmail.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20240305132807.85724-1-prestwoj@gmail.com>
 References: <20240305132807.85724-1-prestwoj@gmail.com>
@@ -68,25 +68,24 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This was being set in the if block but never used afterwards.
+'i' is initialized inside the for loop, so remove this extra
+initialization prior.
 ---
- ell/dbus.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ ell/gvariant-util.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 532e07b..d610532 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -1689,8 +1689,7 @@ LIB_EXPORT unsigned int l_dbus_add_signal_watch(struct l_dbus *dbus,
- 	va_start(args, member);
+diff --git a/ell/gvariant-util.c b/ell/gvariant-util.c
+index 6a695d4..6482e24 100644
+--- a/ell/gvariant-util.c
++++ b/ell/gvariant-util.c
+@@ -843,7 +843,6 @@ static void container_append_struct_offsets(struct container *container,
  
- 	rule_len = 0;
--	while ((type = va_arg(args, enum l_dbus_match_type)) !=
--			L_DBUS_MATCH_NONE)
-+	while (va_arg(args, enum l_dbus_match_type) != L_DBUS_MATCH_NONE)
- 		rule_len++;
+ 	offset_size = offset_length(builder->body_pos,
+ 						container->offset_index);
+-	i = container->offset_index - 1;
  
- 	va_end(args);
+ 	start = grow_body(builder, offset_size * container->offset_index, 1);
+ 
 -- 
 2.34.1
 
