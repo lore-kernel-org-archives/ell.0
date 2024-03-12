@@ -1,107 +1,87 @@
-Received: from mail-pg1-f180.google.com (mail-pg1-f180.google.com [209.85.215.180])
+Received: from mail-ot1-f47.google.com (mail-ot1-f47.google.com [209.85.210.47])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC12143AB0
-	for <ell@lists.linux.dev>; Tue,  5 Mar 2024 13:28:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.180
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCEF2944D
+	for <ell@lists.linux.dev>; Tue, 12 Mar 2024 03:12:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1709645294; cv=none; b=HJ+WOkdKnNisNHgvouQfRNHH50QerG+v8JvF5/8h0haRxZvWneASQriS8hE3YBVEtOsRdpAdzHgSwi45T4TOXbSO3L91bJvKyBoJ+lxcFE1gZFWwmO98BmuX8hOb9YPsobvx8B/hy5HVvWkG9wj1z2fj8xQGddjaf65rmPDfkek=
+	t=1710213168; cv=none; b=EubREZBQVFIn3tNSrggDxUO6BVucryqW2UTxPtwQM1b6SZDNmbXWpuXxNc+zgQH9NOsMH0Yuez+iIMw0xjNf0LxJCDUpBx9RMO/8s8OBmQoi0W2LUW/oM64AIIuUjSVRkILyr3vwIJRB4NfBq57ZAlXwmewi8G4aPuBCnWc5R3U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1709645294; c=relaxed/simple;
-	bh=yCWhT5NTafTYE8AySuKCpzd30IKukbH6ryhlLhZiaK4=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=KWn1oS6MyIgo4OG7LtPlMeplvoHpbTIsLjD/omCMJI+jh32tqbwtEgifvRxcaTaOOwBLDD0SLljauHZ9eCoNI6Zx/hjzYkduNBxi3YeB7v3hzyWtfkXJuw1GSSRK0OPgwnpjLt57nGr5RD46kz+2BpYaqpdaTUFzgVgObJeT2uc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TyECrtNx; arc=none smtp.client-ip=209.85.215.180
+	s=arc-20240116; t=1710213168; c=relaxed/simple;
+	bh=aycdbmZ1uIRthl88g7XdDTabFq6KisA1AArE9lS3350=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=ADrpSWbtTzgwDLwf4SnjvmBwEZDo84leVN4wqIKcIpzHO2L7uttd3YPA/AavTbSmjngKDw2pSJWMrdUjLlL8BxxopzmNmcTbPQ8NeWRGCiyXEMwr8cvPyOYqlIMT8UCFBE8624hBkba1A4qoeY0oMD6CMSxWUU1r+bk6luALC5A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ALp79cw8; arc=none smtp.client-ip=209.85.210.47
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TyECrtNx"
-Received: by mail-pg1-f180.google.com with SMTP id 41be03b00d2f7-5ce9555d42eso4854527a12.2
-        for <ell@lists.linux.dev>; Tue, 05 Mar 2024 05:28:12 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ALp79cw8"
+Received: by mail-ot1-f47.google.com with SMTP id 46e09a7af769-6e519d73850so2545024a34.2
+        for <ell@lists.linux.dev>; Mon, 11 Mar 2024 20:12:46 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1709645292; x=1710250092; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=F7RSJaeD29eME/PytTf73LOaZS9v5mTgYH7ZOhz1hCo=;
-        b=TyECrtNxh/WQBMPLiLebJ5j85dVHhjvF2eAn1WV5/NV9Fnoo5O2pwkdiMwW9JoNJ/6
-         9IqlvQq9pqGfrITi6P24zAh6aeojtA26buZO7Q4SESxh44TKX9LL9Bm+h6i8wXnfviof
-         N9ngnsrJ20itECJnldSz6tS48Ds+xEUtDiy2npUdJahtdvCl5yrhbkzwUWeHctJisoP1
-         mkjZeiI1Z4RxEC5CWFc050obbyka/c7lMRcayFxwKlr/CQGpftf8L+7iagSDfB8HTKcX
-         m13H2CRIqJaJPej/kLMA4t9vmsfC8E0O8vk5CT+K+gQvp5xHJcU3a20S5AzM6ncXN602
-         PSmQ==
+        d=gmail.com; s=20230601; t=1710213166; x=1710817966; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=Mr03+8AayUNInhvHYKEGBwYA2YdoM0nYrrkrZuW7Y5o=;
+        b=ALp79cw8ACYna3UFaijtDj3Fc9bEB9qawWoFMH3RgJvXitW07hPXJ6ygoyDESpzZus
+         /tTr+nrzK3w4ohmXrX8WKFUl8/fxCheFStSskwd4gAneZlYjM8xVZ89eSztc5WKdnMwB
+         jZXF0u+P99U0KELZbT6VQcrT0eH3YLJ9GBI1K6IAxHNezxQNaspDNyQNyWW7Bz5H+8su
+         oB5B++jc4swiu3iL0VN3jlThF32OXVvaL5Ifm5g9oRnPAC+wEhIFIW5CFQhX6KYbbJ9b
+         jJmSdum/SsQjwH802ed7KJuUfgq1StRfVpEu8x2T1boiMDJrFmMVDiComgQ43BkvYG4z
+         8Rrw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1709645292; x=1710250092;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=F7RSJaeD29eME/PytTf73LOaZS9v5mTgYH7ZOhz1hCo=;
-        b=wL9a1Tg4Q9fGvnNlsfEF6F5jjJfJrJDQoStTygnX8KL6Yhhft23sDbmr8P7q18z0vL
-         W9l9UDHij6VPkr9vr/QPr3Dl4qtXNU4XYI04NI1sDBJzRx/Fk5qCjjqrHIlmssotoEst
-         siLUGCaTC8awgkxUgxbBlt2ZfrbvMoczTiP/kfbDfvuY2lmNk7xFw2NWLNJWkwVS42g0
-         YQesaKDsppYhnQlXEhkbOsh6T/BQa8eGNZ5HN8FkwazYN1/U8ftYmmBur+Taa7YCjjSQ
-         VFZfyiZtfrm+BsAMQ0LIQ8UQFNRPd6trs9P10eu9uQ3lCU49bnKunSkS6iPKnoPi7RJr
-         eSvA==
-X-Gm-Message-State: AOJu0YwddGjW6pSynUMTtkh/irAQzcj4xdzuR0pbBM/bUtlDKwPFClqk
-	tfuFDfhZe0/vRGRVfcdzJy/h3MvQgABsZ7Q5Xyi6ElhqL123G3poFuo7ie4V
-X-Google-Smtp-Source: AGHT+IFjak7Yiz2LUIl37BdZ1TIB1g435n4M9xtZ7Ea+liVaNqMc3ST6U8u+DQjm4zIduF6DNQkI6w==
-X-Received: by 2002:a17:902:a503:b0:1dc:c59d:5dde with SMTP id s3-20020a170902a50300b001dcc59d5ddemr1900503plq.59.1709645292020;
-        Tue, 05 Mar 2024 05:28:12 -0800 (PST)
-Received: from LOCLAP699.. ([50.39.172.77])
-        by smtp.gmail.com with ESMTPSA id 4-20020a170902e9c400b001d7252fef6bsm10489493plk.299.2024.03.05.05.28.11
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 05 Mar 2024 05:28:11 -0800 (PST)
-From: James Prestwood <prestwoj@gmail.com>
-To: ell@lists.linux.dev
-Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 5/5] unit: assert return of several gvariant-util calls
-Date: Tue,  5 Mar 2024 05:28:07 -0800
-Message-Id: <20240305132807.85724-5-prestwoj@gmail.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20240305132807.85724-1-prestwoj@gmail.com>
-References: <20240305132807.85724-1-prestwoj@gmail.com>
+        d=1e100.net; s=20230601; t=1710213166; x=1710817966;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=Mr03+8AayUNInhvHYKEGBwYA2YdoM0nYrrkrZuW7Y5o=;
+        b=U5/Nn8XSVVcgvyTuvfY48I5wSWB/ljyxKjJDBQfyWo1ymzd3wNoRc5QB5BL1rcDX6P
+         kHrhxl1j20zW9Ia95TTKVznIa1sfIN9DdNPa/SSUFtqJ6bnUjAOP30bq5CaCjOjF5e6Z
+         jurN9Bd3bnj21hXaGMdmX8NkL38vDVkJvE8Z0xXRLss6uaT1UHtDvD3NcC40CTzc6Kwb
+         v9D7WdYF5DbsGsAOH1prEl25kIa495qPYZQolMOpucMj7Ust9nr6RKluxd7CoU/b6x17
+         L5DcjS2xcXry3aoY4FAFT2fu/kWudN2y0jxLQsJSVRw5aqsfZRqNJ4pw63T2YiLl5qc+
+         grAA==
+X-Forwarded-Encrypted: i=1; AJvYcCUY3eVpk0NjVvVL5d8BvcDYb/7NBHeEGRQJ1i+Vpbcv5GLxU9dAzUDj8eMo/jMhHe8UxJfTCrYYPZlQlys4VJX1fOMm
+X-Gm-Message-State: AOJu0YynAVyPMNb2FC68eZLiclaUBue1i4xfZtzDOx0XDgv0+dnlLOVP
+	cI1AEXfWINCwI9r2mTbV9PY0opUXJlrUgkAi/TZrCyEWCRrqCV/fgsN3F1v7
+X-Google-Smtp-Source: AGHT+IGQOGvxcksSBo9u5GgSci6/Je5aQs8TLwRX9dYIaJ4ERxLvAoc6TeOoxN6TC1lYGs3r9pORyg==
+X-Received: by 2002:a05:6870:d182:b0:220:f92f:5bf7 with SMTP id a2-20020a056870d18200b00220f92f5bf7mr8282301oac.50.1710213165668;
+        Mon, 11 Mar 2024 20:12:45 -0700 (PDT)
+Received: from [192.168.0.50] (ip174-73-27-232.no.no.cox.net. [174.73.27.232])
+        by smtp.googlemail.com with ESMTPSA id hb9-20020a056870780900b00221df0eb6f9sm1276799oab.28.2024.03.11.20.12.45
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 11 Mar 2024 20:12:45 -0700 (PDT)
+Message-ID: <ad6421be-e29b-4a67-88b3-48bfb6dd1f8d@gmail.com>
+Date: Mon, 11 Mar 2024 22:12:45 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/5] cert: remove usused elem_data variable
+Content-Language: en-US
+To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
+References: <20240305132807.85724-1-prestwoj@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20240305132807.85724-1-prestwoj@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Caught by clang static analysis, there were several calls where the
-return value was unused.
----
- unit/test-gvariant-util.c | 3 +++
- 1 file changed, 3 insertions(+)
+Hi James,
 
-diff --git a/unit/test-gvariant-util.c b/unit/test-gvariant-util.c
-index 7b2e860..9a7a5df 100644
---- a/unit/test-gvariant-util.c
-+++ b/unit/test-gvariant-util.c
-@@ -644,6 +644,7 @@ static void test_iter_variant_2(const void *test_data)
- 	assert(ret);
- 
- 	ret = _gvariant_iter_enter_struct(&variant, &structure);
-+	assert(ret);
- 
- 	ret = _gvariant_iter_next_entry_basic(&structure, 's', &s);
- 	assert(ret);
-@@ -1047,6 +1048,7 @@ static void test_iter_header_1(const void *test_data)
- 
- 	ret = _gvariant_iter_init(&iter, NULL, "a(yv)", NULL,
- 					test->data + 16, u);
-+	assert(ret);
- 	ret = _gvariant_iter_enter_array(&iter, &array);
- 	assert(ret);
- 
-@@ -1308,6 +1310,7 @@ static void test_builder_fixed_struct_2(const void *test_data)
- 	assert(ret);
- 
- 	ret = _gvariant_builder_append_basic(builder, 't', &t);
-+	assert(ret);
- 
- 	ret = _gvariant_builder_leave_struct(builder);
- 	assert(ret);
--- 
-2.34.1
+On 3/5/24 07:28, James Prestwood wrote:
+> This was being set in the if block, but never used after that.
+> Instead just check the return value directly.
+> ---
+>   ell/cert.c | 4 +---
+>   1 file changed, 1 insertion(+), 3 deletions(-)
+> 
+
+All applied, thanks.
+
+Regards,
+-Denis
 
