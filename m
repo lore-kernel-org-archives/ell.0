@@ -1,87 +1,118 @@
-Received: from mail-ot1-f47.google.com (mail-ot1-f47.google.com [209.85.210.47])
+Received: from mail-yb1-f181.google.com (mail-yb1-f181.google.com [209.85.219.181])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCEF2944D
-	for <ell@lists.linux.dev>; Tue, 12 Mar 2024 03:12:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.47
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C77C52F7A
+	for <ell@lists.linux.dev>; Wed, 13 Mar 2024 16:44:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.181
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1710213168; cv=none; b=EubREZBQVFIn3tNSrggDxUO6BVucryqW2UTxPtwQM1b6SZDNmbXWpuXxNc+zgQH9NOsMH0Yuez+iIMw0xjNf0LxJCDUpBx9RMO/8s8OBmQoi0W2LUW/oM64AIIuUjSVRkILyr3vwIJRB4NfBq57ZAlXwmewi8G4aPuBCnWc5R3U=
+	t=1710348272; cv=none; b=RaKzHNCqgCR5Kkt8zY5wvuX0q03mIrmVqCTBdW7+AueLG90dQRmm2/P5N1yZOkqO+q48gIvE5j1JVokzuVQ0lk+KxPzATulDzUOHZ7u0xeXsn9jTWFJtJwNgBaYgWSt40lqWWlZxKiAvfhz4eq4X4Uk98oD2zdDTvBRktUzis9Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1710213168; c=relaxed/simple;
-	bh=aycdbmZ1uIRthl88g7XdDTabFq6KisA1AArE9lS3350=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=ADrpSWbtTzgwDLwf4SnjvmBwEZDo84leVN4wqIKcIpzHO2L7uttd3YPA/AavTbSmjngKDw2pSJWMrdUjLlL8BxxopzmNmcTbPQ8NeWRGCiyXEMwr8cvPyOYqlIMT8UCFBE8624hBkba1A4qoeY0oMD6CMSxWUU1r+bk6luALC5A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ALp79cw8; arc=none smtp.client-ip=209.85.210.47
+	s=arc-20240116; t=1710348272; c=relaxed/simple;
+	bh=uT41nuH94BvBe/EKw0UGjjBDyVrQlfXiYOj3zqHpoMA=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=BD/kLB42/77e93lYnTLu4H+PeV33t/XB8j08HE4kHuFZtSY7iRwgQmv7p/1Uon0z5bT9V2RApm94IOi4D64Ekiqy2jIp4iWVKy37mOax47UquG3S8dT1t/h6x0iVHVrfW5YR6thhfzf+LP0yvErt7Warf/hypcb5IU1Xnlugt2w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HPhSXpvH; arc=none smtp.client-ip=209.85.219.181
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ALp79cw8"
-Received: by mail-ot1-f47.google.com with SMTP id 46e09a7af769-6e519d73850so2545024a34.2
-        for <ell@lists.linux.dev>; Mon, 11 Mar 2024 20:12:46 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HPhSXpvH"
+Received: by mail-yb1-f181.google.com with SMTP id 3f1490d57ef6-dcbcea9c261so5590484276.3
+        for <ell@lists.linux.dev>; Wed, 13 Mar 2024 09:44:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1710213166; x=1710817966; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=Mr03+8AayUNInhvHYKEGBwYA2YdoM0nYrrkrZuW7Y5o=;
-        b=ALp79cw8ACYna3UFaijtDj3Fc9bEB9qawWoFMH3RgJvXitW07hPXJ6ygoyDESpzZus
-         /tTr+nrzK3w4ohmXrX8WKFUl8/fxCheFStSskwd4gAneZlYjM8xVZ89eSztc5WKdnMwB
-         jZXF0u+P99U0KELZbT6VQcrT0eH3YLJ9GBI1K6IAxHNezxQNaspDNyQNyWW7Bz5H+8su
-         oB5B++jc4swiu3iL0VN3jlThF32OXVvaL5Ifm5g9oRnPAC+wEhIFIW5CFQhX6KYbbJ9b
-         jJmSdum/SsQjwH802ed7KJuUfgq1StRfVpEu8x2T1boiMDJrFmMVDiComgQ43BkvYG4z
-         8Rrw==
+        d=gmail.com; s=20230601; t=1710348270; x=1710953070; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=nmgZQtJiItRxkAkmjC0R21uUgcdvd2A7lw4k+RinDMY=;
+        b=HPhSXpvHeHyTLVbncFUwFxKF2ttP7omjpZjPPfucCx/4P7dUrAAaPh9kGa2Ow+mwCt
+         Z8Lnp8BX4g/v1ax9+C3RoOl42xl8pdRwLRriPE17k60oluZXvApYYlHdzGLb72XgkKMY
+         iCMOJfxkoDvq/LdUwPt7LspG5KMsOvy5Vgxw45QVXEy6aa6Jrk9jwJPVzK36Er3GIrRR
+         GWzfx8p+P+KnD1aSyON0tFq/ykwdbza2IrSTgVYvvulUOgQNtAquqSksIiYalVpPTvID
+         mFEpi+XawMXCE4VVqdn4v0+h8PevkTEYFgTbv0Dh8s/dK/qae9QbUrrU4jtMZ8Pcg8gU
+         cOMg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1710213166; x=1710817966;
-        h=content-transfer-encoding:in-reply-to:from:references:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=Mr03+8AayUNInhvHYKEGBwYA2YdoM0nYrrkrZuW7Y5o=;
-        b=U5/Nn8XSVVcgvyTuvfY48I5wSWB/ljyxKjJDBQfyWo1ymzd3wNoRc5QB5BL1rcDX6P
-         kHrhxl1j20zW9Ia95TTKVznIa1sfIN9DdNPa/SSUFtqJ6bnUjAOP30bq5CaCjOjF5e6Z
-         jurN9Bd3bnj21hXaGMdmX8NkL38vDVkJvE8Z0xXRLss6uaT1UHtDvD3NcC40CTzc6Kwb
-         v9D7WdYF5DbsGsAOH1prEl25kIa495qPYZQolMOpucMj7Ust9nr6RKluxd7CoU/b6x17
-         L5DcjS2xcXry3aoY4FAFT2fu/kWudN2y0jxLQsJSVRw5aqsfZRqNJ4pw63T2YiLl5qc+
-         grAA==
-X-Forwarded-Encrypted: i=1; AJvYcCUY3eVpk0NjVvVL5d8BvcDYb/7NBHeEGRQJ1i+Vpbcv5GLxU9dAzUDj8eMo/jMhHe8UxJfTCrYYPZlQlys4VJX1fOMm
-X-Gm-Message-State: AOJu0YynAVyPMNb2FC68eZLiclaUBue1i4xfZtzDOx0XDgv0+dnlLOVP
-	cI1AEXfWINCwI9r2mTbV9PY0opUXJlrUgkAi/TZrCyEWCRrqCV/fgsN3F1v7
-X-Google-Smtp-Source: AGHT+IGQOGvxcksSBo9u5GgSci6/Je5aQs8TLwRX9dYIaJ4ERxLvAoc6TeOoxN6TC1lYGs3r9pORyg==
-X-Received: by 2002:a05:6870:d182:b0:220:f92f:5bf7 with SMTP id a2-20020a056870d18200b00220f92f5bf7mr8282301oac.50.1710213165668;
-        Mon, 11 Mar 2024 20:12:45 -0700 (PDT)
-Received: from [192.168.0.50] (ip174-73-27-232.no.no.cox.net. [174.73.27.232])
-        by smtp.googlemail.com with ESMTPSA id hb9-20020a056870780900b00221df0eb6f9sm1276799oab.28.2024.03.11.20.12.45
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 11 Mar 2024 20:12:45 -0700 (PDT)
-Message-ID: <ad6421be-e29b-4a67-88b3-48bfb6dd1f8d@gmail.com>
-Date: Mon, 11 Mar 2024 22:12:45 -0500
+        d=1e100.net; s=20230601; t=1710348270; x=1710953070;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=nmgZQtJiItRxkAkmjC0R21uUgcdvd2A7lw4k+RinDMY=;
+        b=buR5zN28P2Vkp08Q9PFt5+Fi8P3v74+TE9tcSXN4fHWxRgs0IVemrjn2AjmCVDpxQS
+         axPTpBqyvg4ygoioKLgaDf3ACpPIABLfMJwLH1acNiEOExEs7PABuWJbG2vGUa1QN3C/
+         Y16BUmtfAhSoNB3G3NHT3aRViOdLcuWwFu5DKt8w7PR6dPUhtYEMX50eb80TowexI++0
+         55GYiKVWdoc80iNRkK78mHQkDf1NlJLRV3p3J12rJcgNJTcWJ4bOv4Cujc9022IkvfaF
+         YYQkQ4H6nDyyGyVoNBFU/izdzToVkw45G8uMtB+QLGlAoOnhchY+3zd0DueloX3/uLEf
+         ID/w==
+X-Gm-Message-State: AOJu0Yy+4c5gIFqErza5nb9EAXF0bsGMnZiYtmz7oLDFVOuXue5/XZIa
+	WR/U0ZvR0emavw45ZXEvQXGCZk6re9xR2qVYhsNCDPmxFSJw0Oej4gOa+CGc
+X-Google-Smtp-Source: AGHT+IEcRgT8cfOCxkT56tlP1zmD7D1hSpyPH3gSaFejsfgYbon20YN0e7r/EEej0buISPFqqDcxlg==
+X-Received: by 2002:a25:9b42:0:b0:dcc:52dc:deb5 with SMTP id u2-20020a259b42000000b00dcc52dcdeb5mr2752680ybo.20.1710348270095;
+        Wed, 13 Mar 2024 09:44:30 -0700 (PDT)
+Received: from LOCLAP699.rst-01.locus ([208.195.13.130])
+        by smtp.gmail.com with ESMTPSA id g1-20020a25db01000000b00dc6c58ae000sm2332549ybf.16.2024.03.13.09.44.29
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 13 Mar 2024 09:44:29 -0700 (PDT)
+From: James Prestwood <prestwoj@gmail.com>
+To: ell@lists.linux.dev
+Cc: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH 1/2] ecc: add l_ecc_scalar_clone
+Date: Wed, 13 Mar 2024 09:44:24 -0700
+Message-Id: <20240313164425.690572-1-prestwoj@gmail.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 1/5] cert: remove usused elem_data variable
-Content-Language: en-US
-To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
-References: <20240305132807.85724-1-prestwoj@gmail.com>
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20240305132807.85724-1-prestwoj@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi James,
+---
+ ell/ecc.c   | 8 ++++++++
+ ell/ecc.h   | 1 +
+ ell/ell.sym | 1 +
+ 3 files changed, 10 insertions(+)
 
-On 3/5/24 07:28, James Prestwood wrote:
-> This was being set in the if block, but never used after that.
-> Instead just check the return value directly.
-> ---
->   ell/cert.c | 4 +---
->   1 file changed, 1 insertion(+), 3 deletions(-)
-> 
-
-All applied, thanks.
-
-Regards,
--Denis
+diff --git a/ell/ecc.c b/ell/ecc.c
+index 8302347..d8d9c1f 100644
+--- a/ell/ecc.c
++++ b/ell/ecc.c
+@@ -806,6 +806,14 @@ LIB_EXPORT struct l_ecc_scalar *l_ecc_scalar_new(
+ 	return NULL;
+ }
+ 
++LIB_EXPORT struct l_ecc_scalar *l_ecc_scalar_clone(const struct l_ecc_scalar *s)
++{
++	if (!s)
++		return NULL;
++
++	return l_memdup(s, sizeof(*s));
++}
++
+ /*
+  * Build a scalar = value modulo p where p is the prime number for a given
+  * curve.  bytes can contain a number with up to 2x number of digits as the
+diff --git a/ell/ecc.h b/ell/ecc.h
+index 5a8cf03..3502b98 100644
+--- a/ell/ecc.h
++++ b/ell/ecc.h
+@@ -62,6 +62,7 @@ DEFINE_CLEANUP_FUNC(l_ecc_point_free);
+ 
+ struct l_ecc_scalar *l_ecc_scalar_new(const struct l_ecc_curve *curve,
+ 						const void *buf, size_t len);
++struct l_ecc_scalar *l_ecc_scalar_clone(const struct l_ecc_scalar *s);
+ struct l_ecc_scalar *l_ecc_scalar_new_random(
+ 					const struct l_ecc_curve *curve);
+ struct l_ecc_scalar *l_ecc_scalar_new_modp(const struct l_ecc_curve *curve,
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 2c207d6..28b55d3 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -611,6 +611,7 @@ global:
+ 	l_ecc_scalar_legendre;
+ 	l_ecc_scalar_multiply;
+ 	l_ecc_scalar_new;
++	l_ecc_scalar_clone;
+ 	l_ecc_scalar_new_random;
+ 	l_ecc_scalar_new_modp;
+ 	l_ecc_scalar_new_modn;
+-- 
+2.34.1
 
