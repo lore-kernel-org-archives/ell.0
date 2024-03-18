@@ -1,109 +1,86 @@
-Received: from mail-yb1-f173.google.com (mail-yb1-f173.google.com [209.85.219.173])
+Received: from mail-oi1-f174.google.com (mail-oi1-f174.google.com [209.85.167.174])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57A2A52F8C
-	for <ell@lists.linux.dev>; Wed, 13 Mar 2024 16:44:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D48611DFC1
+	for <ell@lists.linux.dev>; Mon, 18 Mar 2024 14:31:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.174
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1710348273; cv=none; b=c8mtXMVM00KOHza7jOFH7ORUaBMdp8G5VP6Rty23uG6FtsTNb4H23X9vPvQIHT0vCtoaxs/utTBRMXj5vokxq7po54Hf2Ww5CVLLcm0KcQee0JsuS5mnKXb1KBx5uTwyiocmifs0OInJMmWV/I2irD8v3fypfoEyEVYnlpTQSso=
+	t=1710772315; cv=none; b=Dsk+zNCob/b9pb/eNef0Tc84xvmq7jQGSt44xm0h71rz6ZAM2GA/fqIcVj7fCknwc9LQ49WCkpdeHxN9dl+S0FjRLqCjv+c0A3vDo481TKnje0ba186eGamQRc61gpWXdy0Z1Zu40nyIJAM92o5XpnvkbHnsraOKgGM0sh8OUi8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1710348273; c=relaxed/simple;
-	bh=NmPcV0LtNhooT/Lh3f/5xtp7DU+wZJzq6StyKKXY6r0=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=IUNLarkgvfIm+ZWBO35eNiuIKGXUARQ92FBaCwosvKheEPAt6Ovdmw0ZLD1nce1bNNdSD/ovarpRR6vhtqkYEX2gs2OGEezGS3cioyltSVT32DeyI5NANtiGnkGVD9IroLp2aytAVl5RLxii4LhsKOYStqV4MJX1RE9IrbVv7iQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=VbygYukp; arc=none smtp.client-ip=209.85.219.173
+	s=arc-20240116; t=1710772315; c=relaxed/simple;
+	bh=01LNUYpp0vkDO8vQ5OhJogq17xYH/X+8IRKNXBIl50E=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=cWaWv/Cnp97mGSzEOhRdUx8V3W+M4dRfX/0P8z6bH1xk9JDUBGvlE/1tO6bXdxpfMoP2kpkJYkgYhYGCBaGkP39n08js09JfW46h4JOOnR1/yFqJDDwjWnZDUOUtOBEDsq9fEE5ddE3IOOreZ9P0IwrGuDeX03jKGfSzJ3qWjdo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=liLi/lv2; arc=none smtp.client-ip=209.85.167.174
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VbygYukp"
-Received: by mail-yb1-f173.google.com with SMTP id 3f1490d57ef6-dcc4de7d901so5953182276.0
-        for <ell@lists.linux.dev>; Wed, 13 Mar 2024 09:44:32 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="liLi/lv2"
+Received: by mail-oi1-f174.google.com with SMTP id 5614622812f47-3c38335ecd8so1162172b6e.0
+        for <ell@lists.linux.dev>; Mon, 18 Mar 2024 07:31:53 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1710348271; x=1710953071; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=YlASbhpmQoNlznSBDtwXQ/paJD8mwd8pzXk6ccrrLwU=;
-        b=VbygYukpdS0YphlL203Cgwvl9UNXFPaHebi8pfGWbyQggYRmOAq3vwTfuhUk9NL7mb
-         mwCgkqrCSZmwgb3KoA78rhFh2qRektToonmT1uCZK1D0RtZf6MKdyYy1wpWdeZMB8HkM
-         3HRGXqsgrRRDPrEFhMVLzX7lDODs/RS6mpokAzl0B37eMdJGb+0EyYQA41PzwKVkJGKX
-         tl2PmGT/MbkjCCcyyFTOTI9KHRe6YmI5iy+mdYxcz+d9pmiexd8qApvt9bqpByJCYkKc
-         OM+mwa1e6zy7kDKxp37+qAUYK0JnL9Wqi3IGTkEXvtwhjjmrkSbFoFXJTBGdaPxDLjHr
-         /9ww==
+        d=gmail.com; s=20230601; t=1710772313; x=1711377113; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=QKfvx/gBNQ+tn0OLzIY5+QkcVEL0ZgyMTx+iwlFfxIg=;
+        b=liLi/lv2rsNT+IXRuCxkjWqlumck3g/irHeu/CjQzrJY7bODGyv9AvNCh5wNprAYGM
+         pFgIimquQtxEmyAPdpCVlPXvohJbu7+vgtf1i2iFltcjV/npU8P32VI8ywJRrMkzrUiL
+         +h9G8B0hnXZlu3yjqD7ktnYCvEYJrZtjmgzh3HeZgUYsNH0CPVzU2pC4wTJp1EGgI8BU
+         USqetXpevzc1M2WfMbFo/H+4DNI7PX0yMI6qCSa0ixoXDcTZ2B2WJDvPV01geSrmMtk/
+         sBog6QGWizVqLT8kJP5+S6DBlI8xGbs3xKdOORRur6fbViTwbtDTLnUfyx8NSbNvlFYA
+         eiIg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1710348271; x=1710953071;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=YlASbhpmQoNlznSBDtwXQ/paJD8mwd8pzXk6ccrrLwU=;
-        b=Rs9m2SjD4SdpIquYsgo9T40b0ncGH1Ez7FqTBV4cqHoYvBft6grJTN1270VSu1COOT
-         dYkLyyCWXfIjbvoRgPLsFt2MwKq44C+JQMWHvNfZAe47MMEg+aDvo6VvqnbRJj/q9ch6
-         Y4uG0/4U0H3hpEABFmhnHxsu3+igwX3hcZCC3oBKMt/wNT2lKbIQHgaFYiZXxrOz1jRj
-         YYRhiTf1YTOSQaBAENO8A3K9kdmeDiVQwVYmxXBwcKA5JsILiTUpvobVyMN57/pVsSMO
-         0asqA0izrHLGyMnrcowv1ardCTAMMPqwrsQfGct8UVvYkjMqi/0TCOdXs3aU8Gv5fRmq
-         JWCg==
-X-Gm-Message-State: AOJu0Yz0YSl8SRkc39AiDtyCF8ls2D9wmnRl3os5TOWa1RgFBORaL6r4
-	g39ZSX5Uczet9gaQQ4Z/qLIKX+uL2MKQGKedmhPeTv1s6/LdHKxqvEO/NODA
-X-Google-Smtp-Source: AGHT+IFo7mW4blmVxnLEwiTq7k8ZAon87KgyZ3enRTKT+qQSjTVlN1Y9H2LYm62EyijBmaMZm+n/Ng==
-X-Received: by 2002:a25:ac4b:0:b0:dcc:5f1b:cc4f with SMTP id r11-20020a25ac4b000000b00dcc5f1bcc4fmr2813678ybd.6.1710348271167;
-        Wed, 13 Mar 2024 09:44:31 -0700 (PDT)
-Received: from LOCLAP699.rst-01.locus ([208.195.13.130])
-        by smtp.gmail.com with ESMTPSA id g1-20020a25db01000000b00dc6c58ae000sm2332549ybf.16.2024.03.13.09.44.30
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 13 Mar 2024 09:44:30 -0700 (PDT)
-From: James Prestwood <prestwoj@gmail.com>
-To: ell@lists.linux.dev
-Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 2/2] ecdh: add unlikely() check for NULL parameters
-Date: Wed, 13 Mar 2024 09:44:25 -0700
-Message-Id: <20240313164425.690572-2-prestwoj@gmail.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20240313164425.690572-1-prestwoj@gmail.com>
-References: <20240313164425.690572-1-prestwoj@gmail.com>
+        d=1e100.net; s=20230601; t=1710772313; x=1711377113;
+        h=content-transfer-encoding:in-reply-to:from:references:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=QKfvx/gBNQ+tn0OLzIY5+QkcVEL0ZgyMTx+iwlFfxIg=;
+        b=o2dykhKwi6wiIm3DvwXK/L0T3HIRgbKWB3vGuucQuTRjFEbxJkknZisoaTvpM9oB52
+         zgFUu42NG1dsoEmCFalMpeKzaRwyorHX4JQULvX9GjcWxJvA0e4dWtLrQVa5HpJsMxTa
+         VMpsjnGwxUy4lg22wewqApI/6WXcvjzSNroIg6mTzEZoUu9aX56WUFWaaso/bDrzTzib
+         TsoyfkkeHPFwNYMzIVCk9sSZ6SKowaa1BM0ZKa5NEAOihHUZ4IWZrILQ+9cYsa+F8k7Q
+         xl24wvBVTXg0Co9sotIDbxD4gkRuftL9KGZqLbbTDEGA+HKhzeoXlP9xcVPptZZqfLjw
+         v2nQ==
+X-Forwarded-Encrypted: i=1; AJvYcCWOZQknVkolycE2eBYl980z4DYf5qgKDX4DrMTUiCfWBGC+HIjzgl5VAV2NOtKyNS7ODE7zAc/oGLHhSw9zQE3PnAqb
+X-Gm-Message-State: AOJu0YzSTTlv1emar+0zczEos8wSivPIZHtpH6aZHzch78I74UijZ8Jt
+	4JK8MXml33QgyBtOAAt4fmErC8tvviV2UEj/khNxnbQUdaw4k0l9
+X-Google-Smtp-Source: AGHT+IEB8TGpyxZTtsCJhj2KPKxC3bD1JVfIHzjslJN2qUvXlKSCOq2WxKMzRLcvZLeW2PeXzeIdBQ==
+X-Received: by 2002:a05:6808:1396:b0:3c3:758d:4c56 with SMTP id c22-20020a056808139600b003c3758d4c56mr12409005oiw.43.1710772312866;
+        Mon, 18 Mar 2024 07:31:52 -0700 (PDT)
+Received: from [192.168.1.22] (070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id z5-20020a056808028500b003c384638dcfsm606368oic.18.2024.03.18.07.31.51
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 18 Mar 2024 07:31:52 -0700 (PDT)
+Message-ID: <d69b0021-9d5b-4e62-82c9-e2d3a361b7de@gmail.com>
+Date: Mon, 18 Mar 2024 09:31:50 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/2] ecc: add l_ecc_scalar_clone
+Content-Language: en-US
+To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
+References: <20240313164425.690572-1-prestwoj@gmail.com>
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20240313164425.690572-1-prestwoj@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
----
- ell/ecdh.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Hi James,
 
-diff --git a/ell/ecdh.c b/ell/ecdh.c
-index 568b599..e10a7d4 100644
---- a/ell/ecdh.c
-+++ b/ell/ecdh.c
-@@ -16,6 +16,7 @@
- #include "ecc.h"
- #include "ecdh.h"
- #include "random.h"
-+#include "useful.h"
- 
- /*
-  * Some sane maximum for calculating the public key.
-@@ -41,6 +42,9 @@ LIB_EXPORT bool l_ecdh_generate_key_pair(const struct l_ecc_curve *curve,
- 	int iter = 0;
- 	uint64_t p2[L_ECC_MAX_DIGITS];
- 
-+	if (unlikely(!curve || !out_private || !out_public))
-+		return false;
-+
- 	_ecc_calculate_p2(curve, p2);
- 
- 	*out_public = l_ecc_point_new(curve);
-@@ -77,6 +81,9 @@ LIB_EXPORT bool l_ecdh_generate_shared_secret(
- 	struct l_ecc_scalar *z;
- 	struct l_ecc_point *product;
- 
-+	if (unlikely(!private_key || !other_public || !secret))
-+		return false;
-+
- 	z = l_ecc_scalar_new_random(curve);
- 
- 	product = l_ecc_point_new(curve);
--- 
-2.34.1
+On 3/13/24 11:44, James Prestwood wrote:
+> ---
+>   ell/ecc.c   | 8 ++++++++
+>   ell/ecc.h   | 1 +
+>   ell/ell.sym | 1 +
+>   3 files changed, 10 insertions(+)
+
+All applied, thanks.
+
+Regards,
+-Denis
 
