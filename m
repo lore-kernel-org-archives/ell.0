@@ -1,36 +1,36 @@
 Received: from mail5.g24.pair.com (mail5.g24.pair.com [66.39.139.36])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A815152E1B
-	for <ell@lists.linux.dev>; Wed,  3 Apr 2024 17:22:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 507961534F7
+	for <ell@lists.linux.dev>; Wed,  3 Apr 2024 17:22:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.39.139.36
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712164948; cv=none; b=qOn87zKlPPWyzMXKlan4Hd4oyP2fuCTFWJp7FaiLJ3dRpv8iombgavCU46sKdLMHdbqrzMSDSh0b7/RKnQUGoNceFT8OoVHP6tnzHRk04bpGaQQZmjkbef8jexiRa2OKmi2lowZyFaIq1ekugauHX4bWQv97OWJNXoBWB0vUWCM=
+	t=1712164949; cv=none; b=OV4Atmivr431Fy5AdOXvMIaudMTiP0QAy1Lt2gTOqTsvDwNeody6wp55oRdE9SBkOF8FF36W2xabYiQG/lDD2mnlaIX7cD7Q9EN3XA5umfgU+5+ybSKWmjUASsf01pL2XXk1YOcasGmlEgk4+kYdvMdWB6bgg3PJ1zZxP/N1B4Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1712164948; c=relaxed/simple;
-	bh=mx2F85s4z1MQXdMh4ONxUnTaMcBuI9EkrW6JdjHRWRA=;
+	s=arc-20240116; t=1712164949; c=relaxed/simple;
+	bh=iZ/RA8XVoPeKVnzjVCnulrf8rQ6LZt9cF/0nP7kLDbY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=rZDKViTz8mhlGZECldon1sVe1hOq401qTJnU2m8FXXKNCO/JyXsO7U+beLkruY034qgy4wjLXTRg7CgpDR7xbofrF7rF8NWBVnaHu3LlQTXct709UAvXvIBrN9Yzf8gS5qHcLq5Dw0xObefx1Y94XQnQ7NReUIlYi8MVuQs5Cd0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=lL/w7SPO; arc=none smtp.client-ip=66.39.139.36
+	 MIME-Version; b=jxAT/3MPFBwUk8PCygZdEaE7EtVzUYiAYYHHWlN3CxyK8/NbdXUbWXphCv/VIMoQMWNP1+gZKnm0uzxmi6FTFZwW0ob3GNNsqBL/g8w+Ta/J89Ipw6q8czcBlSDJ9+3w/TgVZ0Zbi4Ya9wk2z4GOr6rbCQnRyC6aK/Z7SrWRnFc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=DMGVFWHR; arc=none smtp.client-ip=66.39.139.36
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="lL/w7SPO"
+	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="DMGVFWHR"
 Received: from mail5.g24.pair.com (localhost [127.0.0.1])
-	by mail5.g24.pair.com (Postfix) with ESMTP id 981E91649B9;
-	Wed,  3 Apr 2024 13:22:18 -0400 (EDT)
+	by mail5.g24.pair.com (Postfix) with ESMTP id CC1D6164A8B;
+	Wed,  3 Apr 2024 13:22:19 -0400 (EDT)
 Received: from localhost.localdomain (c-24-6-12-99.hsd1.ca.comcast.net [24.6.12.99])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mail5.g24.pair.com (Postfix) with ESMTPSA id 2A429124F66;
-	Wed,  3 Apr 2024 13:22:18 -0400 (EDT)
+	by mail5.g24.pair.com (Postfix) with ESMTPSA id 568C6124F66;
+	Wed,  3 Apr 2024 13:22:19 -0400 (EDT)
 From: Grant Erickson <gerickson@nuovations.com>
 To: ell@lists.linux.dev
 Cc: Marcel Holtmann <marcel@holtmann.org>
-Subject: [RFC PATCH v6] term: Initial revision.
-Date: Wed,  3 Apr 2024 10:22:09 -0700
-Message-ID: <20240403172216.3254805-2-gerickson@nuovations.com>
+Subject: [RFC PATCH v6] ell/Makefile: Added 'term.[ch]' to HEADERS and SOURCES.
+Date: Wed,  3 Apr 2024 10:22:11 -0700
+Message-ID: <20240403172216.3254805-4-gerickson@nuovations.com>
 X-Mailer: git-send-email 2.42.0
 In-Reply-To: <20240403172216.3254805-1-gerickson@nuovations.com>
 References: <20240403172216.3254805-1-gerickson@nuovations.com>
@@ -41,586 +41,33 @@ List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:cc:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=P6jago/T2ErdHBYi6UvvbFAAxJZwXiDzkqN2D+fKfIw=; b=lL/w7SPOJ0TpsARW9hisbWCB9s+LmEzFdp8Bcm19Bn0ubLAApdMGv13+7ygcN262bdYfplkvTvJmpOBvSGHrBfSHKCjQxyhTDe5Zz5H/n/MhL2bcsAsbbv96AOXxuUoO0wJds0PSeww7F5/kU52Zkyg8Tew+rkRheodIKQchgw20YzLdypmEY/khrc1iqvZ41Iay+vbX2wuFcRuKAqnO8FBDRDXi2u8h7C58cGniNncBP+02aTSjcmHVjfbdlkruv+H+6RfQd53bo3g6C+BBJz6onoF+nKjpSrmm2XTSzjpuz7ZGfNSWg9S7Fme4iMaeUSBf5a6nmUejwpcq8C07Lw==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:cc:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=A4lGAn0XrWXIA8QFoY7e4UOgcDitezEd7I5VUnfs1sQ=; b=DMGVFWHRxuOy4j60i28LbJ7nIbbDbRqAoRpb/QFwktWf6Yz2yCGd43iQZ3Cjcb2HGeYqVEfVPJK8Oc/EyqCnBFQFigkSuPvR5N0AOMDDdbtWiHp61817cg80ro+lwcEHE6sCS/wccC69ny6ipg9jBvu/HXTd6E0V6pQxUOqokBRU2J6ectBE5mfxVYvV1JwFWocUJ4ExdK6W/Tw8+EyHWU9XxkdyO4Lmw+fz+/X8DxA5wzJLTRJSW7LkGKXKVIV05vtPbWURbj4XJ+95JarQwg7OUhTatfzmY9izI80UkyhgX7+lMHG/HoyOcE7QpabgleBXQXK1FAY4kpBafWO68g==
 X-Scanned-By: mailmunge 3.10 on 66.39.139.36
 
-This is the intial revision of 'term.[hc]' an input/output terminal
-abstraction.
 ---
- ell/term.c | 487 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/term.h |  69 ++++++++
- 2 files changed, 556 insertions(+)
- create mode 100644 ell/term.c
- create mode 100644 ell/term.h
+ Makefile.am | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/ell/term.c b/ell/term.c
-new file mode 100644
-index 000000000000..65ddbcbb7600
---- /dev/null
-+++ b/ell/term.c
-@@ -0,0 +1,487 @@
-+/*
-+ * Embedded Linux library
-+ * Copyright (C) 2023-2024  Intel Corporation
-+ *
-+ * SPDX-License-Identifier: LGPL-2.1-or-later
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <errno.h>
-+#include <unistd.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <signal.h>
-+#include <termios.h>
-+#include <sys/ioctl.h>
-+
-+#include "private.h"
-+#include "signal.h"
-+#include "io.h"
-+#include "term.h"
-+
-+// MARK: Preprocessor Definitions
-+
-+#define IO_HANDLER(term, fd, readable, writable) \
-+	do {										 \
-+		if (term && term->io_handler) {			 \
-+			term->io_handler(term,				 \
-+							 fd,				 \
-+							 readable,			 \
-+							 writable,			 \
-+							 term->io_data);	 \
-+		}										 \
-+	} while (0);
-+
-+// MARK: Type Declarations
-+
-+struct term_ops {
-+	bool color_support;
-+	bool use_sigwinch;
-+	int (*get_winsize) (int fd, unsigned short *row, unsigned short *col);
-+	int (*get_attr) (int fd, struct termios *c);
-+	int (*set_attr) (int fd, const struct termios *c);
-+};
-+
-+static int null_get_winsize(int fd, unsigned short *row, unsigned short *col)
-+{
-+	if (row) *row = 24;
-+	if (col) *col = 80;
-+	return 0;
-+}
-+
-+static int null_get_attr(int fd, struct termios *c)
-+{
-+	return 0;
-+}
-+
-+static int null_set_attr(int fd, const struct termios *c)
-+{
-+	return 0;
-+}
-+
-+static const struct term_ops default_null_ops = {
-+	.color_support	= false,
-+	.use_sigwinch	= false,
-+	.get_winsize	= null_get_winsize,
-+	.get_attr		= null_get_attr,
-+	.set_attr		= null_set_attr,
-+};
-+
-+static int tty_get_winsize(int fd, unsigned short *row, unsigned short *col)
-+{
-+	struct winsize ws;
-+	int res;
-+
-+	res = ioctl(fd, TIOCGWINSZ, &ws);
-+	if (!res) {
-+		if (row) *row = ws.ws_row;
-+		if (col) *col = ws.ws_col;
-+	}
-+	else
-+		res = -errno;
-+
-+	return res;
-+}
-+
-+static int tty_get_attr(int fd, struct termios *c)
-+{
-+	int retval = 0;
-+
-+	if (tcgetattr(fd, c) != 0)
-+		retval = -errno;
-+
-+	return retval;
-+}
-+
-+static int tty_set_attr(int fd, const struct termios *c)
-+{
-+	int retval = 0;
-+
-+	if (tcsetattr(fd, TCSANOW, c) != 0)
-+		retval = -errno;
-+
-+	return retval;
-+}
-+
-+static const struct term_ops default_tty_ops = {
-+	.color_support	= true,
-+	.use_sigwinch	= true,
-+	.get_winsize	= tty_get_winsize,
-+	.get_attr		= tty_get_attr,
-+	.set_attr		= tty_set_attr,
-+};
-+
-+struct l_term {
-+	int in_fd;
-+	int out_fd;
-+	l_term_io_func_t io_handler;
-+	void *io_data;
-+	const struct term_ops *in_ops;
-+	const struct term_ops *out_ops;
-+	struct termios in_termios;
-+	struct termios out_termios;
-+	unsigned short num_row;
-+	unsigned short num_col;
-+	struct l_signal *sigwinch;
-+	bool is_running;
-+	char key_buf[8];
-+	size_t key_len;
-+	l_term_key_func_t key_handler;
-+	void *key_data;
-+};
-+
-+LIB_EXPORT struct l_term *l_term_new(void)
-+{
-+	struct l_term *term;
-+
-+	term = l_new(struct l_term, 1);
-+
-+	term->in_fd = -1;
-+	term->in_ops = NULL;
-+
-+	term->out_fd = -1;
-+	term->out_ops = NULL;
-+
-+	term->is_running = false;
-+
-+	return term;
-+}
-+
-+LIB_EXPORT void l_term_free(struct l_term *term)
-+{
-+	if (!term)
-+		return;
-+
-+	l_free(term);
-+}
-+
-+LIB_EXPORT int l_term_set_io_handler(struct l_term *term,
-+				l_term_io_func_t handler, void *user_data)
-+{
-+	if (!term)
-+		return -EINVAL;
-+
-+	term->io_handler = handler;
-+	term->io_data = user_data;
-+
-+	return 0;
-+}
-+
-+LIB_EXPORT int l_term_set_input(struct l_term *term, int fd)
-+{
-+	if (!term)
-+		return -EINVAL;
-+
-+	if (fd < 0)
-+		return -EBADF;
-+
-+	term->in_fd = fd;
-+	term->in_ops = NULL;
-+
-+	IO_HANDLER(term, fd, 1, 0);
-+
-+	return 0;
-+}
-+
-+LIB_EXPORT int l_term_set_output(struct l_term *term, int fd)
-+{
-+	if (!term)
-+		return -EINVAL;
-+
-+	if (fd < 0)
-+		return -EBADF;
-+
-+	term->out_fd = fd;
-+	term->out_ops = NULL;
-+
-+	IO_HANDLER(term, fd, 0, 1);
-+
-+	return 0;
-+}
-+
-+LIB_EXPORT int l_term_set_input_stdin(struct l_term *term)
-+{
-+	return l_term_set_input(term, STDIN_FILENO);
-+}
-+
-+LIB_EXPORT int l_term_set_output_stdout(struct l_term *term)
-+{
-+	return l_term_set_output(term, STDOUT_FILENO);
-+}
-+
-+LIB_EXPORT int l_term_set_key_handler(struct l_term *term,
-+				l_term_key_func_t handler, void *user_data)
-+{
-+	if (!term)
-+		return -EINVAL;
-+
-+	term->key_handler = handler;
-+	term->key_data = user_data;
-+
-+	return 0;
-+}
-+
-+LIB_EXPORT bool l_term_io_callback(struct l_io *io, void *user_data)
-+{
-+	struct l_term *term = user_data;
-+
-+	l_term_process(term);
-+
-+	return true;
-+}
-+
-+static void sigwinch_handler(void *user_data)
-+{
-+	struct l_term *term = user_data;
-+
-+	term->out_ops->get_winsize(term->out_fd,
-+					&term->num_row, &term->num_col);
-+}
-+
-+LIB_EXPORT int l_term_open(struct l_term *term)
-+{
-+	struct termios termios;
-+	int retval = 0;
-+
-+	if (!term)
-+		return -EINVAL;
-+
-+	/* Missing input or output file descriptor is a non-recoverable
-+	 * situation at this point.
-+	 */
-+	if (term->in_fd < 0 || term->out_fd < 0)
-+		return -EBADF;
-+
-+	/* If no input operations are provided, fallback to use TTY
-+	 * defaults or null setting.
-+	 */
-+	if (!term->in_ops) {
-+		if (isatty(term->in_fd))
-+			term->in_ops = &default_tty_ops;
-+		else
-+			term->in_ops = &default_null_ops;
-+	}
-+
-+	/* If no output operations are provided, fallback to use TTY
-+	 * defaults or null setting.
-+	 */
-+	if (!term->out_ops) {
-+		if (isatty(term->out_fd))
-+			term->out_ops = &default_tty_ops;
-+		else
-+			term->out_ops = &default_null_ops;
-+	}
-+
-+	/* Save current termios setting of input */
-+	memset(&term->in_termios, 0, sizeof(term->in_termios));
-+	retval = term->in_ops->get_attr(term->in_fd, &term->in_termios);
-+	if (retval < 0)
-+		return retval;
-+
-+	/* Save current termios setting of output */
-+	memset(&term->out_termios, 0, sizeof(term->out_termios));
-+	retval = term->out_ops->get_attr(term->out_fd, &term->out_termios);
-+	if (retval < 0)
-+		return retval;
-+
-+	/* Disable canonical mode (ICANON), disable echoing of input
-+	 * characters (ECHO) and disable generating signals.
-+	 *
-+	 * In noncanonical mode input is available immediately (without
-+	 * the user having to type a line-delimiter character), no input
-+	 * processing is performed, and line editing is disabled.
-+	 *
-+	 * When any of the characters INTR, QUIT, SUSP, or DSUSP are
-+	 * received, don't generate the corresponding signal.
-+	 */
-+	memcpy(&termios, &term->in_termios, sizeof(termios));
-+	termios.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG);
-+	retval = term->in_ops->set_attr(term->in_fd, &termios);
-+	if (retval < 0)
-+		return retval;
-+
-+	/* Send TIOCGWINSZ ioctl to retrieve col and row number */
-+	retval = term->out_ops->get_winsize(term->out_fd,
-+					&term->num_row, &term->num_col);
-+	if (retval < 0)
-+		return retval;
-+
-+	/* Setup SIGWINCH window resize signal handler if supported */
-+	if (term->out_ops->use_sigwinch)
-+		term->sigwinch = l_signal_create(SIGWINCH, sigwinch_handler,
-+								term, NULL);
-+
-+	IO_HANDLER(term, term->in_fd, 1, 0);
-+	IO_HANDLER(term, term->out_fd, 0, 1);
-+
-+	term->is_running = true;
-+
-+	return retval;
-+}
-+
-+LIB_EXPORT int l_term_close(struct l_term *term)
-+{
-+	int retval = 0;
-+
-+	if (!term)
-+		return -EINVAL;
-+
-+	term->is_running = false;
-+
-+	IO_HANDLER(term, term->in_fd, 0, 0);
-+	IO_HANDLER(term, term->out_fd, 0, 0);
-+
-+	/* Remove SIGWINCH window resize signal handler */
-+	if (term->out_ops->use_sigwinch)
-+		l_signal_remove(term->sigwinch);
-+
-+	/* Restore previous termios setting from input and output */
-+	retval = term->in_ops->set_attr(term->in_fd, &term->in_termios);
-+	if (retval < 0)
-+		return retval;
-+
-+	retval = term->out_ops->set_attr(term->out_fd, &term->out_termios);
-+	if (retval < 0)
-+		return retval;
-+
-+	return retval;
-+}
-+
-+LIB_EXPORT void l_term_process(struct l_term *term)
-+{
-+	wchar_t wstr[2];
-+	ssize_t len;
-+	mbstate_t ps;
-+
-+	if (!term)
-+		return;
-+
-+	len = read(term->in_fd, term->key_buf + term->key_len,
-+					sizeof(term->key_buf) - term->key_len);
-+	if (len < 0)
-+		return;
-+
-+	term->key_len += len;
-+
-+	while (term->key_len > 0) {
-+		memset(&ps, 0, sizeof(ps));
-+
-+		len = mbrtowc(wstr, term->key_buf, term->key_len, &ps);
-+		if (len < 0)
-+			break;
-+
-+		memmove(term->key_buf, term->key_buf + len,
-+						term->key_len - len);
-+		term->key_len -= len;
-+
-+		if (term->key_handler) {
-+			wint_t wch = wstr[0];
-+			term->key_handler(term, wch, term->key_data);
-+		}
-+	}
-+}
-+
-+LIB_EXPORT int l_term_putnstr(struct l_term *term, const char *str, size_t n)
-+{
-+	ssize_t res;
-+
-+	if (!term)
-+		return -EINVAL;
-+
-+	if (!term->is_running)
-+		return -EPERM;
-+
-+	res = write(term->out_fd, str, n);
-+	if (res < 0)
-+		return -errno;
-+
-+	return 0;
-+}
-+
-+LIB_EXPORT int l_term_putstr(struct l_term *term, const char *str)
-+{
-+	if (!str)
-+		return -EINVAL;
-+
-+	return l_term_putnstr(term, str, strlen(str));
-+}
-+
-+LIB_EXPORT int l_term_putchar(struct l_term *term, int ch)
-+{
-+	char c = ch;
-+
-+	return l_term_putnstr(term, &c, 1);
-+}
-+
-+LIB_EXPORT int l_term_print(struct l_term *term, const char *str, ...)
-+{
-+	va_list ap;
-+	int retval;
-+
-+	va_start(ap, str);
-+
-+	retval = l_term_vprint(term, str, ap);
-+
-+	va_end(ap);
-+
-+	return retval;
-+}
-+
-+LIB_EXPORT int l_term_vprint(struct l_term *term, const char *str, va_list ap)
-+{
-+	if (!term || !str)
-+		return -EINVAL;
-+
-+	if (!term->is_running)
-+		return -EPERM;
-+
-+	if (vdprintf(term->out_fd, str, ap) < 0)
-+		return -errno;
-+
-+	return 0;
-+}
-+
-+LIB_EXPORT int l_term_set_bounds(struct l_term *term, uint16_t rows,
-+				uint16_t columns)
-+{
-+	if (!term)
-+		return -EINVAL;
-+
-+	term->num_row = rows;
-+	term->num_col = columns;
-+
-+	return 0;
-+}
-+
-+LIB_EXPORT int l_term_get_rows(struct l_term *term, uint16_t *rows)
-+{
-+	int retval = 0;
-+
-+	if (!term)
-+		return -EINVAL;
-+
-+	if (!term->out_ops)
-+		return -ENOSYS;
-+
-+	retval = term->out_ops->get_winsize(term->out_fd, rows, NULL);
-+
-+	return retval;
-+}
-+
-+LIB_EXPORT int l_term_get_columns(struct l_term *term, uint16_t *columns)
-+{
-+	int retval = 0;
-+
-+	if (!term)
-+		return -EINVAL;
-+
-+	if (!term->out_ops)
-+		return -ENOSYS;
-+
-+	retval = term->out_ops->get_winsize(term->out_fd, NULL, columns);
-+
-+	return retval;
-+}
-diff --git a/ell/term.h b/ell/term.h
-new file mode 100644
-index 000000000000..89ed6c97c7ce
---- /dev/null
-+++ b/ell/term.h
-@@ -0,0 +1,69 @@
-+/*
-+ * Embedded Linux library
-+ * Copyright (C) 2023-2024  Intel Corporation
-+ *
-+ * SPDX-License-Identifier: LGPL-2.1-or-later
-+ */
-+
-+#ifndef __ELL_TERM_H
-+#define __ELL_TERM_H
-+
-+#include <stdarg.h>
-+#include <stdbool.h>
-+#include <stddef.h>
-+#include <stdint.h>
-+#include <wchar.h>
-+
-+#ifdef __cplusplus
-+extern "C" {
-+#endif
-+
-+struct l_term;
-+
-+struct l_term *l_term_new(void);
-+void l_term_free(struct l_term *term);
-+
-+typedef void (*l_term_io_func_t)(struct l_term *term,
-+                                 int fd,
-+                                 bool readable,
-+                                 bool writable,
-+                                 void *user_data);
-+
-+int  l_term_set_io_handler(struct l_term *term,
-+                           l_term_io_func_t handler,
-+                           void *user_data);
-+
-+int  l_term_set_input(struct l_term *term, int fd);
-+int  l_term_set_output(struct l_term *term, int fd);
-+
-+int  l_term_set_input_stdin(struct l_term *term);
-+int  l_term_set_output_stdout(struct l_term *term);
-+
-+typedef void (*l_term_key_func_t) (struct l_term *term, wint_t wch, void *user_data);
-+
-+int  l_term_set_key_handler(struct l_term *term,
-+				l_term_key_func_t handler, void *user_data);
-+
-+int  l_term_open(struct l_term *term);
-+int  l_term_close(struct l_term *term);
-+
-+bool l_term_io_callback(struct l_io *io, void *user_data);
-+
-+void l_term_process(struct l_term *term);
-+
-+int  l_term_putnstr(struct l_term *term, const char *str, size_t n);
-+int  l_term_putstr(struct l_term *term, const char *str);
-+int  l_term_putchar(struct l_term *term, int ch);
-+int  l_term_print(struct l_term *term, const char *str, ...);
-+int  l_term_vprint(struct l_term *term, const char *str, va_list ap);
-+
-+int  l_term_set_bounds(struct l_term *term, uint16_t rows, uint16_t columns);
-+
-+int  l_term_get_rows(struct l_term *term, uint16_t *rows);
-+int  l_term_get_columns(struct l_term *term, uint16_t *columns);
-+
-+#ifdef __cplusplus
-+}
-+#endif
-+
-+#endif /* __ELL_TERM_H */
+diff --git a/Makefile.am b/Makefile.am
+index 6c86e94e963e..5059682eec5f 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -55,6 +55,7 @@ pkginclude_HEADERS = ell/ell.h \
+ 			ell/ecc.h \
+ 			ell/ecdh.h \
+ 			ell/time.h \
++			ell/term.h \
+ 			ell/gpio.h \
+ 			ell/path.h \
+ 			ell/icmp6.h \
+@@ -145,6 +146,7 @@ ell_libell_la_SOURCES = $(linux_headers) \
+ 			ell/ecdh.c \
+ 			ell/time.c \
+ 			ell/time-private.h \
++			ell/term.c \
+ 			ell/gpio.c \
+ 			ell/path.c \
+ 			ell/icmp6.c \
 -- 
 2.42.0
 
