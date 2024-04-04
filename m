@@ -1,36 +1,36 @@
 Received: from mail5.g24.pair.com (mail5.g24.pair.com [66.39.139.36])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A6AD213C690
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B86B013C801
 	for <ell@lists.linux.dev>; Thu,  4 Apr 2024 23:38:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.39.139.36
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712273920; cv=none; b=r72m9qEanaODaOuqxiBf19O4ngVQsuVA5HJnmidVuxCegvY5lXFVFdVHMVjRb03QTcDIlP8R5T6FdWgWhdFvV4ORt9CT+P+liCU+bnZ1BbGd6vk5Y9eOvh+L1d740nFshxvWhUUyaZQa6H8IQDoZHlyeniZa7js14BAFwcN9MiE=
+	t=1712273920; cv=none; b=TErc/eimGMGxlItjPH3HJ2aec3NCq6kORPuIHfgwpaKj3H2sWvoOA5/jcUOsmZ4rvNtjp8clRjd007U6GAK/PZhSqQ62gW58BOhJmRYFMMNLAQgCLWDmN55XEfwEg1G6q5/dVl658znTsRHqbbGp1nj8CQC8+fYuY+IOfvFsdP4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1712273920; c=relaxed/simple;
-	bh=w7v9PXLKRqDmvEB/Z0cl44dV5ooVf2hi5mRAxlUd218=;
+	bh=LRKhE3eEt/KnymzkA2tOO+VUaCc/OFwSL9WBWqAwBXU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Izb1wlcCgfoPSJCUOhI6MfjgVHUVH32Q9NwMO7wM6eTvn/smA1CH7Onbwt5AovKUNd8RpW8B12vomh37tQeVTvefqu90DEEvTY74Z+vlrzuGfOFt/OjfsGg3enUNgToDypBHsipGjM1Q15mdObgzDMFbFuDUw6GIjWXIbPRiUC0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=C/OoXXVa; arc=none smtp.client-ip=66.39.139.36
+	 MIME-Version; b=cU++1CBuQ87nuSWYWvQkRhYNvj4WcMYlbxOAgbI7xMAsWL8hkQyfF0UwEH71X7VZAd7sNhe4/re664sdEA7naOfJ5emfocWQtPjjIo530yhH2b8OmkrYxRcg33PCRJEQC1N02RcafMbeTw+31JDKhhhx4LTG9UzcNnxamcrWUwk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=F8LtWzft; arc=none smtp.client-ip=66.39.139.36
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="C/OoXXVa"
+	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="F8LtWzft"
 Received: from mail5.g24.pair.com (localhost [127.0.0.1])
-	by mail5.g24.pair.com (Postfix) with ESMTP id 6DF5D164A89;
-	Thu,  4 Apr 2024 19:38:32 -0400 (EDT)
+	by mail5.g24.pair.com (Postfix) with ESMTP id DA3AB164A88;
+	Thu,  4 Apr 2024 19:38:31 -0400 (EDT)
 Received: from localhost.localdomain (c-24-6-12-99.hsd1.ca.comcast.net [24.6.12.99])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mail5.g24.pair.com (Postfix) with ESMTPSA id 08957124F66;
+	by mail5.g24.pair.com (Postfix) with ESMTPSA id 7E22D124F66;
 	Thu,  4 Apr 2024 19:38:31 -0400 (EDT)
 From: Grant Erickson <gerickson@nuovations.com>
 To: ell@lists.linux.dev
 Cc: Marcel Holtmann <marcel@holtmann.org>
-Subject: [RFC PATCH v7] ell/term: Add an 'l_term_is_acquired' introspection function.
-Date: Thu,  4 Apr 2024 16:38:25 -0700
-Message-ID: <20240404233826.3466674-9-gerickson@nuovations.com>
+Subject: [RFC PATCH v7] ell/edit: Rename 'l_term_{open,close}'.
+Date: Thu,  4 Apr 2024 16:38:24 -0700
+Message-ID: <20240404233826.3466674-8-gerickson@nuovations.com>
 X-Mailer: git-send-email 2.42.0
 In-Reply-To: <20240404233826.3466674-1-gerickson@nuovations.com>
 References: <20240404233826.3466674-1-gerickson@nuovations.com>
@@ -41,61 +41,125 @@ List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:cc:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=IGoxOEqSCZeLt0jVOG3enFSsdkeiOOI8XAKHiJX8QyA=; b=C/OoXXVaQNxdJ0V1ruoHH6oFG6hCBvNxGdi5gVal5GYQQ3tZY46C1V5flUoSu/nkCe8f8HoHQBaTtOiBedETC2tgr4h3KKE4/Rw/8kQQs296uzSDh59SfQlWWM4ks+69vr5UQAY/2BzNNtMknv6mmhnPh49CNyW9cKRBImQkjsgzyzfKdEduJt6exSrjV8nLx44khvNFCJz4MzFqGjBT7w8VHAhguW8OQM4+ZXf70FIx9UAUlPwn/slqmaSTWKqxeQQEAVtVlgW21NHre5JeDVtl++sZTj++j/YdtdS3fsh8txsdo3579LChK0/7EBtBSqrzuUIWez9SIz3HHAfPVA==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:cc:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=n9I9oHSw5Ej7rbI8RLp5blPEzIJHLFM/BZcyEPnT9EQ=; b=F8LtWzftYp8k+Ai4RJBGGzj/uxe+gmJ3bj4Fb2/vsmZ7/PWfhSoba4nrEuw9FuR2awfBgw1QVXf9WKRKk2VnqbvHskGnflMu+0xEbtvv9q3q2PMU5Tg8U01z/mQsf5UKuvGEFU38/xBoI6SHNwdlx5STk9zakmhaR1o0qcqzG73TwyGnfH32eRGki0BJidkuC4MhRr60nDmpNGgeACHiOWb8tCXHjvSK5lJHvgRybdvh5UXsCreAX5HVKVPx9TEqnaOW8cvSt7RJqw940kybnkt0wQVKp0U2qz5OsDLWA9+y/QqN4SWGoPZGC1isHeXgb6J3wq2JSHcEA/0ZhdIxvA==
 X-Scanned-By: mailmunge 3.10 on 66.39.139.36
 
-Adds an 'l_term_is_acquired' introspection function that indicates
-whether the terminal has acquired and modified the TTY settings for
-the input and output descriptors associated with the terminal.
+Renames 'l_term_{open,close}' to 'l_term_{acquire,release}' since this
+aligns more closely with what is happening with the underlying file
+descriptors. In particular, those descriptors are not being opened or
+closed. Rather, their TTY parameters are being saved and altered on
+'open' (now 'acquire') and restored on 'close' (now 'release'). At no
+point are the descriptors being transformed with the 'open' or 'close'
+system calls.
 ---
- ell/ell.sym | 1 +
- ell/term.c  | 8 ++++++++
- ell/term.h  | 2 ++
- 3 files changed, 11 insertions(+)
+ ell/ell.sym |  4 ++--
+ ell/term.c  | 18 ++++++++++++------
+ ell/term.h  |  4 ++--
+ 3 files changed, 16 insertions(+), 10 deletions(-)
 
 diff --git a/ell/ell.sym b/ell/ell.sym
-index 0026bbe1afcf..e288d6c32f67 100644
+index 2767bf55e079..0026bbe1afcf 100644
 --- a/ell/ell.sym
 +++ b/ell/ell.sym
-@@ -632,6 +632,7 @@ global:
+@@ -632,8 +632,8 @@ global:
  	l_term_set_output;
  	l_term_set_output_stdout;
  	l_term_set_key_handler;
-+	l_term_is_acquired;
- 	l_term_acquire;
- 	l_term_release;
+-	l_term_open;
+-	l_term_close;
++	l_term_acquire;
++	l_term_release;
  	l_term_io_callback;
+ 	l_term_process;
+ 	l_term_putnstr;
 diff --git a/ell/term.c b/ell/term.c
-index f3801bcb1200..a56ede4e98ec 100644
+index 7ec92476e14e..f3801bcb1200 100644
 --- a/ell/term.c
 +++ b/ell/term.c
-@@ -241,6 +241,14 @@ static void sigwinch_handler(void *user_data)
+@@ -126,7 +126,7 @@ struct l_term {
+ 	unsigned short num_row;
+ 	unsigned short num_col;
+ 	struct l_signal *sigwinch;
+-	bool is_running;
++	bool is_acquired;
+ 	char key_buf[8];
+ 	size_t key_len;
+ 	l_term_key_func_t key_handler;
+@@ -145,7 +145,7 @@ LIB_EXPORT struct l_term *l_term_new(void)
+ 	term->out_fd = -1;
+ 	term->out_ops = NULL;
+ 
+-	term->is_running = false;
++	term->is_acquired = false;
+ 
+ 	return term;
+ }
+@@ -241,7 +241,7 @@ static void sigwinch_handler(void *user_data)
  					&term->num_row, &term->num_col);
  }
  
-+LIB_EXPORT bool l_term_is_acquired(struct l_term *term)
-+{
-+	if (!term)
-+		return false;
-+
-+	return term->is_acquired;
-+}
-+
- LIB_EXPORT int l_term_acquire(struct l_term *term)
+-LIB_EXPORT int l_term_open(struct l_term *term)
++LIB_EXPORT int l_term_acquire(struct l_term *term)
  {
  	struct termios termios;
+ 	int retval = 0;
+@@ -249,6 +249,9 @@ LIB_EXPORT int l_term_open(struct l_term *term)
+ 	if (!term)
+ 		return -EINVAL;
+ 
++	if (term->is_acquired)
++		return -EALREADY;
++
+ 	/* Missing input or output file descriptor is a non-recoverable
+ 	 * situation at this point.
+ 	 */
+@@ -317,19 +320,20 @@ LIB_EXPORT int l_term_open(struct l_term *term)
+ 	IO_HANDLER(term, term->in_fd, 1, 0);
+ 	IO_HANDLER(term, term->out_fd, 0, 1);
+ 
+-	term->is_running = true;
++	term->is_acquired = true;
+ 
+ 	return retval;
+ }
+ 
+-LIB_EXPORT int l_term_close(struct l_term *term)
++LIB_EXPORT int l_term_release(struct l_term *term)
+ {
+ 	int retval = 0;
+ 
+ 	if (!term)
+ 		return -EINVAL;
+ 
+-	term->is_running = false;
++	if (!term->is_acquired)
++		return -EALREADY;
+ 
+ 	IO_HANDLER(term, term->in_fd, 0, 0);
+ 	IO_HANDLER(term, term->out_fd, 0, 0);
+@@ -347,6 +351,8 @@ LIB_EXPORT int l_term_close(struct l_term *term)
+ 	if (retval < 0)
+ 		return retval;
+ 
++	term->is_acquired = false;
++
+ 	return retval;
+ }
+ 
 diff --git a/ell/term.h b/ell/term.h
-index 50831c166c78..66059212b436 100644
+index 89ed6c97c7ce..50831c166c78 100644
 --- a/ell/term.h
 +++ b/ell/term.h
-@@ -44,6 +44,8 @@ typedef void (*l_term_key_func_t) (struct l_term *term, wint_t wch, void *user_d
+@@ -44,8 +44,8 @@ typedef void (*l_term_key_func_t) (struct l_term *term, wint_t wch, void *user_d
  int  l_term_set_key_handler(struct l_term *term,
  				l_term_key_func_t handler, void *user_data);
  
-+bool l_term_is_acquired(struct l_term *term);
-+
- int  l_term_acquire(struct l_term *term);
- int  l_term_release(struct l_term *term);
+-int  l_term_open(struct l_term *term);
+-int  l_term_close(struct l_term *term);
++int  l_term_acquire(struct l_term *term);
++int  l_term_release(struct l_term *term);
+ 
+ bool l_term_io_callback(struct l_io *io, void *user_data);
  
 -- 
 2.42.0
