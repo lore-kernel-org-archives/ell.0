@@ -1,39 +1,36 @@
 Received: from mail5.g24.pair.com (mail5.g24.pair.com [66.39.139.36])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8AFD217F8
-	for <ell@lists.linux.dev>; Fri,  5 Apr 2024 00:20:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAE6D393
+	for <ell@lists.linux.dev>; Fri,  5 Apr 2024 00:37:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.39.139.36
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712276420; cv=none; b=LLgZc4P/r64MTKW1lOjgNfLHlUOLXUGDYezz3e/YCkYnXjIf/4dRwHjjDCGJWFZM/6eRTRaLmqSm0iGXwaAzOhPts7OfoqrW5Lra9jw4eDJwC44Lqdgsw/yejwNVAiXjHqf1fQBwnwDqFoo4gyckIaWti/78CSXJbGUKgbNuMBk=
+	t=1712277422; cv=none; b=IRjv7B8kkTrRukyH6sP6b8TJwqwAipiAR2eVZhpeTyWfvO3FmJdnG0U4J2wZ9f1i/bqDd9S1mZWBFy482Y9J6nLBxgK1XTPS/AKxu4AyX7shSNCp2doUMYPzik7edDlL3N/KbT8aycH0NViH8SU5pz1OIqt+hZKLj3C9A6nVHLc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1712276420; c=relaxed/simple;
-	bh=80mp6916iE+3AkPWUz0Ur9Wbpw5y/adrofMVCYQ8r2c=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=HySMpditPv3wQBA7LSiaJfuHzahEWjUAY61WlsEeIJ47acRwtOBkeeBJMdyF4PUZ/CfdoZNgVfY1mpXOOATXuYNqVjfjkE+LqYxrlOV1XJfHMzYbxUXIItWABEv8O5nYJ7iClfo9jtp0p1/ZW51LPiYF/kUUUZa7bDqRnusQOoQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=mwfM3MiI; arc=none smtp.client-ip=66.39.139.36
+	s=arc-20240116; t=1712277422; c=relaxed/simple;
+	bh=yyMsoWryZrGKwPRrb8AGiA5GBW7BBqdlpAQeVzAjIaU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=nlO/shTcxkreHGqE6D2KjszcUK8EA0C2gZWD4vvVsjOyy1pZIdXI4Siwxg85aWexE/u4qZPRCQkhsuelerxQ2UhAVCwlwnFeHRRsdHHlV5jP+802xNG4rpUt1k4YO3vIBfryWmJ3BTaBNvN0uIlJz4NH57WYz+shE3ZefZv04Wg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=DrPJ1R0k; arc=none smtp.client-ip=66.39.139.36
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="mwfM3MiI"
+	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="DrPJ1R0k"
 Received: from mail5.g24.pair.com (localhost [127.0.0.1])
-	by mail5.g24.pair.com (Postfix) with ESMTP id DA9081649CB;
-	Thu,  4 Apr 2024 20:20:17 -0400 (EDT)
+	by mail5.g24.pair.com (Postfix) with ESMTP id C110A16491C;
+	Thu,  4 Apr 2024 20:36:59 -0400 (EDT)
 Received: from localhost.localdomain (c-24-6-12-99.hsd1.ca.comcast.net [24.6.12.99])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mail5.g24.pair.com (Postfix) with ESMTPSA id 80DBE124F66;
-	Thu,  4 Apr 2024 20:20:17 -0400 (EDT)
+	by mail5.g24.pair.com (Postfix) with ESMTPSA id 5D4C0124F66;
+	Thu,  4 Apr 2024 20:36:59 -0400 (EDT)
 From: Grant Erickson <gerickson@nuovations.com>
 To: ell@lists.linux.dev
 Cc: Marcel Holtmann <marcel@holtmann.org>
-Subject: [RFC PATCH v5] edit: improve error handling of 'mbstowcs' and 'wcstombs' functions.
-Date: Thu,  4 Apr 2024 17:20:11 -0700
-Message-ID: <20240405002011.3480886-9-gerickson@nuovations.com>
+Subject: [RFC PATCH v8] Input/Output Terminal Abstraction
+Date: Thu,  4 Apr 2024 17:36:49 -0700
+Message-ID: <20240405003658.3490494-1-gerickson@nuovations.com>
 X-Mailer: git-send-email 2.42.0
-In-Reply-To: <20240405002011.3480886-1-gerickson@nuovations.com>
-References: <20240405002011.3480886-1-gerickson@nuovations.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -41,122 +38,37 @@ List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:cc:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=F4/jB31I4qqFfJ+4RuKRq1KaO3LlCMTdSoZ95lWKBec=; b=mwfM3MiI7G9F9Aow5Kr7UEGRINtxshcxAWAlpvgZk5Pl05ESL38t7zg9u1u5QqGmnOU/p5Ibrw5gsq11ZjW78o1bXiPd4YR0li721XdT4qgKXXzkeZhN5FCyF4c8STvPxo/Tfwer+qF6liad407o8Gs13+WvxeGTu+aDCdqWCInvC3jGBCsbZxTUsghX06clVj9d/1rr6bQoRNi2WSvbfNZNO+Mc7hipLRg4ZCEl3he7kupDsM29xue80O4LfYs0k8VsLeLbK4uZv8k+89p8ehZxJEq39aMihTxMylIdGib3l9O2W2WORoidGkrSkQ5QM9xJZpDYDyQr/9RAFrTA6g==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:cc:subject:date:message-id:mime-version:content-transfer-encoding; s=pair-202401062137; bh=x7UzE6RvA21KyHVLlBqlqqdGGEgetGRtvkVHgr8fKEs=; b=DrPJ1R0kumhwOcHknVEuCMpl4+LNCG8lQxHXHUfACEeUYxtr1J4CZSlU6fBfYggTYqpZySfcUtYvjLQHbmlhwMReIbGo3J/I7/yjuPf1+PrlX/4Y1oQGLyPF1oRiFXqRLG1P8xGdV9doAl+gstTKYRI4ZjhmFnty43uHEHxH7SJAq28LgEprc6jGDbWRgZ4A0/zYP4VvSGiWF456jJhdE8Hq7kCSTmZozjInCcEa8+E3TUp5oQC8rt9CYJqNBOLz9WWtUFcEyGjbpE5wgoPm+RHInuigoWjkdtN/sc+I0/rurxZMBhu6UpV2pQsHPhEddbLuNMjxYJmwKkiMy36iQw==
 X-Scanned-By: mailmunge 3.10 on 66.39.139.36
 
-On error, the 'mbstowcs' and 'wcstombs' functions could return
-'SIZE_MAX' when uncountering unconvertable character sequences.
+This expands on Marcel Holtman's 2023-12-22 RFCv4 patch for an
+input/output terminal abstraction.
 
-Ensure that such errors are not obscured and are passed along to the
-caller.
----
- ell/edit.c | 53 ++++++++++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 44 insertions(+), 9 deletions(-)
+Substantive changes from the v7 version:
 
-diff --git a/ell/edit.c b/ell/edit.c
-index 6747f92e289e..5551ae52bfdb 100644
---- a/ell/edit.c
-+++ b/ell/edit.c
-@@ -104,10 +104,16 @@ static void reset_input_buf(struct input_buf *buf, const char *input)
- 	if (input) {
- 		size_t len;
- 
--		/* Calculate the required size of the wide character string
--		 * including its terminating null character.
-+		/* Calculate the required size of the wide character string.
- 		 */
--		len = mbstowcs(NULL, input, 0) + 1;
-+		len = mbstowcs(NULL, input, 0);
-+		if (len == SIZE_MAX)
-+			return;
-+
-+		/* Increase the size of the wide character string by one to
-+		 * cover its terminating null character.
-+		 */
-+		len += 1;
- 
- 		/* If the current buffer is to small, then allocate a new
- 		 * one and free the previous one. Since in most cases the
-@@ -125,6 +131,9 @@ static void reset_input_buf(struct input_buf *buf, const char *input)
- 		 * and then move the cursor to the end.
- 		 */
- 		buf->len = mbstowcs(buf->buf, input, buf->size);
-+		if (buf->len == SIZE_MAX)
-+			return;
-+
- 		buf->pos = buf->len;
- 	} else {
- 		/* Reset the main item to an empty string */
-@@ -197,6 +206,7 @@ static void update_debug(struct l_edit *edit)
- 	struct l_string *str;
- 	char *tmp;
- 	size_t len;
-+    size_t status;
- 	unsigned int pos = 0;
- 
- 	if (!edit->debug_handler)
-@@ -218,9 +228,14 @@ static void update_debug(struct l_edit *edit)
- 
- 	buf = edit->head;
- 	while (buf) {
--		len = wcstombs(NULL, buf->buf, 0) + 1;
-+		len = wcstombs(NULL, buf->buf, 0);
-+		if (len == SIZE_MAX)
-+			return;
-+		len += 1;
- 		tmp = l_malloc(len);
--		wcstombs(tmp, buf->buf, len);
-+		status = wcstombs(tmp, buf->buf, len);
-+		if (status == SIZE_MAX)
-+			return;
- 		l_string_append_printf(str, "%3u %s\n", pos, tmp);
- 		l_free(tmp);
- 		pos++;
-@@ -415,9 +430,18 @@ LIB_EXPORT int l_edit_enter(struct l_edit *edit, char **line)
- 	/* Convert the wide character string into the multibyte string
- 	 * representation like UTF-8 for example.
- 	 */
--	len = wcstombs(NULL, edit->main->buf, 0) + 1;
-+	len = wcstombs(NULL, edit->main->buf, 0);
-+	if (len == SIZE_MAX)
-+		return -EILSEQ;
-+
-+	len += 1;
-+
- 	str = l_malloc(len);
--	wcstombs(str, edit->main->buf, len);
-+	if (!str)
-+		return -ENOMEM;
-+
-+	if (wcstombs(str, edit->main->buf, len) == SIZE_MAX)
-+		return -EILSEQ;
- 
- 	if (edit->main->len > 0) {
- 		/* If the current entered item is different from the first
-@@ -775,10 +799,21 @@ LIB_EXPORT int l_edit_history_save(struct l_edit *edit, const char *pathname)
- 	while (buf) {
- 		char *tmp;
- 		size_t len;
-+		size_t status;
- 
--		len = wcstombs(NULL, buf->buf, 0) + 1;
-+		len = wcstombs(NULL, buf->buf, 0);
-+		if (len == SIZE_MAX) {
-+			close(fd);
-+			return -EILSEQ;
-+		}
-+		len += 1;
- 		tmp = l_malloc(len);
--		wcstombs(tmp, buf->buf, len);
-+		status = wcstombs(tmp, buf->buf, len);
-+		if (status == SIZE_MAX) {
-+			l_free(tmp);
-+			close(fd);
-+			return -EILSEQ;
-+		}
- 		dprintf(fd, "%s\n", tmp);
- 		l_free(tmp);
- 
+  * Fixed a typo in the  ASCII C0 and C1 control code mnemonics.
+
+Grant Erickson (9):
+  term: Initial revision.
+  ell: Add include directive for 'ell/term.h'.
+  ell/Makefile: Added 'term.[ch]' to HEADERS and SOURCES.
+  term: Added 'l_term_*' symbols.
+  ell/term: Do not return -EPERM for 'putnstr' and 'vprint' if not
+    running.
+  ell/term: Return error on writes if the output descriptor is invalid.
+  ell/edit: Rename 'l_term_{open,close}'.
+  ell/term: Add an 'l_term_is_acquired' introspection function.
+  ell/term: Added ASCII C0 and C1 control code mnemonics.
+
+ Makefile.am |   2 +
+ ell/ell.h   |   1 +
+ ell/ell.sym |  22 +++
+ ell/term.c  | 501 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/term.h  | 215 ++++++++++++++++++++++
+ 5 files changed, 741 insertions(+)
+ create mode 100644 ell/term.c
+ create mode 100644 ell/term.h
+
 -- 
 2.42.0
 
