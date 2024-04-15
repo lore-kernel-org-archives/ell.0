@@ -1,39 +1,61 @@
-Received: from mail5.g24.pair.com (mail5.g24.pair.com [66.39.139.36])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oo1-f42.google.com (mail-oo1-f42.google.com [209.85.161.42])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8444AA2A
-	for <ell@lists.linux.dev>; Fri,  5 Apr 2024 00:37:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.39.139.36
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B93D15575F
+	for <ell@lists.linux.dev>; Mon, 15 Apr 2024 19:14:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712277427; cv=none; b=Hfk8mulnAlpwRsbfkQapmAFPEK0nL4J0th1ESCihQUylMJRrV5pJ+f6efKyy0ugUdl8APRMVEjN0axGdqGuu7jM+ULHfyaSabV6PB5uHs/HEV6ZKVpMPCYL0T9NL4hh+gggVC2vqPgiNTF22MqXV30YblhxG2Pc43FysGWVLZlw=
+	t=1713208498; cv=none; b=kKj0ZBKQ8QcfiaorczAjnK/xK0qtga1HmZsTC3aqB46FOecrlcqP6kE1MguwrAK4msDk8QFnXoVpbCrvOw/0QT+amX8zQ+856jAZeREf8jzqtP+rGDy7ghYhcZ/Jwkc6PBt9fs67ncVynP16pCJq4Qb2kBqIGWM4MmCB+gIfhYU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1712277427; c=relaxed/simple;
-	bh=rgrAA745H+Aa7IFMZpEEMHSvg9MYkrP/0cqjNbJcaTc=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=abNUv+7lmhtp6bW0UE8g6uzJAy/RorSSPNu8tapeRhVyOnylntmFhVA/+FBkgfplRqeiu/z8M90KT872GgfsbraVhbgy0ftDES9LPwHP9NkMkmmK0uwbfCw5Mji5lK/Xlcoh7JoP2wUjHAHCyyl6bL0eYHMjvifg92I7U1m+0GI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=r9E4e3Uq; arc=none smtp.client-ip=66.39.139.36
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nuovations.com
+	s=arc-20240116; t=1713208498; c=relaxed/simple;
+	bh=Zg7Hu1KhKlj1KupyiJ94O57KVPpipYFIPIf5MgSTY94=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=RYc1SYS6mK4DF4WCyCzTdzyr1KdXLbZ3jfyk60oCfvYMMiOYGz+F2zr6yWMkxYztwSLxrqg7zKW41J8wVB+vzvhJP3+2ZFfOAlbyPQ/ykhQIkpCVy4dQq7YEq3oqrDOVHv7W864FzG9ipFNwkmIQUeWK70uhxF5/bg9bhHPiEhg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=IHaSqIfU; arc=none smtp.client-ip=209.85.161.42
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="r9E4e3Uq"
-Received: from mail5.g24.pair.com (localhost [127.0.0.1])
-	by mail5.g24.pair.com (Postfix) with ESMTP id A06011649CC;
-	Thu,  4 Apr 2024 20:37:04 -0400 (EDT)
-Received: from localhost.localdomain (c-24-6-12-99.hsd1.ca.comcast.net [24.6.12.99])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mail5.g24.pair.com (Postfix) with ESMTPSA id 41E7B124F66;
-	Thu,  4 Apr 2024 20:37:04 -0400 (EDT)
-From: Grant Erickson <gerickson@nuovations.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IHaSqIfU"
+Received: by mail-oo1-f42.google.com with SMTP id 006d021491bc7-5a522ae3747so1601033eaf.1
+        for <ell@lists.linux.dev>; Mon, 15 Apr 2024 12:14:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1713208496; x=1713813296; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=zdJvczNucGwJm49momo3YBbWLY1Ibf9EQ5Z5pwzZsIw=;
+        b=IHaSqIfUhA8AnwomuKGRrGpsDA+SxWP0Qae9r2HmpB85Y/3OfFwB1JHGgSwfSIcqPb
+         LjcCvFnDC9Y/smOw3IbUV1b9AEXkJ0WwyRtpCQO3FyEMDXptvg9Js2fCJlCq923vbCXp
+         O2P5ZkwK0HXDunKUraFUTcuOGR98LuX5Gxm2qDrW1RiEHqwjJ5JFG+WKO7deA3BB139G
+         JJqqMPmBsyqJBlKKa6u8lQS2624wPLU5t+SmceGntRQkthyZgM50Ik4ALVbjIvwg2nz8
+         4Ovi2M7dGFlV9fxc/lupEhk3vnBpKKn5oQRi00LD7cqZ2RTDI8mNBkQfcMt7QrGe3iDc
+         gsPA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1713208496; x=1713813296;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=zdJvczNucGwJm49momo3YBbWLY1Ibf9EQ5Z5pwzZsIw=;
+        b=UF6ImmyG2Qu4XokwjGE11vqrX0ZQFX9+B0EhdBosSgVi1S3p1vzdHstkaA6C7CbawV
+         VVHtnBRD8RmsBR0iGqkEPLmznI2DojBbg/Wb0OK9DjborGVRfHgaH3Iuo+UUqbK2mOqK
+         yZ4aJd41Iny5SRjEozqIFBhrIXrwf5aGh/fcrpaOvblryeQp+u5TQxpBgVks18NJBYQ7
+         MZGBrY79c0EoyCajkk1tiU53WWIdOKV7/tVIVA2F8woyGKHzvf/jxcoegcK19sx3NIXY
+         ZAGBWRxkl/DA92EnwSkHRdpmN5qD7GHoKX6aNkuXrBNSH4+9rmCBbHFKuETlbLda5v98
+         Gb6g==
+X-Gm-Message-State: AOJu0Yw3GVW8wrzdPTps0vDG968E3CgfiSkZXiUuGYN+byr3mzjaXYVI
+	5d3I4HzU+6dVKXBuWLMZAsH7a0QNxwF6fDEiQAZI1YpOG8/9s65ZepVTzQ==
+X-Google-Smtp-Source: AGHT+IExmQdSQ2RaE1SAFey1EXWF0PTGAeHwfyuFsbv3qB1YOh7uFiLDsh2d6JNjc5LYmVGq4NM7dA==
+X-Received: by 2002:a4a:ad4a:0:b0:5ac:6891:ce56 with SMTP id s10-20020a4aad4a000000b005ac6891ce56mr206566oon.2.1713208496621;
+        Mon, 15 Apr 2024 12:14:56 -0700 (PDT)
+Received: from localhost.localdomain ([70.114.247.242])
+        by smtp.gmail.com with ESMTPSA id w8-20020a4ae9e8000000b005a586b0906esm2206526ooc.26.2024.04.15.12.14.56
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 15 Apr 2024 12:14:56 -0700 (PDT)
+From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
-Cc: Marcel Holtmann <marcel@holtmann.org>
-Subject: [RFC PATCH v8] ell/term: Added ASCII C0 and C1 control code mnemonics.
-Date: Thu,  4 Apr 2024 17:36:58 -0700
-Message-ID: <20240405003658.3490494-10-gerickson@nuovations.com>
-X-Mailer: git-send-email 2.42.0
-In-Reply-To: <20240405003658.3490494-1-gerickson@nuovations.com>
-References: <20240405003658.3490494-1-gerickson@nuovations.com>
+Cc: Denis Kenzior <denkenz@gmail.com>
+Subject: [PATCH 1/4] util: Remove confusing static keyword use
+Date: Mon, 15 Apr 2024 14:14:33 -0500
+Message-ID: <20240415191454.3259243-1-denkenz@gmail.com>
+X-Mailer: git-send-email 2.44.0
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -41,170 +63,38 @@ List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:cc:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=6JsccZDVSOSSJ5h2qBwrT2HNUR1YpOepBm7LlHc/7OM=; b=r9E4e3UqGyKMFmWU5R76WT1wHAb0VzxR/tjbWTDUl9HHfgq4XrOUEzogb9w8NHlO6fb4jtJOVQxb5cIWBArD6by0jd6onOepu7rgumc4nUPNjbNuHxX8kA/H04XuapnzCJx0LUzhe0dOaaQtYzTAYovSEcIouMS7qqq8kQePFUAxe2Qm/NupK8hgzJh0k76inRVS6+1dAZid4B+L2D8Dyzm/+I8PXbhjh1P1IN5pyTo0Z3OBjncKiPEapW9oxZ1YvwO9ZwrwBrA30Ji8FtBu3lVM3jf40EroyX27cAWGItN42zJBSar/w25TZzcHBwW5yvOUOuc6U1KZnzmFDxnJ8w==
-X-Scanned-By: mailmunge 3.10 on 66.39.139.36
 
-Added ASCII C0 and C1 control code mnemonics useful to anyone
-implementing a l_term key handler.
+'__n' is declared as static const which is confusing since it
+would imply that __n is only initialized once.  This works out in the
+end since the macro used in a separate anonymous block, but some compilers
+(i.e. clang) will generate a symbol table entry for '__n'.  This is not
+needed since the expression is always constant.
+
+Declare '__n' as a const size_t instead since that is the type produced
+by the sizeof() operation used by L_ARRAY_SIZE.
+
+While here, also declare '__i' as size_t to match '__n'.
+
+Fixes: 4a9f6388dd7f ("util: Add L_IN_SET macros")
 ---
- ell/term.h | 144 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 144 insertions(+)
+ ell/util.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/ell/term.h b/ell/term.h
-index 66059212b436..7a0338bd95e0 100644
---- a/ell/term.h
-+++ b/ell/term.h
-@@ -18,6 +18,150 @@
- extern "C" {
- #endif
- 
-+enum {
-+	L_TERM_CONTROL_CODE_ASCII_C0_NUL	= 0x00,
-+	L_TERM_CONTROL_CODE_ASCII_C0_SOH	= 0x01,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC1	= L_TERM_CONTROL_CODE_ASCII_C0_SOH,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_A = L_TERM_CONTROL_CODE_ASCII_C0_SOH,
-+	L_TERM_CONTROL_CODE_ASCII_C0_STX	= 0x02,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC2	= L_TERM_CONTROL_CODE_ASCII_C0_STX,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_B = L_TERM_CONTROL_CODE_ASCII_C0_STX,
-+	L_TERM_CONTROL_CODE_ASCII_C0_ETX	= 0x03,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC3	= L_TERM_CONTROL_CODE_ASCII_C0_ETX,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_C = L_TERM_CONTROL_CODE_ASCII_C0_ETX,
-+	L_TERM_CONTROL_CODE_ASCII_C0_EOT	= 0x04,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC4	= L_TERM_CONTROL_CODE_ASCII_C0_EOT,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_D = L_TERM_CONTROL_CODE_ASCII_C0_EOT,
-+	L_TERM_CONTROL_CODE_ASCII_C0_ENQ	= 0x05,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC5	= L_TERM_CONTROL_CODE_ASCII_C0_ENQ,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_E = L_TERM_CONTROL_CODE_ASCII_C0_ENQ,
-+	L_TERM_CONTROL_CODE_ASCII_C0_ACK	= 0x06,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC6	= L_TERM_CONTROL_CODE_ASCII_C0_ACK,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_F = L_TERM_CONTROL_CODE_ASCII_C0_ACK,
-+	L_TERM_CONTROL_CODE_ASCII_C0_BEL	= 0x07,
-+	L_TERM_CONTROL_CODE_ASCII_C0_BS		= 0x08,
-+	L_TERM_CONTROL_CODE_ASCII_C0_FE0	= L_TERM_CONTROL_CODE_ASCII_C0_BS,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_H = L_TERM_CONTROL_CODE_ASCII_C0_BS,
-+	L_TERM_CONTROL_CODE_ASCII_C0_HT		= 0x09,
-+	L_TERM_CONTROL_CODE_ASCII_C0_FE1	= L_TERM_CONTROL_CODE_ASCII_C0_HT,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_I = L_TERM_CONTROL_CODE_ASCII_C0_HT,
-+	L_TERM_CONTROL_CODE_ASCII_C0_LF		= 0x0A,
-+	L_TERM_CONTROL_CODE_ASCII_C0_FE2	= L_TERM_CONTROL_CODE_ASCII_C0_LF,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_J = L_TERM_CONTROL_CODE_ASCII_C0_LF,
-+	L_TERM_CONTROL_CODE_ASCII_C0_VT		= 0x0B,
-+	L_TERM_CONTROL_CODE_ASCII_C0_FE3	= L_TERM_CONTROL_CODE_ASCII_C0_VT,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_K = L_TERM_CONTROL_CODE_ASCII_C0_VT,
-+	L_TERM_CONTROL_CODE_ASCII_C0_FF		= 0x0C,
-+	L_TERM_CONTROL_CODE_ASCII_C0_FE4	= L_TERM_CONTROL_CODE_ASCII_C0_FF,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_L = L_TERM_CONTROL_CODE_ASCII_C0_FF,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CR		= 0x0D,
-+	L_TERM_CONTROL_CODE_ASCII_C0_FE5	= L_TERM_CONTROL_CODE_ASCII_C0_CR,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_M = L_TERM_CONTROL_CODE_ASCII_C0_CR,
-+	L_TERM_CONTROL_CODE_ASCII_C0_SO		= 0x0E,
-+	L_TERM_CONTROL_CODE_ASCII_C0_LS0	= L_TERM_CONTROL_CODE_ASCII_C0_SO,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_N = L_TERM_CONTROL_CODE_ASCII_C0_SO,
-+	L_TERM_CONTROL_CODE_ASCII_C0_SI		= 0x0F,
-+	L_TERM_CONTROL_CODE_ASCII_C0_LS1	= L_TERM_CONTROL_CODE_ASCII_C0_SI,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_O = L_TERM_CONTROL_CODE_ASCII_C0_SI,
-+	L_TERM_CONTROL_CODE_ASCII_C0_DLE	= 0x10,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC7	= L_TERM_CONTROL_CODE_ASCII_C0_DLE,
-+	L_TERM_CONTROL_CODE_ASCII_C0_DC0	= L_TERM_CONTROL_CODE_ASCII_C0_DLE,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_P = L_TERM_CONTROL_CODE_ASCII_C0_DLE,
-+	L_TERM_CONTROL_CODE_ASCII_C0_XON	= 0x11,
-+	L_TERM_CONTROL_CODE_ASCII_C0_DC1	= L_TERM_CONTROL_CODE_ASCII_C0_XON,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_Q = L_TERM_CONTROL_CODE_ASCII_C0_XON,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TAPE	= 0x12,
-+	L_TERM_CONTROL_CODE_ASCII_C0_DC2	= L_TERM_CONTROL_CODE_ASCII_C0_TAPE,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_R = L_TERM_CONTROL_CODE_ASCII_C0_TAPE,
-+	L_TERM_CONTROL_CODE_ASCII_C0_XOFF	= 0x13,
-+	L_TERM_CONTROL_CODE_ASCII_C0_DC3	= L_TERM_CONTROL_CODE_ASCII_C0_XOFF,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_S = L_TERM_CONTROL_CODE_ASCII_C0_XOFF,
-+	L_TERM_CONTROL_CODE_ASCII_C0_DC4	= 0x14,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_T = L_TERM_CONTROL_CODE_ASCII_C0_DC4,
-+	L_TERM_CONTROL_CODE_ASCII_C0_NAK	= 0x15,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC8	= L_TERM_CONTROL_CODE_ASCII_C0_NAK,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_U = 0x15,
-+	L_TERM_CONTROL_CODE_ASCII_C0_SYN	= 0x16,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC9	= L_TERM_CONTROL_CODE_ASCII_C0_SYN,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_V = 0x16,
-+	L_TERM_CONTROL_CODE_ASCII_C0_ETB	= 0x17,
-+	L_TERM_CONTROL_CODE_ASCII_C0_TC10	= L_TERM_CONTROL_CODE_ASCII_C0_ETB,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CTRL_W = L_TERM_CONTROL_CODE_ASCII_C0_ETB,
-+	L_TERM_CONTROL_CODE_ASCII_C0_CAN	= 0x18,
-+	L_TERM_CONTROL_CODE_ASCII_C0_EM		= 0x19,
-+	L_TERM_CONTROL_CODE_ASCII_C0_SUB	= 0x1A,
-+	L_TERM_CONTROL_CODE_ASCII_C0_ESC	= 0x1B,
-+	L_TERM_CONTROL_CODE_ASCII_C0_FS		= 0x1C,
-+	L_TERM_CONTROL_CODE_ASCII_C0_IS4	= L_TERM_CONTROL_CODE_ASCII_C0_FS,
-+	L_TERM_CONTROL_CODE_ASCII_C0_GS		= 0x1D,
-+	L_TERM_CONTROL_CODE_ASCII_C0_IS3	= L_TERM_CONTROL_CODE_ASCII_C0_GS,
-+	L_TERM_CONTROL_CODE_ASCII_C0_RS		= 0x1E,
-+	L_TERM_CONTROL_CODE_ASCII_C0_IS2	= L_TERM_CONTROL_CODE_ASCII_C0_RS,
-+	L_TERM_CONTROL_CODE_ASCII_C0_US		= 0x1F,
-+	L_TERM_CONTROL_CODE_ASCII_C0_IS1	= L_TERM_CONTROL_CODE_ASCII_C0_US,
-+	L_TERM_CONTROL_CODE_ASCII_C0_DEL	= 0x7F,
-+
-+	L_TERM_CONTROL_CODE_ASCII_C1_PAD	= 0x80,
-+	L_TERM_CONTROL_CODE_ASCII_C1_HOP	= 0x81,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_A	= L_TERM_CONTROL_CODE_ASCII_C1_HOP,
-+	L_TERM_CONTROL_CODE_ASCII_C1_BPH	= 0x82,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_B	= L_TERM_CONTROL_CODE_ASCII_C1_BPH,
-+	L_TERM_CONTROL_CODE_ASCII_C1_NBH	= 0x83,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_C	= L_TERM_CONTROL_CODE_ASCII_C1_NBH,
-+	L_TERM_CONTROL_CODE_ASCII_C1_IND	= 0x84,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_D	= L_TERM_CONTROL_CODE_ASCII_C1_IND,
-+	L_TERM_CONTROL_CODE_ASCII_C1_NEL	= 0x85,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_E	= L_TERM_CONTROL_CODE_ASCII_C1_NEL,
-+	L_TERM_CONTROL_CODE_ASCII_C1_SSA	= 0x86,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_F	= L_TERM_CONTROL_CODE_ASCII_C1_SSA,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESA	= 0x87,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_G	= L_TERM_CONTROL_CODE_ASCII_C1_ESA,
-+	L_TERM_CONTROL_CODE_ASCII_C1_HTS	= 0x88,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_H	= L_TERM_CONTROL_CODE_ASCII_C1_HTS,
-+	L_TERM_CONTROL_CODE_ASCII_C1_HTJ	= 0x89,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_I	= L_TERM_CONTROL_CODE_ASCII_C1_HTJ,
-+	L_TERM_CONTROL_CODE_ASCII_C1_VTS	= 0x8A,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_J	= L_TERM_CONTROL_CODE_ASCII_C1_VTS,
-+	L_TERM_CONTROL_CODE_ASCII_C1_PLD	= 0x8B,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_K	= L_TERM_CONTROL_CODE_ASCII_C1_PLD,
-+	L_TERM_CONTROL_CODE_ASCII_C1_PLU	= 0x8C,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_L	= L_TERM_CONTROL_CODE_ASCII_C1_PLU,
-+	L_TERM_CONTROL_CODE_ASCII_C1_RI		= 0x8D,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_M	= L_TERM_CONTROL_CODE_ASCII_C1_RI,
-+	L_TERM_CONTROL_CODE_ASCII_C1_SS2	= 0x8E,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_N	= L_TERM_CONTROL_CODE_ASCII_C1_SS2,
-+	L_TERM_CONTROL_CODE_ASCII_C1_SS3	= 0x8F,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_O	= L_TERM_CONTROL_CODE_ASCII_C1_SS3,
-+	L_TERM_CONTROL_CODE_ASCII_C1_DCS	= 0x90,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_P	= L_TERM_CONTROL_CODE_ASCII_C1_DCS,
-+	L_TERM_CONTROL_CODE_ASCII_C1_PU1	= 0x91,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_Q	= L_TERM_CONTROL_CODE_ASCII_C1_PU1,
-+	L_TERM_CONTROL_CODE_ASCII_C1_PU2	= 0x92,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_R	= L_TERM_CONTROL_CODE_ASCII_C1_PU2,
-+	L_TERM_CONTROL_CODE_ASCII_C1_STS	= 0x93,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_S	= L_TERM_CONTROL_CODE_ASCII_C1_STS,
-+	L_TERM_CONTROL_CODE_ASCII_C1_CCH	= 0x94,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_T	= L_TERM_CONTROL_CODE_ASCII_C1_CCH,
-+	L_TERM_CONTROL_CODE_ASCII_C1_MW		= 0x95,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_U	= L_TERM_CONTROL_CODE_ASCII_C1_MW,
-+	L_TERM_CONTROL_CODE_ASCII_C1_SPA	= 0x96,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_V	= L_TERM_CONTROL_CODE_ASCII_C1_SPA,
-+	L_TERM_CONTROL_CODE_ASCII_C1_EPA	= 0x97,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_W	= L_TERM_CONTROL_CODE_ASCII_C1_EPA,
-+	L_TERM_CONTROL_CODE_ASCII_C1_SOS	= 0x98,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_X	= L_TERM_CONTROL_CODE_ASCII_C1_SOS,
-+	L_TERM_CONTROL_CODE_ASCII_C1_SGC	= 0x99,
-+	L_TERM_CONTROL_CODE_ASCII_C1_SGCI	= L_TERM_CONTROL_CODE_ASCII_C1_SGC,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_Y	= L_TERM_CONTROL_CODE_ASCII_C1_SGC,
-+	L_TERM_CONTROL_CODE_ASCII_C1_SCI	= 0x9A,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ESC_Z	= L_TERM_CONTROL_CODE_ASCII_C1_SCI,
-+	L_TERM_CONTROL_CODE_ASCII_C1_CSI	= 0x9B,
-+	L_TERM_CONTROL_CODE_ASCII_C1_ST		= 0x9C,
-+	L_TERM_CONTROL_CODE_ASCII_C1_OSC	= 0x9D,
-+	L_TERM_CONTROL_CODE_ASCII_C1_PM		= 0x9E,
-+	L_TERM_CONTROL_CODE_ASCII_C1_APC	= 0x9F
-+};
-+
- struct l_term;
- 
- struct l_term *l_term_new(void);
+diff --git a/ell/util.h b/ell/util.h
+index 80b29b7bb6e3..b5d96754e8ae 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -349,8 +349,8 @@ inline __attribute__((always_inline)) void _l_close_cleanup(void *p)
+ #define _L_IN_SET_CMP(val, type, cmp, ...) __extension__ ({		\
+ 		const type __v = (val);					\
+ 		const typeof(__v) __elems[] = {__VA_ARGS__};		\
+-		unsigned int __i;					\
+-		static const unsigned int __n = L_ARRAY_SIZE(__elems);	\
++		size_t __i;						\
++		size_t __n = L_ARRAY_SIZE(__elems);			\
+ 		bool __r = false;					\
+ 		for (__i = 0; __i < __n && !__r; __i++)			\
+ 			__r = (cmp);					\
 -- 
-2.42.0
+2.44.0
 
