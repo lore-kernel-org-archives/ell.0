@@ -1,65 +1,61 @@
-Received: from mail-ot1-f41.google.com (mail-ot1-f41.google.com [209.85.210.41])
+Received: from mail-ot1-f43.google.com (mail-ot1-f43.google.com [209.85.210.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A0C1C155A56
-	for <ell@lists.linux.dev>; Mon, 15 Apr 2024 19:14:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0CEC5132470
+	for <ell@lists.linux.dev>; Tue, 16 Apr 2024 14:25:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713208501; cv=none; b=BHOtAllR4UcXiUzbC2rmMtO/hji/AblD8zfR+9FAXR0yBbiw3LJ/t62UuTjzTZdJoKeYFQqitHU3CBXSvc9K1DxcWykc6b25pvfcYPtdqDMt/l0W6/ybi+oLBmonu5JwV9DDd8Bc+QNI1Ydr7bHFDawwJn2PggPGRlDteDC7qXI=
+	t=1713277503; cv=none; b=DnkM8ImwzLnUTY7d1R1xm1av6ZqLj0w/CSMfberrDQJXehk1d8vRIGdWTlVpYsPR8oNROxJQIlGY9EgV+z9nZKnyeAX69CgQ8Id2cbo/191WPdVCpKpDUK9mQRnQ6+N2IJRw0ggvcg6Tn6Rdnb9G5FTPx803bkNFURn+imPeL+E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713208501; c=relaxed/simple;
-	bh=BedpNYth8Yhlu6kw2fK5DRRsEaW6up9cmeBc+vkds2M=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=g/Is0T2xexPll67lVW5KuzqidfKS7durzTx5iPceDp4hcVkEPH9233o5oPTXezo8NvcnjzhM1TwOvndDW1E0oEj/355vO6LxXMxu1YFyje0fUSOVsvm0wgau9y9h5MB+xGoQ/LMmEGd3X6MAbELhzW5TcXK4ir32b2RAgt1drm8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TSNJK9a8; arc=none smtp.client-ip=209.85.210.41
+	s=arc-20240116; t=1713277503; c=relaxed/simple;
+	bh=Qg0sWfUZ1Y5AVACzSwVOzRzIU+95KW5HJ95s5ihX/OA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=spk4qoYJ8m6+lxaTm+YCJwuwHMNo18HFsPDlz6Wmm95VCKjdPMx+V1kPkdmCxckqQIHK0PV6SKzIQgzvPASdUFiSVTgJOf9FQC4pDqKbWQUAnLx3fUdKOexGfYoxsQ7k5oyDuvYJQLD8xI8ApdafCcSfcqTy/MVRMR4b/pxAUpY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=cz889umz; arc=none smtp.client-ip=209.85.210.43
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TSNJK9a8"
-Received: by mail-ot1-f41.google.com with SMTP id 46e09a7af769-6ea156bee62so1474620a34.0
-        for <ell@lists.linux.dev>; Mon, 15 Apr 2024 12:14:59 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cz889umz"
+Received: by mail-ot1-f43.google.com with SMTP id 46e09a7af769-6eb7500abe3so1495376a34.2
+        for <ell@lists.linux.dev>; Tue, 16 Apr 2024 07:25:01 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1713208498; x=1713813298; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=hcXbxCazyvp8pYGsZSf1RhXr8bFq70dKEKToGtuxJ6o=;
-        b=TSNJK9a8VOeFJbXhhjFcz39FpoE31oUP3l6dMy2CMCqFYf3m9gtMa34f9yJjQ6+xDu
-         M4DdMgr9GWRsj5GRrkGsc8qclkBbp+3xKG7UsulbVw4ArVbGdeRr7fcKeL2panQejItO
-         p/mX9wg8AfAKkNaOyRTgz1B7+sCpIG7QNlGLgheGb1Cl/+Q1Q02zvVOBMvBz8/yng93Z
-         DcUcWiBgwKB145/zfRzjsTC6h0JnNY3MiL6FlrweY4YKFs4nZbwwzEt988Xy4D9Votdj
-         ua1AVMWxYNsVHXHxrDlWaNf5F71v4oxyneklKi6ZcFQ2ZQla22e7q4YMTRfu0i4gc5bS
-         Y8aw==
+        d=gmail.com; s=20230601; t=1713277501; x=1713882301; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=0qCR6qBAYBIAganQSNYamaCuGyGHoQ+XWEWbUy/9fgI=;
+        b=cz889umz5htv9bSLoCb/72PbiXP1K1C0ymAhxX/AUhqtja/AHTQIkUKzTkfcA3PSZ8
+         XsHD3b/XC4G8MIE9i3Yu4yrcgzaRbdTgekG1fmtQI0UtTQSik1M3xB64SQn4l1i54kxL
+         uB1IOmYsWOPZ12EPCy1e9xos8mzlY4ef9AGxDDN1N7L1y/sh3DqDMf8r9Pi+MJCjNPi9
+         rVPWMMyTNmHmq3Twumqh2kKCawPx8tibJkGLQ6zE0a7PlsjpqQfsdXo2rq79A+Qj4T1p
+         s1kj6G2dN9Tg29CnTxaq7jhYG1dvmmQbAxqs+JIDQI3hzrro4qrElYvvax4BokbuWXp/
+         bcYA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1713208498; x=1713813298;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=hcXbxCazyvp8pYGsZSf1RhXr8bFq70dKEKToGtuxJ6o=;
-        b=fFP93GRVshiyhw3ppme460sHk9HcxrrpIatmb6XHS8p91TZGyMQlsvvkrROlXpJMqZ
-         7W0NcmPTbUz+SjtX2UivbnztcPWAW5VvQ6cvopU2oX1pYcQhJUOik8INXjFEyj9T0OHU
-         r8jdd3EiaPh+UrYtJzBEUQ82g1SeC0SfSS1A1W4FyiJrIqMakcCyuVk/R7zyDAEm43wY
-         WtxvNqU5+BSyJuKxW6X7WZFLsfwWaHcBXLX6xEsoNXeUkW5aAtRnVrxIEevJTYk5+jVk
-         7R+u4fHfZt/cwUbZutmZwfDo0hDKrAgvEEPXZkoMUXNQFwVx5On140m9mgEywIxCmAdN
-         xpoA==
-X-Gm-Message-State: AOJu0YwAJo6d3nLc2np26ErY3rXklytrj3ocUi2fNN2IaFe6groCokBa
-	mQo/DMbnR4HGpLC/eSCcQO1RO6o7cCBzyGRFAonsgx70E3lCSL0jMC9uig==
-X-Google-Smtp-Source: AGHT+IEqVSJyZ06C9pfC7/+wDS2205gtONQC+mpw0L+y4HSGRuLJxgvg3Spomul7uCLEtYPZxWQU1w==
-X-Received: by 2002:a05:6870:d8d1:b0:22a:7d7:1007 with SMTP id of17-20020a056870d8d100b0022a07d71007mr222325oac.5.1713208498494;
-        Mon, 15 Apr 2024 12:14:58 -0700 (PDT)
+        d=1e100.net; s=20230601; t=1713277501; x=1713882301;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=0qCR6qBAYBIAganQSNYamaCuGyGHoQ+XWEWbUy/9fgI=;
+        b=Vr5QgbkgvI5YCnXFSW/D978wtz2z0VOC2H+hoE9rw3xLaxU8trAD+lTJxT5WwHkWsa
+         u70NbFXmmooXRbXaZ7W5cXLJf1cCIHsN+7RxELzCVQhHC9cFivfZ7KgqrN0YO7vY+dRe
+         11wepcuuKvItgNIYeokS6mJo/32ixJphY/JHOUBar/NdIewYYMSZwpQskSkIwrqIZoJk
+         6xMcdHWv/vhQuLr5lozXDQY+aqLIz2Sr9lyIUOnJftIhPlZRHZ3Zxj3SSz+Q0IQQ08yq
+         yUSrmScu2rS2/+HtLCZwt/aogtGqKElUCLa7yHskqhiUc2BShxHr7o6b1wkRR5HOEXOx
+         vAlQ==
+X-Gm-Message-State: AOJu0YyT+ez3MissEbCPzgboAx4ZgIRq05IZnZLNF6BafxM/pmc/1kgE
+	RyibfuldQCQTC3s8QRTelxjFlCOw8y8HMH0aNQyMyZQYBfFoDPzEgPuiIQ==
+X-Google-Smtp-Source: AGHT+IGiVH5ZwRsa9tZD+KtfyRGkoIoFiYR65vYfIuEYnDNz4zvQwONcpATxf12P+1ycv+BksdrVvQ==
+X-Received: by 2002:a05:6830:2059:b0:6eb:7c4e:70c1 with SMTP id f25-20020a056830205900b006eb7c4e70c1mr6060355otp.37.1713277500948;
+        Tue, 16 Apr 2024 07:25:00 -0700 (PDT)
 Received: from localhost.localdomain ([70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id w8-20020a4ae9e8000000b005a586b0906esm2206526ooc.26.2024.04.15.12.14.57
+        by smtp.gmail.com with ESMTPSA id r33-20020a05683044a100b006eb892647dasm526999otv.79.2024.04.16.07.25.00
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 15 Apr 2024 12:14:58 -0700 (PDT)
+        Tue, 16 Apr 2024 07:25:00 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH 4/4] unit: Add tests for the new bitmap utilities
-Date: Mon, 15 Apr 2024 14:14:36 -0500
-Message-ID: <20240415191454.3259243-4-denkenz@gmail.com>
+Subject: [PATCH v2 1/4] util: Remove confusing static keyword use
+Date: Tue, 16 Apr 2024 09:24:52 -0500
+Message-ID: <20240416142458.3353383-1-denkenz@gmail.com>
 X-Mailer: git-send-email 2.44.0
-In-Reply-To: <20240415191454.3259243-1-denkenz@gmail.com>
-References: <20240415191454.3259243-1-denkenz@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -68,108 +64,37 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
----
- unit/test-util.c | 81 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 81 insertions(+)
+'__n' is declared as static const which is confusing since it
+would imply that __n is only initialized once.  This works out in the
+end since the macro used in a separate anonymous block, but some compilers
+(i.e. clang) will generate a symbol table entry for '__n'.  This is not
+needed since the expression is always constant.
 
-diff --git a/unit/test-util.c b/unit/test-util.c
-index f7a895f911d5..14724f2a608b 100644
---- a/unit/test-util.c
-+++ b/unit/test-util.c
-@@ -195,6 +195,81 @@ static void test_safe_atoux(const void *test_data)
- 	assert(l_safe_atox8("0xffff", &c) == -ERANGE);
- }
- 
-+static void test_set_bit(const void *test_data)
-+{
-+	unsigned int bitmap[2] = { };
-+	int one = 0;
-+
-+	L_BIT_SET(&bitmap[0], 0);
-+	L_BIT_SET(bitmap, 1);
-+	L_BIT_SET(bitmap, 2);
-+	L_BIT_SET(bitmap, 3);
-+
-+	assert(bitmap[0] == 0x0f);
-+	assert(bitmap[1] == 0);
-+
-+	L_BIT_SET(bitmap, 63);
-+	L_BIT_SET(bitmap, 62);
-+	L_BIT_SET(bitmap, 61);
-+	L_BIT_SET(bitmap, 60);
-+
-+	assert(bitmap[0] == 0x0fU);
-+	assert(bitmap[1] == 0xf0000000U);
-+
-+	L_BIT_SET(&one, 0);
-+	assert(one == 1);
-+}
-+
-+static void test_clear_bit(const void *test_data)
-+{
-+	unsigned int bitmap[2] = { 0xfU, 0xf0000000U };
-+
-+	L_BIT_CLEAR(&bitmap[0], 3);
-+	L_BIT_CLEAR(bitmap, 63);
-+
-+	assert(bitmap[0] == 0x07U);
-+	assert(bitmap[1] == 0x70000000U);
-+}
-+
-+static void test_is_bit_set(const void *test_data)
-+{
-+	unsigned int bitmap[2] = { 0xfU, 0xf0000000U };
-+	uint8_t one = 1;
-+
-+	assert(L_BIT_TEST(&bitmap[0], 0) == true);
-+	assert(L_BIT_TEST(bitmap, 1) == true);
-+	assert(L_BIT_TEST(bitmap, 2) == true);
-+	assert(L_BIT_TEST(bitmap, 3) == true);
-+	assert(L_BIT_TEST(bitmap, 4) == false);
-+
-+	assert(L_BIT_TEST(bitmap, 63) == true);
-+	assert(L_BIT_TEST(bitmap, 55) == false);
-+
-+	assert(L_BIT_TEST(&one, 0) == true);
-+	assert(L_BIT_TEST(&one, 1) == false);
-+}
-+
-+static void test_set_bits(const void *test_data)
-+{
-+	uint16_t bitmap[4] = {};
-+
-+	L_BITS_SET(bitmap, 0, 1, 16, 32, 48);
-+
-+	assert(bitmap[0] == 0x3);
-+	assert(bitmap[1] == 0x1);
-+	assert(bitmap[2] == 0x1);
-+	assert(bitmap[3] == 0x1);
-+}
-+
-+static void test_clear_bits(const void *test_data)
-+{
-+	uint16_t bitmap[4] = { 0x3, 0x1, 0x1, 0x1 };
-+
-+	L_BITS_CLEAR(bitmap, 0, 1, 16, 32, 48);
-+
-+	assert(l_memeqzero(bitmap, sizeof(bitmap)));
-+}
-+
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
-@@ -212,5 +287,11 @@ int main(int argc, char *argv[])
- 
- 	l_test_add("l_safe_atoux", test_safe_atoux, NULL);
- 
-+	l_test_add("L_BIT_SET", test_set_bit, NULL);
-+	l_test_add("L_BIT_CLEAR", test_clear_bit, NULL);
-+	l_test_add("L_BIT_TEST", test_is_bit_set, NULL);
-+	l_test_add("L_BITS_SET", test_set_bits, NULL);
-+	l_test_add("L_BITS_CLEAR", test_clear_bits, NULL);
-+
- 	return l_test_run();
- }
+Declare '__n' as a const size_t instead since that is the type produced
+by the sizeof() operation used by L_ARRAY_SIZE.
+
+While here, also declare '__i' as size_t to match '__n'.
+
+Fixes: 4a9f6388dd7f ("util: Add L_IN_SET macros")
+---
+ ell/util.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ell/util.h b/ell/util.h
+index 80b29b7bb6e3..237ea4824b06 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -349,8 +349,8 @@ inline __attribute__((always_inline)) void _l_close_cleanup(void *p)
+ #define _L_IN_SET_CMP(val, type, cmp, ...) __extension__ ({		\
+ 		const type __v = (val);					\
+ 		const typeof(__v) __elems[] = {__VA_ARGS__};		\
+-		unsigned int __i;					\
+-		static const unsigned int __n = L_ARRAY_SIZE(__elems);	\
++		size_t __i;						\
++		const size_t __n = L_ARRAY_SIZE(__elems);			\
+ 		bool __r = false;					\
+ 		for (__i = 0; __i < __n && !__r; __i++)			\
+ 			__r = (cmp);					\
 -- 
 2.44.0
 
