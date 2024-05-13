@@ -1,82 +1,85 @@
-Received: from mx0b-003ede02.pphosted.com (mx0b-003ede02.pphosted.com [205.220.181.153])
+Received: from mx0a-003ede02.pphosted.com (mx0a-003ede02.pphosted.com [205.220.169.153])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4B78F39FCF
-	for <ell@lists.linux.dev>; Mon, 13 May 2024 17:58:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.181.153
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC86928DC9
+	for <ell@lists.linux.dev>; Mon, 13 May 2024 17:58:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.169.153
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715623130; cv=none; b=DKKsSIu4+XDILJBCA8parhOv7KKgceRi7XsyFI3TTYrEVanABJ8EoKz6SVCibx7uEPUnqp4ZXPZs+gS14VKiC036hbP65ii/Gp0mBHpS0DT3jSG20oiBw4HZ/sRdnU/O/ZpXLyyfJuIJOQNAdGsWwabkPXEkzSzzWn5wKFsLMkU=
+	t=1715623132; cv=none; b=nyTyhY8VcALYNwln156CB2x5XFG7ZRN2uwrx/YbtCH3ubieFCVb7YjrAEgMPjU05j3+1V8HWssp/iw7YnI3PGQXLxbnsywYvUk+pE9GUVdl9nlxG8GSgJvSMOF0F7qp+eExaqNQU3h5qCfMduSpuwW1LYkwHWyPq9M9H3R2tK/w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715623130; c=relaxed/simple;
-	bh=/Ytb5CWyO+4sDV/BEmChYHI4UZBwEkzlOEM31119zvo=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=gm6sg5Z2MfLcrRw6xzcMtmqL9KHcFRrF221SyGMGIDQqFApNNKaT0pOdfQOhePItnL6yTCfrHWmybjLukQy8N/KIiz8ibYpsGfnUjqb4Qn5aeIJnuW+UCo6EAvFhTNKHBCQ8zo8f41fmXbMXqd0DIaA5vXHRodFy5pJuZAmMkD8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=getcruise.com; spf=pass smtp.mailfrom=getcruise.com; dkim=pass (2048-bit key) header.d=getcruise.com header.i=@getcruise.com header.b=Lo2kscwi; dkim=pass (2048-bit key) header.d=getcruise.com header.i=@getcruise.com header.b=hsqnf9u5; arc=none smtp.client-ip=205.220.181.153
+	s=arc-20240116; t=1715623132; c=relaxed/simple;
+	bh=4EU/UWeuIL9xukUPQxn8N1zZR6V0DtK37Mq4Vu7gESs=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=ldr2MkEIgGxWEdLwLcttyXACUpydiyq5tPfPhnneWqz7st9n/QHl2yW+GhWou+cB1pfzRQZHTsZYRNTDCdEVPv5myM4ChawQbIYyvEa43zi2tpkc+QqqZ2tilkXNxVHZR2qO4oZuMt2sG64KISa1h+k9EC4Cjg6RDNQh9U039z4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=getcruise.com; spf=pass smtp.mailfrom=getcruise.com; dkim=pass (2048-bit key) header.d=getcruise.com header.i=@getcruise.com header.b=Om2VvPIi; dkim=pass (2048-bit key) header.d=getcruise.com header.i=@getcruise.com header.b=HI+5qz9v; arc=none smtp.client-ip=205.220.169.153
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=getcruise.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=getcruise.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=getcruise.com header.i=@getcruise.com header.b="Lo2kscwi";
-	dkim=pass (2048-bit key) header.d=getcruise.com header.i=@getcruise.com header.b="hsqnf9u5"
-Received: from pps.filterd (m0286618.ppops.net [127.0.0.1])
-	by mx0b-003ede02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 44DCkZcn013499
-	for <ell@lists.linux.dev>; Mon, 13 May 2024 10:58:41 -0700
+	dkim=pass (2048-bit key) header.d=getcruise.com header.i=@getcruise.com header.b="Om2VvPIi";
+	dkim=pass (2048-bit key) header.d=getcruise.com header.i=@getcruise.com header.b="HI+5qz9v"
+Received: from pps.filterd (m0286615.ppops.net [127.0.0.1])
+	by mx0b-003ede02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 44DCWIjt019889
+	for <ell@lists.linux.dev>; Mon, 13 May 2024 10:58:43 -0700
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=getcruise.com;
-	 h=from:to:cc:subject:date:message-id:mime-version:content-type;
-	 s=ppemail; bh=CClgv1svnYfL1DCc5vM+p119+1NELJFQ4XcQv/4qSAA=; b=L
-	o2kscwiuym59CNm+qVjke20sp6mtx1OhiOL/BfG6zKA/cHFpiK+qGBJcD0u6hr1W
-	fFsbYsu8CGb/l8W2nuc05OagnRNlgTXvSvjdFWlOTqAaYEqJHn9FaMeSJJUbmLgF
-	NLDxihJHy83n0/revuUgf+G9yKa73YGSZdGyYVDMsEEzvquFdW5R0IxO52pBYJkw
-	IF1AtxhWXZsbZiYxpuuNw9mddvzfeyKd1wGsW6Lp7pBVIGVFxyxIPG74UkX2oacB
-	Vg35x29/v84u4qauDArLFl/8SbiKjPyy0ybr8yf2XLJcSkhhG3jeyyYle75uO9wE
-	6EM25IPdaDi6rhDtT2qiA==
-Received: from mail-ot1-f71.google.com (mail-ot1-f71.google.com [209.85.210.71])
-	by mx0b-003ede02.pphosted.com (PPS) with ESMTPS id 3y26cs9524-1
+	 h=from:to:cc:subject:date:message-id:in-reply-to:references
+	:mime-version:content-type; s=ppemail; bh=WarDI4xGJReMyLojJJBDXi
+	6zkyHQ2/i5reP14S63V70=; b=Om2VvPIiREvkCnij++awvxqjSDzehvPquo5T9l
+	A6E7s6oF1oFIbLXxsPjp+BD7hjjpDWdsxIwYMLJcQZCOzKKuCr5rDFn5nX4VqaUT
+	8QhktbMlgW4nmWio90SAoJ7IY7AccaHX5am8zE3bSI65Po+JnB5JDBOmo5CVLdIJ
+	gHVbWLFDdIL72sa4V6UxGWxtNP5Ezog/iQ9hTqQ33CCBIqxvC/0bC026dYs4gZsx
+	szcNNNWXoryNVLCVOg/BrcooSU5QVw0fX0iyjIvJCk09WzVdyqdFi4YX5rKqBS5b
+	6n2vZYck2t8o8X3dEGfgczyEMaUAU2s4A7+4aY0u6r4/qtsA==
+Received: from mail-pg1-f197.google.com (mail-pg1-f197.google.com [209.85.215.197])
+	by mx0b-003ede02.pphosted.com (PPS) with ESMTPS id 3y24vg96fk-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT)
-	for <ell@lists.linux.dev>; Mon, 13 May 2024 10:58:41 -0700 (PDT)
-Received: by mail-ot1-f71.google.com with SMTP id 46e09a7af769-6f0fdc57a79so1750872a34.0
-        for <ell@lists.linux.dev>; Mon, 13 May 2024 10:58:41 -0700 (PDT)
+	for <ell@lists.linux.dev>; Mon, 13 May 2024 10:58:43 -0700 (PDT)
+Received: by mail-pg1-f197.google.com with SMTP id 41be03b00d2f7-61b7d7c292aso4557539a12.1
+        for <ell@lists.linux.dev>; Mon, 13 May 2024 10:58:43 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=getcruise.com; s=google; t=1715623120; x=1716227920; darn=lists.linux.dev;
-        h=mime-version:message-id:date:subject:cc:to:from:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=CClgv1svnYfL1DCc5vM+p119+1NELJFQ4XcQv/4qSAA=;
-        b=hsqnf9u5HXEj/yrlK1hnyOgp2eFjdPEC/bVWNUvzFtcX2DjfUYQwmXuINNYNtEm7yx
-         VlCA6e5Yd8SrB7ZfYhp5BWuF3aXhfaJe2gYSyMCgWTKIRhTSIo8SfRIJSYtfj3jzZcnh
-         wwHek1hYxM3Xh9Ki6dffMVj4zPwSCXNsBddjhdJ70s/aEi5y86L5IOQTCWEKQlnivzXc
-         T4cr1NCIG2tSXjMF3JJMvTkyP9V7dlRMyllvDsw9WIoxjMwSqmJvOvavyuilpIK7UmAI
-         D1IUmHXFgNs4v/f8aqsZZuZdNCUmJuhqcWMbh9IxF7fSLdHjUSqihb/QfLMIek0S5YFO
-         mxqQ==
+        d=getcruise.com; s=google; t=1715623122; x=1716227922; darn=lists.linux.dev;
+        h=mime-version:references:in-reply-to:message-id:date:subject:cc:to
+         :from:from:to:cc:subject:date:message-id:reply-to;
+        bh=WarDI4xGJReMyLojJJBDXi6zkyHQ2/i5reP14S63V70=;
+        b=HI+5qz9vFGTqiEYDV/xP7Om6xIVC0OSU93GNjFuy1hbO67qnbe+5WF2y3nOei8XmgK
+         S9tVa37eJJTvbUiqIqwh1aCg57PY0b5nTgisYgjo4Zz9g6yXRqxElF0iHpym2kuFIs08
+         kTiSydH5K6LnEgsDBD7qG3qdpfpcd+2sBtj/a2ye5rZEJFvCvgEqcyQ7Vpu7hT9mu7/R
+         jNNAlA/C5SpRWBbEemw47b4zL0lYx13eZsAqOc5U9ZyNmnh8LnXu1FGax09GKAPeXzf5
+         svo+NomFJQLxURvqva66PETIqmKaY4DH0/lR+quycmdwVXVlkymcsqHUprIK085fH72b
+         Liog==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1715623120; x=1716227920;
-        h=mime-version:message-id:date:subject:cc:to:from:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=CClgv1svnYfL1DCc5vM+p119+1NELJFQ4XcQv/4qSAA=;
-        b=Ah8tY24XgSeU4M5+zp0TtIx9LgbzfUj2UTUwpiFQgIFTRE5pC1LDn4Cs4JO42VwuIX
-         qZecv1B7uZF5fohMgGaFyJOMlCn724PPsUuGqUsVstRYUGn7+Jhfl0oCuwzf/O/viO2N
-         LxbnYVlXxWN98DFSFqUoD6UJ1Hm7/LjaGJHEtbBrVKI5GpmtFx15nPrD+qr9ZesUKKWb
-         fNwyLumpV/GxSTGQ05N6HraAwtIcEeqLDmPOQRrroIzUDQ8BB6fnUqlhH4Ly4uge45NL
-         FsxwO6wS2SBYCkLdDGWNdHkQFcDF5+wP8tYUckbmz7PA22Gm25cpECThCFo/pD1zFkhx
-         kQkQ==
-X-Gm-Message-State: AOJu0Yyj1TKqEBENsyQ1rI9eYHfWpXF4+qRqH4LxOSkc7S6Hod+4D+g2
-	5HBSV3vXml5CwN2rC3KTKbjgtvL0A/H4apgYSNLPTCw34rgyAdXdA2qz9X94npqgLxgxbNT72k1
-	pGKES7AbvHcfWTOcAK7OXueLA5j5YztshY30MKy+6v4W4JO7CjFrBycO5QL9XRZIbEzvo/xdG05
-	kqDFK3SdeUK3abUCaed4XYupq0gdugqVsBo4hlJK/HpowB3PE=
-X-Received: by 2002:a05:6870:d913:b0:22e:935e:7637 with SMTP id 586e51a60fabf-241721b6297mr13158821fac.0.1715623120114;
-        Mon, 13 May 2024 10:58:40 -0700 (PDT)
-X-Google-Smtp-Source: AGHT+IFWrKbleuppat5xrKzDurwtEhEY2ImOFSM2sRNQpdrHUaXUYmQa0gCF5maur0cGtKmdebnmkw==
-X-Received: by 2002:a05:6870:d913:b0:22e:935e:7637 with SMTP id 586e51a60fabf-241721b6297mr13158799fac.0.1715623119646;
-        Mon, 13 May 2024 10:58:39 -0700 (PDT)
+        d=1e100.net; s=20230601; t=1715623122; x=1716227922;
+        h=mime-version:references:in-reply-to:message-id:date:subject:cc:to
+         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=WarDI4xGJReMyLojJJBDXi6zkyHQ2/i5reP14S63V70=;
+        b=UZWEhWXpfFkQuJ/WXnZciEJXdPbPF485OYMLyaBGL57jSjI/FdgMGsI825zTCo8AY+
+         7lCVgZPAVc/MSkLli3X5hvlRoca1Vb4AVq0pnXXSOqdXDbjrJyEyD5yikaQdeefljQ1h
+         90i+DKeq+DBnnTIUAAsQ9aXc84N8ZBzCeyul4Z0As12K0bX683tHVCnU9Q5NEabPuBb1
+         LdPjuRmKDGEj/MiXwo6i/xQUhzoWKrS28AS0r6rnlmMInBrGe0EYpc6IvHt63SG6VkQu
+         x6JPvOVAq8bY2c9GJNHglYo2ArVha5xrXk/lCov99pdBUdM1sR8CWQG1QDOZazeKyjZL
+         wrwg==
+X-Gm-Message-State: AOJu0YwPzkBG9jf50DHf2lXaA7JhMtSbM4PF+dL+rVtR+75WXvFIvjxo
+	UqogDghQy8xL9/RiyWB44GqzGxFNPvpvBkew29CJC7CGKOExuKSFCaGMZEYV4RmB8MjGbVkyKRd
+	5pF4KsFuAWNe2KYKPAr4/m/bWkWUR+aGwJs8FyH2pv8ECpMQsis+Ntxg15qS3WitzUTxZLkSxFo
+	3ZuDhubIac+MAnq08++Sz4fYXcIrli2rDTv5c9MRzF5bjFU+g=
+X-Received: by 2002:a05:6a21:19c:b0:1af:a2fa:e666 with SMTP id adf61e73a8af0-1afde0b6e9emr11237074637.10.1715623122357;
+        Mon, 13 May 2024 10:58:42 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IF/9sTbrpFQTA3jGqJH7h93xV5ZXOAuiV2ICAO+mAOZmj8yxSQrwtxa+3CSsudERDBpMtJ5Ww==
+X-Received: by 2002:a05:6a21:19c:b0:1af:a2fa:e666 with SMTP id adf61e73a8af0-1afde0b6e9emr11237047637.10.1715623121890;
+        Mon, 13 May 2024 10:58:41 -0700 (PDT)
 Received: from BPHKDV2-DT.corp.robot.car ([199.73.127.2])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-6340b76e262sm7031567a12.35.2024.05.13.10.58.38
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-6340b76e262sm7031567a12.35.2024.05.13.10.58.41
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 13 May 2024 10:58:39 -0700 (PDT)
+        Mon, 13 May 2024 10:58:41 -0700 (PDT)
 From: Ram Subramanian <ram.subramanian@getcruise.com>
 To: ell@lists.linux.dev
 Cc: Ram Subramanian <ram.subramanian@getcruise.com>,
         Ramon Ribeiro <rhpr@cesar.org.br>
-Subject: [PATCH 1/2] dbus: add dbus-over-tcp support
-Date: Mon, 13 May 2024 10:58:25 -0700
-Message-ID: <20240513175826.2363352-1-ram.subramanian@getcruise.com>
+Subject: [PATCH 2/2] unit: add testing for dbus-over-tcp
+Date: Mon, 13 May 2024 10:58:26 -0700
+Message-ID: <20240513175826.2363352-2-ram.subramanian@getcruise.com>
 X-Mailer: git-send-email 2.43.2
+In-Reply-To: <20240513175826.2363352-1-ram.subramanian@getcruise.com>
+References: <20240513175826.2363352-1-ram.subramanian@getcruise.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -84,168 +87,260 @@ List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="US-ASCII"
-X-Proofpoint-GUID: g4tEMZSNKn-WuvWdPk4sAs7J5nsu3eQD
-X-Proofpoint-ORIG-GUID: g4tEMZSNKn-WuvWdPk4sAs7J5nsu3eQD
+X-Proofpoint-ORIG-GUID: F7CAijAfQFX7Y4esqcigVIrXkz5EoclM
+X-Proofpoint-GUID: F7CAijAfQFX7Y4esqcigVIrXkz5EoclM
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1039,Hydra:6.0.650,FMLib:17.11.176.26
  definitions=2024-05-13_12,2024-05-10_02,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 bulkscore=0 adultscore=0
- mlxscore=0 priorityscore=1501 mlxlogscore=999 clxscore=1011 suspectscore=0
- lowpriorityscore=0 malwarescore=0 impostorscore=0 spamscore=0 phishscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.19.0-2405010000
- definitions=main-2405130120
-
-l_dbus_new() will now accept tcp endpoints, however it will only accept
-a numeric address for 'host'; it will not resolve hostnames. This is so
-we can avoid a potential long, blocking call to getaddrinfo().
-
-The connect() call to the host is also non-blocking. This means that
-auth will not happen until you start the event loop (with a call to
-l_main_run() et. al.).
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 adultscore=0 mlxlogscore=999
+ impostorscore=0 suspectscore=0 spamscore=0 phishscore=0 bulkscore=0
+ priorityscore=1501 clxscore=1015 lowpriorityscore=0 mlxscore=0
+ malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.19.0-2405010000 definitions=main-2405130120
 
 Co-authored-by: Ramon Ribeiro <rhpr@cesar.org.br>
 ---
- ell/dbus.c | 111 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 111 insertions(+)
+ unit/dbus.conf   |   2 +
+ unit/test-dbus.c | 118 +++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 85 insertions(+), 35 deletions(-)
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index d610532..22deaba 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -15,8 +15,10 @@
- #include <unistd.h>
- #include <stdlib.h>
- #include <string.h>
-+#include <sys/types.h>
- #include <sys/socket.h>
- #include <sys/un.h>
-+#include <netdb.h>
- #include <errno.h>
+diff --git a/unit/dbus.conf b/unit/dbus.conf
+index 97e1bb5..5fe41a9 100644
+--- a/unit/dbus.conf
++++ b/unit/dbus.conf
+@@ -7,6 +7,8 @@
+   <allow_anonymous />
  
- #include "util.h"
-@@ -1133,6 +1135,112 @@ static struct l_dbus *setup_unix(char *params)
- 	return setup_dbus1(fd, guid);
- }
+   <listen>unix:path=/tmp/ell-test-bus</listen>
++  <listen>tcp:host=localhost,bind=*,port=14046,family=ipv4</listen>
++  <apparmor mode="disabled" />
  
-+static bool setup_tcp_cb(struct l_io *io, void *user_data)
-+{
-+	static const unsigned char creds = 0x00;
-+	struct l_dbus *dbus = user_data;
-+	struct l_dbus_classic *classic;
-+	ssize_t written;
-+	int fd = l_io_get_fd(io);
+   <policy context="default">
+     <!-- Allow everything to be sent -->
+diff --git a/unit/test-dbus.c b/unit/test-dbus.c
+index 5b98385..9006d0e 100644
+--- a/unit/test-dbus.c
++++ b/unit/test-dbus.c
+@@ -20,11 +20,17 @@
+ #define WAIT_ANY (-1) /* Any process */
+ #endif
+ 
+-#define TEST_BUS_ADDRESS "unix:path=/tmp/ell-test-bus"
++#define TEST_BUS_ADDRESS_UNIX "unix:path=/tmp/ell-test-bus"
++#define TEST_BUS_ADDRESS_TCP "tcp:host=127.0.0.1,port=14046"
+ 
+ static pid_t dbus_daemon_pid = -1;
+ 
+-static void start_dbus_daemon(void)
++static int tests_completed = 0;
++static bool bus_became_ready = false;
++static bool match_cb_called = false;
++static bool req_name_cb_called = false;
 +
-+	/* Send special credentials-passing nul byte */
-+	written = L_TFR(send(fd, &creds, 1, 0));
-+	if (written < 1) {
-+		l_util_debug(dbus->debug_handler, dbus->debug_handler,
-+						"error writing NUL byte");
-+		close(fd);
-+		return false;
-+	}
-+
-+	dbus->driver = &classic_ops;
-+	dbus->negotiate_unix_fd = false;
-+	dbus->support_unix_fd = false;
-+
-+	classic = l_container_of(dbus, struct l_dbus_classic, super);
-+	classic->match_strings = l_hashmap_new();
-+	classic->auth_command = l_strdup("AUTH ANONYMOUS\r\n");
-+	classic->auth_state = WAITING_FOR_OK;
-+
-+	l_io_set_read_handler(dbus->io, auth_read_handler, dbus, NULL);
-+	l_io_set_write_handler(dbus->io, auth_write_handler, dbus, NULL);
-+
-+	return auth_write_handler(dbus->io, dbus);
-+}
-+
-+static struct l_dbus *setup_tcp(char *params)
-+{
-+	char *host = NULL;
-+	char *port = NULL;
-+	char *family = NULL;
-+	struct addrinfo hints = { 0 };
-+	struct addrinfo *res;
-+	struct addrinfo *iter;
-+	struct l_dbus *dbus;
-+
-+	while (params) {
-+		char *key = strsep(&params, ",");
-+		char *value;
-+
-+		value = strchr(key, '=');
-+		if (!value)
-+			continue;
-+
-+		*value++ = '\0';
-+
-+		if (!strcmp(key, "host"))
-+			host = value;
-+		else if (!strcmp(key, "port"))
-+			port = value;
-+		else if (!strcmp(key, "family"))
-+			family = value;
-+	}
-+
-+	if (!host || !port)
-+		return NULL;
-+
-+	if (!family)
-+		hints.ai_family = AF_UNSPEC;
-+	else if (!strcmp(family, "ipv4"))
-+		hints.ai_family = AF_INET;
-+	else if (!strcmp(family, "ipv6"))
-+		hints.ai_family = AF_INET6;
-+	else
-+		return NULL;
-+
-+	hints.ai_socktype = SOCK_STREAM;
-+	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
-+	hints.ai_protocol = IPPROTO_TCP;
-+
-+	if (getaddrinfo(host, port, &hints, &res) != 0)
-+		return NULL;
-+
-+	for (iter = res; iter; iter = iter->ai_next) {
-+		int fd;
-+		struct l_dbus_classic *classic;
-+
-+		fd = socket(iter->ai_family, iter->ai_socktype | SOCK_NONBLOCK,
-+					iter->ai_protocol);
-+		if (fd < 0)
-+			continue;
-+
-+		if (connect(fd, iter->ai_addr, iter->ai_addrlen) < 0) {
-+			if (errno != EINPROGRESS) {
-+				close(fd);
-+				continue;
-+			}
-+		}
-+
-+		classic = l_new(struct l_dbus_classic, 1);
-+		dbus = &classic->super;
-+		dbus_init(dbus, fd);
-+		l_io_set_write_handler(dbus->io, setup_tcp_cb, dbus, NULL);
-+		break;
-+	}
-+
-+	freeaddrinfo(res);
-+	return dbus;
-+}
-+
- static struct l_dbus *setup_address(const char *address)
++static bool start_dbus_daemon(void)
  {
- 	struct l_dbus *dbus = NULL;
-@@ -1155,6 +1263,9 @@ static struct l_dbus *setup_address(const char *address)
- 			/* Function will modify params string */
- 			dbus = setup_unix(params);
- 			break;
-+		} else if (!strcmp(transport, "tcp")) {
-+			dbus = setup_tcp(params);
-+			break;
- 		}
+ 	char *prg_argv[5];
+ 	char *prg_envp[1];
+@@ -43,7 +49,7 @@ static void start_dbus_daemon(void)
+ 	pid = fork();
+ 	if (pid < 0) {
+ 		l_error("failed to fork new process");
+-		return;
++		return false;
  	}
  
+ 	if (pid == 0) {
+@@ -54,6 +60,8 @@ static void start_dbus_daemon(void)
+ 	l_info("dbus-daemon process %d created", pid);
+ 
+ 	dbus_daemon_pid = pid;
++
++	return true;
+ }
+ 
+ static void signal_handler(uint32_t signo, void *user_data)
+@@ -93,6 +101,17 @@ static void do_debug(const char *str, void *user_data)
+ 	l_info("%s%s", prefix, str);
+ }
+ 
++#define test_assert(cond)	\
++	do {	\
++		if (!(cond)) {	\
++			l_info("TEST FAILED in %s at %s:%i: %s",	\
++				__func__, __FILE__, __LINE__,	\
++				L_STRINGIFY(cond));	\
++			l_main_quit();	\
++			return;	\
++		}	\
++	} while (0)
++
+ static void signal_message(struct l_dbus_message *message, void *user_data)
+ {
+ 	const char *path, *interface, *member, *destination, *sender;
+@@ -135,18 +154,19 @@ static void request_name_callback(struct l_dbus_message *message,
+ 	const char *error, *text;
+ 	uint32_t result;
+ 
++	req_name_cb_called = true;
++
+ 	if (l_dbus_message_get_error(message, &error, &text)) {
+ 		l_error("error=%s", error);
+ 		l_error("message=%s", text);
+-		goto done;
++		test_assert(false);
+ 	}
+ 
+-	if (!l_dbus_message_get_arguments(message, "u", &result))
+-		goto done;
++	test_assert(l_dbus_message_get_arguments(message, "u", &result));
+ 
+ 	l_info("request name result=%d", result);
+ 
+-done:
++	tests_completed ++;
+ 	l_main_quit();
+ }
+ 
+@@ -161,21 +181,41 @@ static void add_match_callback(struct l_dbus_message *message, void *user_data)
+ {
+ 	const char *error, *text;
+ 
++	match_cb_called = true;
++
+ 	if (l_dbus_message_get_error(message, &error, &text)) {
+ 		l_error("error=%s", error);
+ 		l_error("message=%s", text);
++		test_assert(false);
+ 		return;
+ 	}
+ 
+-	if (!l_dbus_message_get_arguments(message, ""))
+-		return;
++	test_assert(l_dbus_message_get_arguments(message, ""));
+ 
+ 	l_info("add match");
+ }
+ 
+ static void ready_callback(void *user_data)
+ {
++	struct l_dbus *dbus = user_data;
++	int rc;
++
+ 	l_info("ready");
++	bus_became_ready = true;
++
++	rc = l_dbus_method_call(dbus, "org.freedesktop.DBus",
++				"/org/freedesktop/DBus",
++				"org.freedesktop.DBus", "AddMatch",
++				add_match_setup,
++				add_match_callback, NULL, NULL);
++	test_assert(rc > 0);
++
++	rc = l_dbus_method_call(dbus, "org.freedesktop.DBus",
++				"/org/freedesktop/DBus",
++				"org.freedesktop.DBus", "RequestName",
++				request_name_setup,
++				request_name_callback, NULL, NULL);
++	test_assert(rc > 0);
+ }
+ 
+ static void disconnect_callback(void *user_data)
+@@ -183,31 +223,29 @@ static void disconnect_callback(void *user_data)
+ 	l_main_quit();
+ }
+ 
+-int main(int argc, char *argv[])
++static void test_dbus(const void *data)
+ {
++	const char *address = data;
+ 	struct l_dbus *dbus;
+-	struct l_signal *sigchld;
+ 	int i;
+ 
+-	if (!l_main_init())
+-		return -1;
++	bus_became_ready = false;
++	match_cb_called = false;
++	req_name_cb_called = false;
++
++	test_assert(l_main_init());
+ 
+ 	l_log_set_stderr();
+ 
+-	start_dbus_daemon();
+-
+ 	for (i = 0; i < 10; i++) {
+ 		usleep(200 * 1000);
+ 
+-		dbus = l_dbus_new(TEST_BUS_ADDRESS);
++		dbus = l_dbus_new(address);
+ 		if (dbus)
+ 			break;
+ 	}
+ 
+-	sigchld = l_signal_create(SIGCHLD, sigchld_handler, NULL, NULL);
+-
+-	if (!dbus)
+-		goto done;
++	test_assert(dbus);
+ 
+ 	l_dbus_set_debug(dbus, do_debug, "[DBUS] ", NULL);
+ 
+@@ -216,29 +254,39 @@ int main(int argc, char *argv[])
+ 
+ 	l_dbus_register(dbus, signal_message, NULL, NULL);
+ 
+-	l_dbus_method_call(dbus, "org.freedesktop.DBus",
+-				"/org/freedesktop/DBus",
+-				"org.freedesktop.DBus", "AddMatch",
+-				add_match_setup,
+-				add_match_callback, NULL, NULL);
+-
+-	l_dbus_method_call(dbus, "org.freedesktop.DBus",
+-				"/org/freedesktop/DBus",
+-				"org.freedesktop.DBus", "RequestName",
+-				request_name_setup,
+-				request_name_callback, NULL, NULL);
+-
+ 	l_main_run_with_signal(signal_handler, NULL);
+ 
++	test_assert(bus_became_ready);
++	test_assert(match_cb_called);
++	test_assert(req_name_cb_called);
++
+ 	l_dbus_destroy(dbus);
++	l_main_exit();
++}
++
++int main(int argc, char *argv[])
++{
++	struct l_signal *sigchld;
++
++	l_test_init(&argc, &argv);
++
++	l_test_add("Using a unix socket", test_dbus, TEST_BUS_ADDRESS_UNIX);
++	l_test_add("Using a tcp socket", test_dbus, TEST_BUS_ADDRESS_TCP);
++
++	sigchld = l_signal_create(SIGCHLD, sigchld_handler, NULL, NULL);
++
++	if (!start_dbus_daemon())
++		return -1;
++
++	l_test_run();
+ 
+-done:
+ 	if (dbus_daemon_pid > 0)
+ 		kill(dbus_daemon_pid, SIGKILL);
+ 
+ 	l_signal_remove(sigchld);
+ 
+-	l_main_exit();
++	if (tests_completed == 2)
++		return 0;
+ 
+-	return 0;
++	return -1;
+ }
 -- 
 2.43.2
 
