@@ -1,101 +1,138 @@
-Received: from mail5.g24.pair.com (mail5.g24.pair.com [66.39.139.36])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oo1-f54.google.com (mail-oo1-f54.google.com [209.85.161.54])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BD3DE14D439
-	for <ell@lists.linux.dev>; Thu, 16 May 2024 15:35:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.39.139.36
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 387AD157480
+	for <ell@lists.linux.dev>; Thu, 16 May 2024 19:33:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.54
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715873761; cv=none; b=X6Jm+EuOGk9cc+C7/F7/i+4RLRL9mCAm0MlRf+iNFlOPuYUOkFLgzFNuYlbKtSiwWoIZaQ3pTMVv7pPHSsp7gmXn1MYcCVQNGvS2BrYhOLohkkY5K4ydfSDSI0hYQ92c85X+mwP85uSCKxsIr44iNWW6RRpf19JkknZHi3bIDG0=
+	t=1715888002; cv=none; b=GgOWbM3ARyVBfHj/eE1wfa+MeF71xMoomt/H7oEz+oDyuaDTmDim0pI6kuiBfk7fe3V3WYTkW2JM8LhtRTMo6A39O6rEsOp6SORSdEpTOKhqxR7UpkqBelAu8rWtV5al7xMbAKbUDVyDau0115QS8yVKe+b6zIAVxGyoIZuUyHQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715873761; c=relaxed/simple;
-	bh=wWR9HcuLkLVw8y6Aj67AiY42id7fzow4nIQ8GgCh8Uo=;
-	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=RKzDN5tW+RinSm+Cv6N6G1j5lTq4A6LFnIiDp0CMkDdXqnwic7bfi2mV+W9CXnWe5H8Jw8RB4AERoRE2Mc7Yg30lYFOPvdJJ2X8i77H9Ud8CcOhBVpyVjPGxuxMY+9ssj29NV/nh6u6JGNvVNnWyXAX69TEkcanWBsK5zlfa53Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=DlsLpPz1; arc=none smtp.client-ip=66.39.139.36
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nuovations.com
+	s=arc-20240116; t=1715888002; c=relaxed/simple;
+	bh=AI09q75YsdHnG/U3Ry2MSz1dgmmuKwfi0u60EPNa/9s=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=NqcpNUXTNvzVzqBIwVPQp82bwaDNQz57gPN27QOJAiCC+ulJ34p6mXa0t79XQOOgC1jDPPp8UA5nkiH5U4D17P8a1dLUUJU/EmjiiWrVbo4uNKygf060CfmSTSjFQoiZ6Cgsd8SxlH+R8nAXVvPpQuPWXvofmBaelHrx1SAo5Ks=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=VG67pPVN; arc=none smtp.client-ip=209.85.161.54
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="DlsLpPz1"
-Received: from mail5.g24.pair.com (localhost [127.0.0.1])
-	by mail5.g24.pair.com (Postfix) with ESMTP id 4E005164A95;
-	Thu, 16 May 2024 11:35:55 -0400 (EDT)
-Received: from smtpclient.apple (c-24-6-12-99.hsd1.ca.comcast.net [24.6.12.99])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mail5.g24.pair.com (Postfix) with ESMTPSA id CE330124EDD;
-	Thu, 16 May 2024 11:35:54 -0400 (EDT)
-Content-Type: text/plain;
-	charset=utf-8
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VG67pPVN"
+Received: by mail-oo1-f54.google.com with SMTP id 006d021491bc7-5b2cc8c4b8aso373193eaf.1
+        for <ell@lists.linux.dev>; Thu, 16 May 2024 12:33:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1715888000; x=1716492800; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=SnIz9ebwkEhUVzQGqWgZ5bQyYtnCwHh1SrKAmunDjX4=;
+        b=VG67pPVNmNVq7ACbc1EPOxLTA9UNM4ZBJj4MCz2IUyuqDifaLbyZcNRCefRVG37vcX
+         e3SOENjRadxb4MMu/7sxuIfNiX8lMXOxZPgakUp08U9AWli6aEuuFP1aXTg+rxF5UQRK
+         mlvLXkXWuj7dlfuUsq1lu15CSiz9PHzWYeNo0DFLh7lJJNAWzFRmlqd2XMQWPaSh36Wy
+         Mgo5lmDORhCaX1qZ5pMWCv50d3Z+PPkhNy3SrJRVGTMX9M801YNRlBG04JHRdQsoDloJ
+         wDW7aYcWA0D+g7KOSQF1ACc3zTdvCwzSMSW56wMe0gpwsLY3J9z3P7y+fEixXSwn5Yit
+         cwCQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1715888000; x=1716492800;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=SnIz9ebwkEhUVzQGqWgZ5bQyYtnCwHh1SrKAmunDjX4=;
+        b=ZOwtK4ggPvjzLMkgSbpBMib3S/JF225tbW9fuBSwDe0BVcu8pKLbcy853LQSzFnXsY
+         1OZxlgT2GFw5/fAI0FpOBNUtAbEYNgBLLi+6RUP9Tn80sdFFh/G8Kt2dL60HOZjea9xw
+         lUGdJpXUlmqFUsalup5oGGRVYeqb0s+Go47nrd6mIpK5W4bLbEL33R0MRgOxswrD9m6r
+         Q4D+5N4fy7XZmJUBIO0//U86gIgtvf/DfQtdtsvjtoAXrsZCUxeVgE+dWqKwqLuCoyX3
+         TQUorJiJLGvj1B05r/ChC0cWWJCtjEj+G2pTYYxs2iFRNzpTl9FcPO385gn8adQ0P3d+
+         qKGA==
+X-Forwarded-Encrypted: i=1; AJvYcCW6e/qMCo7HZ2drWfF0HqmfqZG9f6NFj2Uqkfj6UQe3hQhe9Ujnu+bUCu1DHSfVpeGdfV/Ki4lXOawdwYcfQ4re7+l6
+X-Gm-Message-State: AOJu0YyxpW1cut5C9gG1PIEpvFosGK+FQH98kTr2tyoqVcJVM1+dzyBn
+	VEr1X3BEjX3esqEMGBN5q2+reV1sO7aaSD8eHQmBb8m7smqtjo3CvT8iXA==
+X-Google-Smtp-Source: AGHT+IGcX/E4yb8DLGHjefM8Jwykz1/dqr8lQ9oyfOGyVuD8Dd48dhj9rX+dqsnALVxcQ+AERW3vTA==
+X-Received: by 2002:a4a:a9c6:0:b0:5ac:9f7d:3b3f with SMTP id 006d021491bc7-5b28187f23amr21467873eaf.3.1715888000077;
+        Thu, 16 May 2024 12:33:20 -0700 (PDT)
+Received: from [192.168.1.21] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id 006d021491bc7-5b277bef476sm3242530eaf.19.2024.05.16.12.33.19
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 16 May 2024 12:33:19 -0700 (PDT)
+Message-ID: <c96a0eec-f312-4f04-9dad-28f511239f55@gmail.com>
+Date: Thu, 16 May 2024 14:33:18 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3774.500.171.1.1\))
-Subject: Re: [RFC PATCH v8] term: Added 'l_term_*' symbols.
-From: Grant Erickson <gerickson@nuovations.com>
-In-Reply-To: <5a388d3c220e13e7b61ae39d4d83611402283000.camel@geanix.com>
-Date: Thu, 16 May 2024 08:35:43 -0700
-Cc: ell@lists.linux.dev,
- Marcel Holtmann <marcel@holtmann.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <3CFE87AC-7E37-4669-8DE5-29E67FF753EC@nuovations.com>
-References: <20240405003658.3490494-1-gerickson@nuovations.com>
- <20240405003658.3490494-5-gerickson@nuovations.com>
- <5a388d3c220e13e7b61ae39d4d83611402283000.camel@geanix.com>
-To: =?utf-8?Q?Martin_Hundeb=C3=B8ll?= <martin@geanix.com>
-X-Mailer: Apple Mail (2.3774.500.171.1.1)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=content-type:mime-version:subject:from:in-reply-to:date:cc:content-transfer-encoding:message-id:references:to; s=pair-202401062137; bh=QRV1yxwTboe5G634ia3SYnKJZKboXcAOzqaOyW8JvYY=; b=DlsLpPz1RTu4fyrFrW4tE2vS9LV74WNd4AgJGWtg1T8lQ8q1qCklIhcQG3uGqFqH6LYxYYSvuG+6NZKM5dmV0znenqDUUNlrXC+j7SN/LNX9buzV4SmLn6P5pceUDOzVlIHPICZO4i9hSg4FfuOeqV/b3/PTIVn0UQm+cI6HPeejZxxV00PAcTwQl4n9hjnNRV93+vxdSsjfBd98lhQEafyLK+3c0GdlAkeNjSmvLi/w3zbuGT43e87SGPwSvaol5JQMOY31eSGsJgLpHoyIP0Sdoe4RZb4Vz6Yi3PgeqED9v3vR9CjoY22t4BWB6cTIAvmd8MGbPI6XxvnsRu8BsA==
-X-Scanned-By: mailmunge 3.10 on 66.39.139.36
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/2] dbus: add dbus-over-tcp support
+To: Ram Subramanian <ram.subramanian@getcruise.com>, ell@lists.linux.dev
+Cc: Ramon Ribeiro <rhpr@cesar.org.br>
+References: <20240513175826.2363352-1-ram.subramanian@getcruise.com>
+Content-Language: en-US
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20240513175826.2363352-1-ram.subramanian@getcruise.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On May 16, 2024, at 1:16=E2=80=AFAM, Martin Hundeb=C3=B8ll =
-<martin@geanix.com> wrote:
-> On Thu, 2024-04-04 at 17:36 -0700, Grant Erickson wrote:
->> ---
->>  ell/ell.sym | 21 +++++++++++++++++++++
->>  1 file changed, 21 insertions(+)
->>=20
->> diff --git a/ell/ell.sym b/ell/ell.sym
->> index 28b55d36719b..2767bf55e079 100644
->> --- a/ell/ell.sym
->> +++ b/ell/ell.sym
->> @@ -623,6 +623,27 @@ global:
->>   l_ecdh_generate_shared_secret;
->>   /* time */
->>   l_time_now;
->> + /* term */
->> + l_term_new;
->> + l_term_free;
->> + l_term_set_io_handler;
->> + l_term_set_input;
->> + l_term_set_input_stdin;
->> + l_term_set_output;
->> + l_term_set_output_stdout;
->> + l_term_set_key_handler;
->> + l_term_open;
->> + l_term_close;
->=20
-> Didn't you argue / say in the cover letter to v6 that these two
-> functions were renamed to l_term_{acquire,release} ?
+Hi Ram,
 
-Martin,
+On 5/13/24 12:58 PM, Ram Subramanian wrote:
+> l_dbus_new() will now accept tcp endpoints, however it will only accept
+> a numeric address for 'host'; it will not resolve hostnames. This is so
+> we can avoid a potential long, blocking call to getaddrinfo().
+> 
+> The connect() call to the host is also non-blocking. This means that
+> auth will not happen until you start the event loop (with a call to
+> l_main_run() et. al.).
+> 
+> Co-authored-by: Ramon Ribeiro <rhpr@cesar.org.br>
+> ---
+>   ell/dbus.c | 111 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+>   1 file changed, 111 insertions(+)
 
-Confirmed, you may note "[RFC PATCH v8] ell/edit: Rename =
-'l_term_{open,close}=E2=80=99.=E2=80=9D patch later in that series that =
-performs the rename of those symbols.
+<snip>
 
-I intentionally left the revision history intact in the patch set, =
-rather than squashing them, so that it was clear where Marcel started =
-and then the changes I made atop those.
+> +static struct l_dbus *setup_tcp(char *params)
+> +{
+> +	char *host = NULL;
+> +	char *port = NULL;
+> +	char *family = NULL;
+> +	struct addrinfo hints = { 0 };
+> +	struct addrinfo *res;
+> +	struct addrinfo *iter;
+> +	struct l_dbus *dbus;
+> +
 
-Best,
+CI caught this one:
 
-Grant
+Clang Build
+Test ID: clang
+Desc: Build IWD using clang compiler
+Duration: 72.29 seconds
+Result: FAIL
 
---=20
-Principal
-Nuovations
+Output:
 
-gerickson@nuovations.com
-https://www.nuovations.com/
+ell/dbus.c:1217:19: error: variable 'dbus' is used uninitialized whenever 'for' 
+loop exits because its condition is false [-Werror,-Wsometimes-uninitialized]
+         for (iter = res; iter; iter = iter->ai_next) {
+                          ^~~~
+ell/dbus.c:1241:9: note: uninitialized use occurs here
+         return dbus;
+                ^~~~
+ell/dbus.c:1217:19: note: remove the condition if it is always true
+         for (iter = res; iter; iter = iter->ai_next) {
+                          ^~~~
+ell/dbus.c:1178:21: note: initialize the variable 'dbus' to silence this warning
+         struct l_dbus *dbus;
+                            ^
+                             = NULL
+1 error generated.
+make[1]: *** [Makefile:2560: ell/dbus.lo] Error 1
+make[1]: *** Waiting for unfinished jobs....
+make: *** [Makefile:1716: all] Error 2
 
+So I changed this line to read:
+struct l_dbus *dbus = NULL;
+
+Applied, thanks.
+
+Regards,
+-Denis
