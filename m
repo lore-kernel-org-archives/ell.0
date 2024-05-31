@@ -1,61 +1,65 @@
-Received: from mail-oi1-f181.google.com (mail-oi1-f181.google.com [209.85.167.181])
+Received: from mail-oi1-f182.google.com (mail-oi1-f182.google.com [209.85.167.182])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B40416F82B
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1607216F83D
 	for <ell@lists.linux.dev>; Fri, 31 May 2024 15:08:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.181
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1717168138; cv=none; b=LOb0nfge02ykGgkjIEN6/+xTzv0iQRKq8bSoPWdRROoqQdR0/VmASJht+UeEnsqt7L0129Opwpa0WkLmcA3V7OQJo0dK1QzV7py6PJIZJNKJen3ba7X5yJRsc7WToNlbnWO5ebe8RxVtefBUOaaelzaRLzrgUyMu/pCyiqhZW4Q=
+	t=1717168138; cv=none; b=MS7H00nazR23FxU/pS+ekC6PpYwwiA7sPmT4IGMVfnFTJhcKQ6GoIOkExBUtKr3oe7gCgH4kbhCwOv2+LtOktVv4f/o6/LbnDesZwQo5GEhkCWreoG4qc+i4ImvVCf94gXjjLo/OWEU23ebI7hkxzn3E84iI8y1sCtymnKSEPuY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1717168138; c=relaxed/simple;
-	bh=b9sTwiIDBRgy994DHVKPoP00kN6F4XAe6tuTDdx3rpE=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=fpd11YfArJRcUlrdqRS3ghwz+PALjEAqcuXRHAet3XVp+2PYma/cQkclGd+xM+nzdLCMAjNoMje4fv2Z8P4Fobaupttwuh06E/3llOoFbvCYBxCUmrj8cjKSwy16H7xYs/huRfaFguwdjxlqjnhVzqVBQ/cSFiuHAVyZc9jlIM0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=T9H0QyUv; arc=none smtp.client-ip=209.85.167.181
+	bh=3FVLVbQUwHkM/DmayQ1aD8J1+b4/cFIDEAGIAR/q4Qc=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=ncvgm0pH0XAIbUnT006OcE56obFKL/5ydzFjrdgCCUn1HHlmKobCXrnx3Agy9dUoUV5GSG4kZHxc5SilheHbBBCIMw+n9WVpfgtwF857rcO6DVtEeW2+9yewhDkreCZJ1auMDiQnoUucUvNMBBQ79sxIyas9DAPWLlXHAhBOS4k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Cbhlfz/t; arc=none smtp.client-ip=209.85.167.182
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="T9H0QyUv"
-Received: by mail-oi1-f181.google.com with SMTP id 5614622812f47-3c9cc681ee4so1130686b6e.0
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Cbhlfz/t"
+Received: by mail-oi1-f182.google.com with SMTP id 5614622812f47-3c9c36db8eeso1134053b6e.0
         for <ell@lists.linux.dev>; Fri, 31 May 2024 08:08:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1717168135; x=1717772935; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=1TO/7EJHiRdzYWKTl3AhVwMZxFWUDW9PLLIC0lj6Atg=;
-        b=T9H0QyUvEb+0iGadE+LsD3R0j2EdH4uvqLl3l2YEZRat+aQKRBTXSqMjOE4/4LUkwg
-         slLnPzHOjsKT8HYbTcfsxj2PQb1kRVm9GAYYyPi+ZwsX/JcnN0j2I9s+jis/4vgrtM3e
-         dXkQEjO0hc+yClbm98G9Auu58utGhsIKsksJDwiVVfpyJ1X9F55Z3D0/8MTS40tINlTn
-         hwt4tUpnI55w5iFK6L2+JaTwKPmboCN6+C6qg1+KP0LIPbZVx+ZhxD3RflOSBE+DQmCL
-         q0W586xvG92bs0FcGy/ZUrpq6ySlZHg4nwuriTOFSa+jvvtxnpoypF1QiZ+a2lzaPeDT
-         P2Aw==
+        d=gmail.com; s=20230601; t=1717168136; x=1717772936; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=23I3Di8l8cfcbbbIexbmo74K3yVqX6HKpsCAx/PJReg=;
+        b=Cbhlfz/tT/e2CsqZE1jB3OEBI99+lTIu9P9aCdvPaNn2aFQLAVsdYwHcRDYXlLCL8g
+         z0Abd1ARmYhwdmqaPAlFfxz4GvkG19N1BgzTejmM7widqRgl5GGLMHNGmk99SQVJLzyh
+         PGNh0nw771zYn+Wj5LGcIbP9465s5meWhwtNb/1pkzJ0veJNsBLFcrB2b1wdM52Ms+BK
+         2Ddta7yD4XaDmAtJ9lxFVKoxrnha/4H84JtgwsYpEN/AvbHN7SinMsDbpO11XLtCh31S
+         gnrOueR7elA1cqt/V2WgOetxhoahpHNMa3KhnjoFvkBVHqL3vrEfQOEfVuEHMHl+uOuC
+         Y67w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1717168135; x=1717772935;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=1TO/7EJHiRdzYWKTl3AhVwMZxFWUDW9PLLIC0lj6Atg=;
-        b=tVXKny9vNtDvAz1uinDqFl3bxF8LH7t64GA8/e8uLQR7z7MMTFKhD5s404XK7qiQpZ
-         GV/dbjwQ6mN7ZWgUQV+dtSxOXUC7UEkd9ATKNxHb6x24XjBmT6uH/80WfQdTPdXlyNQ7
-         OB7T/UsJpq5w/HMYcpdKw9jkI2Z+RMt3lBt8iOgwFXXsmY57bm+M2H7UPiLPWb1/GuPr
-         dRy3cu2uaK60HhORiMjfOWaWbIlTnMFIjbWJ6RTI8cK5QMqIuM3MT9/g3FvbumFzGUOh
-         WAzhiFT/PCwt7GyyeW26ZOAaFcxXqJOw5a8Zh8aGf11veR3cEjkoFjy8Z0AwF2SaAh2x
-         +lcg==
-X-Gm-Message-State: AOJu0YzA8ALxKfY3vTzaHCalb0oH03tSq7tylUBZBMNaaPrSQCQeO6wB
-	5Ea+qfJHoctdHrnZU9k8ewExaTO3aaIzp1OOKPdFEEki1lMx+3ZEvNjsDA==
-X-Google-Smtp-Source: AGHT+IG2giLLulks9SIka69AHQykRzamxSBZhLUf4FCGsHOjEfMyfc6FdMFUaYxsXCLI5uPB34dQOw==
-X-Received: by 2002:a05:6808:1784:b0:3c9:cf09:a857 with SMTP id 5614622812f47-3d1e35c1140mr2830123b6e.47.1717168135294;
+        d=1e100.net; s=20230601; t=1717168136; x=1717772936;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=23I3Di8l8cfcbbbIexbmo74K3yVqX6HKpsCAx/PJReg=;
+        b=PbXjRS8FsLZ58b2gH6wdkxPh1naNVKU6g7pazBLwcjLOAylkzE063oK3sxfPqRpJy1
+         AobIHS67Yzh3qenycjLzu5QGfOEb6lSRNCFKbssYDHResXz3r3lz67+48GhN5sqd5z37
+         mYSVnwem6YG80iWqKi8BiI3PLOdL9yixbaqMXNBLMZO7sLAQZ6MfPbx2ouLqqQQva9fx
+         kcLLCqgZfmkqOQhmC0v54OkLeqZPemQaU/viFOZulMLhTj9RdmKMEpKbQ19bSHmFgc9u
+         B4GV+i/0fAEKLZ40rDgOM2h2rXzgmRWDzOTTtAZeokCNTDa/Que7FQ/cejoAbBjnnKxT
+         VIRw==
+X-Gm-Message-State: AOJu0YzTu6bIEMAmNn1mrP1XB3xjJ7wSAc64gXgbKs4VEjdlwCLXSav+
+	TLbTYtfuMkEtDplMhLfBytaBJ2Z7h1T0BYV1gI4WmB9wGQNXwBfuCynjEw==
+X-Google-Smtp-Source: AGHT+IFcctm2OWDAmdfNxQKtYLys+ZsqZy388Cb4d7hSJca/Qy1jXxdxXa0EZ/TF+tJjVTR0NhU5SA==
+X-Received: by 2002:aca:2b14:0:b0:3c9:924c:8304 with SMTP id 5614622812f47-3d1e31eafd4mr2135800b6e.0.1717168135995;
         Fri, 31 May 2024 08:08:55 -0700 (PDT)
 Received: from localhost.localdomain (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-3d1e1a4637esm359030b6e.36.2024.05.31.08.08.54
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-3d1e1a4637esm359030b6e.36.2024.05.31.08.08.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 31 May 2024 08:08:54 -0700 (PDT)
+        Fri, 31 May 2024 08:08:55 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH 1/2] notifylist: add notifylist class
-Date: Fri, 31 May 2024 10:08:40 -0500
-Message-ID: <20240531150852.390412-1-denkenz@gmail.com>
+Subject: [PATCH 2/2] unit: Add notifylist unit tests
+Date: Fri, 31 May 2024 10:08:41 -0500
+Message-ID: <20240531150852.390412-2-denkenz@gmail.com>
 X-Mailer: git-send-email 2.45.0
+In-Reply-To: <20240531150852.390412-1-denkenz@gmail.com>
+References: <20240531150852.390412-1-denkenz@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -64,86 +68,44 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-oFono and iwd projects use a 'watch' pattern to register clients for
-notifications about object events, such as state changes.  This pattern
-is quite common and both iwd and oFono implement utilities for
-adding, removing and notifying 'watch' clients.  This can be thought of
-as a primitive signal / slot framework.
-
-Implementing 'watches' properly, including handling possible call stack
-re-entrancy conditions can be tricky.  The notifylist class implements a
-generic 'watch' framework and aims to be the shared implementation
-for iwd, oFono and other projects.
 ---
- Makefile.am      |   6 +-
- ell/ell.h        |   1 +
- ell/ell.sym      |   7 ++
- ell/notifylist.c | 208 +++++++++++++++++++++++++++++++++++++++++++++++
- ell/notifylist.h |  53 ++++++++++++
- 5 files changed, 273 insertions(+), 2 deletions(-)
- create mode 100644 ell/notifylist.c
- create mode 100644 ell/notifylist.h
+ Makefile.am            |   5 +-
+ unit/test-notifylist.c | 206 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 210 insertions(+), 1 deletion(-)
+ create mode 100644 unit/test-notifylist.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 6c86e94e963e..77a6e81a9766 100644
+index 77a6e81a9766..fc7683397b6a 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -63,7 +63,8 @@ pkginclude_HEADERS = ell/ell.h \
- 			ell/cleanup.h \
- 			ell/netconfig.h \
- 			ell/sysctl.h \
--			ell/minheap.h
-+			ell/minheap.h \
-+			ell/notifylist.h
+@@ -207,7 +207,8 @@ unit_tests = unit/test-unit \
+ 			unit/test-path \
+ 			unit/test-net \
+ 			unit/test-sysctl \
+-			unit/test-minheap
++			unit/test-minheap \
++			unit/test-notifylist
  
- lib_LTLIBRARIES = ell/libell.la
+ dbus_tests = unit/test-hwdb \
+ 			unit/test-dbus \
+@@ -360,6 +361,8 @@ unit_test_sysctl_LDADD = ell/libell-private.la
  
-@@ -153,7 +154,8 @@ ell_libell_la_SOURCES = $(linux_headers) \
- 			ell/tester.c \
- 			ell/netconfig.c \
- 			ell/sysctl.c \
--			ell/minheap.c
-+			ell/minheap.c \
-+			ell/notifylist.c
+ unit_test_minheap_LDADD = ell/libell-private.la
  
- ell_libell_la_LDFLAGS = -Wl,--no-undefined \
- 			-Wl,--version-script=$(top_srcdir)/ell/ell.sym \
-diff --git a/ell/ell.h b/ell/ell.h
-index f67339105e8f..7a263e9376de 100644
---- a/ell/ell.h
-+++ b/ell/ell.h
-@@ -53,3 +53,4 @@
- #include <ell/netconfig.h>
- #include <ell/sysctl.h>
- #include <ell/minheap.h>
-+#include <ell/notifylist.h>
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 803906c586e8..0587beb398bc 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -788,6 +788,13 @@ global:
- 	/* sysctl */
- 	l_sysctl_get_u32;
- 	l_sysctl_set_u32;
-+	/* notifylist */
-+	l_notifylist_new;
-+	l_notifylist_free;
-+	l_notifylist_add;
-+	l_notifylist_remove;
-+	l_notifylist_notify;
-+	l_notifylist_notify_matches;
- local:
- 	*;
- };
-diff --git a/ell/notifylist.c b/ell/notifylist.c
++unit_test_notifylist_LDADD = ell/libell-private.la
++
+ unit_test_data_files = unit/settings.test unit/dbus.conf
+ 
+ if EXAMPLES
+diff --git a/unit/test-notifylist.c b/unit/test-notifylist.c
 new file mode 100644
-index 000000000000..bec251dc6196
+index 000000000000..10e105d60ef9
 --- /dev/null
-+++ b/ell/notifylist.c
-@@ -0,0 +1,208 @@
++++ b/unit/test-notifylist.c
+@@ -0,0 +1,206 @@
 +/*
 + * Embedded Linux library
-+ * Copyright (C) 2024  Cruise, LLC
++ * Copyright (C) 2011-2014  Intel Corporation
 + *
 + * SPDX-License-Identifier: LGPL-2.1-or-later
 + */
@@ -152,262 +114,201 @@ index 000000000000..bec251dc6196
 +#include <config.h>
 +#endif
 +
-+#include "private.h"
-+#include "queue.h"
-+#include "notifylist.h"
-+#include "useful.h"
++#include <assert.h>
++#include <ell/ell.h>
 +
-+struct l_notifylist {
-+	uint32_t next_id;
-+	struct l_queue *entries;
-+	bool in_notify : 1;
-+	bool stale_entries : 1;
-+	bool pending_destroy : 1;
-+	const struct l_notifylist_ops *ops;
++enum notify_state_flags {
++	CALLED = 0x1,
++	DESTROYED = 0x02,
 +};
 +
-+static bool __notifylist_entry_match(const void *a, const void *b)
-+{
-+	const struct l_notifylist_entry *entry = a;
-+	uint32_t id = L_PTR_TO_UINT(b);
++static uint32_t notify1_flags;
++static uint32_t notify2_flags;
++static uint32_t notify3_flags;
++static uint32_t notify1_id;
++static uint32_t notify2_id;
++static uint32_t notify3_id;
++static struct l_notifylist *list;
 +
-+	return entry->id == id;
-+}
-+
-+static void __notifylist_entry_free(struct l_notifylist *list,
-+						struct l_notifylist_entry *e)
-+{
-+	if (e->destroy)
-+		e->destroy(e->notify_data);
-+
-+	list->ops->free_entry(e);
-+}
-+
-+static void __notifylist_clear(struct l_notifylist *list)
-+{
-+	struct l_notifylist_entry *entry;
-+
-+	while ((entry = l_queue_pop_head(list->entries)))
-+		__notifylist_entry_free(list, entry);
-+}
-+
-+static void __notifylist_prune_stale(struct l_notifylist *list)
-+{
-+	struct l_notifylist_entry *e;
-+
-+	while ((e = l_queue_remove_if(list->entries, __notifylist_entry_match,
-+							L_UINT_TO_PTR(0))))
-+		__notifylist_entry_free(list, e);
-+
-+	list->stale_entries = false;
-+}
-+
-+static void __notifylist_destroy(struct l_notifylist *list)
-+{
-+	__notifylist_clear(list);
-+	l_queue_destroy(list->entries, NULL);
-+	list->entries = NULL;
-+
-+	l_free(list);
-+}
-+
-+static void __notifylist_notify(struct l_notifylist *list,
-+				l_notifylist_entry_matches_func_t match_func,
-+				const void *match_data,
-+				int type, va_list args)
-+{
-+	const struct l_queue_entry *entry = l_queue_get_entries(list->entries);
-+
-+	list->in_notify = true;
-+
-+	for (; entry; entry = entry->next) {
-+		const struct l_notifylist_entry *e = entry->data;
-+		va_list copy;
-+
-+		if (e->id == 0)
-+			continue;
-+
-+		if (match_func && !match_func(e, match_data))
-+			continue;
-+
-+		va_copy(copy, args);
-+		list->ops->notify(e, type, copy);
-+		va_end(copy);
-+
-+		if (list->pending_destroy)
-+			break;
-+	}
-+
-+	list->in_notify = false;
-+
-+	if (list->pending_destroy)
-+		__notifylist_destroy(list);
-+	else if (list->stale_entries)
-+		__notifylist_prune_stale(list);
-+}
-+
-+LIB_EXPORT struct l_notifylist *l_notifylist_new(
-+					const struct l_notifylist_ops *ops)
-+{
-+	struct l_notifylist *list = l_new(struct l_notifylist, 1);
-+
-+	list->entries = l_queue_new();
-+	list->ops = ops;
-+	list->next_id = 1;
-+
-+	return list;
-+}
-+
-+LIB_EXPORT uint32_t l_notifylist_add(struct l_notifylist *list,
-+					struct l_notifylist_entry *entry)
-+{
-+	if (!list)
-+		return 0;
-+
-+	entry->id = list->next_id++;
-+
-+	if (!list->next_id)
-+		list->next_id = 1;
-+
-+	l_queue_push_tail(list->entries, entry);
-+
-+	return entry->id;
-+}
-+
-+LIB_EXPORT bool l_notifylist_remove(struct l_notifylist *list, uint32_t id)
-+{
-+	struct l_notifylist_entry *entry;
-+
-+	if (!list)
-+		return false;
-+
-+	if (list->in_notify) {
-+		entry = l_queue_find(list->entries, __notifylist_entry_match,
-+							L_UINT_TO_PTR(id));
-+		if (!entry)
-+			return false;
-+
-+		entry->id = 0;	/* Mark stale */
-+		list->stale_entries = true;
-+
-+		return true;
-+	}
-+
-+	entry = l_queue_remove_if(list->entries, __notifylist_entry_match,
-+							L_UINT_TO_PTR(id));
-+	if (!entry)
-+		return false;
-+
-+	__notifylist_entry_free(list, entry);
-+
-+	return true;
-+}
-+
-+LIB_EXPORT void l_notifylist_free(struct l_notifylist *list)
-+{
-+	if (!list)
-+		return;
-+
-+	if (list->in_notify) {
-+		list->pending_destroy = true;
-+		return;
-+	}
-+
-+	__notifylist_destroy(list);
-+}
-+
-+LIB_EXPORT bool l_notifylist_notify(struct l_notifylist *list,
-+							int type, ...)
-+{
-+	va_list args;
-+
-+	if (!list)
-+		return false;
-+
-+	va_start(args, type);
-+	__notifylist_notify(list, NULL, NULL, type, args);
-+	va_end(args);
-+
-+	return true;
-+}
-+
-+LIB_EXPORT bool l_notifylist_notify_matches(struct l_notifylist *list,
-+				l_notifylist_entry_matches_func_t match_func,
-+				const void *match_data, int type, ...)
-+{
-+	va_list args;
-+
-+	if (!list)
-+		return false;
-+
-+	if (!match_func)
-+		return false;
-+
-+	va_start(args, type);
-+	__notifylist_notify(list, match_func, match_data, type, args);
-+	va_end(args);
-+
-+	return true;
-+}
-diff --git a/ell/notifylist.h b/ell/notifylist.h
-new file mode 100644
-index 000000000000..1ae54933528b
---- /dev/null
-+++ b/ell/notifylist.h
-@@ -0,0 +1,53 @@
-+/*
-+ * Embedded Linux library
-+ * Copyright (C) 2024  Cruise, LLC
-+ *
-+ * SPDX-License-Identifier: LGPL-2.1-or-later
-+ */
-+
-+#ifndef __ELL_NOTIFYLIST_H
-+#define __ELL_NOTIFYLIST_H
-+
-+#include <stdint.h>
-+#include <stdbool.h>
-+#include <stddef.h>
-+#include <stdarg.h>
-+
-+#ifdef __cplusplus
-+extern "C" {
-+#endif
-+
-+struct l_notifylist_entry;
-+
-+typedef void (*l_notifylist_destroy_func_t)(void *data);
-+typedef bool (*l_notifylist_entry_matches_func_t)(
-+				const struct l_notifylist_entry *,
-+				const void *);
-+
-+struct l_notifylist_entry {
-+	unsigned int id;
-+	void *notify_data;
-+	l_notifylist_destroy_func_t destroy;
++struct simple_watch_entry {
++	struct l_notifylist_entry super;
++	void (*callback)(int, uint32_t *);
 +};
 +
-+struct l_notifylist_ops {
-+	void (*free_entry)(struct l_notifylist_entry *entry);
-+	void (*notify)(const struct l_notifylist_entry *entry,
-+						int type, va_list args);
++static void set_called(int arg1, uint32_t *flags)
++{
++	assert(arg1 == 42);
++	*flags |= CALLED;
++}
++
++static void destroy(void *user)
++{
++	uint32_t *flags = user;
++	*flags |= DESTROYED;
++}
++
++static void simple_notify(const struct l_notifylist_entry *e,
++						int type, va_list args)
++{
++	const struct simple_watch_entry *swe =
++		l_container_of(e, struct simple_watch_entry, super);
++	uint32_t *flags = swe->super.notify_data;
++	int arg1;
++
++	assert(type == 0);
++	arg1 = va_arg(args, int);
++
++	if (swe->callback)
++		swe->callback(arg1, flags);
++}
++
++static void simple_free_entry(struct l_notifylist_entry *e)
++{
++	struct simple_watch_entry *swe =
++		l_container_of(e, struct simple_watch_entry, super);
++
++	l_free(swe);
++}
++
++static struct l_notifylist_ops simple_ops = {
++	.free_entry = simple_free_entry,
++	.notify = simple_notify,
 +};
 +
-+struct l_notifylist *l_notifylist_new(const struct l_notifylist_ops *ops);
-+void l_notifylist_free(struct l_notifylist *list);
-+uint32_t l_notifylist_add(struct l_notifylist *list,
-+					struct l_notifylist_entry *entry);
-+bool l_notifylist_remove(struct l_notifylist *list, uint32_t id);
-+bool l_notifylist_notify(struct l_notifylist *list, int type, ...);
-+bool l_notifylist_notify_matches(struct l_notifylist *list,
-+				l_notifylist_entry_matches_func_t match_func,
-+				const void *match_data, int type, ...);
-+
-+#ifdef __cplusplus
++static bool id_matches(const struct l_notifylist_entry *e, const void *user)
++{
++	return e->id == L_PTR_TO_UINT(user);
 +}
-+#endif
 +
-+#endif /* __ELL_NOTIFYLIST_H */
++static void make_notifylist(void (*cb)(int, uint32_t *))
++{
++	struct simple_watch_entry *swe;
++
++	list = l_notifylist_new(&simple_ops);
++
++	swe = l_new(struct simple_watch_entry, 1);
++	swe->super.notify_data = &notify1_flags;
++	swe->super.destroy = destroy;
++	swe->callback = cb;
++	notify1_id = l_notifylist_add(list, &swe->super);
++
++	swe = l_new(struct simple_watch_entry, 1);
++	swe->super.notify_data = &notify2_flags;
++	swe->super.destroy = destroy;
++	swe->callback = cb;
++	notify2_id = l_notifylist_add(list, &swe->super);
++
++	swe = l_new(struct simple_watch_entry, 1);
++	swe->super.notify_data = &notify3_flags;
++	swe->super.destroy = destroy;
++	swe->callback = cb;
++	notify3_id = l_notifylist_add(list, &swe->super);
++
++	notify1_flags = 0;
++	notify2_flags = 0;
++	notify3_flags = 0;
++}
++
++static void test_notify(const void *test_data)
++{
++	make_notifylist(set_called);
++
++	l_notifylist_notify(list, 0, 42);
++	assert(notify1_flags == CALLED);
++	assert(notify2_flags == CALLED);
++	assert(notify3_flags == CALLED);
++
++	l_notifylist_free(list);
++	assert(notify1_flags & DESTROYED);
++	assert(notify2_flags & DESTROYED);
++	assert(notify3_flags & DESTROYED);
++}
++
++static void test_notify_matches(const void *test_data)
++{
++	make_notifylist(set_called);
++
++	l_notifylist_notify_matches(list, id_matches, L_UINT_TO_PTR(notify2_id),
++					0, 42);
++	assert(!notify1_flags);
++	assert(notify2_flags == CALLED);
++	assert(!notify3_flags);
++
++	l_notifylist_free(list);
++	assert(notify1_flags & DESTROYED);
++	assert(notify2_flags & DESTROYED);
++	assert(notify3_flags & DESTROYED);
++}
++
++static void remove_second(int arg1, uint32_t *flags)
++{
++	*flags |= CALLED;
++
++	if (flags == &notify2_flags)
++		l_notifylist_remove(list, notify2_id);
++}
++
++static void test_notify_and_remove(const void *test_data)
++{
++	make_notifylist(remove_second);
++
++	l_notifylist_notify(list, 0, 42);
++	assert(notify1_flags == CALLED);
++	assert(notify2_flags == (CALLED | DESTROYED));
++	assert(notify3_flags == CALLED);
++
++	l_notifylist_free(list);
++}
++
++static void remove_third(int arg1, uint32_t *flags)
++{
++	*flags |= CALLED;
++
++	if (flags == &notify2_flags)
++		l_notifylist_remove(list, notify3_id);
++}
++
++static void test_notify_and_remove_other(const void *test_data)
++{
++	make_notifylist(remove_third);
++
++	l_notifylist_notify(list, 0, 42);
++	assert(notify1_flags == CALLED);
++	assert(notify2_flags == CALLED);
++	assert(notify3_flags == DESTROYED);
++
++	l_notifylist_free(list);
++}
++
++static void free_list(int arg1, uint32_t *flags)
++{
++	*flags |= CALLED;
++	l_notifylist_free(list);
++}
++
++static void test_notify_and_free(const void *test_data)
++{
++	make_notifylist(free_list);
++	l_notifylist_notify(list, 0, 42);
++
++	assert(notify1_flags == (CALLED | DESTROYED));
++	assert(notify2_flags == DESTROYED);
++	assert(notify3_flags == DESTROYED);
++}
++
++int main(int argc, char *argv[])
++{
++	l_test_init(&argc, &argv);
++
++	l_test_add("notifylist/notify", test_notify, NULL);
++	l_test_add("notifylist/notify_matches", test_notify_matches, NULL);
++	l_test_add("notifylist/notify_and_remove", test_notify_and_remove, NULL);
++	l_test_add("notifylist/notify_and_remove_other",
++			test_notify_and_remove_other, NULL);
++	l_test_add("notifylist/notify_and_free", test_notify_and_free, NULL);
++
++	return l_test_run();
++}
 -- 
 2.45.0
 
