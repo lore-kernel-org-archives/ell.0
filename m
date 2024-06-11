@@ -1,285 +1,209 @@
-Received: from mail-ot1-f46.google.com (mail-ot1-f46.google.com [209.85.210.46])
+Received: from smtp.gentoo.org (woodpecker.gentoo.org [140.211.166.183])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A35AC1CAA6
-	for <ell@lists.linux.dev>; Fri, 31 May 2024 21:24:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C384117C7AB
+	for <ell@lists.linux.dev>; Tue, 11 Jun 2024 11:43:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=140.211.166.183
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1717190653; cv=none; b=J8RcLU8CCnS3PF4LftRkQWtG05IG0aB2zJZw8mAH4wKTqzsA1UyoRrDbeGh0M18lUX0qpMT1Y7DBi+uV6JKHT34Ci0JsQcDGJ/L9AG9t+b+WIldg4g63A24bLcpJrn01Phh5DXDSxpK2YT/sCe9H82YWKHBUhAQtBfRfLOlafR8=
+	t=1718106185; cv=none; b=RWA6nBFxcJNj2itYaj/OisclBCnq9S4JeTf2+8muLUMkvu6lTLlJ/HJ8zZ0/mXrkt/Fk7k8aRCxYxvneGhu/AdZfrypKMRSaKH5bFFamygta0gtslEFtggPHxhIiHX4g1ZeazKeCYrhHWk7rI6KRIxSBQywx2fPrKm2MYnkHKSU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1717190653; c=relaxed/simple;
-	bh=FNby+LfJDqWCWRmINe6WPUbg5K6BSzEXXVj+jtOkhRM=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=C6/Bd6I3hK2NweWIw2otHBAB7ZbKPnz6/4lrxKR8lzID1cMyk9Kc1XaukE6OIPw3HbyilOauhsH+pGk5QucF+DIXOnocC2Y9V4AJnPvR+bjNABF0oS65uK3iH1MxXhntsJyvOqLGlynGNyfHyEEQpWaiZq5RjKefu4b1g18Sjkw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=DOIg0Zql; arc=none smtp.client-ip=209.85.210.46
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DOIg0Zql"
-Received: by mail-ot1-f46.google.com with SMTP id 46e09a7af769-6f8e9d4dff3so1620903a34.0
-        for <ell@lists.linux.dev>; Fri, 31 May 2024 14:24:11 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1717190650; x=1717795450; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=6OrN6vYOOU100zAhE0ees9jLxnt04LFtvK7HXvtwLx8=;
-        b=DOIg0ZqlKdfdquAeCNPQSHlkwElDykJLLcQoHsUCzXS94sGfMozYjyefGuTSmISzKW
-         yk6se/AUX1PXi01kiZHYV2skDw9MECC+CDNNUcAluMkMkJEhb+Jdu5KS5fgWCg8Cripo
-         /8bP/5btPxLu3OXGCQ5HIP+tlcRksKDJryBhNJrSI2kCzZ8DNjP0H6sQlCvOabYcaYMe
-         +EojJ74fn7H2soscPzkhtRDNRHr88xg4HTv9qn2X/hgvzG1+QLj8FCCNTQdMHlfxh3Ij
-         gJfXpWNAMciPksF1qHW2o1vHjj82LQwoO6knaf0WgZse5sQMc6bD8nHvxiiwSwTHgPO3
-         Lzkw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1717190650; x=1717795450;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=6OrN6vYOOU100zAhE0ees9jLxnt04LFtvK7HXvtwLx8=;
-        b=LF5Gn5nPmBHpIAsBGszO9RpO+DD3e+GsC+E3pujm2T+P5lg/aJ64YuMrIm3kMpLsoG
-         ggI+TtKLFqGfnrP3cBP4fK7p0eNmv9Odq/32yMZKPbH5Ld4E7ocbKwib+PqRS5rPP/Og
-         2DmnAwcPSLRJhAImAg8baRYEkl8+h2yDiTWTVJ7uidNCDH9R55Jdk2PUM2yX0UYkeLoq
-         F7L0L8NtBE2xClz3/96hccfNmKRYAVdosNxICzt2kIphdKNIy7nXNfz9QW/ZKu4skb2Y
-         P5mBxpgbqus4Ljbt3sI5ddlm0Iy32yUlpplYDE4T6nkruztsktrJet6EKTncrXQTTNtH
-         lQXA==
-X-Gm-Message-State: AOJu0Yz1vhC+XXm+qUnEqQIcBawBs8sTaKiwI1FNFBfeEOCrexU7hQ4u
-	IQkJXTqeEz9/04tuSE0H15I5D/tYxe01V1K/K2FiY7/Bl8D++VgdZww2Ew==
-X-Google-Smtp-Source: AGHT+IG5zLi1CCXrA369zCER/Vf50Ht2R7n8sjcC7GazdDXVFveVGpjHXNAoVCrmielZ+u4JVTpY/w==
-X-Received: by 2002:a05:6870:9109:b0:23c:ffe8:a80c with SMTP id 586e51a60fabf-2508c04916amr3530082fac.52.1717190650495;
-        Fri, 31 May 2024 14:24:10 -0700 (PDT)
-Received: from localhost.localdomain (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-250853be999sm738902fac.51.2024.05.31.14.24.10
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 31 May 2024 14:24:10 -0700 (PDT)
-From: Denis Kenzior <denkenz@gmail.com>
-To: ell@lists.linux.dev
-Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH] genl: re-implement unicast_watch using l_notifylist
-Date: Fri, 31 May 2024 16:23:59 -0500
-Message-ID: <20240531212408.738767-1-denkenz@gmail.com>
-X-Mailer: git-send-email 2.45.0
+	s=arc-20240116; t=1718106185; c=relaxed/simple;
+	bh=VYlYaPAKLiFoXGV1M3QEk8J14Xb/QqEq1a8d3Hp9M2A=;
+	h=Content-Type:Message-ID:Date:MIME-Version:Subject:References:To:
+	 From:In-Reply-To; b=Oe9CdpmYdKSUrbU5R+YQ0aK0qhPeLrP9mmtkx6oMMYRRyWmirYXw2QxjqWacKzM24TP8BU1zaF1rdMuWo181hI/pYy7fjoL7sZj8bkJ97ED6OLpJqy6aXQv6+ncunBgvjHB4wlnus1O0y7ZLzGqRGVpyyD0iMnTdst5gfzz2dyI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gentoo.org; spf=pass smtp.mailfrom=gentoo.org; arc=none smtp.client-ip=140.211.166.183
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gentoo.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gentoo.org
+Content-Type: multipart/mixed; boundary="------------qBwLfbxf4NDjfC9SmxpQ7I2H"
+Message-ID: <c11b87a0-df30-4515-9963-05418e03dc55@gentoo.org>
+Date: Tue, 11 Jun 2024 06:43:01 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: New tests fail with parallel make
+Content-Language: en-US
+References: <20f687ff-38ed-4f8a-9a61-cb698ddf0452@gentoo.org>
+To: ell@lists.linux.dev
+From: "Kohler, Benjamin" <bkohler@gentoo.org>
+In-Reply-To: <20f687ff-38ed-4f8a-9a61-cb698ddf0452@gentoo.org>
+X-Forwarded-Message-Id: <20f687ff-38ed-4f8a-9a61-cb698ddf0452@gentoo.org>
+
+This is a multi-part message in MIME format.
+--------------qBwLfbxf4NDjfC9SmxpQ7I2H
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
----
- ell/genl.c | 122 ++++++++++++++++++-----------------------------------
- 1 file changed, 40 insertions(+), 82 deletions(-)
+Hello,
 
-diff --git a/ell/genl.c b/ell/genl.c
-index 33ecc4d41256..c6c863ebf88d 100644
---- a/ell/genl.c
-+++ b/ell/genl.c
-@@ -20,6 +20,7 @@
- #include "io.h"
- #include "private.h"
- #include "netlink-private.h"
-+#include "notifylist.h"
- #include "genl.h"
- 
- #define MAX_NESTING_LEVEL 4
-@@ -33,11 +34,9 @@ struct nest_info {
- };
- 
- struct unicast_watch {
--	uint32_t id;
-+	struct l_notifylist_entry super;
- 	char name[GENL_NAMSIZ];
- 	l_genl_msg_func_t handler;
--	void *user_data;
--	l_genl_destroy_func_t destroy;
- };
- 
- struct family_watch {
-@@ -69,7 +68,7 @@ struct l_genl {
- 	unsigned int next_notify_id;
- 	struct genl_discovery *discovery;
- 	uint32_t next_watch_id;
--	struct l_queue *unicast_watches;
-+	struct l_notifylist *unicast_watches;
- 	struct l_queue *family_watches;
- 	struct l_queue *family_infos;
- 	struct l_genl_family *nlctrl;
-@@ -449,32 +448,38 @@ LIB_EXPORT uint32_t l_genl_family_info_get_version(
- 	return info->version;
- }
- 
--static void unicast_watch_free(void *data)
-+static void unicast_watch_free(struct l_notifylist_entry *e)
- {
--	struct unicast_watch *watch = data;
--
--	if (watch->destroy)
--		watch->destroy(watch->user_data);
--
-+	struct unicast_watch *watch =
-+			l_container_of(e, struct unicast_watch, super);
- 	l_free(watch);
- }
- 
--static bool unicast_watch_match(const void *a, const void *b)
-+static void unicast_watch_notify(const struct l_notifylist_entry *e,
-+						int type, va_list args)
- {
--	const struct unicast_watch *watch = a;
--	uint32_t id = L_PTR_TO_UINT(b);
-+	struct unicast_watch *watch =
-+			l_container_of(e, struct unicast_watch, super);
- 
--	return watch->id == id;
-+	if (!watch->handler)
-+		return;
-+
-+	watch->handler(va_arg(args, struct l_genl_msg *),
-+			watch->super.notify_data);
- }
- 
--static void unicast_watch_prune(struct l_genl *genl)
-+static struct l_notifylist_ops unicast_watch_ops = {
-+	.free_entry = unicast_watch_free,
-+	.notify = unicast_watch_notify,
-+};
-+
-+static bool unicast_watch_match_name(const struct l_notifylist_entry *e,
-+					const void *user)
- {
--	struct unicast_watch *watch;
-+	struct unicast_watch *watch =
-+			l_container_of(e, struct unicast_watch, super);
- 
--	while ((watch = l_queue_remove_if(genl->unicast_watches,
--						unicast_watch_match,
--						L_UINT_TO_PTR(0))))
--		unicast_watch_free(watch);
-+	return !strncmp(watch->name, user, GENL_NAMSIZ);
- }
- 
- static void family_watch_free(void *data)
-@@ -870,39 +875,6 @@ static bool match_request_seq(const void *a, const void *b)
- 	return request->seq == seq;
- }
- 
--static void dispatch_unicast_watches(struct l_genl *genl, uint16_t id,
--							struct l_genl_msg *msg)
--{
--	const struct l_queue_entry *entry;
--	struct l_genl_family_info *info = l_queue_find(genl->family_infos,
--							family_info_match,
--							L_UINT_TO_PTR(id));
--
--	if (!info)
--		return;
--
--	genl->in_unicast_watch_notify = true;
--
--	for (entry = l_queue_get_entries(genl->unicast_watches);
--						entry; entry = entry->next) {
--		struct unicast_watch *watch = entry->data;
--
--		if (!watch->id)
--			continue;
--
--		if (!watch->handler)
--			continue;
--
--		if (strncmp(watch->name, info->name, GENL_NAMSIZ))
--			continue;
--
--		watch->handler(msg, watch->user_data);
--	}
--
--	genl->in_unicast_watch_notify = false;
--	unicast_watch_prune(genl);
--}
--
- static void process_unicast(struct l_genl *genl, const struct nlmsghdr *nlmsg)
- {
- 	struct l_genl_msg *msg;
-@@ -914,8 +886,15 @@ static void process_unicast(struct l_genl *genl, const struct nlmsghdr *nlmsg)
- 
- 	msg = msg_create(nlmsg);
- 	if (!nlmsg->nlmsg_seq) {
--		if (msg)
--			dispatch_unicast_watches(genl, nlmsg->nlmsg_type, msg);
-+		struct l_genl_family_info *info =
-+			l_queue_find(genl->family_infos, family_info_match,
-+					L_UINT_TO_PTR(nlmsg->nlmsg_type));
-+
-+		if (info && msg)
-+			l_notifylist_notify_matches(genl->unicast_watches,
-+						unicast_watch_match_name,
-+						info->name, 0, msg);
-+
- 		goto done;
- 	}
- 
-@@ -1107,7 +1086,7 @@ LIB_EXPORT struct l_genl *l_genl_new(void)
- 	genl->notify_list = l_queue_new();
- 	genl->family_watches = l_queue_new();
- 	genl->family_infos = l_queue_new();
--	genl->unicast_watches = l_queue_new();
-+	genl->unicast_watches = l_notifylist_new(&unicast_watch_ops);
- 
- 	l_queue_push_head(genl->family_infos, build_nlctrl_info());
- 
-@@ -1150,7 +1129,7 @@ LIB_EXPORT void l_genl_unref(struct l_genl *genl)
- 
- 	l_genl_family_free(genl->nlctrl);
- 
--	l_queue_destroy(genl->unicast_watches, unicast_watch_free);
-+	l_notifylist_free(genl->unicast_watches);
- 	l_queue_destroy(genl->family_watches, family_watch_free);
- 	l_queue_destroy(genl->family_infos, family_info_free);
- 	l_queue_destroy(genl->notify_list, mcast_notify_free);
-@@ -1285,12 +1264,10 @@ LIB_EXPORT unsigned int l_genl_add_unicast_watch(struct l_genl *genl,
- 	watch = l_new(struct unicast_watch, 1);
- 	l_strlcpy(watch->name, family, GENL_NAMSIZ);
- 	watch->handler = handler;
--	watch->destroy = destroy;
--	watch->user_data = user_data;
--	watch->id = get_next_id(&genl->next_watch_id);
--	l_queue_push_tail(genl->unicast_watches, watch);
-+	watch->super.destroy = destroy;
-+	watch->super.notify_data = user_data;
- 
--	return watch->id;
-+	return l_notifylist_add(genl->unicast_watches, &watch->super);
- }
- 
- /**
-@@ -1306,29 +1283,10 @@ LIB_EXPORT unsigned int l_genl_add_unicast_watch(struct l_genl *genl,
- LIB_EXPORT bool l_genl_remove_unicast_watch(struct l_genl *genl,
- 							unsigned int id)
- {
--	struct unicast_watch *watch;
--
- 	if (unlikely(!genl))
- 		return false;
- 
--	if (genl->in_unicast_watch_notify) {
--		watch = l_queue_find(genl->unicast_watches, unicast_watch_match,
--							L_UINT_TO_PTR(id));
--		if (!watch)
--			return false;
--
--		watch->id = 0;
--		return true;
--	}
--
--	watch = l_queue_remove_if(genl->unicast_watches, unicast_watch_match,
--							L_UINT_TO_PTR(id));
--	if (!watch)
--		return false;
--
--	unicast_watch_free(watch);
--
--	return true;
-+	return l_notifylist_remove(genl->unicast_watches, id);
- }
- 
- /**
--- 
-2.45.0
+I'm seeing new test failures on dbus tests when using more than 3 make 
+jobs.  My default here is MAKEOPTS="-j4" and it's consistently failing.  
+It seems to succeed with  with "-j3" or lower. Failing tests are:
 
+FAIL: unit/test-dbus-message-fds
+FAIL: unit/test-dbus
+
+At least part of the problem seems to be starting more than one 
+dbus-daemon instance on the same IP/port.
+
+I've attached test-suite.log, any help is appreciated.
+
+Thanks,
+
+Ben
+
+--------------qBwLfbxf4NDjfC9SmxpQ7I2H
+Content-Type: text/plain; charset=UTF-8; name="test-suite.log"
+Content-Disposition: attachment; filename="test-suite.log"
+Content-Transfer-Encoding: base64
+
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0KICAgZWxsIDAuNjY6IC4vdGVzdC1z
+dWl0ZS5sb2cKPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0KCiMgVE9UQUw6IDQz
+CiMgUEFTUzogIDQxCiMgU0tJUDogIDAKIyBYRkFJTDogMAojIEZBSUw6ICAyCiMgWFBBU1M6
+IDAKIyBFUlJPUjogMAoKLi4gY29udGVudHM6OiA6ZGVwdGg6IDIKCkZBSUw6IHVuaXQvdGVz
+dC1kYnVzCj09PT09PT09PT09PT09PT09PT09CgpsYXVuY2hpbmcgZGJ1cy1kYWVtb24KZGJ1
+cy1kYWVtb24gcHJvY2VzcyAxOTczNTUgY3JlYXRlZApURVNUIEZBSUxFRCBpbiB0ZXN0X2Ri
+dXMgYXQgdW5pdC90ZXN0LWRidXMuYzoyNDc6IGRidXMKW0RCVVNdID4gNDEgNTUgNTQgNDgg
+MjAgNDEgNGUgNGYgNGUgNTkgNGQgNGYgNTUgNTMgMGQgMGEgIEFVVEggQU5PTllNT1VTLi4K
+W0RCVVNdIDwgNGYgNGIgMjAgMzIgMzAgNjUgMzggMzYgNjMgMzcgMzIgMzcgMzMgNjEgNjIg
+MzcgIE9LIDIwZTg2YzcyNzNhYjcKW0RCVVNdICAgMzIgMzUgMzcgNjUgNjUgMzAgMzkgNjYg
+MzYgMzkgMzYgMzYgMzYgMzYgMzggMzMgIDI1N2VlMDlmNjk2NjY2ODMKW0RCVVNdICAgMzcg
+MzAgMzAgMGQgMGEgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDcwMC4uICAg
+ICAgICAgICAKW0RCVVNdID4gNDIgNDUgNDcgNDkgNGUgMGQgMGEgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgIEJFR0lOLi4gICAgICAgICAKW0RCVVNdID4gNmMgMDEgMDAgMDEgMDAg
+MDAgMDAgMDAgMDEgMDAgMDAgMDAgNmQgMDAgMDAgMDAgIGwuLi4uLi4uLi4uLm0uLi4KW0RC
+VVNdICAgMDEgMDEgNmYgMDAgMTUgMDAgMDAgMDAgMmYgNmYgNzIgNjcgMmYgNjYgNzIgNjUg
+IC4uby4uLi4uL29yZy9mcmUKW0RCVVNdICAgNjUgNjQgNjUgNzMgNmIgNzQgNmYgNzAgMmYg
+NDQgNDIgNzUgNzMgMDAgMDAgMDAgIGVkZXNrdG9wL0RCdXMuLi4KW0RCVVNdICAgMDMgMDEg
+NzMgMDAgMDUgMDAgMDAgMDAgNDggNjUgNmMgNmMgNmYgMDAgMDAgMDAgIC4ucy4uLi4uSGVs
+bG8uLi4KW0RCVVNdICAgMDIgMDEgNzMgMDAgMTQgMDAgMDAgMDAgNmYgNzIgNjcgMmUgNjYg
+NzIgNjUgNjUgIC4ucy4uLi4ub3JnLmZyZWUKW0RCVVNdICAgNjQgNjUgNzMgNmIgNzQgNmYg
+NzAgMmUgNDQgNDIgNzUgNzMgMDAgMDAgMDAgMDAgIGRlc2t0b3AuREJ1cy4uLi4KW0RCVVNd
+ICAgMDYgMDEgNzMgMDAgMTQgMDAgMDAgMDAgNmYgNzIgNjcgMmUgNjYgNzIgNjUgNjUgIC4u
+cy4uLi4ub3JnLmZyZWUKW0RCVVNdICAgNjQgNjUgNzMgNmIgNzQgNmYgNzAgMmUgNDQgNDIg
+NzUgNzMgMDAgMDAgMDAgMDAgIGRlc2t0b3AuREJ1cy4uLi4KW0RCVVNdIDwgNmMgMDIgMDEg
+MDEgMDkgMDAgMDAgMDAgMDEgMDAgMDAgMDAgM2QgMDAgMDAgMDAgIGwuLi4uLi4uLi4uLj0u
+Li4KW0RCVVNdICAgMDYgMDEgNzMgMDAgMDQgMDAgMDAgMDAgM2EgMzEgMmUgMzAgMDAgMDAg
+MDAgMDAgIC4ucy4uLi4uOjEuMC4uLi4KW0RCVVNdICAgMDUgMDEgNzUgMDAgMDEgMDAgMDAg
+MDAgMDggMDEgNjcgMDAgMDEgNzMgMDAgMDAgIC4udS4uLi4uLi5nLi5zLi4KW0RCVVNdICAg
+MDcgMDEgNzMgMDAgMTQgMDAgMDAgMDAgNmYgNzIgNjcgMmUgNjYgNzIgNjUgNjUgIC4ucy4u
+Li4ub3JnLmZyZWUKW0RCVVNdICAgNjQgNjUgNzMgNmIgNzQgNmYgNzAgMmUgNDQgNDIgNzUg
+NzMgMDAgMDAgMDAgMDAgIGRlc2t0b3AuREJ1cy4uLi4KW0RCVVNdICAgMDQgMDAgMDAgMDAg
+M2EgMzEgMmUgMzAgMDAgICAgICAgICAgICAgICAgICAgICAgIC4uLi46MS4wLiAgICAgICAK
+cmVhZHkKW0RCVVNdIDwgNmMgMDQgMDEgMDEgMDkgMDAgMDAgMDAgMDIgMDAgMDAgMDAgOGQg
+MDAgMDAgMDAgIGwuLi4uLi4uLi4uLi4uLi4KW0RCVVNdICAgMDEgMDEgNmYgMDAgMTUgMDAg
+MDAgMDAgMmYgNmYgNzIgNjcgMmYgNjYgNzIgNjUgIC4uby4uLi4uL29yZy9mcmUKW0RCVVNd
+ICAgNjUgNjQgNjUgNzMgNmIgNzQgNmYgNzAgMmYgNDQgNDIgNzUgNzMgMDAgMDAgMDAgIGVk
+ZXNrdG9wL0RCdXMuLi4KW0RCVVNdICAgMDIgMDEgNzMgMDAgMTQgMDAgMDAgMDAgNmYgNzIg
+NjcgMmUgNjYgNzIgNjUgNjUgIC4ucy4uLi4ub3JnLmZyZWUKW0RCVVNdICAgNjQgNjUgNzMg
+NmIgNzQgNmYgNzAgMmUgNDQgNDIgNzUgNzMgMDAgMDAgMDAgMDAgIGRlc2t0b3AuREJ1cy4u
+Li4KW0RCVVNdICAgMDMgMDEgNzMgMDAgMGMgMDAgMDAgMDAgNGUgNjEgNmQgNjUgNDEgNjMg
+NzEgNzUgIC4ucy4uLi4uTmFtZUFjcXUKW0RCVVNdICAgNjkgNzIgNjUgNjQgMDAgMDAgMDAg
+MDAgMDYgMDEgNzMgMDAgMDQgMDAgMDAgMDAgIGlyZWQuLi4uLi5zLi4uLi4KW0RCVVNdICAg
+M2EgMzEgMmUgMzAgMDAgMDAgMDAgMDAgMDggMDEgNjcgMDAgMDEgNzMgMDAgMDAgIDoxLjAu
+Li4uLi5nLi5zLi4KW0RCVVNdICAgMDcgMDEgNzMgMDAgMTQgMDAgMDAgMDAgNmYgNzIgNjcg
+MmUgNjYgNzIgNjUgNjUgIC4ucy4uLi4ub3JnLmZyZWUKW0RCVVNdICAgNjQgNjUgNzMgNmIg
+NzQgNmYgNzAgMmUgNDQgNDIgNzUgNzMgMDAgMDAgMDAgMDAgIGRlc2t0b3AuREJ1cy4uLi4K
+W0RCVVNdICAgMDQgMDAgMDAgMDAgM2EgMzEgMmUgMzAgMDAgICAgICAgICAgICAgICAgICAg
+ICAgIC4uLi46MS4wLiAgICAgICAKcGF0aD0vb3JnL2ZyZWVkZXNrdG9wL0RCdXMgZGVzdGlu
+YXRpb249OjEuMAppbnRlcmZhY2U9b3JnLmZyZWVkZXNrdG9wLkRCdXMgbWVtYmVyPU5hbWVB
+Y3F1aXJlZApzZW5kZXI9b3JnLmZyZWVkZXNrdG9wLkRCdXMKW0RCVVNdID4gNmMgMDEgMDAg
+MDEgMmMgMDAgMDAgMDAgMDIgMDAgMDAgMDAgN2YgMDAgMDAgMDAgIGwuLi4sLi4uLi4uLi4u
+Li4KW0RCVVNdICAgMDEgMDEgNmYgMDAgMTUgMDAgMDAgMDAgMmYgNmYgNzIgNjcgMmYgNjYg
+NzIgNjUgIC4uby4uLi4uL29yZy9mcmUKW0RCVVNdICAgNjUgNjQgNjUgNzMgNmIgNzQgNmYg
+NzAgMmYgNDQgNDIgNzUgNzMgMDAgMDAgMDAgIGVkZXNrdG9wL0RCdXMuLi4KW0RCVVNdICAg
+MDMgMDEgNzMgMDAgMDggMDAgMDAgMDAgNDEgNjQgNjQgNGQgNjEgNzQgNjMgNjggIC4ucy4u
+Li4uQWRkTWF0Y2gKW0RCVVNdICAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDIgMDEgNzMg
+MDAgMTQgMDAgMDAgMDAgIC4uLi4uLi4uLi5zLi4uLi4KW0RCVVNdICAgNmYgNzIgNjcgMmUg
+NjYgNzIgNjUgNjUgNjQgNjUgNzMgNmIgNzQgNmYgNzAgMmUgIG9yZy5mcmVlZGVza3RvcC4K
+W0RCVVNdICAgNDQgNDIgNzUgNzMgMDAgMDAgMDAgMDAgMDYgMDEgNzMgMDAgMTQgMDAgMDAg
+MDAgIERCdXMuLi4uLi5zLi4uLi4KW0RCVVNdICAgNmYgNzIgNjcgMmUgNjYgNzIgNjUgNjUg
+NjQgNjUgNzMgNmIgNzQgNmYgNzAgMmUgIG9yZy5mcmVlZGVza3RvcC4KW0RCVVNdICAgNDQg
+NDIgNzUgNzMgMDAgMDAgMDAgMDAgMDggMDEgNjcgMDAgMDEgNzMgMDAgMDAgIERCdXMuLi4u
+Li5nLi5zLi4KW0RCVVNdICAgMjcgMDAgMDAgMDAgNzQgNzkgNzAgNjUgM2QgNzMgNjkgNjcg
+NmUgNjEgNmMgMmMgICcuLi50eXBlPXNpZ25hbCwKW0RCVVNdICAgNzMgNjUgNmUgNjQgNjUg
+NzIgM2QgNmYgNzIgNjcgMmUgNjYgNzIgNjUgNjUgNjQgIHNlbmRlcj1vcmcuZnJlZWQKW0RC
+VVNdICAgNjUgNzMgNmIgNzQgNmYgNzAgMmUgNDQgNDIgNzUgNzMgMDAgICAgICAgICAgICAg
+IGVza3RvcC5EQnVzLiAgICAKW0RCVVNdID4gNmMgMDEgMDAgMDEgMTQgMDAgMDAgMDAgMDMg
+MDAgMDAgMDAgODAgMDAgMDAgMDAgIGwuLi4uLi4uLi4uLi4uLi4KW0RCVVNdICAgMDEgMDEg
+NmYgMDAgMTUgMDAgMDAgMDAgMmYgNmYgNzIgNjcgMmYgNjYgNzIgNjUgIC4uby4uLi4uL29y
+Zy9mcmUKW0RCVVNdICAgNjUgNjQgNjUgNzMgNmIgNzQgNmYgNzAgMmYgNDQgNDIgNzUgNzMg
+MDAgMDAgMDAgIGVkZXNrdG9wL0RCdXMuLi4KW0RCVVNdICAgMDMgMDEgNzMgMDAgMGIgMDAg
+MDAgMDAgNTIgNjUgNzEgNzUgNjUgNzMgNzQgNGUgIC4ucy4uLi4uUmVxdWVzdE4KW0RCVVNd
+ICAgNjEgNmQgNjUgMDAgMDAgMDAgMDAgMDAgMDIgMDEgNzMgMDAgMTQgMDAgMDAgMDAgIGFt
+ZS4uLi4uLi5zLi4uLi4KW0RCVVNdICAgNmYgNzIgNjcgMmUgNjYgNzIgNjUgNjUgNjQgNjUg
+NzMgNmIgNzQgNmYgNzAgMmUgIG9yZy5mcmVlZGVza3RvcC4KW0RCVVNdICAgNDQgNDIgNzUg
+NzMgMDAgMDAgMDAgMDAgMDYgMDEgNzMgMDAgMTQgMDAgMDAgMDAgIERCdXMuLi4uLi5zLi4u
+Li4KW0RCVVNdICAgNmYgNzIgNjcgMmUgNjYgNzIgNjUgNjUgNjQgNjUgNzMgNmIgNzQgNmYg
+NzAgMmUgIG9yZy5mcmVlZGVza3RvcC4KW0RCVVNdICAgNDQgNDIgNzUgNzMgMDAgMDAgMDAg
+MDAgMDggMDEgNjcgMDAgMDIgNzMgNzUgMDAgIERCdXMuLi4uLi5nLi5zdS4KW0RCVVNdICAg
+MDggMDAgMDAgMDAgNmYgNzIgNjcgMmUgNzQgNjUgNzMgNzQgMDAgMDAgMDAgMDAgIC4uLi5v
+cmcudGVzdC4uLi4KW0RCVVNdICAgMDAgMDAgMDAgMDAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIC4uLi4gICAgICAgICAgICAKW0RCVVNdIDwgNmMgMDIgMDEgMDEg
+MDAgMDAgMDAgMDAgMDMgMDAgMDAgMDAgMzUgMDAgMDAgMDAgIGwuLi4uLi4uLi4uLjUuLi4K
+W0RCVVNdICAgMDYgMDEgNzMgMDAgMDQgMDAgMDAgMDAgM2EgMzEgMmUgMzAgMDAgMDAgMDAg
+MDAgIC4ucy4uLi4uOjEuMC4uLi4KW0RCVVNdICAgMDUgMDEgNzUgMDAgMDIgMDAgMDAgMDAg
+MDcgMDEgNzMgMDAgMTQgMDAgMDAgMDAgIC4udS4uLi4uLi5zLi4uLi4KW0RCVVNdICAgNmYg
+NzIgNjcgMmUgNjYgNzIgNjUgNjUgNjQgNjUgNzMgNmIgNzQgNmYgNzAgMmUgIG9yZy5mcmVl
+ZGVza3RvcC4KW0RCVVNdICAgNDQgNDIgNzUgNzMgMDAgMDAgMDAgMDAgICAgICAgICAgICAg
+ICAgICAgICAgICAgIERCdXMuLi4uICAgICAgICAKYWRkIG1hdGNoCltEQlVTXSA8IDZjIDA0
+IDAxIDAxIDIxIDAwIDAwIDAwIDA2IDAwIDAwIDAwIDg5IDAwIDAwIDAwICBsLi4uIS4uLi4u
+Li4uLi4uCltEQlVTXSAgIDAxIDAxIDZmIDAwIDE1IDAwIDAwIDAwIDJmIDZmIDcyIDY3IDJm
+IDY2IDcyIDY1ICAuLm8uLi4uLi9vcmcvZnJlCltEQlVTXSAgIDY1IDY0IDY1IDczIDZiIDc0
+IDZmIDcwIDJmIDQ0IDQyIDc1IDczIDAwIDAwIDAwICBlZGVza3RvcC9EQnVzLi4uCltEQlVT
+XSAgIDAyIDAxIDczIDAwIDE0IDAwIDAwIDAwIDZmIDcyIDY3IDJlIDY2IDcyIDY1IDY1ICAu
+LnMuLi4uLm9yZy5mcmVlCltEQlVTXSAgIDY0IDY1IDczIDZiIDc0IDZmIDcwIDJlIDQ0IDQy
+IDc1IDczIDAwIDAwIDAwIDAwICBkZXNrdG9wLkRCdXMuLi4uCltEQlVTXSAgIDAzIDAxIDcz
+IDAwIDEwIDAwIDAwIDAwIDRlIDYxIDZkIDY1IDRmIDc3IDZlIDY1ICAuLnMuLi4uLk5hbWVP
+d25lCltEQlVTXSAgIDcyIDQzIDY4IDYxIDZlIDY3IDY1IDY0IDAwIDAwIDAwIDAwIDAwIDAw
+IDAwIDAwICByQ2hhbmdlZC4uLi4uLi4uCltEQlVTXSAgIDA3IDAxIDczIDAwIDE0IDAwIDAw
+IDAwIDZmIDcyIDY3IDJlIDY2IDcyIDY1IDY1ICAuLnMuLi4uLm9yZy5mcmVlCltEQlVTXSAg
+IDY0IDY1IDczIDZiIDc0IDZmIDcwIDJlIDQ0IDQyIDc1IDczIDAwIDAwIDAwIDAwICBkZXNr
+dG9wLkRCdXMuLi4uCltEQlVTXSAgIDA4IDAxIDY3IDAwIDAzIDczIDczIDczIDAwIDAwIDAw
+IDAwIDAwIDAwIDAwIDAwICAuLmcuLnNzcy4uLi4uLi4uCltEQlVTXSAgIDA4IDAwIDAwIDAw
+IDZmIDcyIDY3IDJlIDc0IDY1IDczIDc0IDAwIDAwIDAwIDAwICAuLi4ub3JnLnRlc3QuLi4u
+CltEQlVTXSAgIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDA0IDAwIDAwIDAwIDNhIDMxIDJl
+IDMwICAuLi4uLi4uLi4uLi46MS4wCltEQlVTXSAgIDAwICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAuICAgICAgICAgICAgICAgCnBhdGg9L29yZy9m
+cmVlZGVza3RvcC9EQnVzIGRlc3RpbmF0aW9uPShudWxsKQppbnRlcmZhY2U9b3JnLmZyZWVk
+ZXNrdG9wLkRCdXMgbWVtYmVyPU5hbWVPd25lckNoYW5nZWQKc2VuZGVyPW9yZy5mcmVlZGVz
+a3RvcC5EQnVzCm5hbWU9b3JnLnRlc3Qgb2xkPSBuZXc9OjEuMApbREJVU10gPCA2YyAwNCAw
+MSAwMSAwZCAwMCAwMCAwMCAwNCAwMCAwMCAwMCA4ZCAwMCAwMCAwMCAgbC4uLi4uLi4uLi4u
+Li4uLgpbREJVU10gICAwMSAwMSA2ZiAwMCAxNSAwMCAwMCAwMCAyZiA2ZiA3MiA2NyAyZiA2
+NiA3MiA2NSAgLi5vLi4uLi4vb3JnL2ZyZQpbREJVU10gICA2NSA2NCA2NSA3MyA2YiA3NCA2
+ZiA3MCAyZiA0NCA0MiA3NSA3MyAwMCAwMCAwMCAgZWRlc2t0b3AvREJ1cy4uLgpbREJVU10g
+ICAwMiAwMSA3MyAwMCAxNCAwMCAwMCAwMCA2ZiA3MiA2NyAyZSA2NiA3MiA2NSA2NSAgLi5z
+Li4uLi5vcmcuZnJlZQpbREJVU10gICA2NCA2NSA3MyA2YiA3NCA2ZiA3MCAyZSA0NCA0MiA3
+NSA3MyAwMCAwMCAwMCAwMCAgZGVza3RvcC5EQnVzLi4uLgpbREJVU10gICAwMyAwMSA3MyAw
+MCAwYyAwMCAwMCAwMCA0ZSA2MSA2ZCA2NSA0MSA2MyA3MSA3NSAgLi5zLi4uLi5OYW1lQWNx
+dQpbREJVU10gICA2OSA3MiA2NSA2NCAwMCAwMCAwMCAwMCAwNiAwMSA3MyAwMCAwNCAwMCAw
+MCAwMCAgaXJlZC4uLi4uLnMuLi4uLgpbREJVU10gICAzYSAzMSAyZSAzMCAwMCAwMCAwMCAw
+MCAwOCAwMSA2NyAwMCAwMSA3MyAwMCAwMCAgOjEuMC4uLi4uLmcuLnMuLgpbREJVU10gICAw
+NyAwMSA3MyAwMCAxNCAwMCAwMCAwMCA2ZiA3MiA2NyAyZSA2NiA3MiA2NSA2NSAgLi5zLi4u
+Li5vcmcuZnJlZQpbREJVU10gICA2NCA2NSA3MyA2YiA3NCA2ZiA3MCAyZSA0NCA0MiA3NSA3
+MyAwMCAwMCAwMCAwMCAgZGVza3RvcC5EQnVzLi4uLgpbREJVU10gICAwOCAwMCAwMCAwMCA2
+ZiA3MiA2NyAyZSA3NCA2NSA3MyA3NCAwMCAgICAgICAgICAgLi4uLm9yZy50ZXN0LiAgIApw
+YXRoPS9vcmcvZnJlZWRlc2t0b3AvREJ1cyBkZXN0aW5hdGlvbj06MS4wCmludGVyZmFjZT1v
+cmcuZnJlZWRlc2t0b3AuREJ1cyBtZW1iZXI9TmFtZUFjcXVpcmVkCnNlbmRlcj1vcmcuZnJl
+ZWRlc2t0b3AuREJ1cwpbREJVU10gPCA2YyAwMiAwMSAwMSAwNCAwMCAwMCAwMCAwNSAwMCAw
+MCAwMCAzZCAwMCAwMCAwMCAgbC4uLi4uLi4uLi4uPS4uLgpbREJVU10gICAwNiAwMSA3MyAw
+MCAwNCAwMCAwMCAwMCAzYSAzMSAyZSAzMCAwMCAwMCAwMCAwMCAgLi5zLi4uLi46MS4wLi4u
+LgpbREJVU10gICAwNSAwMSA3NSAwMCAwMyAwMCAwMCAwMCAwOCAwMSA2NyAwMCAwMSA3NSAw
+MCAwMCAgLi51Li4uLi4uLmcuLnUuLgpbREJVU10gICAwNyAwMSA3MyAwMCAxNCAwMCAwMCAw
+MCA2ZiA3MiA2NyAyZSA2NiA3MiA2NSA2NSAgLi5zLi4uLi5vcmcuZnJlZQpbREJVU10gICA2
+NCA2NSA3MyA2YiA3NCA2ZiA3MCAyZSA0NCA0MiA3NSA3MyAwMCAwMCAwMCAwMCAgZGVza3Rv
+cC5EQnVzLi4uLgpbREJVU10gICAwMSAwMCAwMCAwMCAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgLi4uLiAgICAgICAgICAgIApyZXF1ZXN0IG5hbWUgcmVzdWx0PTEK
+W0RCVVNdIGRpc2Nvbm5lY3QKVEVTVDogVXNpbmcgYSB1bml4IHNvY2tldApURVNUOiBVc2lu
+ZyBhIHRjcCBzb2NrZXQKRkFJTCB1bml0L3Rlc3QtZGJ1cyAoZXhpdCBzdGF0dXM6IDI1NSkK
+CkZBSUw6IHVuaXQvdGVzdC1kYnVzLW1lc3NhZ2UtZmRzCj09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09CgpsYXVuY2hpbmcgZGJ1cy1kYWVtb24KZGJ1cy1kYWVtb24gcHJvY2Vz
+cyAxOTczODAgY3JlYXRlZApkYnVzLWRhZW1vblsxOTczODBdOiBGYWlsZWQgdG8gc3RhcnQg
+bWVzc2FnZSBidXM6IEZhaWxlZCB0byBiaW5kIHNvY2tldCAiMC4wLjAuMCIgcG9ydCAxNDA0
+NjogQWRkcmVzcyBhbHJlYWR5IGluIHVzZQpGQUlMIHVuaXQvdGVzdC1kYnVzLW1lc3NhZ2Ut
+ZmRzIChleGl0IHN0YXR1czogMTM0KQ==
+
+--------------qBwLfbxf4NDjfC9SmxpQ7I2H--
