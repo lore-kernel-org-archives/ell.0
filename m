@@ -1,136 +1,117 @@
-Received: from mail-oa1-f41.google.com (mail-oa1-f41.google.com [209.85.160.41])
+Received: from mail-oo1-f53.google.com (mail-oo1-f53.google.com [209.85.161.53])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7C3E616FF23
-	for <ell@lists.linux.dev>; Fri, 14 Jun 2024 16:08:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D626E2232A
+	for <ell@lists.linux.dev>; Fri, 14 Jun 2024 16:15:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.53
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1718381331; cv=none; b=LDs99eew+UPz7fL9xGj4Tq1MECU5JKXKqzSqhauuEyCsuoUWFpM55JnfkwfPq3PBjYdIJ+gpWhvk5MAU6N371L0wGe2lTPghsfZZ5Y8WWoDmIaMcu2PGegIRUNbx1uCwj7kzh7Fb7iONhsr1DzWgd1L2A3N+LRwWYE4elZkORK8=
+	t=1718381724; cv=none; b=TbJhNZGrIEUuvRcWs4PogW5S4PtN7948Z22KFgu6oBbyhtE+12GWcdo27NkKlhUAu/6rLfzRpFcyT51glQaA6QtZGP3Z2Hcs+GLxh+il8jvi6sssTFr8s7pokMMk2LONwM1g9JwWKHEW2iPYiMEwH7F2whPSwKbV2VSeNVrtFYI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1718381331; c=relaxed/simple;
-	bh=FlcKWnR/Csbm3Zo3ycBqko2qbfbd34Cmy7G/YTnjjL4=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=jA20H9SDK+IJV3x9FuvMn8XqNtXimU8AAbzMA0cqZdSwz0QemEaABOO869O25IOsJ4HkmCP2GuL551XgoFu8RTSc2AdLZKDzlzpSr0HiIjNbQH7fX2RDgJPCOI8Osv48Ov+LaVFlFO16ZI4yXT+CNp8xGKBD2B1XcSrHwVSio4w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=WaMBQJb6; arc=none smtp.client-ip=209.85.160.41
+	s=arc-20240116; t=1718381724; c=relaxed/simple;
+	bh=ZB5B1EPVvObD1cW5fJkJPyFZ9DDcDP+RyLyHR2LQ+D8=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=OblWXb+99x/28Q1le39nK90dejDy3mn4Fg3LdS1DE2DBcQ0fj4iW39SM6LkehwRTQBI4zUVX7VHtWlmmmgpTXaeFl0C0pKvjhmT9orzI+WNtDORzDOhaiFousQXN7tUvTTESjYwrrwgmANHIHfEF59RiLtuDdYosdjkNmsmXPoE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=C9ZB40+s; arc=none smtp.client-ip=209.85.161.53
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WaMBQJb6"
-Received: by mail-oa1-f41.google.com with SMTP id 586e51a60fabf-24c9f628e71so1109051fac.1
-        for <ell@lists.linux.dev>; Fri, 14 Jun 2024 09:08:50 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="C9ZB40+s"
+Received: by mail-oo1-f53.google.com with SMTP id 006d021491bc7-5ba33b08550so1145173eaf.2
+        for <ell@lists.linux.dev>; Fri, 14 Jun 2024 09:15:22 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1718381329; x=1718986129; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=z8tQhbxVXB4nasvlzn9maRmSUbwucIlj/I0F/6eji6E=;
-        b=WaMBQJb6wXYMj950zpl8kFvhjRVe5Q1B1Jm04Jmeh8Rif+lAn+AlE/v7cxo/AMLHTC
-         FPBmCPzKXKDYTmIm11R0lfUKnHE1IkIZxnRhYiCjwc04JhE52y1jYMk5YvVsPipX1KqI
-         6PsTVDLA6uSO66S0+yJRaDtcboQ2McgX5SjQ1CbT8A4aQAsglvuOCU2t9whOVtP8mLx/
-         yAW3TTfNECmc/ws45Xy79D78AOBw9QQJMcZJ3v9Kqy7I6/uXLErMHcarrRWZ/i637pFT
-         4IxtNVbGGdFlb2G/yiHtMVCkcTeIkfWRvv73iFp9moqw7Zo819PPNzauTSlt3sCu3vt5
-         1YqQ==
+        d=gmail.com; s=20230601; t=1718381722; x=1718986522; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=aEP6R46Pg4jIrCfapiEYs9AKEncg+l8XYGiuWirFnjY=;
+        b=C9ZB40+s+PJ/ROgC+U9YaiqFnmcM39B0mFpmq7NMZzi6Iu+7BogJ/cX9W9uS2eTmxe
+         mYiQOMCjfBfQAGLeAO4biH5l0IQR/pdMRJAxHCjVrIK+efD/TRPXoPJBdAdkDiDbXuVe
+         brJfmtLuWdSpcoTyF4utrjFu/wGuZHvsRijFSj9NNY76L7tGVjkB0NHnjocMsDEbEXem
+         M2lCDvpEwOa7shJkeX3gYSfQpM5hN30ykZ6v6EyOo43AQI77LCUIMz2Qph6XNfYX1fRw
+         ueauCT9CwGTDNqDTSa+nD0pSsJMrk+Sk5F2KDMFo65jQDSGSqfWFc3pBrBUaTQZbmzH0
+         H2fw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1718381329; x=1718986129;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=z8tQhbxVXB4nasvlzn9maRmSUbwucIlj/I0F/6eji6E=;
-        b=P+2FTldl3Aqzw/n+Oj9BnuXA/yeQNOoZ8SvF2BnJ9qJJzh/oPj6roirVpVaZnQgkvl
-         ZvkFctPo4QDn7vRSDgjjlwLSbwIFnD2g1xE6U6CauezJQN0MwZYRAwleblf854u33/+t
-         zHGeoTQt8zFghHDoK4pBCSUTsnmIF3incABkxwpp9q24HRTh1WaGnZDgt9pdSbLtenL2
-         WufYMEnLzR26hRcsdP4CnfR6aSKmotzA+0b1j04YvYt4xqWt5vBb07dADVI5fzrYYLQ+
-         kEQQa8JUsze00SAHYPFF5AJxtjczCV0hHK90fRECh2XmFGx7GCFgfC16jJUbrm9Pv+qm
-         AMDQ==
-X-Gm-Message-State: AOJu0Yxk87AuiKfYMUEXrP8D+nfnLUhK9dk5UWqpXxY5jFZ9B33zmvi1
-	GYiRQb4sZzWq1SjJywhPZ1kX5D+ANhDiVE1zySlrsRPQPWnzItTCD6z/iw==
-X-Google-Smtp-Source: AGHT+IHkagwNJKz27aNLQ8gu5+lsNHkI5ro8e8NofPBw8IzbFUWdhKR9Oux8pL99n7cHbf95h39hWw==
-X-Received: by 2002:a05:6870:5707:b0:254:c08d:cb55 with SMTP id 586e51a60fabf-25842853596mr3233553fac.5.1718381329108;
-        Fri, 14 Jun 2024 09:08:49 -0700 (PDT)
-Received: from localhost.localdomain (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-2567a94e8f1sm1022778fac.8.2024.06.14.09.08.48
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 14 Jun 2024 09:08:48 -0700 (PDT)
-From: Denis Kenzior <denkenz@gmail.com>
-To: ell@lists.linux.dev
-Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH] sysctl: Add setter / getter for char settings
-Date: Fri, 14 Jun 2024 11:08:36 -0500
-Message-ID: <20240614160847.1085476-1-denkenz@gmail.com>
-X-Mailer: git-send-email 2.45.0
+        d=1e100.net; s=20230601; t=1718381722; x=1718986522;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=aEP6R46Pg4jIrCfapiEYs9AKEncg+l8XYGiuWirFnjY=;
+        b=Ir6SoPyrIfGCyR9ZJ2Ioi0OiXl+uPdNV7LThuKd7PskDcJse+qw6ObdIX2GaZiTDQ8
+         bdLNy2q8XqMJfQzcH2dRHSc86mRGTYM//NpudSdDwt5NdUIT7lvKB5MwuUXaXuLME72z
+         oqiEAtPbLakVj75J0qktg0QfgNkRV3RIx13IwE4SspHFXsl84Rjf6zH7oCKCXR1ehngJ
+         6YuKwhudb2fAFDkvrT0ps1WLsdHACjMCqUUbmJx8/8dmHvMeK9i6nHEKWXF14oUxigBL
+         /p0pNNfPpLEivZESiVgTL/iIMfVxWSXYXYdb2GMZ2bVzgBb3ax4xRA7G8nu+LgcWxLtT
+         ytlg==
+X-Forwarded-Encrypted: i=1; AJvYcCU+LpoqGqE3HE4kKk7JZ0vYx4zZN6bGIAZWLn2f45czlLzarQ1Xh6nAExlWAuCIIwOU4bDWGdMzB34MMV+1FbZ6ZioB
+X-Gm-Message-State: AOJu0Yxf5JAadBiXcsN4ZRotQOU/i8mxiYYC7Zzqi/h8q+0yiPKq3eZT
+	B94JHmzSLZpbocLuFAWFX1jITXu4+Q6QFlRMvmfIEgS1/qq18dGU
+X-Google-Smtp-Source: AGHT+IEK1en+UI7EGcHcVONBvCp+bkN621vJs7PpczeqqeEsht0vUzi+cUT6OMDPXVKhjO75ip1azg==
+X-Received: by 2002:a05:6820:555:b0:5bb:672:405f with SMTP id 006d021491bc7-5bdadc577acmr3194725eaf.7.1718381721749;
+        Fri, 14 Jun 2024 09:15:21 -0700 (PDT)
+Received: from [192.168.1.21] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id 006d021491bc7-5bdbcf8980asm30685eaf.30.2024.06.14.09.15.21
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 14 Jun 2024 09:15:21 -0700 (PDT)
+Message-ID: <f3ab488c-f6e2-4afd-b2df-508a3d7d0eb6@gmail.com>
+Date: Fri, 14 Jun 2024 11:15:20 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: New tests fail with parallel make
+To: "Kohler, Benjamin" <bkohler@gentoo.org>, ell@lists.linux.dev
+References: <20f687ff-38ed-4f8a-9a61-cb698ddf0452@gentoo.org>
+ <c11b87a0-df30-4515-9963-05418e03dc55@gentoo.org>
+Content-Language: en-US
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <c11b87a0-df30-4515-9963-05418e03dc55@gentoo.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
----
- ell/ell.sym  |  2 ++
- ell/sysctl.c | 24 ++++++++++++++++++++++++
- ell/sysctl.h |  5 +++++
- 3 files changed, 31 insertions(+)
+Hi Ben,
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 0587beb398bc..9fcc3aad9a2f 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -788,6 +788,8 @@ global:
- 	/* sysctl */
- 	l_sysctl_get_u32;
- 	l_sysctl_set_u32;
-+	l_sysctl_get_char;
-+	l_sysctl_set_char;
- 	/* notifylist */
- 	l_notifylist_new;
- 	l_notifylist_free;
-diff --git a/ell/sysctl.c b/ell/sysctl.c
-index 8b1b575e93a8..4ac569c34bad 100644
---- a/ell/sysctl.c
-+++ b/ell/sysctl.c
-@@ -95,3 +95,27 @@ LIB_EXPORT int l_sysctl_set_u32(uint32_t v, const char *format, ...)
- 
- 	return sysctl_write(filename, valuestr, len);
- }
-+
-+LIB_EXPORT int l_sysctl_get_char(char *out_c, const char *format, ...)
-+{
-+	_auto_(l_free) char *filename = NULL;
-+	va_list ap;
-+
-+	va_start(ap, format);
-+	filename = l_strdup_vprintf(format, ap);
-+	va_end(ap);
-+
-+	return sysctl_read(filename, out_c, sizeof(char));
-+}
-+
-+LIB_EXPORT int l_sysctl_set_char(char c, const char *format, ...)
-+{
-+	_auto_(l_free) char *filename = NULL;
-+	va_list ap;
-+
-+	va_start(ap, format);
-+	filename = l_strdup_vprintf(format, ap);
-+	va_end(ap);
-+
-+	return sysctl_write(filename, &c, sizeof(char));
-+}
-diff --git a/ell/sysctl.h b/ell/sysctl.h
-index b777eb5186f1..a1f9501493a5 100644
---- a/ell/sysctl.h
-+++ b/ell/sysctl.h
-@@ -20,6 +20,11 @@ int l_sysctl_get_u32(uint32_t *out_v, const char *format, ...)
- int l_sysctl_set_u32(uint32_t v, const char *format, ...)
- 			__attribute__((format(printf, 2, 3)));
- 
-+int l_sysctl_get_char(char *out_c, const char *format, ...)
-+			__attribute__((format(printf, 2, 3)));
-+int l_sysctl_set_char(char c, const char *format, ...)
-+			__attribute__((format(printf, 2, 3)));
-+
- #ifdef __cplusplus
- }
- #endif
--- 
-2.45.0
+On 6/11/24 6:43 AM, Kohler, Benjamin wrote:
+> Hello,
+> 
+> I'm seeing new test failures on dbus tests when using more than 3 make jobs.  My 
+> default here is MAKEOPTS="-j4" and it's consistently failing. It seems to 
+> succeed with  with "-j3" or lower. Failing tests are:
+> 
+> FAIL: unit/test-dbus-message-fds
+> FAIL: unit/test-dbus
+> 
 
+Indeed.  DBus tests use a well-known path to start a private dbus daemon, so 
+they will fail if ran in parallel.  See:
+
+[denkenz@archdev ell]$ grep -R TEST_BUS_ADDRESS *
+unit/test-dbus.c:#define TEST_BUS_ADDRESS_UNIX "unix:path=/tmp/ell-test-bus"
+unit/test-dbus.c:#define TEST_BUS_ADDRESS_TCP "tcp:host=127.0.0.1,port=14046"
+unit/test-dbus.c:	l_test_add("Using a unix socket", test_dbus, 
+TEST_BUS_ADDRESS_UNIX);
+unit/test-dbus.c:	l_test_add("Using a tcp socket", test_dbus, TEST_BUS_ADDRESS_TCP);
+unit/test-dbus-properties.c:#define TEST_BUS_ADDRESS "unix:path=/tmp/ell-test-bus"
+unit/test-dbus-properties.c:		dbus = l_dbus_new(TEST_BUS_ADDRESS);
+unit/test-dbus-message-fds.c:#define TEST_BUS_ADDRESS "unix:path=/tmp/ell-test-bus"
+unit/test-dbus-message-fds.c:		dbus = l_dbus_new(TEST_BUS_ADDRESS);
+
+> At least part of the problem seems to be starting more than one dbus-daemon 
+> instance on the same IP/port.
+> 
+
+Right.  Our CI runs make check without parallelization, so we never see this. 
+I'm not sure if there's a way to force automake to run the test suite serially?
+
+ChatGPT suggested adding this to Makefile.am:
+AM_TESTS_ENVIRONMENT = TESTSUITEFLAGS='-j1
+
+But that didn't work.  Maybe others have better ideas?  My knowledge of automake 
+is limited.
+
+We could also possibly make the bus address unique for each test?
+
+Regards,
+-Denis
