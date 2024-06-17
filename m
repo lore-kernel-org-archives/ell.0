@@ -1,82 +1,85 @@
-Received: from mail-oo1-f43.google.com (mail-oo1-f43.google.com [209.85.161.43])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from www530.your-server.de (www530.your-server.de [188.40.30.78])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6E7849638
-	for <ell@lists.linux.dev>; Fri, 14 Jun 2024 18:51:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.43
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBB481940AD
+	for <ell@lists.linux.dev>; Mon, 17 Jun 2024 12:45:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=188.40.30.78
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1718391112; cv=none; b=L91bbKEFO8Jbia9tw8MiLVxB2y3QxhsUrDmjNTsWL6aPNp/A4nEedjou6khCxOT9K9afzwm0Pwqb9szFjBy4NAgwj6pakKKnabFZEVxraDMIUwYLX6KFQIpM5hdqJbEASk/jhxGRSTijYQAqEof2lS87S5q36fEYNGC0xkWkW9I=
+	t=1718628346; cv=none; b=paNBKkEgMZJIN357zDdTs2Zq9TMDvJpRZO9+Yw9HjzmkZrWzyO7R/xHeNXSmO4J8kF5KNmQdEiBUZxkzTnTQZio0ewG6b0SaDeIaIRi37VUjAP1gpsKaHDigxXfVHWIF+xid5RpZy9WkZCwjpwgTDqhhXFv5hWxOKHS8J8kjuo4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1718391112; c=relaxed/simple;
-	bh=UWVzJuoCKplUP8hgztYimM2PjNK3I1L76uxGS4zksPA=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=qXfknOc/yDR5ixor+qsoYAWiHub+IYXsl3faBC2mdlELZBmcFPqLJlCjRYWuVKqqLtJuLHFq7SidHOPNSTSD8iiSV2T3x+Lk5cS0MsI0NvMRJsc8dbdRvI6aOhtK8c0+pN0KvShNIAq86U7QBxSlpRdRg8P8jYu4/pgxFpl9DcE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Y6QeCTnW; arc=none smtp.client-ip=209.85.161.43
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1718628346; c=relaxed/simple;
+	bh=k25Q9m9RA6qBxK9eby3kEvKGGC70RLwMiCflz6qZVv0=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Op8DaEkWbXCDgmfoA5V2P1LrM5lMKnBhp2N0PJJiMF2rrD34sFhHxyaKc/dg3OrlOeNfB5oUlmHpySdaX6AAVnr2lbIYUTw1jrajPg0iEBtmO0rh5sJ1Kl6DqaPYhu1qB48xvagagk+s+ssGbjbIpXRIzhBBM9e9W+HG6eErV4Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=geanix.com; spf=pass smtp.mailfrom=geanix.com; dkim=pass (2048-bit key) header.d=geanix.com header.i=@geanix.com header.b=QNB8ql1J; arc=none smtp.client-ip=188.40.30.78
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=geanix.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=geanix.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Y6QeCTnW"
-Received: by mail-oo1-f43.google.com with SMTP id 006d021491bc7-5b97b5822d8so1197112eaf.3
-        for <ell@lists.linux.dev>; Fri, 14 Jun 2024 11:51:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1718391110; x=1718995910; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=0Gzyq1IUu+nnkybgGfYS0I/Mr73dUzKhzSmai/PpECs=;
-        b=Y6QeCTnWfpNXs5vaLXj90C9TedFAsJzRHh6rgvhJnkc6R15trGPMoXaI5DPkT91RCh
-         b8h4OTE4r9l0NwCwXaKEJc1mdJhilEYBwiooq5vLOAs6tk97mzzRYZi6G8oIh/NXO6pF
-         RgwIWoJx4w4rDWfkx8vWcVdYc4u7cXjphw06GmXOZiYir8Rx+ziu6VNlrt4IwrEskZTw
-         FQpzwTeUiIyDbhEQlLXVSYf0+tBknH1Fd2Xp1qorLHtnSdmob2d5vNkWWKbSmsoMe5Qs
-         qPy5bbRH51DeoP+dm6/FcBClofg2y6bI5PbHGGajKwBgKf1dy3HFgKMLT/o0xSog/ORj
-         qbaQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1718391110; x=1718995910;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=0Gzyq1IUu+nnkybgGfYS0I/Mr73dUzKhzSmai/PpECs=;
-        b=l2Ue0oCbWwaD4Rs9MXe8yYY5wJd9JnyRTgVsjdl/Q/A3RIqsY16jA2VU1m9gUQeoce
-         E2VwvfwkGbtCF5eXdnezslfgajfc49bdoU1zq1T/+gEG+uSMp5sG4wJ6Sdg8qC21e6Rh
-         PHWLFBSpLCU9Sj+oUbt7QAGfm03Tn+Dz3POkmihsQ1pi53DJOWd8jYc3iGbwPd/u04Dy
-         ssxsu7kLKUyXk8XeoiOw85U2kwstXz9OSTAWUMNgl59XEY1FfnK3oOEvbMdypz19VJgD
-         62lU/iDwbJbhDSawUjceP63eQlgEFpEluYRTUGTIqSMzvfxo+9nOpRYmrvDOYqZYp0tq
-         k+Zw==
-X-Gm-Message-State: AOJu0YxgLgTg5j949Hn5tj0sHSmW5Q2VPuLyrzd56o5yIa4sigGp0xGO
-	1THWaUvBze9kRUOhxzrIoI0tvLmfuo6jt1KH0z7Uf6OBduckWroieYlzYA==
-X-Google-Smtp-Source: AGHT+IFbntVZSTeUSzJL1gi/cfp1/ciohkoF/r9+i0SVg6WY/pT+xBcwaIH2NfMc3CT1NvC2+Ygz1w==
-X-Received: by 2002:a05:6820:1ad4:b0:5b9:fc9f:6a6c with SMTP id 006d021491bc7-5bdad9fd485mr3823757eaf.0.1718391109775;
-        Fri, 14 Jun 2024 11:51:49 -0700 (PDT)
-Received: from [192.168.1.21] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 006d021491bc7-5bd5e19ebb6sm548516eaf.25.2024.06.14.11.51.49
-        for <ell@lists.linux.dev>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 14 Jun 2024 11:51:49 -0700 (PDT)
-Message-ID: <c516f9ae-1d32-4b84-a657-9ab57f27dfaf@gmail.com>
-Date: Fri, 14 Jun 2024 13:51:48 -0500
+	dkim=pass (2048-bit key) header.d=geanix.com header.i=@geanix.com header.b="QNB8ql1J"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=geanix.com;
+	s=default2211; h=Content-Transfer-Encoding:MIME-Version:Message-ID:Date:
+	Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
+	Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+	:Resent-Message-ID:In-Reply-To:References;
+	bh=08NtA3P66XJ5LqH6OGpbZw6xzs2GYfWDWL1iXK+QQnE=; b=QNB8ql1JIV0qz+uC6VTKuxylDl
+	DkEyxsInX5gelmrxaBBrWC5zmK5fn5TvCvF+eh7kSZZMNc3ht2TuB2H6JUQqXLjBRvTfIPTXxT2D8
+	XHlPn1EC1VeNQ4beOFcM27vFl8mJ3u/54RGVnpFFgLGRVrfYYsEjMYdYTQCwhZAEUr5ipIEMjilZr
+	ridZdM5rNQrxOoJmu/VFqXa7wPXOOw8xfUYFPtYHISCtJ0XNVWxRpiwM6o7sm+y3C46aMLUW6/3qM
+	TkSTGEXA86bAODHQkmO+/Y0IlGz2d34P3LOJaA4z3WlL/UowXphiDRwbVQ0/OHd+REznzdABgb5q1
+	6uc9LPJg==;
+Received: from sslproxy06.your-server.de ([78.46.172.3])
+	by www530.your-server.de with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
+	(Exim 4.94.2)
+	(envelope-from <martin@geanix.com>)
+	id 1sJBUY-000NcO-ON; Mon, 17 Jun 2024 14:29:43 +0200
+Received: from [185.17.218.86] (helo=zen..)
+	by sslproxy06.your-server.de with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
+	(Exim 4.96)
+	(envelope-from <martin@geanix.com>)
+	id 1sJBUU-00045b-24;
+	Mon, 17 Jun 2024 14:29:42 +0200
+From: =?UTF-8?q?Martin=20Hundeb=C3=B8ll?= <martin@geanix.com>
+To: ell@lists.linux.dev
+Cc: =?UTF-8?q?Martin=20Hundeb=C3=B8ll?= <martin@geanix.com>
+Subject: [PATCH] unit: don't specify tcp hostname in dbus config
+Date: Mon, 17 Jun 2024 14:29:38 +0200
+Message-ID: <20240617122939.1249697-1-martin@geanix.com>
+X-Mailer: git-send-email 2.45.2
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] sysctl: Add setter / getter for char settings
-To: ell@lists.linux.dev
-References: <20240614160847.1085476-1-denkenz@gmail.com>
-Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20240614160847.1085476-1-denkenz@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-Authenticated-Sender: martin@geanix.com
+X-Virus-Scanned: Clear (ClamAV 0.103.10/27309/Mon Jun 17 10:30:25 2024)
 
-On 6/14/24 11:08 AM, Denis Kenzior wrote:
-> ---
->   ell/ell.sym  |  2 ++
->   ell/sysctl.c | 24 ++++++++++++++++++++++++
->   ell/sysctl.h |  5 +++++
->   3 files changed, 31 insertions(+)
-> 
+Testing dbus with no network interfaces available on the host fails
+with:
+  dbus-daemon[291]: Failed to start message bus: Failed to lookup host/port: "*:14046": Name or service not known (-2)
 
-Applied
+Seems like "*" isn't a valid hostname in such cases:
+  https://bugs.freedesktop.org/show_bug.cgi?id=28979
+
+According to the linked issue, the fix is to simply omit the host= and
+bind= parameters in the config.
+---
+ unit/dbus.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/unit/dbus.conf b/unit/dbus.conf
+index 5fe41a9ad6a6..3651e44538b1 100644
+--- a/unit/dbus.conf
++++ b/unit/dbus.conf
+@@ -7,7 +7,7 @@
+   <allow_anonymous />
+ 
+   <listen>unix:path=/tmp/ell-test-bus</listen>
+-  <listen>tcp:host=localhost,bind=*,port=14046,family=ipv4</listen>
++  <listen>tcp:port=14046</listen>
+   <apparmor mode="disabled" />
+ 
+   <policy context="default">
+-- 
+2.45.2
 
