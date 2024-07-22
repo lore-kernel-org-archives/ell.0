@@ -1,94 +1,90 @@
-Received: from mail-oi1-f178.google.com (mail-oi1-f178.google.com [209.85.167.178])
+Received: from mail-oo1-f50.google.com (mail-oo1-f50.google.com [209.85.161.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7970C1AD9C9
-	for <ell@lists.linux.dev>; Thu, 20 Jun 2024 15:02:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.178
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 388FB18030
+	for <ell@lists.linux.dev>; Mon, 22 Jul 2024 19:04:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1718895721; cv=none; b=M+baV8aQj2XcKkUO2JEZ4LL++B3VYl3Zoe98MxIYkpZ/fA8TcOwCSNxm1n5FQNJh2z/2rqJAnlB4hV+kfko7IqtqYYe+QBLpcI0lTJUCOx/aY6/hQyBQc5Zq2qNlzSY9OSKX3EC+bmuocTT7+uaXVeTjBUupp1/XImRNnVtmtzk=
+	t=1721675088; cv=none; b=Q0E/28OeFYWm28igDO74fRfqTfd4wpzwAsPA+nXugxfH6OA4N8YpiooURafnCRJgY2Z6hIn6BoYrTIoxD69hFdFypY3VWRzZO4VE9faVrG2ze2SFGM/RKzcxTUo3ZnpZqK8Kgc7YcdSK+AyXhJIYC7XMM+mgEqoBMnyt5gylGzQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1718895721; c=relaxed/simple;
-	bh=zrILH9SyDflNk88zbrchRdhb8nKgPSSFXdVZSsRauis=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=CAUNH7qcaPGnn6q894P/x60Aw7CjPZihScV9Qu4AnnF2QWdy9eQvQKd8DOQbs1LjfsJudWiOQECrF2Ncl5lWWbzBX6nA5pNqmvaQkNyH9CloLZwRyWHKbg+g8o2apGVIWBTAJuf4Z4rXJZGtChEFLZ96m8SXBXGQhuK4hs0v25E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=OcdtWaXn; arc=none smtp.client-ip=209.85.167.178
+	s=arc-20240116; t=1721675088; c=relaxed/simple;
+	bh=Z4jFBkz/sqQaJ0jaV769Swf3yzEUugsksMGiRoZ8hsM=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=IrOcBkLj2I3LTrc9I6MpIKO1Na2F6hIFIMHY+4pJnlq79+pv/Lp7eAFSnqFGA/duudEMWDSiG6JX12HBXuaUz9tmxm05ihNlutwMtzqwEEKQIStSZQNDTA1Cdj0/fDftLPj8mQX7+ZUUj3Xe4Pw5ijMdyfy/nTLZX9HuUN+vsno=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TwQ7Dqwc; arc=none smtp.client-ip=209.85.161.50
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OcdtWaXn"
-Received: by mail-oi1-f178.google.com with SMTP id 5614622812f47-3d22378c59eso552401b6e.1
-        for <ell@lists.linux.dev>; Thu, 20 Jun 2024 08:02:00 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TwQ7Dqwc"
+Received: by mail-oo1-f50.google.com with SMTP id 006d021491bc7-5d5846f797aso404525eaf.0
+        for <ell@lists.linux.dev>; Mon, 22 Jul 2024 12:04:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1718895719; x=1719500519; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=Qv9/sJDN3BD3tZD8L9DZUJOWPAzbKlRpPuuBqpDzAbE=;
-        b=OcdtWaXn3WCMgygl6NHyefjao6n2KUp5oVc9M0/AtLxP420w9SX0mPKH3dy43jUdCH
-         SOYyGV+GtJuLuC/9OPtpWBNhHzLDsAktRnG5MjNymE8hPWi5Qy7PKGgQQpt0+DSrd9jY
-         BTXptsWAWPOk9A9w1Mk2niw9s5rCfkg3Pyc65ddn8ZvaxOeBrHk8jJvDtjOO0I3wprL4
-         OxgjTMQmbbTWux1Qc1JwQ6N5pj+AvBsgIKso6v57/EfUNXn0OJ6n9L4gxu44JUpm5xet
-         YYTTkBCIemgUohni1bmGG9RxTL3KzkEBqHN8ONqDEEhOuzbHBqzSNnIgcfjRGsvpMrG3
-         YvqQ==
+        d=gmail.com; s=20230601; t=1721675086; x=1722279886; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=/3JMGqD0j4AtdgIadpyC8Tft9BzzxUUNEYDEsvlR9Zk=;
+        b=TwQ7DqwcfFl9eSMOGfg3dXDto/FOywYzvP7w1kciNyuHgA4eWEfHJpQQCB6luGj2yk
+         MrVUHpRl4y2xiaxeFMY8q/dp+2wjz5jnzRXHiC28whGOeUdV5RVihFNYmqJuMwmHsCyo
+         LZ6WOSK6e6EYY0AUJhcYOw1B1HfFBs3w1y1+hcNFXM/T1EpwYFrVvRAXA5g5YkEEsHzG
+         QOiCzgfVnxAL0VWqYqlldQcSF93+3htC2Om9K9mReFEkt+RKJVrbVnd1rkJVhAjYHKdj
+         lm8NrzV3L76S7hHeIG2LKwalMWYSOEytBtbbnFGqwC/p46gZdVhZ360LgrMe5EdEC0NY
+         ffGw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1718895719; x=1719500519;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=Qv9/sJDN3BD3tZD8L9DZUJOWPAzbKlRpPuuBqpDzAbE=;
-        b=f/lswYNOt1Si3g71r/LEwpzQ8HGHr+qLK6G67qZV7fpsLihk/hLffkBwgpNzUv3leI
-         jIXYdiHkWhrClBQG9pRm+2XKoEkNpOJpQDhNd2Diu2IVhIfKftSgUund2VL96HV90rzv
-         OtexTgOv+a0keL7VtuS8AuSKe/sThxx/dOT6PbEV52onpUXv2qkDlmtx7RFlP6DLNbBK
-         kxDMjkrhJDhKq75RjH2xkfem+sHH11b48EiQAiIS8Yf3LOLl0G3wsAfB8nswuOy6EfY/
-         ytfzSHfr9IGGdUA9/mBAxnU9O+8WOp3Vjz8xYZf1PR1OEpXa7wZHCuTPzHJ6EqvbOsI9
-         KAUQ==
-X-Forwarded-Encrypted: i=1; AJvYcCU0/Zj4PdbFgDRAl9X5WY2NmKoxm/XJF0oFhdi2kUdx+2L47okiV2O7RXJj6yEy0RpT1G4dU4uiLoWYGxZ4NABGvAVv
-X-Gm-Message-State: AOJu0Yxly2rSHGTJsxya1i/Dlk1TMHRsvm4Z4LdhWPEiuTU5Nz9q81jQ
-	z9JPLDOz28w2a+0Qu+oIKsgNimBSPWLx+phrfggLm5MusyeGPqTynQ1rPQ==
-X-Google-Smtp-Source: AGHT+IGJbNPxxyApG+9RwNiwfN0p2zT3v8XbdG3GHKO+0Sm/KsIRtu4kYmvZAPWhCCp0fvn4CnRByw==
-X-Received: by 2002:a05:6808:150c:b0:3d2:1fdd:286f with SMTP id 5614622812f47-3d51badba4cmr6313352b6e.49.1718895719535;
-        Thu, 20 Jun 2024 08:01:59 -0700 (PDT)
-Received: from [192.168.1.21] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 5614622812f47-3d2475e5072sm2545482b6e.9.2024.06.20.08.01.59
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 20 Jun 2024 08:01:59 -0700 (PDT)
-Message-ID: <d5240471-542a-40b5-920f-2d47dbafe5e9@gmail.com>
-Date: Thu, 20 Jun 2024 10:01:57 -0500
+        d=1e100.net; s=20230601; t=1721675086; x=1722279886;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=/3JMGqD0j4AtdgIadpyC8Tft9BzzxUUNEYDEsvlR9Zk=;
+        b=MZDY9Wiw/8oTn3hMrBljHscwUlWzJSGPdJs9VzfRuxXGDlgn9QjGiIL4lzMn8POsvf
+         1sq8mlVvwpI45QWoXOshGk8LhKjW7zfZ2aL6CJtjDyS780Da2gGrsaojkBAr9LvoPsZY
+         yB4XgIjCM0wOO264pePX6Kr3X9aKdHJhQsIC2WV6Dd3fz7vkiLvkmxWrzlLw6hqaa/Ha
+         TWiabpWcg6NvNHLuEaLXC7xedL8/LQhSXzZlklFnVJbYrEqdW92m2iAEUTlnbwhK0sT8
+         NvVPfa8iPkmNxTk/q8hT0ZuTZXOaKfMoY+AL8P9ea+20Zdxsy9zbIU3WDiqyIEQ9yXtG
+         CjYQ==
+X-Gm-Message-State: AOJu0YxN02fk9L2arOR64CAJgNspEhBKTkb+dWR1ErhrTUwAqjHapK3i
+	AgDjgtOX1CGMyVlMss4/1ElaZQWnVSqcKmbYD+QzmIeODNajilxjgu66Rw==
+X-Google-Smtp-Source: AGHT+IGLzyflDBK6IPdKxvnFh75CSvRbUIPT5XHXdfGOxCfvWTMDpqE8PqlMXyCF4Ait6jtxBw0SbA==
+X-Received: by 2002:a05:6820:4c04:b0:5cc:a794:9ea7 with SMTP id 006d021491bc7-5d58b807b66mr1175897eaf.7.1721675086064;
+        Mon, 22 Jul 2024 12:04:46 -0700 (PDT)
+Received: from localhost.localdomain (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-5d55aaee1fasm1411186eaf.42.2024.07.22.12.04.45
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 22 Jul 2024 12:04:45 -0700 (PDT)
+From: Denis Kenzior <denkenz@gmail.com>
+To: ell@lists.linux.dev
+Cc: Denis Kenzior <denkenz@gmail.com>
+Subject: [PATCH 01/12] useful: Add utility to find the next power of two
+Date: Mon, 22 Jul 2024 14:04:18 -0500
+Message-ID: <20240722190443.43196-1-denkenz@gmail.com>
+X-Mailer: git-send-email 2.45.2
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] unit: don't specify tcp hostname in dbus config
-To: =?UTF-8?Q?Martin_Hundeb=C3=B8ll?= <martin@geanix.com>, ell@lists.linux.dev
-References: <20240617122939.1249697-1-martin@geanix.com>
-Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20240617122939.1249697-1-martin@geanix.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
-Hi Martin,
+---
+ ell/useful.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-On 6/17/24 7:29 AM, Martin Hundebøll wrote:
-> Testing dbus with no network interfaces available on the host fails
-> with:
->    dbus-daemon[291]: Failed to start message bus: Failed to lookup host/port: "*:14046": Name or service not known (-2)
-> 
-> Seems like "*" isn't a valid hostname in such cases:
->    https://bugs.freedesktop.org/show_bug.cgi?id=28979
-> 
-> According to the linked issue, the fix is to simply omit the host= and
-> bind= parameters in the config.
-> ---
->   unit/dbus.conf | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-
-Applied, thanks.
-
-Regards,
--Denis
+diff --git a/ell/useful.h b/ell/useful.h
+index 7bb924bcab8c..504ea089cb21 100644
+--- a/ell/useful.h
++++ b/ell/useful.h
+@@ -52,6 +52,12 @@ static inline unsigned char bit_field(const unsigned char oct,
+ 	return (oct >> start) & mask;
+ }
+ 
++/* Must be called with n >= 2 and n <= ULONG_MAX / 2 + 1 */
++static inline unsigned long roundup_pow_of_two(unsigned long n)
++{
++	return 1UL << (sizeof(unsigned long) * 8 - __builtin_clzl(n - 1));
++}
++
+ #define DIV_ROUND_CLOSEST(x, divisor)			\
+ ({							\
+ 	typeof(divisor) _d = (divisor);			\
+-- 
+2.45.2
 
