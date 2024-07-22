@@ -1,62 +1,62 @@
-Received: from mail-oi1-f172.google.com (mail-oi1-f172.google.com [209.85.167.172])
+Received: from mail-oo1-f42.google.com (mail-oo1-f42.google.com [209.85.161.42])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 464A318637
-	for <ell@lists.linux.dev>; Mon, 22 Jul 2024 19:04:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 297152032A
+	for <ell@lists.linux.dev>; Mon, 22 Jul 2024 19:04:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1721675094; cv=none; b=tTw5ukdaq03CfvigAZcpfiu49wEuDWFtl1G42eXbmOs90deF6Xaye4f3V7IFdlDE6oo7PEkbxTcKiTFfu6BeW7dpN/QIbh3q+iFqNAQV7889nusUSIK34cV5PhjV7nOoIB4Ia2VJy9qB+4q7xLjlb7pW04O6H3bNiBEZ72s63JQ=
+	t=1721675095; cv=none; b=FwFPC0d52xpp56Q8TWldxWJ4hI9H5u40xT3VsCjPrJ5pYs3BMeDT8Caou3rxvuF98llKhqza3/YJwix6GwnBLAwnRqZDhR2GSKs4+wVsV3jsioOJHgR4PXIT6P2LeQiYO/SqVueGBg43cYXgAf1Wl0aV1xiIb73hk1rnEErJGaI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1721675094; c=relaxed/simple;
-	bh=mvxvRCkpeY/8mm4UHwjWK1nhilAomrMCnKrpmabG2P8=;
+	s=arc-20240116; t=1721675095; c=relaxed/simple;
+	bh=85kKHV44JaXoI4q7w84xKPeWEE/wt9uU8oEgxhgYL2I=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=qM5ZXGal9x9T/IAGsAG5/KYtF9yLKYre4bw426Onf5cJoCgkXL7N43SSWW/sRpOoNBB3jPukbl2E/GryRqG7i9DbnHdXhrhuERsDjCQKA30E3sx5E5MSbFC2qaBcpX2bikjGR5JiU6BHEO0x9R/ERB0PyeoPKHfHo+xd/mExHgw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=j789Svhk; arc=none smtp.client-ip=209.85.167.172
+	 MIME-Version; b=HiZ1OWZurrDnvDC9oHxzMExNpQhmvZJHJLoOMB8L8Qrf9gbxAOgKpGqiE8iH4zFTT1pdJp5bJPuKPvLH9AROALROiObmw3G3Qd3jyxV3ruHBucPxnRj8jKfpMkY4yGVTwsKo3JvNEfr7fkkbMyepONMcqvwKgQzDlA9xkY/v4is=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=NdLy/yxG; arc=none smtp.client-ip=209.85.161.42
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="j789Svhk"
-Received: by mail-oi1-f172.google.com with SMTP id 5614622812f47-3daf0e73a59so801034b6e.1
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NdLy/yxG"
+Received: by mail-oo1-f42.google.com with SMTP id 006d021491bc7-5d569902626so1171069eaf.2
         for <ell@lists.linux.dev>; Mon, 22 Jul 2024 12:04:53 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1721675092; x=1722279892; darn=lists.linux.dev;
+        d=gmail.com; s=20230601; t=1721675093; x=1722279893; darn=lists.linux.dev;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=vdx1MTQkyWlY4DSqjiy9jL2ROlqXPrp4F3hAgRBBBPw=;
-        b=j789SvhkAIyp/0e8fICqSuza3Mcw4gzeQkX1lSuGOsdDQv7QxXV1jvT8Bybs9m0ATR
-         zHdZ42UD2hdo9Y3W/ma8cZADFaL8UrAq8h2QiDurEdIm1cKOFs3weiutduFzX3o4MfWC
-         YovzHWemQL/ogTrU6xzqll4chWFv7isWirBb4NuqwJ1tjrXpSVVzORBcqFaN7dBNc7Wp
-         a9tZ9ni5l0S7K5tT3FOplyxiCGMI7ZVzh270HYFbQaFKMnRqxrZz0Vy8IpNWsTXfmGo3
-         jPYqviIyhWzxSpH+Fhz+1+Vlcx3r0C+GuhWWNEcaQaLx4UQFAQcLJlhnfqBM5UUDFXzb
-         725A==
+        bh=DyyfFvvgXQKHvzqcKXjAA0jfXa5GRyrMHP/lNXZeszY=;
+        b=NdLy/yxGyWW7JI0UqK8C2bOSUEmo7khOgmOYvy88NSKr5HZOelYNZCZPwKIgiagF3n
+         cdm/MfxqGM5LGqd1iyp7Vl25Iq5QqonVx/3vG5vl/7iD9ODaQBoiLQ/im5EIIRUNbODa
+         aOQdGlYUuY3M/nzvN+TYGdQfJxIM68HZn/5WuZnh2E5F8BF7LsUYoRR2Cra8+5RW3hcR
+         JGV7YVZfl88eh/N9FgrzTerSKpAL9DaUBc/zXNZlhdiGRhSc7k5J+BOqPQsCMKqpzmI2
+         HjXbvqp2BbLb6Jd4CJthB/PLmThN5/S8Ah6fr8Ltoaq9CVoGjbIOMWN2UUnHvnX2OhMI
+         ZZNA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1721675092; x=1722279892;
+        d=1e100.net; s=20230601; t=1721675093; x=1722279893;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=vdx1MTQkyWlY4DSqjiy9jL2ROlqXPrp4F3hAgRBBBPw=;
-        b=EO29lj4kh1gL4KfP8ldzsb3ueF7sy9lTI2DEwaIr7cqmrbT4bREJuNd8F/M2LPyo9Y
-         K1uhQBPSYKpnTX4AEpLOxjf4i9LBLEoMRP7/ysm+02/lHSG0VH6MdkVGZGTyyVVsJl+0
-         p/NlQqUiDYinJvtsckndO4wGtzYqDi5qh7MFtbQJ2p3AoXKcbkEKU3HoyCAraYauJxW4
-         P8IEOa5jQNekzMFNZEgOSBq83AX3Frtpdn2UymAi9BdTu1ETvLHmVzFq2LBimuzm9IOA
-         uEOs9sI457sQuNPB7UGFJ+Xs7FoWD6XbSXLKklRUzQFu1svW8UjAnQrHTVJyM/p9WT4w
-         m74A==
-X-Gm-Message-State: AOJu0YzNaK48HEqyzaK0WJFQjlDWqxxLJnN4v66JTozTprZC9XHaKC6p
-	UTXweHCTLQHxo25YhbFWCTr/Zj8PwYRfjTIk7znKbRJ/fcsPFnN5UhQOeg==
-X-Google-Smtp-Source: AGHT+IE8n175O0mq8MjSFisIHLJzOwwIGkgg/G9Wl2mlGcO+kgDI2llf9QN4a1u3zkVYAcA+9QQtpQ==
-X-Received: by 2002:a05:6808:2387:b0:3d9:2104:47e6 with SMTP id 5614622812f47-3dad73dc129mr7565684b6e.13.1721675092352;
-        Mon, 22 Jul 2024 12:04:52 -0700 (PDT)
+        bh=DyyfFvvgXQKHvzqcKXjAA0jfXa5GRyrMHP/lNXZeszY=;
+        b=kYQ9J3hQVJi+99X9G6ZYqJxvEm3Ezl5yt6nAhdaKAZSh2gc2N2s3v+mVfZtbRjSrWy
+         UK9LhkKoRVUzs4N0mqpZ8lu2xarTsQvc7OpU9ndY7DTIFLHuh6KLvi4DlvBKtRExh8se
+         gdzyGTpfMSt1eO4OSUZ7RKB8GBat+UGsgEF6Di2l4x3njdX7tk7WJ6izqhyZdLUHxjYR
+         Qlyqx0UlyJmyC+KfRTsgCSmUyFUn6CLxVV3RvwEY+As3y1KxIkaQu1V1GxgfhSFnfT1J
+         2A+l7DCcbcH4JgSfpmSvOYMKdVRGakGUZ4LG3yp73ErITeKpsZZ7wDtR/d6QKNmpzfff
+         4M4Q==
+X-Gm-Message-State: AOJu0Yxr74vnRdSRbKKGGMVLOm1SpBQUtKjE8Xl8EpoJopeHCkXpcGuZ
+	nyBYzWbBlCK5t3esrk057pXQ51x17vbPXusBLqs8emgH8JqVIR32TAxEYw==
+X-Google-Smtp-Source: AGHT+IEB3rbfpOIiXNYvbRaM7anY7INGakDnbPgZ7SiTZs/hG3Iscx4dJ6wvWbCxMO6urUlAYt7qzg==
+X-Received: by 2002:a05:6820:1e01:b0:5c4:2497:c92d with SMTP id 006d021491bc7-5d564e497femr10406308eaf.2.1721675093128;
+        Mon, 22 Jul 2024 12:04:53 -0700 (PDT)
 Received: from localhost.localdomain (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id 006d021491bc7-5d55aaee1fasm1411186eaf.42.2024.07.22.12.04.51
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-5d55aaee1fasm1411186eaf.42.2024.07.22.12.04.52
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Mon, 22 Jul 2024 12:04:52 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH 09/12] netlink: Add additional helpers
-Date: Mon, 22 Jul 2024 14:04:26 -0500
-Message-ID: <20240722190443.43196-9-denkenz@gmail.com>
+Subject: [PATCH 10/12] unit: Add netlink message builder / parser tests
+Date: Mon, 22 Jul 2024 14:04:27 -0500
+Message-ID: <20240722190443.43196-10-denkenz@gmail.com>
 X-Mailer: git-send-email 2.45.2
 In-Reply-To: <20240722190443.43196-1-denkenz@gmail.com>
 References: <20240722190443.43196-1-denkenz@gmail.com>
@@ -68,77 +68,120 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Helpers around l_netlink_message_append for use with common data types.
+These tests are similar to l_genl_msg based tests, but use
+l_netlink_message APIs directly.
 ---
- ell/netlink.h | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 55 insertions(+)
+ unit/test-genl-msg.c | 74 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 74 insertions(+)
 
-diff --git a/ell/netlink.h b/ell/netlink.h
-index 593cddf1aee8..e7962b9932dc 100644
---- a/ell/netlink.h
-+++ b/ell/netlink.h
-@@ -62,6 +62,61 @@ int l_netlink_message_enter_nested(struct l_netlink_message *message,
- 					uint16_t type);
- int l_netlink_message_leave_nested(struct l_netlink_message *message);
+diff --git a/unit/test-genl-msg.c b/unit/test-genl-msg.c
+index e6432f4362ef..3d996f4e242a 100644
+--- a/unit/test-genl-msg.c
++++ b/unit/test-genl-msg.c
+@@ -14,6 +14,8 @@
+ #include <linux/genetlink.h>
+ #include <ell/ell.h>
  
-+static inline int l_netlink_message_append_u8(struct l_netlink_message *message,
-+						uint16_t type, uint8_t u8)
-+{
-+	return l_netlink_message_append(message, type, &u8, sizeof(uint8_t));
-+}
++#include "ell/netlink-private.h"
 +
-+static inline int l_netlink_message_append_u16(struct l_netlink_message *message,
-+						uint16_t type, uint16_t u16)
-+{
-+	return l_netlink_message_append(message, type, &u16, sizeof(uint16_t));
-+}
-+
-+static inline int l_netlink_message_append_u32(struct l_netlink_message *message,
-+						uint16_t type, uint32_t u32)
-+{
-+	return l_netlink_message_append(message, type, &u32, sizeof(uint32_t));
-+}
-+
-+static inline int l_netlink_message_append_u64(struct l_netlink_message *message,
-+						uint16_t type, uint64_t u64)
-+{
-+	return l_netlink_message_append(message, type, &u64, sizeof(uint64_t));
-+}
-+
-+static inline int l_netlink_message_append_s8(struct l_netlink_message *message,
-+						uint16_t type, int8_t s8)
-+{
-+	return l_netlink_message_append(message, type, &s8, sizeof(int8_t));
-+}
-+
-+static inline int l_netlink_message_append_s16(struct l_netlink_message *message,
-+						uint16_t type, int16_t s16)
-+{
-+	return l_netlink_message_append(message, type, &s16, sizeof(int16_t));
-+}
-+
-+static inline int l_netlink_message_append_s32(struct l_netlink_message *message,
-+						uint16_t type, int32_t s32)
-+{
-+	return l_netlink_message_append(message, type, &s32, sizeof(int32_t));
-+}
-+
-+static inline int l_netlink_message_append_s64(struct l_netlink_message *message,
-+						uint16_t type, int64_t s64)
-+{
-+	return l_netlink_message_append(message, type, &s64, sizeof(int64_t));
-+}
-+
-+static inline int l_netlink_message_append_mac(struct l_netlink_message *message,
-+						uint16_t type,
-+						const uint8_t mac[static 6])
-+{
-+	return l_netlink_message_append(message, type, mac, 6);
-+}
-+
- #ifdef __cplusplus
+ static bool do_print = false;
+ 
+ static void do_debug(const char *str, void *user_data)
+@@ -126,6 +128,38 @@ static void build_set_station(const void *data)
+ 	l_genl_msg_unref(msg);
  }
- #endif
+ 
++static void build_set_station_netlink(const void *data)
++{
++	const struct set_station_test *test = data;
++	struct l_netlink_message *m;
++	struct genlmsghdr genlhdr = { .cmd = 18, .version = 0, .reserved = 0 };
++
++	m = l_netlink_message_new(0x17, NLM_F_REQUEST | NLM_F_ACK);
++	assert(m);
++
++	assert(!l_netlink_message_add_header(m, &genlhdr, sizeof(genlhdr)));
++	assert(!l_netlink_message_append_u32(m, 3, test->ifindex));
++	assert(!l_netlink_message_append_mac(m, 6, test->mac));
++	assert(!l_netlink_message_append(m, 67,
++					test->flags, sizeof(test->flags)));
++
++	m->hdr->nlmsg_seq = test->seq;
++	m->hdr->nlmsg_pid = test->pid;
++
++	if (do_print) {
++		l_util_hexdump(false, m->data, m->hdr->nlmsg_len,
++					do_debug, "[MSG] ");
++		l_util_hexdump(true, set_station_request,
++				sizeof(set_station_request), do_debug, "[MSG] ");
++	}
++
++	assert(m->hdr->nlmsg_len == sizeof(set_station_request));
++	assert(!memcmp(m->data, set_station_request,
++					sizeof(set_station_request)));
++
++	l_netlink_message_unref(m);
++}
++
+ static const unsigned char set_rekey_offload_request[] = {
+ 	0x54, 0x00, 0x00, 0x00, 0x1b, 0x00, 0x05, 0x00, 0x59, 0xa3, 0xe1, 0x53,
+ 	0xba, 0x02, 0x40, 0xe7, 0x4f, 0x00, 0x00, 0x00, 0x08, 0x00, 0x03, 0x00,
+@@ -252,6 +286,42 @@ static void build_set_rekey_offload(const void *data)
+ 	l_genl_msg_unref(msg);
+ }
+ 
++static void build_set_rekey_offload_netlink(const void *data)
++{
++	const struct set_rekey_offload_test *test = data;
++	struct l_netlink_message *m;
++	struct genlmsghdr genlhdr = { .cmd = 79, .version = 0, .reserved = 0 };
++
++	m = l_netlink_message_new(0x1b, NLM_F_REQUEST | NLM_F_ACK);
++	assert(m);
++
++	assert(!l_netlink_message_add_header(m, &genlhdr, sizeof(genlhdr)));
++	assert(!l_netlink_message_append_u32(m, 3, test->ifindex));
++	assert(!l_netlink_message_enter_nested(m, 122));
++	assert(!l_netlink_message_append(m, 1, test->kek, sizeof(test->kek)));
++	assert(!l_netlink_message_append(m, 2, test->kck, sizeof(test->kck)));
++	assert(!l_netlink_message_append(m, 3, test->replay_counter,
++						sizeof(test->replay_counter)));
++	assert(!l_netlink_message_leave_nested(m));
++
++	m->hdr->nlmsg_seq = test->seq;
++	m->hdr->nlmsg_pid = test->pid;
++
++	if (do_print) {
++		l_util_hexdump(false, m->data, m->hdr->nlmsg_len,
++					do_debug, "[MSG] ");
++		l_util_hexdump(true, set_rekey_offload_request,
++				sizeof(set_rekey_offload_request),
++				do_debug, "[MSG] ");
++	}
++
++	assert(m->hdr->nlmsg_len == sizeof(set_rekey_offload_request));
++	assert(!memcmp(m->data, set_rekey_offload_request,
++					sizeof(set_rekey_offload_request)));
++
++	l_netlink_message_unref(m);
++}
++
+ /*
+  * This example is generated by libnl:
+ 	msg = nlmsg_alloc();
+@@ -441,8 +511,12 @@ int main(int argc, char *argv[])
+ 				parse_set_rekey_offload, &rekey_offload);
+ 
+ 	l_test_add("Build Set Station Request", build_set_station, &set_station);
++	l_test_add("Build Set Station Request (Netlink)",
++			build_set_station_netlink, &set_station);
+ 	l_test_add("Build Set Rekey Offload Request",
+ 				build_set_rekey_offload, &rekey_offload);
++	l_test_add("Build Set Rekey Offload Request (Netlink)",
++			build_set_rekey_offload_netlink, &rekey_offload);
+ 
+ 	l_test_add("libnl-generated Example with Nesting",
+ 				parse_libnl_nested, NULL);
 -- 
 2.45.2
 
