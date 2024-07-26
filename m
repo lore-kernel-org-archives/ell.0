@@ -1,61 +1,65 @@
-Received: from mail-ot1-f51.google.com (mail-ot1-f51.google.com [209.85.210.51])
+Received: from mail-ot1-f44.google.com (mail-ot1-f44.google.com [209.85.210.44])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1367829A5
-	for <ell@lists.linux.dev>; Fri, 26 Jul 2024 16:12:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A06931EA84
+	for <ell@lists.linux.dev>; Fri, 26 Jul 2024 16:12:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.44
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722010356; cv=none; b=Y06la8+1LaKUswHmT9OZQ2wqPxuO5JxHz8JhORiUh9dSzcq00aRzfaeJYhmSyso2/xKlTS4j2ghZ9qeunE9HSEmT7yIacwB/obhbOvvXs1VuiIwYt6P4ST8gxhLDq+lX5HjccrRooyfgna+iy1QJQ3XI6Xf89pc2vcVvtG5IlrU=
+	t=1722010357; cv=none; b=e+HqivvBLcUgvE7NUZwlZmVZ9pc4ji+EmQt9AkkCM1nF8EnZoVGfnYXy58E0ZIcSB0AZusYxfH7IhPxjR5lwnLaspSpd8WpmIeryuAhc9VSCjT5leaKgJUdmjioJ+I9LR7xtYVNQJcljjwP3CGCJE4c6HzQMdqaLxyBPLcZlbh8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1722010356; c=relaxed/simple;
-	bh=ASW8Oiawmb6X/F32LpMEy2Un7XoWwFaJyR/LvbxS1j4=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=DGyMfmlu1mwej4uR3H2iKQi1/lPJBqomgM4sQJDs+R/AUxT+VP36c0aGVD72KevOPcoFwVri9TPjQTm+g04wSoasEybnFNa53oVwuAzffujSJq8qBiaWtPhGrciL8TMET0KylOYgKWDnLX1dZn1bXTHjQG1+X82wr9NBpztPx0g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=KcxCFRv2; arc=none smtp.client-ip=209.85.210.51
+	s=arc-20240116; t=1722010357; c=relaxed/simple;
+	bh=SBDuGoPc43t19pnVJbizIlNuze7CMqqCCvxG42npFkA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=awr1GZnBwWR/6oIZXO9XBtKwA1nRFW4Jh+KVdR5dpeQDbXUgsUwhjYKF2F0OfALICkR8d67kCOWdf9eDaSTxGgYNOnxk1LA/oPbk3sZHF8DEUEsTiTCU3X9Dg2R+YxLgnQcazW5x5WdHPqBrOspr4ycAQPiMovBFXlx0wvMWeO0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=I1MUZ9PD; arc=none smtp.client-ip=209.85.210.44
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KcxCFRv2"
-Received: by mail-ot1-f51.google.com with SMTP id 46e09a7af769-7093705c708so1101629a34.1
-        for <ell@lists.linux.dev>; Fri, 26 Jul 2024 09:12:34 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="I1MUZ9PD"
+Received: by mail-ot1-f44.google.com with SMTP id 46e09a7af769-70365f905b6so859274a34.0
+        for <ell@lists.linux.dev>; Fri, 26 Jul 2024 09:12:35 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1722010354; x=1722615154; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=qHAh5ly47GWdHNN0RH2ogz2zlpMBhuZ/VAG+zQXtU1M=;
-        b=KcxCFRv20MHWy7a2Qs3PjK/vcHIka3xeb4g9djQY0pJqP2e+jLP42V6t72RTrMVf9B
-         eW0kJaw7O7jI2z837Yrv5X3f+i8ztfA/fQhqHpAw+Z7xLQhB4TungTJGMYL8+dYo3M/f
-         n2EsFbItOrnrchlaFK1QerPHXXhPpJD386PvBVmfye4a7sgSm8FIQtnvBbFy4Ye8XUio
-         OOAZ6pA1R/b45jtBEV6EtwSF3lOJfLJxjxjc9fxuq047Uc9m7wap3/ZLd7ZQ2/vDFZw9
-         Bzm6Mx+AlnmCRSKDnGw3CR/o/Fw2Nlas18V1mgGZj08WhMWceCV6yhsm/DvQ95yaO9zD
-         ZVCw==
+        d=gmail.com; s=20230601; t=1722010355; x=1722615155; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=xRsn/rfrdCPG+71aVif4B77Y1y1DwE5fnEWM44sYQnQ=;
+        b=I1MUZ9PD2OnVU05Q1vX6Kijkh188ysGCWR0X/h/KxD11rVJ0l5ZVo3PT1Rv0k8hCl8
+         y9r0EIYLEyicxsdVa9qQAWgjgk+2B1RPBUJewW9ZRo1ZpV+kBxtegfMFdxTI0uNZ6MAi
+         k8U2hgkVHr182gJfx5rsTnjLxGB3rexyeLytv1F4dn77CgSNBnRWH828FW/+hMfBut/k
+         v0BPJXP4yURW4ML+YBABKDLryO8BJnBuZIb/nyvFeZwr76UsYuk0B55qDYH9TonF5cY7
+         +bOKKu4Nr65sJEXWX6HlBpcumpoJ7eZIoy1meGa+Z3X0+dUV2eoVib8zO6uu95TETbDg
+         CBJQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1722010354; x=1722615154;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=qHAh5ly47GWdHNN0RH2ogz2zlpMBhuZ/VAG+zQXtU1M=;
-        b=bTYiFVKsqfnzybPOCAx5JsBlRbuJ4ZGsg809SH8L0JNQYWmJ7qintkckoW7mA/Oil+
-         aWbemfVkxB1NWjE+JyrpELyogB1xv6i7vVasCWEuBplwI71r4cRJzi7BGigSKQaxSidi
-         Gkfm5KRQAbCKlHUiFzdMETvKm/u7Ur3CTRwAEINYmwlh7D7lghTFSwA9vICN1AeC7Cn3
-         MHVl3jfVX8ljPTu95wmREl8XHOpfxaxGI778tHLmWWRLTLNBS+OPO9pZBGf3cVZv7oxn
-         sjbiEd33dNwiK55qh/BcY9RUyhCS6xb6QfaWurxJ5cOjcot6X76j45c+lYrI93qcCYF1
-         xizQ==
-X-Gm-Message-State: AOJu0YwgYl9p81rPhWpDp7uZqkd/TbjyT4UxNNNIplx29mPkhPtb5QWG
-	syweGGFHNds3KEia3gtfQmBW/rHFUfdGE4KrM41dboHTz3GojdKr5HMX/g==
-X-Google-Smtp-Source: AGHT+IHzJb9FLOTkgfwTG5BOiP7Acp2bM864K1D614+hy4oTTmkfXXk8n7VWB71C04vrUO0yxNwcfw==
-X-Received: by 2002:a9d:4d87:0:b0:709:3772:8c31 with SMTP id 46e09a7af769-70940c71118mr46142a34.31.1722010354005;
+        d=1e100.net; s=20230601; t=1722010355; x=1722615155;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=xRsn/rfrdCPG+71aVif4B77Y1y1DwE5fnEWM44sYQnQ=;
+        b=Z2oPb+X7MV8mhCFhCkcGjLrQ87AkIYzWxYKmHyGt4/UAGWB7c4UYovIZXH1X7jZ0Rz
+         Mcus2KCpoYBKbcq/XOy7G/qIdKcc+0qkiJ3N9rwGNv0o9T8vLeMlEjfye2jTvrMdUKLb
+         jM/hYrhW6GAmLP5BpRdDabx0KwT9zqYimzjpkjzU2489KxkOyirnjBKrKdQ2Xn9BVgRr
+         pIh6GMLHz9k+IsQQRSVb6ITIf+nFjbt13P7tj2GYiYasCqe5K6Zyf6XjgMtQzVOubbMb
+         90W+gdqRnlq3PkmUhp6eip8v7YF9reIQUD5it1fgsacK0hAXZtXfdyE3GzOGSVPXfoob
+         X15g==
+X-Gm-Message-State: AOJu0YygkTVu3kDHdSuOzaevFgcVRusF1Iko/QMz9OdJlHtLz8Fe2B3D
+	8RpiIKGZyK7KdssvudTXtwXmSX6HFrMvS/jaqB8NkN6I2RMR7AFnEGtO6A==
+X-Google-Smtp-Source: AGHT+IFfKJRleWZr1gkPqe82ndbw0V50xLICj2UugiERY4P+UdilHBva8WoZ9srA8rb1sqFthEXCjw==
+X-Received: by 2002:a05:6830:6208:b0:703:6d69:55b0 with SMTP id 46e09a7af769-70940c9e5admr57141a34.31.1722010354649;
         Fri, 26 Jul 2024 09:12:34 -0700 (PDT)
 Received: from localhost.localdomain (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-70930718ec9sm792997a34.30.2024.07.26.09.12.33
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-70930718ec9sm792997a34.30.2024.07.26.09.12.34
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 26 Jul 2024 09:12:33 -0700 (PDT)
+        Fri, 26 Jul 2024 09:12:34 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH 1/7] netlink: Remove pointless checks
-Date: Fri, 26 Jul 2024 11:12:13 -0500
-Message-ID: <20240726161232.146982-1-denkenz@gmail.com>
+Subject: [PATCH 2/7] netlink: Disallow certain flags in message constructor
+Date: Fri, 26 Jul 2024 11:12:14 -0500
+Message-ID: <20240726161232.146982-2-denkenz@gmail.com>
 X-Mailer: git-send-email 2.45.2
+In-Reply-To: <20240726161232.146982-1-denkenz@gmail.com>
+References: <20240726161232.146982-1-denkenz@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -64,39 +68,66 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-command_queue, command_pending and command_lookup structures are always
-initialized at construction time and are not destroyed until l_netlink
-destruction.  There's no need to check whether they ar valid.
+Certain flags are reserved for use by l_netlink when sending messages.
+Other flags don't make sense for messages that are to be sent to the
+kernel.  Disallow their use.
 ---
- ell/netlink.c | 8 --------
- 1 file changed, 8 deletions(-)
+ ell/netlink.c        | 3 +++
+ unit/test-genl-msg.c | 6 ++++--
+ 2 files changed, 7 insertions(+), 2 deletions(-)
 
 diff --git a/ell/netlink.c b/ell/netlink.c
-index 024740b62fc3..26c31679e4c7 100644
+index 26c31679e4c7..58dfd9779875 100644
 --- a/ell/netlink.c
 +++ b/ell/netlink.c
-@@ -410,10 +410,6 @@ LIB_EXPORT unsigned int l_netlink_send(struct l_netlink *netlink,
- 	if (unlikely(!netlink))
- 		return 0;
+@@ -751,6 +751,9 @@ LIB_EXPORT struct l_netlink_message *l_netlink_message_new_sized(uint16_t type,
+ {
+ 	struct l_netlink_message *message;
  
--	if (!netlink->command_queue || !netlink->command_pending ||
--						!netlink->command_lookup)
--		return 0;
--
- 	if (flags & 0xff)
- 		return 0;
++	if (flags & 0xff)
++		return NULL;
++
+ 	message = l_new(struct l_netlink_message, 1);
  
-@@ -471,10 +467,6 @@ LIB_EXPORT bool l_netlink_cancel(struct l_netlink *netlink, unsigned int id)
- 	if (unlikely(!netlink || !id))
- 		return false;
+ 	message->size = initial_len + NLMSG_HDRLEN;
+diff --git a/unit/test-genl-msg.c b/unit/test-genl-msg.c
+index 3d996f4e242a..d10a87f30e3b 100644
+--- a/unit/test-genl-msg.c
++++ b/unit/test-genl-msg.c
+@@ -134,7 +134,7 @@ static void build_set_station_netlink(const void *data)
+ 	struct l_netlink_message *m;
+ 	struct genlmsghdr genlhdr = { .cmd = 18, .version = 0, .reserved = 0 };
  
--	if (!netlink->command_queue || !netlink->command_pending ||
--						!netlink->command_lookup)
--		return false;
--
- 	command = l_hashmap_remove(netlink->command_lookup, L_UINT_TO_PTR(id));
- 	if (!command)
- 		return false;
+-	m = l_netlink_message_new(0x17, NLM_F_REQUEST | NLM_F_ACK);
++	m = l_netlink_message_new(0x17, 0);
+ 	assert(m);
+ 
+ 	assert(!l_netlink_message_add_header(m, &genlhdr, sizeof(genlhdr)));
+@@ -153,6 +153,7 @@ static void build_set_station_netlink(const void *data)
+ 				sizeof(set_station_request), do_debug, "[MSG] ");
+ 	}
+ 
++	m->hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+ 	assert(m->hdr->nlmsg_len == sizeof(set_station_request));
+ 	assert(!memcmp(m->data, set_station_request,
+ 					sizeof(set_station_request)));
+@@ -292,7 +293,7 @@ static void build_set_rekey_offload_netlink(const void *data)
+ 	struct l_netlink_message *m;
+ 	struct genlmsghdr genlhdr = { .cmd = 79, .version = 0, .reserved = 0 };
+ 
+-	m = l_netlink_message_new(0x1b, NLM_F_REQUEST | NLM_F_ACK);
++	m = l_netlink_message_new(0x1b, 0);
+ 	assert(m);
+ 
+ 	assert(!l_netlink_message_add_header(m, &genlhdr, sizeof(genlhdr)));
+@@ -315,6 +316,7 @@ static void build_set_rekey_offload_netlink(const void *data)
+ 				do_debug, "[MSG] ");
+ 	}
+ 
++	m->hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+ 	assert(m->hdr->nlmsg_len == sizeof(set_rekey_offload_request));
+ 	assert(!memcmp(m->data, set_rekey_offload_request,
+ 					sizeof(set_rekey_offload_request)));
 -- 
 2.45.2
 
