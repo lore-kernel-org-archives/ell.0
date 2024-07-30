@@ -1,87 +1,111 @@
-Received: from mail-oa1-f52.google.com (mail-oa1-f52.google.com [209.85.160.52])
+Received: from mail-qk1-f174.google.com (mail-qk1-f174.google.com [209.85.222.174])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 120D246BF
-	for <ell@lists.linux.dev>; Fri, 26 Jul 2024 19:31:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 563A7188013
+	for <ell@lists.linux.dev>; Tue, 30 Jul 2024 16:51:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.174
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722022278; cv=none; b=MIV8WJfol/lplYOBdExH6GOo/su8iy/LbYZtnjZhEY+STpVAAGWeSXRwWn8HK4v5XDdAshF/lSzIBxwcr+DmirXWRORd9WKCMbyhApdlMxFvdYIyN/MCIAV3zXJGKyInmg6vy8BZMAgfKDD/u+ujCk5my7n6hMA8jcKK8Y2WRRc=
+	t=1722358305; cv=none; b=swPnlZLTgkBAJHeoNmFa0uugTiREX2H97QzPgjnHanhcutiOYQxl9wrFQNdqP0vrGedvIpQH9OTWWy7IPz+qrzP3iPt6Pr8zhGD0dkI7e+RDhE8OCUy51AGP93miupjRiF5lV8BI8kfnyKU4+9H54ggrP9ptRz3yRhKOzwMIUBs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1722022278; c=relaxed/simple;
-	bh=zFuzHSOB7B5rx+Cekez9I0iyDQ1aLqAm3v37q8ZOf1o=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=LM8dwAdt5RX2BKpOLauye5PNBy0RNVcpQGg4lYZ171ugBa3ANGILB+OEcQrAMqAfU9NJ1m0E9CtQfhR76w2FMD0CUrzzv4a9fxTMkst7TT53zaIISY/JA9GQCxDsv3hhm8QrTvnFQPoGlwmunZYoYv3Fg0GgEvzpOSZuwHurx1g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=SMtZJA9S; arc=none smtp.client-ip=209.85.160.52
+	s=arc-20240116; t=1722358305; c=relaxed/simple;
+	bh=84QfyRT1Q24LHaogorgyBxwiBcxHYNd8d35v3AabQ3U=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=iINQoYyLRdgBD6Kh6NyWZjXOOiqP6WdKNvFGj69oDip4A6/PlXAeUQv5WkeGU/AhmGCGJ/KEc3Qh/C0hT+0mlop29SkXTaTvE8BNthqXqheulU31069begswUyo30QcGTnt9akki1k20fhLbqTVCO6r9vjWUMO6Hpo9TtLvclS8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=QKVo3JTA; arc=none smtp.client-ip=209.85.222.174
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SMtZJA9S"
-Received: by mail-oa1-f52.google.com with SMTP id 586e51a60fabf-26119999171so1126238fac.2
-        for <ell@lists.linux.dev>; Fri, 26 Jul 2024 12:31:16 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QKVo3JTA"
+Received: by mail-qk1-f174.google.com with SMTP id af79cd13be357-7a1d42da3f7so297648785a.2
+        for <ell@lists.linux.dev>; Tue, 30 Jul 2024 09:51:44 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1722022276; x=1722627076; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=3il1pe65Mq8A9NG+s7Y+HvfyOoBBdFTlKYPb2B4mkjA=;
-        b=SMtZJA9Sw1j6v+JumYFm/4Ai0lh4JaFvJnl5OzgiAH8zfn3mO8KHp9z0fZNvi5eta1
-         8wKDQeg6UmrL+9ZD2g9hwj1dWU/TrY17AeCxHpNLb2Aof6dwi41EtL9Ql1OWaV9vElq5
-         xa1U2M8LOTDnS62P8WAHbCiw9E+DDh7sepuqGTb11/C5dQwexo9RSg/umihZLeemUxgr
-         YkMOrNC8iD5qIHFw+2oTfRx1l3YC55cgBworgEThd+nn4jk1c7NFSjzQtiDEJ5FM80Du
-         gQcY3pOpdNur2U+mGyTBfLhu1ngxUn+CtJrUeH7d4n2t/Eke4CT3yV+SvZ1YW/1EaSlV
-         oLVg==
+        d=gmail.com; s=20230601; t=1722358303; x=1722963103; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=rV2wwPc07QOJPl2f51hLovMic6aWzG6SqG2G7F76YAQ=;
+        b=QKVo3JTAyjtemd8mpOWId/q42mDVRW5qcmq6iIDyJtYw/OqinBGwvzwvoy8xBaphRx
+         J5XVD4mGtLUhQte8Q2UPg5owrsjF0bsiSez2rd4narnK+QdlvBRDIavho9pEMWdfaSmw
+         5ziS875dUN9qqEsCP3axACBz9diNOuhGUje6Lql3xA2Nb8ALhuSiSB512YB+QHkfUSW7
+         6+yjh3gs24pwk8PcH0i5qc8xXAc6tljp608wa5bb8mOGN6TfDK2qO3b1z0YxCSgM+jTI
+         wQawpIs4pGjfhQJxh0hEyKBEYfC8yCGMWFCwHwn0jk579cm7t2fM14L2Xs/Jx0UZZymb
+         v9qw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1722022276; x=1722627076;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=3il1pe65Mq8A9NG+s7Y+HvfyOoBBdFTlKYPb2B4mkjA=;
-        b=qDjo/KR4McA9f7llI87EB0lgg0X+uxvRIa23qulf0DTg+MrIw5thdu7iXG3Kd3akHs
-         S7w0fNPOp2WUJ0tsy0FdpEHxg+RDgjaqnkCMTrfjyQD5cKtFXgpEbZ85oVrQM8lLs0Ui
-         +J3U+tBeUWZRSxFtPKpco3YRYKVGt8N0wyuCHuQ+1gj7Jcoj/ennOKjlZzN66r7UfuVI
-         6LgKSiF2lH1f1pLux4WbRRB6UsXn6pXuLGsaPTW24hrLg7364loAzq1jtk42fM21/uuL
-         I6qrPeakJCVHFGmYFRDG/voiEN8Y/6wkMUmkVozpDK3dn00OtBts+qHU6RCCDEmRl+Gw
-         PYPw==
-X-Forwarded-Encrypted: i=1; AJvYcCV4ybSzI/0UCg58K70LWFWvPUoFLfBPBqBJljfIiq/ENiADoEB7oSXWH4Yebj2AqxpxmTxGZBB265kVkcurkhkMTCBj
-X-Gm-Message-State: AOJu0YzUiS4iCEND+JK4s/MrwUdWzklLKvTwAgq1XbXULurbuFbPuQV4
-	Ljs6KSgloney4U4goZSuclqrbTAZ9xxvnU/rQ4ifYTXcD1BSTHhF
-X-Google-Smtp-Source: AGHT+IGkIkxYcJjzs/yqPbJM5gBQt/mY3iZCireCxOec7FtlCxWADAcLzIZCfo/iL5k4TJRnlpmB+A==
-X-Received: by 2002:a05:6870:2247:b0:260:e2ea:e680 with SMTP id 586e51a60fabf-267d4d1666bmr956146fac.10.1722022276122;
-        Fri, 26 Jul 2024 12:31:16 -0700 (PDT)
-Received: from [192.168.1.22] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 586e51a60fabf-2653e640030sm780099fac.16.2024.07.26.12.31.15
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 26 Jul 2024 12:31:15 -0700 (PDT)
-Message-ID: <b43d6bbe-4fbd-4da9-a874-f6df6c69e774@gmail.com>
-Date: Fri, 26 Jul 2024 14:31:13 -0500
+        d=1e100.net; s=20230601; t=1722358303; x=1722963103;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=rV2wwPc07QOJPl2f51hLovMic6aWzG6SqG2G7F76YAQ=;
+        b=kHkPB2mY/1ps6gbZE1KIxvH//gPRInnOsfZ6WDCiRie/41x+rzV1nhEsDs7S5HdZah
+         kVCThrFd/Qe2chwsJdf11mY3lGQsxL7d5upF4b4BJFMx/D9r1Ea3G1KnQ/jCwOXXVA2d
+         2rCn27idR4nuLWpRkVwwxrP8SG0g+vUPM6ffI0HFNeQTWPJYihkFY+tfIp79K16x1a/s
+         au2s1fV5mU+/sdkhcCwNFl0wozcZMXQinxSytjykJh2pwyUAhmQFmpbU2gz/N6vDJHkU
+         S/hNQreT7rNtjjIqGZqPNZVjRz35bmiubiOrsF1E2nlEujpXDk6cv831m+Cz24+NHPiI
+         kHWg==
+X-Gm-Message-State: AOJu0YzfWozXkjjZY81h3qtwyHY2D5AkrQZqY6Je84P7TAg1hdrnb2J/
+	QQ1iWJXj0xw8aliNEV1yW8SOP9t5qs1ztk7ePXOSkSh4NPbgYKke1h3UeQ==
+X-Google-Smtp-Source: AGHT+IGPWegIYj6tKeHqXG5131JNGFhJp3BljnF6LqP4Qhy2fnh89KKl7K81J74Mr5xqjcYuawT52Q==
+X-Received: by 2002:a05:620a:1929:b0:79f:3f6:55d1 with SMTP id af79cd13be357-7a1e52301afmr1488593285a.8.1722358303001;
+        Tue, 30 Jul 2024 09:51:43 -0700 (PDT)
+Received: from LOCLAP699.localdomain ([152.193.78.90])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-7a1d73ed346sm656003485a.68.2024.07.30.09.51.42
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 30 Jul 2024 09:51:42 -0700 (PDT)
+From: James Prestwood <prestwoj@gmail.com>
+To: ell@lists.linux.dev
+Cc: James Prestwood <prestwoj@gmail.com>
+Subject: [PATCH] unit: pragma test_address to fix GCC warning on musl-libc
+Date: Tue, 30 Jul 2024 09:51:38 -0700
+Message-Id: <20240730165138.274112-1-prestwoj@gmail.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 1/7] netlink: Remove pointless checks
-To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
-References: <20240726161232.146982-1-denkenz@gmail.com>
- <e60cc267-481f-4a0e-83f8-8f0e49290d97@gmail.com>
-Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <e60cc267-481f-4a0e-83f8-8f0e49290d97@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hi James,
+This appears to be a compiler bug causing an array-bounds warning:
 
-> 
-> These all look good to me visually, assuming they pass autotests (once the 
-> update to IWD/netdev is done)
->
+unit/test-rtnl.c: In function 'test_address':
+unit/test-rtnl.c:285:13: error: offset '2305843009213693948' outside bounds of constant string [-Werror=array-bounds]
+  285 | static void test_address(const void *data)
+      |             ^~~~~~~~~~~~
+unit/test-rtnl.c:215:36: note: 'address' declared here
+  215 | static const struct l_rtnl_address address = {
+      |                                    ^~~~~~~
 
-autotests seem to pass locally (with some usual test-runner flakiness), so I'll 
-push this out and send the iwd patchset in a bit.  I do need to merge the iwd 
-monitor patch first though.  Have you looked at that one?
+There is nothing visually wrong with the code, and it appears to be
+having an issue with the "label" member, which is a simple constant
+string. Doing things like adding a member before "label" or making
+"address" not const seems to make it go away, making it really
+appear as if the compiler is confused.
 
-Regards,
--Denis
+Fix this by adding a pragma for that test function.
+---
+ unit/test-rtnl.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/unit/test-rtnl.c b/unit/test-rtnl.c
+index 25e1859..59d8492 100644
+--- a/unit/test-rtnl.c
++++ b/unit/test-rtnl.c
+@@ -279,6 +279,8 @@ static struct ifaddrmsg *build_ifaddrmsg(const struct l_rtnl_address *addr,
+ 	return ifamsg;
+ }
+ 
++_Pragma("GCC diagnostic push")
++_Pragma("GCC diagnostic ignored \"-Warray-bounds\"")
+ static void test_address(const void *data)
+ {
+ 	static const int ifindex = 3;
+@@ -293,6 +295,7 @@ static void test_address(const void *data)
+ 	assert(messages_equal(nlm, ifamsg, ifamsg_len));
+ 	l_netlink_message_unref(nlm);
+ }
++_Pragma("GCC diagnostic pop")
+ 
+ static void signal_handler(uint32_t signo, void *user_data)
+ {
+-- 
+2.34.1
 
