@@ -1,61 +1,65 @@
-Received: from mail-qt1-f177.google.com (mail-qt1-f177.google.com [209.85.160.177])
+Received: from mail-qt1-f181.google.com (mail-qt1-f181.google.com [209.85.160.181])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A31C26BB4B
-	for <ell@lists.linux.dev>; Wed,  7 Aug 2024 17:59:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.177
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76C1B13CFBC
+	for <ell@lists.linux.dev>; Wed,  7 Aug 2024 17:59:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.181
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1723053591; cv=none; b=M8pAz1a/ktVRHNRuDkYKN/pqyXOBtEl1HK5SuEjMxWzeYHmx1vME5MDHstLn9v5gI/FnMAlyQ+HtaBIM6nWvIe/2Bt7l1TGaS8gE8GST7gbmUq6mAuotJu4eRCcFS06w0d1jNMHCCu7t6V4igYd6GTLr8bvJPKG0Y7ahC+uIJNk=
+	t=1723053591; cv=none; b=YLTGKb33RoO/BEahMooI25fGi2I5VdFdQjeKo43s+PUTTUe0NWmZ/cf7bNl+5r+QuXWDLMdT8tNffmHA/8O0TRfTc5mg46pL0OgfIHzTARHEv1SAHVWiXTVJKOQVa9qRSAu7Rrt3ykiiBOCDOv2j4wlkfgmhgcU8grFd36TfaWY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1723053591; c=relaxed/simple;
-	bh=7vth9M4EySSmW1+zWbXukfuS7HApI9Sdh2PLRS05I+I=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=tcMO2q5PXmPNFTKMGtL2GDh4IJMCw63UZ4R3adyOrZPHBkCOQry8NBWNoXwxWkm90u0KWQ7HbCsHOZx8qAbTSiLsemiaHWhkXwCx6E0KnEelQzZLGbw+TqfA6xQJN4hjC0LSd6daKPLylKCWG7OUu4cPH4Iggcymunk04bHbeVc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=IQh4dH8M; arc=none smtp.client-ip=209.85.160.177
+	bh=ETjjx3aL9ERI1a/look1WI3VPipJJngiyJLuIXy9n9M=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=aCuKF8cK+Da7IaxpvRiKH9DDJWG4AnU5swj4Vczp7e/5m5LJ6VF5NHb1RsKPxv5rj59qTRfI06jKJTZe4H0x5bHrR6e8hpl3TmIKKNu0jCGLcHmn227wUkiiR9euoahVfncxGbneWfggzfUkMUfXyeBk3wj8axOGuCs+qxISIsc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=W3zeEZql; arc=none smtp.client-ip=209.85.160.181
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IQh4dH8M"
-Received: by mail-qt1-f177.google.com with SMTP id d75a77b69052e-44ff9281e93so841071cf.2
-        for <ell@lists.linux.dev>; Wed, 07 Aug 2024 10:59:49 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="W3zeEZql"
+Received: by mail-qt1-f181.google.com with SMTP id d75a77b69052e-44ff9281e93so841161cf.2
+        for <ell@lists.linux.dev>; Wed, 07 Aug 2024 10:59:50 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1723053588; x=1723658388; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=2O9sA3owkei6azfZ0+Cz1LMOMUxBWOus5CNl0rNHtkU=;
-        b=IQh4dH8M1plNmMUzsDFDa8FiAQWANZd4wKc36V2Rm7jWYOES4q8qejv7e9W+5Lw/co
-         ZZfCfUfoxmMzE2Q2Md+KtvKwShnzFwW/Q3ocQ4vfKekCqcB2AfuO7W4DsTsCY9eanBVq
-         gUo5zLdJdPik0HsJONqFO2ULOy4ZLCmBbH21a11G/TkhKe9sTW8MWXS2W9AgIb6u2/KQ
-         Ge/9lNPxirFsYW/gY7wfGoEk9hcy7KXbnleHOvyw0hVzpB8V7D6B1ztVf2IiafUC049F
-         gSy0TXunc2rmJ3DjwvzoVGOS6RyQfkz9oq1fzjoh0T6EDVtUjzKqH8oaDbiTdhDcxQXc
-         12Ug==
+        d=gmail.com; s=20230601; t=1723053589; x=1723658389; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=zF1Ew/xLFCHUGeL4XEpgjxnr5z0l9qmH0oG/xMDm4yo=;
+        b=W3zeEZqljJtrX3tbXuSlEI45CzTztwUnMmcuV/jLwEVPU59Mqi4KbwFyzwRCq393gl
+         COZtKpTR1ZbWAK/zUIeZI1G5u3nyygoJQKufDLa4GVmli9pZwXSnnbDO1CeHcX4qTK5J
+         1S8ZqnieZHOf7owDa3z7I67LU5rpkawsNwEDO/qXZbD9KmGKgsJSkVlDJeKWClEQIcYF
+         z3P6VcAzKt5F0UxrKN6RLbBKPNqS4Cm5PnZFX9UI8gB0lBAlFIVtXPRLEYG4c8EHJnIp
+         gf91Phmfi+hmxif6qp5WPVBsjZRzyl/SCfVFZKwz8RZQkH6tj8xPX1kKMDLJ+kD8SvGO
+         z+PQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1723053588; x=1723658388;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=2O9sA3owkei6azfZ0+Cz1LMOMUxBWOus5CNl0rNHtkU=;
-        b=HO4OUsgfxXu1WV1YWuOvgxhaxXeOBppt4H44wswr9TcC7yaXhjiKR6+3w9b0yG6IAU
-         hZZmEeQcldQH2jRD3VJNUMgVavqwdiGh1z85BXBE8mUUk6g+Cwz8tYOF+qeROXs4RsME
-         UPCezaUeePWjdbXG2MvyukBH1tCqmEbuxdJ9JCK45/6/E5ElKDWLPdC9+aADrKv1/fOm
-         TjA5j77YUlGiy2PYDzebDI6Xe5pbernGcESnET9FJ5yEw3F/rGRGRFKY+Zrk3ReKeHNW
-         jPzFQT32q0odvot7rCkESqv9GZrQ0HfhW1xF1/IecSvoHGxB6sz5JMUrFybkH76mX31i
-         ojbA==
-X-Gm-Message-State: AOJu0YzLL19sRuYHx/v57sbvd6FZhP9yq2dhnndnMTz6rNlLoVx16JtE
-	WxYTRMSe+fvZNRzFUoRgaW08AR8nqRX0agPKt2LnQmK82lp1bRygXra8XA==
-X-Google-Smtp-Source: AGHT+IHmPNWWlJeDfCMR05uyecVDAxdaraQA8k2aQwaNgimQOKpsiea34H6uaHufmhgNlM1jruDDjg==
-X-Received: by 2002:a05:622a:1914:b0:450:4788:ac94 with SMTP id d75a77b69052e-45189288104mr245132391cf.16.1723053588107;
-        Wed, 07 Aug 2024 10:59:48 -0700 (PDT)
+        d=1e100.net; s=20230601; t=1723053589; x=1723658389;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=zF1Ew/xLFCHUGeL4XEpgjxnr5z0l9qmH0oG/xMDm4yo=;
+        b=b9yNBn1UhdRgtD6/lmDsw1nmo43jjowH/IdZJs3gajQbzxoh6rLeMUvCz1JvG2Uwmj
+         MNkfDtIqpIMdIeKA/nPeALbv13niSWauJK10Pz7wKKSpeamSRy/0u+DEQEZTnZy460Fk
+         EkQqHTR4apRHaWrfkUUMezgEUmjv31D9nkSb4qBpBPcQ3gu5XF+VW7Ci0Pj+/jbgGj9Z
+         OjSW9+1vSKXJ8mj9WdY6bL3ay/J6wqYZ0MbZ56A530NkgMjxRV6jVqedWXukOwcvNCaS
+         P9l22Wb37T8ajb8cs/yJGGXSVDUeE6JhjlNVwWecU4k3GCxLgk6PjZ9JgzvAlvbmbYhQ
+         BFiQ==
+X-Gm-Message-State: AOJu0YwGWYPt7CS296aWFzq1cZmwrrGN7y0TyImRoeBsSoxLtyHdHZGg
+	iuEpXMHdjelHY8zMJEv5tUl1H0kr024w4pvV8kAX9aVD99p968sOpVMJ8A==
+X-Google-Smtp-Source: AGHT+IG3XqRPI8I9Nv79OYjb1ImuUP6d8W5+E6vcPmJK8HukIMoPDtVGI9ImiLM3oMjHutJa69svnQ==
+X-Received: by 2002:a05:622a:1212:b0:440:ccb8:af2a with SMTP id d75a77b69052e-451892708b7mr303543961cf.12.1723053589198;
+        Wed, 07 Aug 2024 10:59:49 -0700 (PDT)
 Received: from LOCLAP699.localdomain ([152.193.78.90])
-        by smtp.gmail.com with ESMTPSA id d75a77b69052e-451c87d95e1sm6596471cf.76.2024.08.07.10.59.46
+        by smtp.gmail.com with ESMTPSA id d75a77b69052e-451c87d95e1sm6596471cf.76.2024.08.07.10.59.48
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 07 Aug 2024 10:59:47 -0700 (PDT)
+        Wed, 07 Aug 2024 10:59:48 -0700 (PDT)
 From: James Prestwood <prestwoj@gmail.com>
 To: ell@lists.linux.dev
 Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH 1/2] dbus: add _dbus_object_tree_set_interface_data
-Date: Wed,  7 Aug 2024 10:59:42 -0700
-Message-Id: <20240807175943.170002-1-prestwoj@gmail.com>
+Subject: [PATCH 2/2] dbus: add l_dbus_object_set_data()
+Date: Wed,  7 Aug 2024 10:59:43 -0700
+Message-Id: <20240807175943.170002-2-prestwoj@gmail.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20240807175943.170002-1-prestwoj@gmail.com>
+References: <20240807175943.170002-1-prestwoj@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -64,87 +68,62 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This is to prep for l_dbus_object_set_data(), i.e. modifying the
-user_data of an existing dbus object.
+Modifies the user data of an existing DBus object.
 ---
- ell/dbus-private.h |  4 ++++
- ell/dbus-service.c | 33 +++++++++++++++++++++++++++++----
- 2 files changed, 33 insertions(+), 4 deletions(-)
+ ell/dbus.c  | 13 +++++++++++++
+ ell/dbus.h  |  2 ++
+ ell/ell.sym |  1 +
+ 3 files changed, 16 insertions(+)
 
-diff --git a/ell/dbus-private.h b/ell/dbus-private.h
-index fd5d099..0c06410 100644
---- a/ell/dbus-private.h
-+++ b/ell/dbus-private.h
-@@ -207,6 +207,10 @@ bool _dbus_object_tree_remove_interface(struct _dbus_object_tree *tree,
- void *_dbus_object_tree_get_interface_data(struct _dbus_object_tree *tree,
- 						const char *path,
- 						const char *interface);
-+bool _dbus_object_tree_set_interface_data(struct _dbus_object_tree *tree,
-+						const char *path,
-+						const char *interface,
-+						void *user_data);
- 
- void _dbus_object_tree_introspect(struct _dbus_object_tree *tree,
- 					const char *path, struct l_string *buf);
-diff --git a/ell/dbus-service.c b/ell/dbus-service.c
-index d4466de..0300bfe 100644
---- a/ell/dbus-service.c
-+++ b/ell/dbus-service.c
-@@ -1568,25 +1568,50 @@ bool _dbus_object_tree_add_interface(struct _dbus_object_tree *tree,
- 	return true;
+diff --git a/ell/dbus.c b/ell/dbus.c
+index a1ce09e..cd14eef 100644
+--- a/ell/dbus.c
++++ b/ell/dbus.c
+@@ -1694,6 +1694,19 @@ LIB_EXPORT void *l_dbus_object_get_data(struct l_dbus *dbus, const char *object,
+ 							interface);
  }
  
--void *_dbus_object_tree_get_interface_data(struct _dbus_object_tree *tree,
-+static struct interface_instance *_dbus_object_tree_find_interface(
-+						struct _dbus_object_tree *tree,
- 						const char *path,
- 						const char *interface)
- {
- 	struct object_node *object;
--	struct interface_instance *instance;
- 
- 	object = l_hashmap_lookup(tree->objects, path);
- 	if (!object)
- 		return NULL;
- 
--	instance = l_queue_find(object->instances, match_interface_instance,
--				(char *) interface);
-+	return l_queue_find(object->instances, match_interface_instance,
-+				interface);
-+}
-+
-+void *_dbus_object_tree_get_interface_data(struct _dbus_object_tree *tree,
-+						const char *path,
-+						const char *interface)
++LIB_EXPORT bool l_dbus_object_set_data(struct l_dbus *dbus, const char *object,
++				const char *interface, void *user_data)
 +{
-+	struct interface_instance *instance;
-+
-+	instance = _dbus_object_tree_find_interface(tree, path, interface);
- 	if (!instance)
- 		return NULL;
- 
- 	return instance->user_data;
- }
- 
-+bool _dbus_object_tree_set_interface_data(struct _dbus_object_tree *tree,
-+						const char *path,
-+						const char *interface,
-+						void *user_data)
-+{
-+	struct interface_instance *instance;
-+
-+	instance = _dbus_object_tree_find_interface(tree, path, interface);
-+	if (!instance)
++	if (unlikely(!dbus))
 +		return false;
 +
-+	instance->user_data = user_data;
++	if (unlikely(!dbus->tree))
++		return false;
 +
-+	return true;
++	return _dbus_object_tree_set_interface_data(dbus->tree, object,
++							interface, user_data);
 +}
 +
- static bool match_object_manager_path(const void *a, const void *b)
+ LIB_EXPORT bool l_dbus_object_manager_enable(struct l_dbus *dbus,
+ 						const char *root)
  {
- 	const struct object_manager *manager = a;
+diff --git a/ell/dbus.h b/ell/dbus.h
+index 21bd4bf..6ec9c83 100644
+--- a/ell/dbus.h
++++ b/ell/dbus.h
+@@ -227,6 +227,8 @@ bool l_dbus_object_remove_interface(struct l_dbus *dbus, const char *object,
+ 					const char *interface);
+ void *l_dbus_object_get_data(struct l_dbus *dbus, const char *object,
+ 				const char *interface);
++bool l_dbus_object_set_data(struct l_dbus *dbus, const char *object,
++				const char *interface, void *user_data);
+ 
+ bool l_dbus_object_manager_enable(struct l_dbus *dbus, const char *root);
+ 
+diff --git a/ell/ell.sym b/ell/ell.sym
+index 0dad73f..aafc0a4 100644
+--- a/ell/ell.sym
++++ b/ell/ell.sym
+@@ -225,6 +225,7 @@ global:
+ 	l_dbus_object_add_interface;
+ 	l_dbus_object_remove_interface;
+ 	l_dbus_object_get_data;
++        l_dbus_object_set_data;
+ 	l_dbus_object_manager_enable;
+ 	l_dbus_add_disconnect_watch;
+ 	l_dbus_add_service_watch;
 -- 
 2.34.1
 
