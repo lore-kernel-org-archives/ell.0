@@ -1,59 +1,59 @@
-Received: from mail-oo1-f51.google.com (mail-oo1-f51.google.com [209.85.161.51])
+Received: from mail-pf1-f173.google.com (mail-pf1-f173.google.com [209.85.210.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A66EA82863
-	for <ell@lists.linux.dev>; Mon, 26 Aug 2024 18:46:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E7CE7406F
+	for <ell@lists.linux.dev>; Mon, 26 Aug 2024 18:55:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724697971; cv=none; b=iYnrnIrvu9l/J20MDeQR5TnzG6dRWKCkPARKiu8jGhl02w6+iLLV5uhP4f30p2Z6HLxZ7nz9Z/MJ4OITuOdzzyHTtXF86Qgtd/r/49X+0RXXibK8QZX+LMX8WqUzkwdmuttA8mvLPB7vfk86K1/ANIUS+jVrb5RD432i554qzCU=
+	t=1724698511; cv=none; b=EsACtpy8smI6SZ/Ap0++Lu+wQsbtnNq27FKtgC6esz5m0i0StwwXDfNsaCNe42Pv0J2/yRDaloVkFE13Myz89LLVwiZ+AxjENbvgAyvYtSOYdPTC902iHh9wkDf2rhsVtlXj0Rfr15okasCUrqnNfiYjSKg6aeMCcBsuk4q7T/4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724697971; c=relaxed/simple;
-	bh=vJWbY0pMEU/84KDoOHKSqoVv0aLn7f9FEuVQGZovA6U=;
+	s=arc-20240116; t=1724698511; c=relaxed/simple;
+	bh=SHYwiNLD5wHqGL7qPShFW6FM8EisU6ZTk5lrmbFm5sU=;
 	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=VJU2oSqY9g2GyueyyFF0Ns4cSL8vR090pqW6MdHMeczGHUc9ugUOAPtafr4DgDHGuKsQj9g1XxNdkkh8jpPVyxdByiDzU0rCxsL2eXpcFDCYOHkcZXHjvT1FCO9c98iMoG8YQ/Br6YAUoFJChqu0LiMeEx3PHD4UPQnf8a1h2+c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Ej7FRK7d; arc=none smtp.client-ip=209.85.161.51
+	 In-Reply-To:Content-Type; b=bg/kXb7AkfIrWnFwq4sNHCyTV2IoNZclTQsMRlcGryUqdNIn59L85DCXNoilROX1n5/NkSV75CHYSiyZE0Dqw4f+BGNgrIBroeDN49HUaF09mOcr39zvfvlg/P7AZnJJTBgjbiGVP5IFShe3vjNW0ndOOL+tK2GO711Kqf18k/k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=PKCYxsqS; arc=none smtp.client-ip=209.85.210.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Ej7FRK7d"
-Received: by mail-oo1-f51.google.com with SMTP id 006d021491bc7-5d5de0e47b9so3036428eaf.0
-        for <ell@lists.linux.dev>; Mon, 26 Aug 2024 11:46:09 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PKCYxsqS"
+Received: by mail-pf1-f173.google.com with SMTP id d2e1a72fcca58-714261089c1so3291646b3a.0
+        for <ell@lists.linux.dev>; Mon, 26 Aug 2024 11:55:09 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1724697968; x=1725302768; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=sP/7EjlpA2ZefFXmgvw8ahDT3eWma525QyeP6JGieCg=;
-        b=Ej7FRK7d0dzGB2dv2O/XyHXKRNugSTteTYKKoWR0etMGI3R79RAH1PnwC+l/CWdkS3
-         k36FYLI6ciSUaYYiXHE1AA/A69GRfL4utmi1Y8jahYD7fjqmyh11lX23+rno0CQYyMxC
-         oLPu1K5vvZ0yieLK+yeUoePzg2F21bWYn62RLure4N8TCuDWS/FHQZMEEdCU3BcQb3uS
-         y6SlMZUo8FnFyWTX51FydIj/CblVMWO5SInPsQL3VPfv3SjMjvPmlxsboD8O6EwbSCC9
-         05RGwe+oj6ffWd3T0thPKPXBnnhax8xO3v6joF/9wzEwmbtRvbAMTHPzT2zevZDRUcRm
-         tngw==
+        d=gmail.com; s=20230601; t=1724698509; x=1725303309; darn=lists.linux.dev;
+        h=in-reply-to:autocrypt:from:content-language:references:to:subject
+         :user-agent:mime-version:date:message-id:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=SHYwiNLD5wHqGL7qPShFW6FM8EisU6ZTk5lrmbFm5sU=;
+        b=PKCYxsqSBq+USMahvv7zGrlyVrgVA5DIINtKrO4aSBLHTOIgP2S5hiTIkTcXgbID0b
+         vupS1hTbUuvagLmHT5peDQsJ+kMqfJA9cGsoYcqNl1+fRBdUSXv5wNIEEngS2sXPIivK
+         u97jqitKseYZeTHqA9u4Scwa6y789lzMyw0F3Mmrmg4xDc40nVOE/eIEc1txALsAjqt1
+         Ip1GPAjK37HaKNHZ7BwjdKD+EPc67qar16ssq/DWUqCNKQ4zzUIsFfjrAxrKfSVKggOA
+         drXCOlTi8xvhFJiyT36bd2hLleVRkCvGJ3ANXwxHpq8NcD+o4gRh5jJ8bS+FFtnR4Vge
+         +z5w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1724697968; x=1725302768;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=sP/7EjlpA2ZefFXmgvw8ahDT3eWma525QyeP6JGieCg=;
-        b=iFPz06kkzSQNkfIit7B1s1X8zsJe4Nt1kLck2FnV/QqC+x85aQaRs3GVn/P9XVAuJ5
-         GhhbSj3hHGGq7bH4ZrHjUIwua0iQakVweS9HeP1fgAQMwfDZfGjBN/ofozqsvkConZEN
-         xtWqx/UIS/gw7+ynLQlm91TLXsqG50ADycc/q5WENuIahsIxmd8twf4WMfBlZkno62/M
-         Y4G6p+KWnhdsd4Xu8EgcLWv20FszltB+u9rHX/BaI+MVrzJOvQdw/nAmc/HPgRzf54L+
-         6430VMs/cP+DtDCPi7m4BNpKIvRJ5Bn6t8TVzohWIzPAW3ejfw5IsUMshspfSvu3k7OS
-         1tzg==
-X-Forwarded-Encrypted: i=1; AJvYcCX/R5B6xVctxko4ZpYqkd/077Wr+Q9Xef1GIUs78zRzcjQtR0K6NDIHfx6OHKGF3AauvPw=@lists.linux.dev
-X-Gm-Message-State: AOJu0YxCuQ9tj5YybiwEUQJ7+b3cG12cBX9d0u5ADKQbs3hLzJmZ6IGx
-	4GznyXRZpR/xlcgMnGVOlTw8FM5T1nweziqBbOaCTv2A4ReVov0m
-X-Google-Smtp-Source: AGHT+IFxIgLqC64b6Dfu1teuRa+URFeqj1V/LUEjL/CeqIRYqI9EgzRkbkGDMBJk3TomorIzo5cK2A==
-X-Received: by 2002:a05:6820:1caa:b0:5c4:144b:1ff9 with SMTP id 006d021491bc7-5dcc625b9bfmr10058418eaf.5.1724697968588;
-        Mon, 26 Aug 2024 11:46:08 -0700 (PDT)
-Received: from [192.168.1.22] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 006d021491bc7-5dcb5e01a59sm2080939eaf.22.2024.08.26.11.46.07
+        d=1e100.net; s=20230601; t=1724698509; x=1725303309;
+        h=in-reply-to:autocrypt:from:content-language:references:to:subject
+         :user-agent:mime-version:date:message-id:x-gm-message-state:from:to
+         :cc:subject:date:message-id:reply-to;
+        bh=SHYwiNLD5wHqGL7qPShFW6FM8EisU6ZTk5lrmbFm5sU=;
+        b=nCYGeSYVOcl0chqHfa2KNh3zjCDxvG+ko4IiA9C1HNU47yq7l/YQBGXzlHgTgCzqG0
+         SzVRv8jhpfyOZQydH5IQE24aBjkRgCEk9l0tspu9qBZvE+8ZRNxAGBNrbcls0QPCF7Dt
+         4TeL+z5l/XHP0Ig39bSB5GnIYGXMOBcJnIHtYOYs/TlAS1fKO1T4JeLy9+Xl8O18fhEf
+         +o9HtGEmJYiIIhPLOnLhqpJQUVUfIkhGba/2N1GvqHxqXuzE6qJael4y9LoMGGuim6e2
+         9qFvS67D6aUIch+ACmwj6iRIAYoaceW8BfwAehqaoPD95nYmeIR+Yh8ao7XT+ICn91dO
+         q3vA==
+X-Forwarded-Encrypted: i=1; AJvYcCXf5IyAQ8q67JkCGPWT2vIhnKLOow89fONtZt1ybUzUYP0FSww6YkNJxn3axsPFjmULpC4=@lists.linux.dev
+X-Gm-Message-State: AOJu0YwYP2RT/oxlxvOFTaLR9b8BlFrv25ZlEXJXtK/uzj6ksFpayEh6
+	0fByd6ntKGRAZwxMkQuQgyY/9cMwX0sOcXcM1kFpGgdrjQUCBAENykcrBPJg
+X-Google-Smtp-Source: AGHT+IELstKPjesIwFJsMYjh8FcU3/+whnlWMbsva/7TJHnmaTQMcRRK3ZS6Hm+u4S2+ZJkLTah2Jw==
+X-Received: by 2002:a05:6a00:6f16:b0:710:9d5e:1154 with SMTP id d2e1a72fcca58-715bfee4328mr966880b3a.2.1724698508420;
+        Mon, 26 Aug 2024 11:55:08 -0700 (PDT)
+Received: from ?IPV6:2409:40e1:1144:7fc1:e60d:36ff:fe7f:7763? ([2409:40e1:1144:7fc1:e60d:36ff:fe7f:7763])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-7143422ed8bsm7353093b3a.32.2024.08.26.11.55.06
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 26 Aug 2024 11:46:08 -0700 (PDT)
-Message-ID: <f321352f-641d-4fb8-ad8c-3480c97992cc@gmail.com>
-Date: Mon, 26 Aug 2024 13:46:06 -0500
+        Mon, 26 Aug 2024 11:55:08 -0700 (PDT)
+Message-ID: <b7a1d7fd-a42a-48f0-8c1f-c5cc19b15a9f@gmail.com>
+Date: Tue, 27 Aug 2024 00:25:03 +0530
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -62,24 +62,105 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
 Subject: Re: Segmentation Fault in iwd with ell 0.68 Due to l_netlink_send()
-To: Rajdeep Malakar <rajdeepm.dev@gmail.com>, ell@lists.linux.dev
+To: Denis Kenzior <denkenz@gmail.com>, ell@lists.linux.dev
 References: <d16d043c-aa5c-4fb8-8df6-8c109c6239bf@gmail.com>
+ <f321352f-641d-4fb8-ad8c-3480c97992cc@gmail.com>
 Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <d16d043c-aa5c-4fb8-8df6-8c109c6239bf@gmail.com>
+From: Rajdeep Malakar <rajdeepm.dev@gmail.com>
+Autocrypt: addr=rajdeepm.dev@gmail.com; keydata=
+ xjMEZcjGsRYJKwYBBAHaRw8BAQdAFsHHQM5yuUKpk2zn4THdaG8ksYhWtxJLNCWByeI7TM3N
+ KFJhamRlZXAgTWFsYWthciA8cmFqZGVlcG0uZGV2QGdtYWlsLmNvbT7CkwQTFgoAOxYhBJmH
+ hd9oeyQWbbGxsmg7rWbjxUxHBQJlyMaxAhsDBQsJCAcCAiICBhUKCQgLAgQWAgMBAh4HAheA
+ AAoJEGg7rWbjxUxHmLoA/RpBa2fiVQlIrqsoFly8azNBvU7sI4nrbQ2KSXYbd+mxAQCbzGxN
+ zoS1zJ4+kvzo99jcjg9lHNj6jy3DwAsmLXDRDM44BGXIxrESCisGAQQBl1UBBQEBB0CS16zl
+ ts9v9wjePBnusFUxAdhQES84wRxNQdWAbxEeIAMBCAfCeAQYFgoAIBYhBJmHhd9oeyQWbbGx
+ smg7rWbjxUxHBQJlyMaxAhsMAAoJEGg7rWbjxUxHR4UA/1Y0V+zoQzjgIcFbS6XLM2GPVzSo
+ qrMzhTDwuydE62XUAQD1p0mO6aEZmD5UPGOApCj76fnqZPicxtsVVgIbbBBqDw==
+In-Reply-To: <f321352f-641d-4fb8-ad8c-3480c97992cc@gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ protocol="application/pgp-signature";
+ boundary="------------g4r7yuk0uVy2tufn6Bi5lHIT"
+
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--------------g4r7yuk0uVy2tufn6Bi5lHIT
+Content-Type: multipart/mixed; boundary="------------oFToG8ZjANpOjg0Uxdn5CrhM";
+ protected-headers="v1"
+From: Rajdeep Malakar <rajdeepm.dev@gmail.com>
+To: Denis Kenzior <denkenz@gmail.com>, ell@lists.linux.dev
+Message-ID: <b7a1d7fd-a42a-48f0-8c1f-c5cc19b15a9f@gmail.com>
+Subject: Re: Segmentation Fault in iwd with ell 0.68 Due to l_netlink_send()
+References: <d16d043c-aa5c-4fb8-8df6-8c109c6239bf@gmail.com>
+ <f321352f-641d-4fb8-ad8c-3480c97992cc@gmail.com>
+In-Reply-To: <f321352f-641d-4fb8-ad8c-3480c97992cc@gmail.com>
+
+--------------oFToG8ZjANpOjg0Uxdn5CrhM
+Content-Type: multipart/mixed; boundary="------------tRMu3Lttv9fXdORIk1TtNAp1"
+
+--------------tRMu3Lttv9fXdORIk1TtNAp1
 Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: base64
 
-Hi Rajdeep,
+SGkgRGVuaXMsDQoNCk9uIDI3LzA4LzI0IDAwOjE2LCBEZW5pcyBLZW56aW9yIHdyb3RlOg0K
+PiBIaSBSYWpkZWVwLA0KPiANCj4gT24gOC8yNi8yNCAxOjE0IFBNLCBSYWpkZWVwIE1hbGFr
+YXIgd3JvdGU6DQo+PiBIaSwNCj4+DQo+PiBJ4oCZbSBlbmNvdW50ZXJpbmcgYSBzZWdtZW50
+YXRpb24gZmF1bHQgaW4gaXdkIGFmdGVyIHVwZ3JhZGluZyB0aGUgZWxsIA0KPj4gbGlicmFy
+eSBmcm9tIHZlcnNpb24gMC42NyB0byAwLjY4LiBUaGUgaXNzdWUgc2VlbXMgdG8gYmUgcmVs
+YXRlZCB0byANCj4+IHRoZSBsX25ldGxpbmtfc2VuZCgpIGZ1bmN0aW9uIGluIHRoZSBlbGwg
+bGlicmFyeS4NCj4gDQo+IFRoYW5rcyBmb3IgdGhlIHJlcG9ydC7CoCBEbyB5b3UgaGF2ZSBh
+IGJhY2t0cmFjZSB5b3UgY2FuIHNoYXJlIGJ5IGFueSANCj4gY2hhbmNlPw0KPiANCj4gUmVn
+YXJkcywNCj4gLURlbmkNClVuZm9ydHVuYXRlbHksIHRoZSBgbGliZWxsLnNvYCBJIGhhdmUg
+KGZyb20gQXJjaCdzIFtleHRyYS10ZXN0aW5nXSByZXBvKSANCndhc24ndCBjb21waWxlZCB3
+aXRoIGRlYnVnaW5mbywgc28gYWxsIHRoZSBiYWNrdHJhY2UgSSBoYXZlIGlzOg0KDQojMCAg
+MHgwMDAwN2ZmZmY3ZjIyZGU2IGluIGxfbmV0bGlua19zZW5kICgpIGZyb20gL3Vzci9saWIv
+bGliZWxsLnNvLjANCiMxICAweDAwMDA1NTU1NTU1NmQ1M2QgaW4gPz8gKCkNCiMyICAweDAw
+MDA1NTU1NTU1YWUzODAgaW4gPz8gKCkNCiMzICAweDAwMDA3ZmZmZjdmMjViOTUgaW4gPz8g
+KCkgZnJvbSAvdXNyL2xpYi9saWJlbGwuc28uMA0KIzQgIDB4MDAwMDdmZmZmN2YyMDNjYiBp
+biA/PyAoKSBmcm9tIC91c3IvbGliL2xpYmVsbC5zby4wDQojNSAgMHgwMDAwN2ZmZmY3ZjIw
+NjU1IGluIGxfbWFpbl9pdGVyYXRlICgpIGZyb20gL3Vzci9saWIvbGliZWxsLnNvLjANCiM2
+ICAweDAwMDA3ZmZmZjdmMjBhY2UgaW4gbF9tYWluX3J1biAoKSBmcm9tIC91c3IvbGliL2xp
+YmVsbC5zby4wDQojNyAgMHgwMDAwN2ZmZmY3ZjIyM2E0IGluIGxfbWFpbl9ydW5fd2l0aF9z
+aWduYWwgKCkgZnJvbSANCi91c3IvbGliL2xpYmVsbC5zby4wDQojOCAgMHgwMDAwNTU1NTU1
+NTVmZDEzIGluID8/ICgpDQojOSAgMHgwMDAwN2ZmZmY3ZDBlZTA4IGluID8/ICgpIGZyb20g
+L3Vzci9saWIvbGliYy5zby42DQojMTAgMHgwMDAwN2ZmZmY3ZDBlZWNjIGluIF9fbGliY19z
+dGFydF9tYWluICgpIGZyb20gL3Vzci9saWIvbGliYy5zby42DQojMTEgMHgwMDAwNTU1NTU1
+NTYwNTc1IGluID8/ICgpDQoNCkkgd2lsbCB0cnkgdG8gY29tcGlsZSBpdCB3aXRoIGRlYnVn
+aW5mbyBhbmQgZ2V0IHRoZSBiYWNrdHJhY2UuDQoNCi0tIA0KcmVnYXJkcywNCnJhamRlZXAN
+Cg0K
+--------------tRMu3Lttv9fXdORIk1TtNAp1
+Content-Type: application/pgp-keys; name="OpenPGP_0x683BAD66E3C54C47.asc"
+Content-Disposition: attachment; filename="OpenPGP_0x683BAD66E3C54C47.asc"
+Content-Description: OpenPGP public key
+Content-Transfer-Encoding: quoted-printable
 
-On 8/26/24 1:14 PM, Rajdeep Malakar wrote:
-> Hi,
-> 
-> I’m encountering a segmentation fault in iwd after upgrading the ell library 
-> from version 0.67 to 0.68. The issue seems to be related to the l_netlink_send() 
-> function in the ell library.
+-----BEGIN PGP PUBLIC KEY BLOCK-----
 
-Thanks for the report.  Do you have a backtrace you can share by any chance?
+xjMEZcjGsRYJKwYBBAHaRw8BAQdAFsHHQM5yuUKpk2zn4THdaG8ksYhWtxJLNCWB
+yeI7TM3NKFJhamRlZXAgTWFsYWthciA8cmFqZGVlcG0uZGV2QGdtYWlsLmNvbT7C
+kwQTFgoAOxYhBJmHhd9oeyQWbbGxsmg7rWbjxUxHBQJlyMaxAhsDBQsJCAcCAiIC
+BhUKCQgLAgQWAgMBAh4HAheAAAoJEGg7rWbjxUxHmLoA/RpBa2fiVQlIrqsoFly8
+azNBvU7sI4nrbQ2KSXYbd+mxAQCbzGxNzoS1zJ4+kvzo99jcjg9lHNj6jy3DwAsm
+LXDRDM44BGXIxrESCisGAQQBl1UBBQEBB0CS16zlts9v9wjePBnusFUxAdhQES84
+wRxNQdWAbxEeIAMBCAfCeAQYFgoAIBYhBJmHhd9oeyQWbbGxsmg7rWbjxUxHBQJl
+yMaxAhsMAAoJEGg7rWbjxUxHR4UA/1Y0V+zoQzjgIcFbS6XLM2GPVzSoqrMzhTDw
+uydE62XUAQD1p0mO6aEZmD5UPGOApCj76fnqZPicxtsVVgIbbBBqDw=3D=3D
+=3D4uUH
+-----END PGP PUBLIC KEY BLOCK-----
 
-Regards,
--Denis
+--------------tRMu3Lttv9fXdORIk1TtNAp1--
+
+--------------oFToG8ZjANpOjg0Uxdn5CrhM--
+
+--------------g4r7yuk0uVy2tufn6Bi5lHIT
+Content-Type: application/pgp-signature; name="OpenPGP_signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="OpenPGP_signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+wnsEABYIACMWIQSZh4XfaHskFm2xsbJoO61m48VMRwUCZszPiAUDAAAAAAAKCRBoO61m48VMRzSW
+AQDGJTfz9w5BU5L/svnjhzPG3ai1Y26oxgocttex3ZQa+QEAtz7UGhDqra26bsuefbPXZ6u/4nWr
+d4PUwIk1EYd41A0=
+=hc6v
+-----END PGP SIGNATURE-----
+
+--------------g4r7yuk0uVy2tufn6Bi5lHIT--
