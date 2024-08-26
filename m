@@ -1,121 +1,117 @@
-Received: from mail-ot1-f53.google.com (mail-ot1-f53.google.com [209.85.210.53])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mout-p-101.mailbox.org (mout-p-101.mailbox.org [80.241.56.151])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 627E93C17
-	for <ell@lists.linux.dev>; Mon, 26 Aug 2024 15:38:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.53
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 06C0B194C71
+	for <ell@lists.linux.dev>; Mon, 26 Aug 2024 16:39:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=80.241.56.151
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724686721; cv=none; b=PW9Tt2hqRWiN4IeuCWqHuM8VPZai/8F3tuzyrGpu2wH8oBibU7n6Y+L5+ofiHWfkkX/qmiKmoJCuXH2Asryw+UJwGVdh8v91ELtnkrrhBN1H8c6y1x5doLGgqhu+O8p4ECBEa4UFiz0+jaI5g8RnGHrvVawVnROaq3yrlW9wxqo=
+	t=1724690378; cv=none; b=A90SlWqRpoen6EKJf+fAY07gKZrwzzhaw+poC/8snU/Eq2GH59Ou4mK/pUuoRiEEKloB/q05f4Uy5EwFFLXeuBfHY3eR0tGVG/ih82F9Tc/1OQ2wHQe9X72TcW8r3mufh/pPRyRjAJy0+XK03SoSBALYdLXOFE6GKKKKn4p8xOI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724686721; c=relaxed/simple;
-	bh=UCo0nws+e10ETOu7YJoX5ZZDtJf9kGV8BBdRy5Z3IQQ=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=cqhqB3+uXrHy64ZH/ID+P/OZJqz1fIJ1CEXeXkmp4nA3J03faXbFFydtUo33NkaEiLowrjiUJowGY0Gakwo73E96i+jjQwOmO3SMk9rJ4Gno5o8yG2j+70Wy5h+jNKOcIlrluuEM6Gn5B9z4JWsfRFyjrfMEJsU4iAtTgqCYRfE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=e0/5c4gP; arc=none smtp.client-ip=209.85.210.53
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1724690378; c=relaxed/simple;
+	bh=25fFOG94W68dhxWK7/gjUpo/5UDOqTfn15M4qQ2r92Q=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=I9oWjEsX+8TRE8gBGEN9KU/NU31vjvZRz7TVEpATuTESq1K5OZ5WMPK8zbMnxnf8Z27FYik2BjT2ka8eAJfQHv+ER6hwPPvQXIykXHnN5LkswQKX1x99LgsUHUqhkR707goLaSfy9Upw7o5yjU0SILGF6069zTO0xmUaYsVTQM0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=mailbox.org; spf=pass smtp.mailfrom=mailbox.org; dkim=pass (2048-bit key) header.d=mailbox.org header.i=@mailbox.org header.b=FKcFfQia; arc=none smtp.client-ip=80.241.56.151
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=mailbox.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mailbox.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="e0/5c4gP"
-Received: by mail-ot1-f53.google.com with SMTP id 46e09a7af769-70df4b5cdd8so3593666a34.1
-        for <ell@lists.linux.dev>; Mon, 26 Aug 2024 08:38:40 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1724686719; x=1725291519; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=IiCPlekEnPSm3hl002uYF7HyeePqQTVLmML1oom0C9M=;
-        b=e0/5c4gPWAetoJf1P1qfZmg0QwlxlUHGE5hqQk7xBYQHukQM5roUgG48JFamOLhSdg
-         Fmt3Rem+U61UwOAoz+uEmreaDDXpPE2JfO00dZx9Ic7C7Y5juuqTZKzCdVVE+UDaQd6i
-         JnP4GzPkPCn6ipCKEeg61ykK64TGkVh8FtaYUieAFbnF3a45GIKXhQPE/irr/6I5WdMo
-         3r2fFGRTYtL1xgOns3ze9UEVG7Grml3kE6SWFVgz3uvqEccByB8EYkcCbPPHcP0F9O+2
-         CqhELZsDHzZb4NFezD++EHpR4zDDYqyKCZtQzzdl0WkCMK+biVdzZPWIZo9KuqNkfuUg
-         A0Zw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1724686719; x=1725291519;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=IiCPlekEnPSm3hl002uYF7HyeePqQTVLmML1oom0C9M=;
-        b=eReyTZNDFMZXWfgdzt0RXp92tOXC9R+HJr0dgzsJh8tVB3xJ1n+/t52WL64F1xYdH5
-         eqL+1usN0XzQTZh1pMosDdsxXpJ6TA4Cz429Sf519oVyQvJbdm0yD2V/KSu/5KdfsSt2
-         F+DuomcJURaqEhTtohv/BnYvIZLKA8JO7OnAv+ynJqzIfLCoCT4xlvApSQR7XCrtr6Yb
-         BPfPwyKM1YrsD2S37BBOL/2weSLLUpKMhjyd9N3BpuoF/0b/zzCpOitXmt8jRge3t7yb
-         LHxuW7JbJQjNHN9P3Cs6kHuhTs9q2rf9GiwrEwuL1K1huNVoocKER9TNjbxhlNPw+HRw
-         y/Kg==
-X-Forwarded-Encrypted: i=1; AJvYcCWOehfjdZMFlIss/VGsWQwuFhQmfxI7MJXlBlpR+rRTsWfRunAUT/mWmIAeXpk76ASpuIY=@lists.linux.dev
-X-Gm-Message-State: AOJu0YxIVfIJLfmXLkDbwxpGnjwUZo9qTQcXJwNmmYiqWJgvqgmR7j4H
-	p9q4Oovs+eVnAVfyQCX/P77my58UOUc3G171GPLTyoqS57gz+PuM
-X-Google-Smtp-Source: AGHT+IF7iiTJD2gIu3XrXn0Vx2dwDPYJrebsiGHXZ+SEyoJyjjN56GjsCDtFK6zaTAbhC/DUz0yxuA==
-X-Received: by 2002:a05:6830:6384:b0:709:3792:5e0a with SMTP id 46e09a7af769-70e0eb6cb5fmr13092881a34.17.1724686719310;
-        Mon, 26 Aug 2024 08:38:39 -0700 (PDT)
-Received: from [192.168.1.22] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 46e09a7af769-70e03b6024esm1944843a34.63.2024.08.26.08.38.38
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 26 Aug 2024 08:38:39 -0700 (PDT)
-Message-ID: <14a637ae-0f31-4429-963a-5f5012841ee0@gmail.com>
-Date: Mon, 26 Aug 2024 10:38:37 -0500
+	dkim=pass (2048-bit key) header.d=mailbox.org header.i=@mailbox.org header.b="FKcFfQia"
+Received: from smtp102.mailbox.org (smtp102.mailbox.org [IPv6:2001:67c:2050:b231:465::102])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mout-p-101.mailbox.org (Postfix) with ESMTPS id 4WsxGX1lxVz9stT;
+	Mon, 26 Aug 2024 18:39:32 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mailbox.org; s=mail20150812;
+	t=1724690372;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=RNr4bH36mhDWqMpiigkr0xZRIjWdBFsYi4I72HeiU7c=;
+	b=FKcFfQiaiFyn+XBm6+lrWUf/9dsuOQGqfcGSXjNjKH9D/E8A9JFWPdiSuWHddTzDGNNvTX
+	ghltvfYAm/TxibMHDpYzR/VgtoUoJZvkyp/SSPDT7OPugbw77/pfmW9FvzvzltGRubuzfC
+	KnqBOEqr4wbsCWjU7kWnb5WcqZ7CmTy+dvjmz4LYfGXzqJG2rawMWFmK8znitsfL+/m5ol
+	4Lvv5NKyquVRrPM1mZ2k9t/b+M8277q5aI9qraIpJGgstkLoob2B/9WivC2DpfQti6kkBe
+	rNaf5MWRsXY5GuxeIQg696eNwuyy4jhgB/4ZxvHSaY+T47t6cV283oQSLKb5yg==
+Date: Mon, 26 Aug 2024 18:39:26 +0200
+From: Andreas Radke <andyrtr@mailbox.org>
+To: Denis Kenzior <denkenz@gmail.com>
+Cc: ell@lists.linux.dev
+Subject: Re: missing header files
+Message-ID: <20240826183926.6cd4fd33@workstation64.local>
+In-Reply-To: <14a637ae-0f31-4429-963a-5f5012841ee0@gmail.com>
+References: <20240826143746.7ae0fa86@workstation64.local>
+	<14a637ae-0f31-4429-963a-5f5012841ee0@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: missing header files
-To: Andreas Radke <andyrtr@mailbox.org>, ell@lists.linux.dev
-References: <20240826143746.7ae0fa86@workstation64.local>
-Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20240826143746.7ae0fa86@workstation64.local>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: multipart/signed; boundary="Sig_/C9AzMUnXnMHFDQVBUiLnNK7";
+ protocol="application/pgp-signature"; micalg=pgp-sha512
+X-MBO-RS-ID: 60c6346f0149fc782e4
+X-MBO-RS-META: 985jbnjnsokeq6kiia1bzybiz7mpapfr
 
-Hi Andreas,
+--Sig_/C9AzMUnXnMHFDQVBUiLnNK7
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-On 8/26/24 7:38 AM, Andreas Radke wrote:
-> Using "make install" target seems to not install some of the header
-> files. I've run into missing ell/useful.h for recent iwd build from git
-> master.
+Am Mon, 26 Aug 2024 10:38:37 -0500
+schrieb Denis Kenzior <denkenz@gmail.com>:
 
-ell/useful.h and ell/asn1-private.h are special.  They're copied from the ell 
-tree when iwd is built.  Even if using shared ell, you need to setup ell as 
-described in the README
+> Hi Andreas,
+>=20
+> On 8/26/24 7:38 AM, Andreas Radke wrote:
+>  [...] =20
+>=20
+> ell/useful.h and ell/asn1-private.h are special.  They're copied from
+> the ell tree when iwd is built.  Even if using shared ell, you need
+> to setup ell as described in the README
+>=20
+>  [...] =20
+>=20
+> These files are included in the distribution package.
+> [denkenz@archdev iwd]$ tar -Jtvf iwd-2.19.tar.xz | grep useful
+> -rw-r--r-- denkenz/denkenz   1979 2024-08-16 10:31
+> iwd-2.19/ell/useful.h [denkenz@archdev iwd]$ tar -Jtvf
+> iwd-2.19.tar.xz | grep asn1 -rw-r--r-- denkenz/denkenz   4406
+> 2024-08-16 10:31 iwd-2.19/ell/asn1-private.h
+>=20
+>  [...] =20
+>=20
+> None of these files are to be installed by ell, they're not part of
+> the public API.
+>=20
+> Regards,
+> -Denis
+>=20
 
-> 
-> Can you clarify whether all these header files should be installed when
-> building a distribution package and please make the Makefile install
-> those that are expected to be present on the system.
-> 
+Compiling is broken here when using --enable-external-ell with iwd git
+master no matter if I put ell source along iwd as described in README
+but succeeds with --disable-external-ell.
 
-These files are included in the distribution package.
-[denkenz@archdev iwd]$ tar -Jtvf iwd-2.19.tar.xz | grep useful
--rw-r--r-- denkenz/denkenz   1979 2024-08-16 10:31 iwd-2.19/ell/useful.h
-[denkenz@archdev iwd]$ tar -Jtvf iwd-2.19.tar.xz | grep asn1
--rw-r--r-- denkenz/denkenz   4406 2024-08-16 10:31 iwd-2.19/ell/asn1-private.h
+The README ist somewhat misleading here. When building from git and
+placing ell into toplevel dir it's failing. A cp ell/ell into iwd/ is
+required when building from git.
 
-> cp ell/*.h "$pkgdir"/usr/include/ell/ shows these additional files now:
-> 
-> /usr/include/ell/asn1-private.h
-> /usr/include/ell/cert-private.h
-> /usr/include/ell/dbus-private.h
-> /usr/include/ell/dhcp-private.h
-> /usr/include/ell/dhcp6-private.h
-> /usr/include/ell/ecc-private.h
-> /usr/include/ell/gvariant-private.h
-> /usr/include/ell/icmp6-private.h
-> /usr/include/ell/main-private.h
-> /usr/include/ell/missing.h
-> /usr/include/ell/net-private.h
-> /usr/include/ell/netlink-private.h
-> /usr/include/ell/pem-private.h
-> /usr/include/ell/private.h
-> /usr/include/ell/rtnl-private.h
-> /usr/include/ell/siphash-private.h
-> /usr/include/ell/time-private.h
-> /usr/include/ell/tls-private.h
->   usr/include/ell/useful.h
+-Andy
 
-None of these files are to be installed by ell, they're not part of the public API.
 
-Regards,
--Denis
+--Sig_/C9AzMUnXnMHFDQVBUiLnNK7
+Content-Type: application/pgp-signature
+Content-Description: Digitale Signatur von OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAEBCgAdFiEErcih/MFeAdRTEEGelGV6sg8qCSsFAmbMr74ACgkQlGV6sg8q
+CSt4QAf/aBNpXzz9AcHkkFOK9tiRpedmzlJe306yjl2U6VZDAgwmEMlhz13LQ5gg
+NYztiLGYL1sN4miJJ42clLMa2X8hVZiDrPnVKdtQOd6JkHp5UDqwmz25R2vpjJLt
+M4hKuzjScH0baWzau27yK/f1jm4GmLSEQhnuMI2pEGxh1HIYiEqf88onA1yAYW7L
+85Q3XSN43n26Qsd4FJV62UpbMX8a5I3PQOmQKAEtMTo776lNh586/G5p8gGYGSgf
+O7ztIrQ1WKFVWn4ufyOZ0SPfgnFyySokkYLtJnyu/E7m1mraEJVEFovJ9QW8iy/n
+LWlP9KRN8L1sm5Gqg8oU+nisoMra/g==
+=Wiwj
+-----END PGP SIGNATURE-----
+
+--Sig_/C9AzMUnXnMHFDQVBUiLnNK7--
