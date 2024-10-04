@@ -1,85 +1,124 @@
-Received: from mail-ot1-f50.google.com (mail-ot1-f50.google.com [209.85.210.50])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from fout-a1-smtp.messagingengine.com (fout-a1-smtp.messagingengine.com [103.168.172.144])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9155186E51
-	for <ell@lists.linux.dev>; Tue,  3 Sep 2024 15:05:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.50
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AFC51D9A46
+	for <ell@lists.linux.dev>; Fri,  4 Oct 2024 14:59:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.144
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1725375961; cv=none; b=Nz2mg04GiW5/3asujBRwzXBhEvp1gyDk9mDnELPck2q5CHKuubyu0omeFbaFRUiOU/5W+BNX5kCXKMWzWKXvvukb6za2Y/ci+gJ7kud1p4JKJxGb1I8fKk5PKQtw/JWEeXoA1xvKvAD5hU9GQZPGy8DeDjQIp6bBoO+e5EbSaT8=
+	t=1728053998; cv=none; b=d10fTbFe0v+3WOmCS3cUgYbI8Fc40M1f/Rg6bGt0Am+NSPxdpbZiDq9H6izyB7KtM4OePo7G8bMgi16cPB2mpPwxoS2GNchCGjuYcKmicUNBOIDqrfSloNHxjYSitX1CX97unsNoxIVZnt4kQgTY8XBq1tOP2bIdLR2yqw5SXIY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1725375961; c=relaxed/simple;
-	bh=vW9hsz11rLUazFj3DzYHgNMWxSq9U37BH+8JYOB7GJo=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=qbi2Gi0JBbAErRkl+wFoItD+W0Qdi4NYxoq2HuEwrWqtahmMNaeZ5m91QkMmAByjSSrTZfsjsP3Ogrv5oaVvJmXBj18LhRm9t0aqtrDFLuCuX6/lxBa2I/XFg5E/Y+iLt0pDH9gklGM2idtK9kPN4UDcwlOpXY4SuUAVBOsjRsc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ddrliZ8d; arc=none smtp.client-ip=209.85.210.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1728053998; c=relaxed/simple;
+	bh=yRk1ejOY6wUMy4aD6iLgfXQTK/vSxwpBxQffq7gWOGw=;
+	h=From:To:Subject:Date:Message-ID:MIME-Version:Content-Type; b=UkJNkEBim5xPtQyKoaHFCMVLD8WFNTwzZNoxHZdvFK3UnhSUX0Q0SerOq0NEUPcG+suvJ6zpTNAGJXtghS0fs+slcr3nRK/AA6PO4bIUPA2KcpIru8n7O/+yb5Ki5sPS2IqWL1f6uJ24cbWtpaPIrxyQVNzc1SUI2zrsIeFpvBM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=alyssa.is; spf=pass smtp.mailfrom=alyssa.is; dkim=pass (2048-bit key) header.d=alyssa.is header.i=@alyssa.is header.b=D0OImj8R; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=PgRDwgWa; arc=none smtp.client-ip=103.168.172.144
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=alyssa.is
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=alyssa.is
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ddrliZ8d"
-Received: by mail-ot1-f50.google.com with SMTP id 46e09a7af769-710ac7041c8so501032a34.1
-        for <ell@lists.linux.dev>; Tue, 03 Sep 2024 08:05:59 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1725375959; x=1725980759; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=AZeZnmno7g+wxg7EeQHdBjS7iMezwGsImqf+NIXSUqc=;
-        b=ddrliZ8dmSCyJaoJyT/xtfQurVx48DGhPYYSrNqaX2XDWFxk3hkYM3lcRSn20PUHS9
-         6cgpqgV4jRrr0cLyhwYfrohdyXSOohYvn+AVETwVBL/qoMOX1LYHxdrL3EOCrD5pg5mt
-         tLXMwLgXdG/GE/vWkBlAnLgq5B8tm9nGb9RfAaXCLk1GyvUiqzVkL4OHRa2xXfCCxMJm
-         cUKVYrvyt8d/HFNSXxYV71L9NqLYMufAOIp67oIegUhqlxcYEyfNypc7Euu1kVAifNtW
-         PLoSLnDV/TNmFfr4fqnv0QhYOd0Y3cH3V8kgmBdLFSpxrSxF9PVSbs2kO2ALFsD/0iZE
-         NC5w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1725375959; x=1725980759;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=AZeZnmno7g+wxg7EeQHdBjS7iMezwGsImqf+NIXSUqc=;
-        b=navqu/unOCclu8JiusBTjYEAzlODjanqycsr338KvWlHpnuHR4qU5zQwm3qsMFx4iE
-         kQGjQIa/8asju/8qHfwulufMj28gTf1jK0Vf9I/2liBKWMSt5o2pcD3mKrw8kgmNKCZb
-         I5TWeSiaD7o71la5sV/0QEMcF5D717kxQ2Mo320BbeLSDKArkeKyVC8X8Kg0aWYbRCeb
-         przQwUxZTMwNhmvzsC3xM1N/Lerre5crKhskJ7zHZeDNZREEy+EydiZPnwYDNMrEyI0u
-         j+ZoMvKTgo0nR4U29ZglqGcKuA0gfWeVXOVxY2Ldfckld9/k+pq4fMXE0Iql81GRJdzB
-         dbsw==
-X-Forwarded-Encrypted: i=1; AJvYcCVgeQKjuMM/0RQMcf0pJuuZm9GCQcylcAjHdqODUXmbSOKxmOcYhtXcl0RmdogJxQuokek=@lists.linux.dev
-X-Gm-Message-State: AOJu0Yy/oPhJFeYqdvOBnssyHpBJQBRP1Ob1eYx+QEU3ACZIR6FCtCG/
-	ikjxskJJ9OyVLlT1Pa3PgDI4EfBUghTe6V+n4Dh2c/CCDq7IyulR
-X-Google-Smtp-Source: AGHT+IGgH/tXitPpn+sdEnX7PxzHXjM1DV8OIvLupcKOuE10JFcLWRP4YuAIfBSBDWZ1z6wQiVEtQw==
-X-Received: by 2002:a05:6830:3496:b0:70f:6f81:d258 with SMTP id 46e09a7af769-70f7118c193mr12664157a34.31.1725375958771;
-        Tue, 03 Sep 2024 08:05:58 -0700 (PDT)
-Received: from [192.168.1.22] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 46e09a7af769-710a84850e3sm535566a34.9.2024.09.03.08.05.57
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 03 Sep 2024 08:05:58 -0700 (PDT)
-Message-ID: <976af136-bd64-43d2-a26f-5c2d7f8913ba@gmail.com>
-Date: Tue, 3 Sep 2024 10:05:57 -0500
+	dkim=pass (2048-bit key) header.d=alyssa.is header.i=@alyssa.is header.b="D0OImj8R";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="PgRDwgWa"
+Received: from phl-compute-01.internal (phl-compute-01.phl.internal [10.202.2.41])
+	by mailfout.phl.internal (Postfix) with ESMTP id 052651380258
+	for <ell@lists.linux.dev>; Fri,  4 Oct 2024 10:59:54 -0400 (EDT)
+Received: from phl-mailfrontend-01 ([10.202.2.162])
+  by phl-compute-01.internal (MEProxy); Fri, 04 Oct 2024 10:59:54 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=alyssa.is; h=cc
+	:content-type:content-type:date:date:from:from:in-reply-to
+	:message-id:mime-version:reply-to:subject:subject:to:to; s=fm1;
+	 t=1728053994; x=1728140394; bh=nwUpd1klCZ2+xWhTR1wCVIfXGPFoaZq3
+	VRsPsXw+R0I=; b=D0OImj8RMZS54k+oqkSh/xvS+58PlOKSayZkys8OPmXGpt/g
+	clPDn3V0gyVHOHtTKGb4A1KFiAjKI8hLaMWIrH1L5U7EyvD036TmG5f4YEU/pzng
+	shfYLW9MnBOIy05ah3o19KH/k1j2MHZVnswJQ8PZ5+BzSOudQZv6Mv/qMGA9kieO
+	WdPe4pxQ9O8fHBYLy4U6pXsQpIuESZV1ME3iBxzPbP0JgCPjWuagSBANbvar4bXY
+	MtpkuApiFtPS8eUxoimEcZPAi1eBxq2IALWL9tR1vn/x53m1tUAjUBbuptwYhmPs
+	5xRDWbF1wLlkW1drx6/+vlfVTxL8l/h2mAAkPQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:content-type:content-type:date:date
+	:feedback-id:feedback-id:from:from:in-reply-to:message-id
+	:mime-version:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; t=
+	1728053994; x=1728140394; bh=nwUpd1klCZ2+xWhTR1wCVIfXGPFoaZq3VRs
+	PsXw+R0I=; b=PgRDwgWaZ0mIP7nskU8+pDA5f//b2lRF0FoToPrMcXGqUfBI2ow
+	y+trA/BQm/esQZ+glHeDUrqfpAFbKc5z6GLhEfoWJCyXflgf+k/OHeYb1pdU5iDs
+	bJyS4YdtX/nsv2x1cA5J5lH3fJhpISMFggte+swFJWElBbmKVQNgoLQStI9WStF2
+	0+ksp7O9KYrkzI+u11u54beej1NOsv24URkh7XpN28h7oX4QISj8JkxFFGxzyBOb
+	qts0xj5nGHncTuRyTBlO0Pt3mDeVTmypr2B7a+GYDDKjrXPs9yLmpkK5xwmh+gdq
+	t/lFPvHUoedWKlT5kNkeXtOBH0Sb1TxtZJg==
+X-ME-Sender: <xms:6QIAZ4JpPvY0fNgZeRNQ1QbpGDhTspDVNjjwy3_NPRHkZfNLcMyG6Q>
+    <xme:6QIAZ4LUKzMe3P9PLJnSg9Q9DQTLM_qOCRRShjEJolfHdLPCWVbAax9OnEsggvygh
+    9i5QZiQM0IGtgPa0w>
+X-ME-Received: <xmr:6QIAZ4ufzsUIzrJVZN7FHv2uYhMMhCjdiBT3WbT-n4bblk4N_M8gtzfkT04aW80jZ9ubGnTXxNGpJeU9-KVASQ5FVw2Wx2EH_jmM0xM>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeeftddrvddvfedgkeefucetufdoteggodetrfdotf
+    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdggtfgfnhhsuhgsshgtrhhisggvpdfu
+    rfetoffkrfgpnffqhgenuceurghilhhouhhtmecufedttdenucenucfjughrpefhvffuff
+    fkgggtsehgtderredttddtnecuhfhrohhmpeetlhihshhsrgcutfhoshhsuceohhhisegr
+    lhihshhsrgdrihhsqeenucggtffrrghtthgvrhhnpedtkeevtdeitddvteevgfffteeufe
+    elvdehhffghefhheeiffekheeuieetjeffffenucevlhhushhtvghrufhiiigvpedtnecu
+    rfgrrhgrmhepmhgrihhlfhhrohhmpehhihesrghlhihsshgrrdhishdpnhgspghrtghpth
+    htohepuddpmhhouggvpehsmhhtphhouhhtpdhrtghpthhtohepvghllheslhhishhtshdr
+    lhhinhhugidruggvvh
+X-ME-Proxy: <xmx:6QIAZ1Y8WL8BbDCOINn5eUB21OURMtZOv2LHvWdQwNV_2sY95hT8Bw>
+    <xmx:6QIAZ_a4Ui5rrLaUC0-wJqe7zk6R3BxmiBoB-JwBYVgu7lYslu-cpg>
+    <xmx:6QIAZxBhFGNUicxYt2rJVcnwfEqOL_sKIStHVgOF620kO3MNTinAUw>
+    <xmx:6QIAZ1ZFP0xSUsPmRZPtFWM1120b2CAJlOOYpHuCS3m4p5hl0nFKcQ>
+    <xmx:6QIAZ2w8nrWzTDS1SuNxmgdbV2YgyzesEFl_HznSvjGb35UrZ4wFVPA6>
+Feedback-ID: i12284293:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA for
+ <ell@lists.linux.dev>; Fri, 4 Oct 2024 10:59:53 -0400 (EDT)
+Received: by sf.qyliss.net (Postfix, from userid 1000)
+	id A592344F6AAA; Fri, 04 Oct 2024 16:52:23 +0200 (CEST)
+From: Alyssa Ross <hi@alyssa.is>
+To: ell@lists.linux.dev
+Subject: TRUSTED CERTIFICATE
+Date: Fri, 04 Oct 2024 16:52:11 +0200
+Message-ID: <878qv36hus.fsf@alyssa.is>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 1/2] time: expose _time_from_timespec in time-private.h
-To: James Prestwood <prestwoj@gmail.com>, ell@lists.linux.dev
-References: <20240829112549.24935-1-prestwoj@gmail.com>
-Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20240829112549.24935-1-prestwoj@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 
-Hi James,
+--=-=-=
+Content-Type: text/plain
 
-On 8/29/24 6:25 AM, James Prestwood wrote:
-> ---
->   ell/time-private.h | 1 +
->   ell/time.c         | 2 +-
->   2 files changed, 2 insertions(+), 1 deletion(-)
+Hello,
 
-all applied, thanks.
+I encountered a problem when attempting to connect to a WPA2 Enterprise
+network with iwd, that I think is caused by ell not understanding some
+certificates.
 
-Regards,
--Denis
+I'm pretty confident that it should be valid to point EAP-TTLS-CACert to
+the /etc/ssl/certs/ca-bundle.crt that comes with my distro.  I believe
+this has worked with NetworkManager/wpa_supplicant for me in the past.
+It doesn't work with iwd/ell, because
+l_pem_load_certificate_list_from_data will error if any of the entries
+in the provided PEM data don't have the "CERTIFICATE" label, but some of
+the entries in my ca-bundle.crt have the "TRUSTED CERTIFICATE" label.
 
+I think ell should therefore either support trusted certificates (or at
+least give up if it finds any), so that users don't need to manually
+configure a certificate for networks with certificates signed by a CA in
+the system's bundle.
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEH9wgcxqlHM/ARR3h+dvtSFmyccAFAmcAARsACgkQ+dvtSFmy
+ccBEqw//YdnQshRB39NF5deXJos47gH9SWQ5RMeRArXaq0OT26bwrVPCk2FPgSMu
+hTF3gshfFlOj9OyvOrfG7Oc82vEfryC9IolOxafHjebwv4LdFGqxuWPA+3J7PZfO
+Ar2LQlurTLKcoNZLokXG4QO7or2di7tT1Gmio0WLJ3QIINFX48lEjtzSfxAxtd0W
+PmADJTApIHRSjL21dj57yMNfVKzCchHcecomzP1iNp2MnfNlpdx5skxCbBjeytX4
+S71Av2f7ubWLUtPUWpk9IlIABtZSUWo4pfYMnj5XxE8+FfMcrQSpl6OgjklABBAv
+ctlKqyVZgBSu8UnnzrwS0dxh9om574xhH3AXYgJh86Plmv6FH8f8E7cZGRGwbIE2
+m9oG5flew2Zt9ZxzIL8cFcD17TjEh1JLx5Rs0McX6dh598e+ufS4K7jQDSFpCXvB
+U8LvVBiucNQ8bhCCk7dPsREUzk645uaBRUNyhfO079/sGbIHF+OUZptzNjKxENqo
+FhR+ptnUtXGgB0SXAqwVkdyLIHd0j1fEmGpsg16rXN0iKSsC/UFzGIvLDVoyRUr7
+oMm3he/rNhXVtRCdgndGy6/D69cKB7IO3tzGQgHvtbrQIzGwmpaZjSwSh1WC87vQ
+lNj16awW0sTqQ6XUwkXNhOU4hy9s9A2ENN8/XdjAKOrwa+Qk6DI=
+=nK7L
+-----END PGP SIGNATURE-----
+--=-=-=--
