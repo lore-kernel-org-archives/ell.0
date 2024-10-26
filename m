@@ -1,133 +1,96 @@
-Received: from mail-pl1-f178.google.com (mail-pl1-f178.google.com [209.85.214.178])
+Received: from mail-ed1-f41.google.com (mail-ed1-f41.google.com [209.85.208.41])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5EAF41E519
-	for <ell@lists.linux.dev>; Mon,  7 Oct 2024 12:36:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.178
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 173B6217F22
+	for <ell@lists.linux.dev>; Sat, 26 Oct 2024 11:01:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.41
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728304583; cv=none; b=R1Ngi0e3SBc3cVqJiEUKvj3v4pyDTniKHPmUaaSG0gy0emX2CuJ0WizUUuLlCnFYOMuA5oc17jT/FqA15603xoVn5FnAiWz84bLaY0CuPdwOx2GiQdX5aningUzsxtmVPgRNexIdkCPA/Ie4rR8smyALwEcujk+RWTe18vf+nH0=
+	t=1729940507; cv=none; b=Jw3Cj9yNhsGmhLr+DHHZsyTpvl8RiA/xwQgZ3Q3kmYB9gU04txDIppc1q5O/fArEhe5Igq/e2KHRNyxFyWH7ctGAA5eDWZOteZHs8Mf/nm7/5oqtBx9G7nYefH+Pxa3DTaGSLOlt3HO+Y0rJR+9ZH63vzucoA65e7gF7MY8VZdw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728304583; c=relaxed/simple;
-	bh=xz6w8hatiQxbmud/4m8ggXKhuUtbp+6vaaeY4JjRYkY=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=f1mV/GBY7Ksu2JSXF9JL6LC74TnzNjw7sybqnutw5q8Bn5Ndb7VtDZfbdiSxDBQoygnF08XlV/5lttUUGYML1uq6dOy68+jAUb7WFs2xaL3+Vk9sJMIFv5bxKPnx6syS7n7g+c/6nJYQR6I1cGyCWDIVYcAFJHjh9+TH+ph6coE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=a6KcFsHF; arc=none smtp.client-ip=209.85.214.178
+	s=arc-20240116; t=1729940507; c=relaxed/simple;
+	bh=PyddCprS0cjcnc53TOxHjVmIuX6orZHmSwPIZSBiKdY=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=n467mpcEI9IRFzQegTcEuBi2ac9AAZrzRAXHJ+mR0q4DpzNNl5tX4P3VJq3yv6Rq0bWDYNiSfhask7rICmIxd6zURliOR4Z5KVa7cBZhEkFEyB1dZb1xpGoTwIP+cp4BdAmh5h/VomEdfDLIdX1RCzL+C1zNFEXj9/EQw8qFFLQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=YPoevR8T; arc=none smtp.client-ip=209.85.208.41
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="a6KcFsHF"
-Received: by mail-pl1-f178.google.com with SMTP id d9443c01a7336-20b7259be6fso47630855ad.0
-        for <ell@lists.linux.dev>; Mon, 07 Oct 2024 05:36:22 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YPoevR8T"
+Received: by mail-ed1-f41.google.com with SMTP id 4fb4d7f45d1cf-5c96936065dso3154353a12.3
+        for <ell@lists.linux.dev>; Sat, 26 Oct 2024 04:01:44 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1728304582; x=1728909382; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=3+wYour5a6D3Yd18eBQlkVKxF7kA6vII/q6BGTUOh6s=;
-        b=a6KcFsHFNNYcvOsD3issmtD8uerpBHV4xPrqDmBn1kq0FYpeOwW/17i/5nD2XGXD98
-         NPMCw58UPUbjObpT/d2pu/2MI84vVUxGs3ttD7qIRl2HxTpN2DUVJI44fONDGaYZlsbs
-         UiBCMxaPWaTcZpinQWvLvThZOXmAaV7NvKy8tOlbFzS4jyy80Cr4jsY/tVLxJ6SY9yem
-         +AIyLEEwNtZ0T++j12Csl7sLrmwByGijcSgQS6YkmogEwdwWIaa7bEGlwnbRE2CPYGPN
-         u2F+eRzDnu+INzLNArElfbZCWq5k88lsBL/BHGKEqiOrl/si0FdQqi5WC6nHgtxO471a
-         nFpw==
+        d=gmail.com; s=20230601; t=1729940503; x=1730545303; darn=lists.linux.dev;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=m0iekHj37lcjq/XLuOSnarSzWH1K/YFp1fLgkE/hxCs=;
+        b=YPoevR8Tj5b1pHJ00WR/vOuZK0IWcUpqtow7L78wGc7F6BLm5rZKOLzf8bmVgKPiuY
+         dR3SU45oa+IAUG7AMoJUCPmXsm8+hptnzMDTG3YhuzvV/PzhXyzLSLZqHiDanHtIQcLE
+         8oHbtP0F2mkgWwPYT7ezvTkDdk7PFd58W+OsCZD+Nxxxun7AJqEgJq1F6/zy0bQZQDMd
+         sea8FxIsltxeYHSQCgzuEY/tb3CYpJ04l762oyFrOYkN5/E9KHOAn8xmFxuQZyLw0yjX
+         lyK70Oa7Pb+4LNGO2jKAoiQsk5pmFtNSaRHcXflIzHbwm0aSrJU+7xTJr4ACOrCzIwU/
+         MsnA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1728304582; x=1728909382;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=3+wYour5a6D3Yd18eBQlkVKxF7kA6vII/q6BGTUOh6s=;
-        b=qB7pVovC/n1ZNrT3MgefFb/lvulqwbt2oDG36qVaYZ3FSTAshoYtDQfNNmzNuwG2ah
-         Y2tvlbYfFLR/rruPjGP8vL6si9kL2xGMjPrbwRUQF4tQbQgn8WAez17OOJxz9Q+g7WG/
-         85HswNKJKbh0+tyNNfF0NUz9w3gDxC9GgiWZFdMlfEjQwEy/y+Odkm0rDCiNN7LGhGHs
-         vSKugzFA67b7dSpmUsdH81JYvd4In35TtDwLj5svqQ/Yi8MUjCbrv/Ctgf38WMFhS5rF
-         OPJ6hlHQanI1aF9wrBQUUfWlWcX/XbcyDO9mOGiOlACObZ5oHvrtyAOSqgK7cH82zCCf
-         WVOQ==
-X-Forwarded-Encrypted: i=1; AJvYcCUvkjLDYCohh2NMDSFyyGe9JF5UIdc9GpS/wWds/SQO9fp555xw/2ddjT7U/69R6Ug5cQM=@lists.linux.dev
-X-Gm-Message-State: AOJu0YwS2U3kCQs7qIOiuEksibY25oFN5rj1ZGsyXHRIB/igVKbhIPRV
-	jkCVZ44o1Z9lqIXNy0IaJOXlgXTPetwjPgZdmwWAyZh3UyIisjZGnIAkjg==
-X-Google-Smtp-Source: AGHT+IEnlO7aV1X00zwtq7Ffq0+l9f2wU+mVkU3tg896w2QjebHpXNsTvNVEOZfKJhzUDKKmjbtDCg==
-X-Received: by 2002:a17:902:ea0e:b0:20b:bdcb:e95 with SMTP id d9443c01a7336-20bfe043d7dmr131712355ad.34.1728304581485;
-        Mon, 07 Oct 2024 05:36:21 -0700 (PDT)
-Received: from [192.168.1.164] (h69-130-12-20.bendor.broadband.dynamic.tds.net. [69.130.12.20])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-20c13930b92sm38589175ad.128.2024.10.07.05.36.20
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 07 Oct 2024 05:36:21 -0700 (PDT)
-Message-ID: <1840b514-3311-44e8-8dd6-96d7976f1d0c@gmail.com>
-Date: Mon, 7 Oct 2024 05:36:20 -0700
+        d=1e100.net; s=20230601; t=1729940503; x=1730545303;
+        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=m0iekHj37lcjq/XLuOSnarSzWH1K/YFp1fLgkE/hxCs=;
+        b=ezYCvgYKvc4dV9Awkrvio/JIta+o3j9HakD7tEko/i6vjgCRcAn77vHX0iq7IPOdgs
+         cu1x5X2mHSQSGFrG91YVwVsWNqjnRaBa4dVQ8L1cVdsQXj8nBbCicTGkocfqLUuksG/c
+         BYay2WkL77Ji9RQmXG0hUG8vnTvfaINbipNRu6p84VytNG1xzzvpMSFfC1ls5Mo09V29
+         5U0hQcqb4v1LPocMMSPbvsjy5NRZNTWynjeqKXyxBWJtU7gnUL8k+/blYOaaSGKGFBO0
+         1fF8D+9hl2ItT7A8JWFuOtt93eKaM4TEx7MDqnhACGhfqGqMRPGXQCmfieDm4L2SwboQ
+         ftdw==
+X-Gm-Message-State: AOJu0YwZWstbv8toRDidn6bVZ9v3ldRcypTQYbDAdX0VIgQvzTzWH6or
+	+5aOjNVgU+U8VrLhZcfiZQuTF9adQPgTfMRttNpc2vSXQ48jXGkwvUHjNDD0DtWno3RIgpfGxAE
+	0GH2QPNjjFbCBIV124OSEYEsz69gA9mIr
+X-Google-Smtp-Source: AGHT+IH08Q/gnR9i3+goOtqRkeLDgS9/Xbp6WzthbMclaLgmAOf8rBT75FCNC2+gNIjoz77MBS35h/aHFrV4ammTC4U=
+X-Received: by 2002:a05:6402:26c4:b0:5c9:3f2:6ea7 with SMTP id
+ 4fb4d7f45d1cf-5cbbfa54851mr1354308a12.27.1729940502938; Sat, 26 Oct 2024
+ 04:01:42 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: TRUSTED CERTIFICATE
-To: Alyssa Ross <hi@alyssa.is>, ell@lists.linux.dev
-References: <878qv36hus.fsf@alyssa.is>
-Content-Language: en-US
-From: James Prestwood <prestwoj@gmail.com>
-In-Reply-To: <878qv36hus.fsf@alyssa.is>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+From: Aditya <vortexilation@gmail.com>
+Date: Sat, 26 Oct 2024 18:01:32 +0700
+Message-ID: <CAL5LfdR_mL+LZ4APgLbWcptAvqnFvTJqgmE6Ryaj4gyquJYN3g@mail.gmail.com>
+Subject: [PATCH] ell: Inclusion of netlink.h in genl.h because of recent changes
+To: ell@lists.linux.dev
+Content-Type: text/plain; charset="UTF-8"
 
-Hi Alyssa,
+I have found out that because recent changes, compilation of mptcpd
+will failed with the following errors :
 
-On 10/4/24 7:52 AM, Alyssa Ross wrote:
-> Hello,
->
-> I encountered a problem when attempting to connect to a WPA2 Enterprise
-> network with iwd, that I think is caused by ell not understanding some
-> certificates.
->
-> I'm pretty confident that it should be valid to point EAP-TTLS-CACert to
-> the /etc/ssl/certs/ca-bundle.crt that comes with my distro.  I believe
-> this has worked with NetworkManager/wpa_supplicant for me in the past.
-> It doesn't work with iwd/ell, because
-> l_pem_load_certificate_list_from_data will error if any of the entries
-> in the provided PEM data don't have the "CERTIFICATE" label, but some of
-> the entries in my ca-bundle.crt have the "TRUSTED CERTIFICATE" label.
->
-> I think ell should therefore either support trusted certificates (or at
-> least give up if it finds any), so that users don't need to manually
-> configure a certificate for networks with certificates signed by a CA in
-> the system's bundle.
+In file included from path_manager.c:21:
+/home/user/works/openwrt/staging_dir/target-x86_64_glibc_custom/usr/include/ell/genl.h:
+In function 'l_genl_attr_next':
+/home/user/works/openwrt/staging_dir/target-x86_64_glibc_custom/usr/include/ell/genl.h:98:16:
+error: implicit declaration of function 'l_netlink_attr_next'; did you
+mean 'l_genl_attr_next'? [-Wimplicit-function-declaration]
+   98 |         return l_netlink_attr_next((struct l_netlink_attr *) attr,
+      |                ^~~~~~~~~~~~~~~~~~~
+      |                l_genl_attr_next
+/home/user/works/openwrt/staging_dir/target-x86_64_glibc_custom/usr/include/ell/genl.h:
+In function 'l_genl_attr_recurse':
+/home/user/works/openwrt/staging_dir/target-x86_64_glibc_custom/usr/include/ell/genl.h:105:16:
+error: implicit declaration of function 'l_netlink_attr_recurse'; did
+you mean 'l_genl_attr_recurse'? [-Wimplicit-function-declaration]
+  105 |         return l_netlink_attr_recurse((struct l_netlink_attr *) attr,
+      |                ^~~~~~~~~~~~~~~~~~~~~~
+      |                l_genl_attr_recurse
 
-The TRUSTED CERTIFICATE type is an openssl-specific format. Sound like 
-the certificate content itself is the same, but they append extra trust 
-information onto the end. Supporting this is trivial, but requires 
-removing a length check and checking for the "TRUSTED" begin block. I 
-can't find any documentation on the actual ASN.1 format for this, so I 
-hesitate to throw something into ELL without actually understanding it. 
-Below is some code that will allow TRUSTED types though. Maybe 
-Denis/Marcel know more about this?
+This is compilation for glibc and by using gcc 14.2.0, the solution is
+fairly simple :
 
-diff --git a/ell/cert.c b/ell/cert.c
-index 38bb01a..3912b19 100644
---- a/ell/cert.c
-+++ b/ell/cert.c
-@@ -124,7 +124,7 @@ LIB_EXPORT struct l_cert *l_cert_new_from_der(const 
-uint8_t *buf,
+diff -Naur a/ell/genl.h b/ell/genl.h
+--- a/ell/genl.h
++++ b/ell/genl.h
+@@ -11,6 +11,7 @@
+ #include <stdbool.h>
+ #include <stddef.h>
+ #include <stdint.h>
++#include "netlink.h"
 
-         /* Sanity check: the SEQUENCE spans the whole buffer */
-         content_len = asn1_parse_definite_length(&seq, &seq_len);
--       if (content_len < 64 || content_len != seq_len)
-+       if (content_len < 64)
-                 return NULL;
-
-         /*
-diff --git a/ell/pem.c b/ell/pem.c
-index 24e8372..1781a46 100644
---- a/ell/pem.c
-+++ b/ell/pem.c
-@@ -426,7 +426,8 @@ LIB_EXPORT struct l_queue 
-*l_pem_load_certificate_list_from_data(
-                         goto error;
-                 }
-
--               is_certificate = !strcmp(label, "CERTIFICATE");
-+               is_certificate = !strcmp(label, "CERTIFICATE") ||
-+                               !strcmp(label, "TRUSTED CERTIFICATE");
-                 l_free(label);
-
-                 if (!is_certificate)
-
+ #ifdef __cplusplus
+ extern "C" {
