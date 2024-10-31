@@ -1,61 +1,65 @@
-Received: from mail-oa1-f48.google.com (mail-oa1-f48.google.com [209.85.160.48])
+Received: from mail-oa1-f54.google.com (mail-oa1-f54.google.com [209.85.160.54])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 707BC1A2562
-	for <ell@lists.linux.dev>; Thu, 31 Oct 2024 20:26:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.48
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F29F1CB51C
+	for <ell@lists.linux.dev>; Thu, 31 Oct 2024 20:26:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.54
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1730406392; cv=none; b=FNrcNFoFRfbVPcR/dy7MuT8OUEObtxwZBBYIXLOVH3G8louzINPo/M1aYw4GX8RVyIYbh1Qmy5TyV109k0c0F27j1VaFnyCVHl210ibo2ngZtnjUaSYkZrM5aJSvAU6UEoMhk8pG2YlzPE2TKHrOPnjzcO2Cgibaa1uw3QLXHL8=
+	t=1730406392; cv=none; b=foDR03e1jEEC7xaZqAAL2Nuec+Ty2Hm/Oj+Btl66EDe2gN7fD/d5qVd831SKFy8psDkAWkh5POLOesSOD5tjEYx7i0D68NFJl9Bdw7IA7AeEk+vqXNxIi7Lg/yfO9GE30wjSqIm93Ql9zeFEF7OSn9Jjs1IzG/BDvJW1HeByLeg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1730406392; c=relaxed/simple;
-	bh=eExCDLRWnL7f3djdLgTxCPnRYFWJWOu1kwRrsxfYLYU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=jXt9GxxFJuCi1ZLsUpmjtfgtLbmo8bEhU0ioRLk868PV0YpAY3i7kg2qTkQF4CyngMTngQo6eSL0Mey/fo7kXvELoWjlLIZ2sNJVsgXZ7A5v66vGjG3AtQQyT3rBl0Uz3SEliLpW9PjWnAL9J8cCc4tpuyrJoxexniRFk5weUzU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ihciixPZ; arc=none smtp.client-ip=209.85.160.48
+	bh=lbJ29Yi7RpD5RnDW2kiFil9sEGyf3kMPa+e7Aj7G6dw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=mmZEUOE22iVQoEC02JaNWENE729pb67vsYlIGQshgfrzbnSts90AusuD8jcklcQMZ1WZLHm3x/4sChYrb+SLETY3eWjGMKzRjvphBDYusld/v5ZmuuLubLhuiaqeY5uBNlvbYvdCb7taGZ/xPIDV0Ni45eeA1MMEP+nI33jJfAY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=k4grpLT3; arc=none smtp.client-ip=209.85.160.54
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ihciixPZ"
-Received: by mail-oa1-f48.google.com with SMTP id 586e51a60fabf-277e6002b7dso630359fac.1
-        for <ell@lists.linux.dev>; Thu, 31 Oct 2024 13:26:30 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="k4grpLT3"
+Received: by mail-oa1-f54.google.com with SMTP id 586e51a60fabf-2689e7a941fso765672fac.3
+        for <ell@lists.linux.dev>; Thu, 31 Oct 2024 13:26:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1730406389; x=1731011189; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=PxwnaxOFz4hmKVKtLA+35P45umGgN5wIsUSBwetIxvU=;
-        b=ihciixPZ2gsLO2Ft+i1G7KrLM22KjLaNQ86+1EUCZJU/y/Mg8GqwNywIJqAq+8EFZz
-         6cCgeoQjLa+puMzkHdvSdU0cJ9ts01Sj7KwOTs3AD+Js+moihEmTrNCGnsCgRFeeaCyi
-         zhNmjS/WRvoIVhg9jvOU689avAK8pyNd+cQ4tYNc5pC4djZ5CIB9x/auO/tTToBpx7sd
-         Yt4DlvjNOZ6Fo9DXoxAE4W3+pD/fIM/TObbaq2NEjx6oRLDP9eeejU2tKODdO7CS/qQr
-         LLE6RGuJHEck6F3VCoolu3V2kZhsZ+r/SolkIcc6rTDrGCBakWOnuz4O7g6Rktjj3D1U
-         /dMw==
+        d=gmail.com; s=20230601; t=1730406390; x=1731011190; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=AAadpLSg11zRTQ6PtMzXn0c8UoyAbraRzYllVdPBD68=;
+        b=k4grpLT3axDTs7nO7x7M48zZrip5/KidJQJTFKtwBoyOfmsuuqlsjOmmHjiQIMSzIi
+         62EByEy4SuyNlZrz1RSP48d1x7yfjZqZ6H/cYkJfht6oBw+04H/Puo5WxNt4ibQLgRrf
+         8yWv2RFMQyhVfo7pji/x1slldLK+fQJQgPK0AaOM/u1nvD0wXLxXluYazQN3QIU9JWw6
+         dvKgUxY3MfaX/7atmuwSFa/Dz2t4zokB7qeYuQVdKxbvTo3JgSQh3VcuJ79T7xhzG8hY
+         +JDuG4NZ4u9/0+fuykSs0yZ5kHkrJC4DUo3fs9iMNMA+fv/7Zn/L72rIrG7jNYt6TWkB
+         2BsA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1730406389; x=1731011189;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=PxwnaxOFz4hmKVKtLA+35P45umGgN5wIsUSBwetIxvU=;
-        b=hsfi2SABhGI1DgbI85tPosHcwPTsZCv9wBxt3sRfGWl7wzRQGSfeRM5SrhbPBxTSD2
-         JY9/sT7Xad85TQlblW4oqpxAoT3PINopdJh07NWwM5py2vAVqPT3ftHOdk+nVHzmRVRX
-         fNVGAxk40ZG1yojqObJho4ypYqwCaqhH7IDVTrS6RwSOujf4a+WElhvOyXff6NgyBcXK
-         PtmR0brlGI0CEZ+4ESl33RZx06uB35Gc2ThpZZqYjXGhJVfUs2s8dnUzzy8ljq0o5BVb
-         jzi7kC+FkEP1uzHKUOlWhycLP80PElRHJzYYgOUz4nYTi83yJVOKYdoTGli9y2qGdq9z
-         CXhw==
-X-Gm-Message-State: AOJu0YzSP1eWsXr/mZItqPoPVEVn7mL3GanVdRt4C0jMkjDqSJQy3hHv
-	5Rvl8iPm2nMARYhhW54KlXZxqQQrtqZRmXurYiIifX+onVHw3mEDN5feJA==
-X-Google-Smtp-Source: AGHT+IGm04treFjmmpyDo8gAH2hKQaENE0v4lP1NEdG/6u0ZbtVhJ8BUmlU4/pHNLPOvtHmsKIVP8g==
-X-Received: by 2002:a05:6871:5308:b0:261:1f7d:cf71 with SMTP id 586e51a60fabf-2949effac5dmr1229011fac.34.1730406389372;
-        Thu, 31 Oct 2024 13:26:29 -0700 (PDT)
+        d=1e100.net; s=20230601; t=1730406390; x=1731011190;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=AAadpLSg11zRTQ6PtMzXn0c8UoyAbraRzYllVdPBD68=;
+        b=aZF23wGhh7ZJMNxiX7mWl/tAMcVMxpPi1JcGMvEM7muFXPNgx8GHC4VEfogAkkwrEp
+         AHLodqeLaYf3kSAqsmEottd5jQ9qF8Nc3FzLT7mtJpLfXbSgUzJJlVdFhUEDrQqFG/ID
+         FlOGv40ccELWKwSIg3Pl5c7dwvazNGKy9xCPAU4njutArw651d3AHj6xSpGLhNHM/Qgw
+         7zwbCltOVY4303H310PwL2TSWyKv6GWHG9tt+3YAFDop6aiZjV3M3rTA2GU2CPIGEn2S
+         mKRm2+NyLY8f0baYrYPAFpqhvgrJx5c5qEgPEBj85iUZWzwnvorKkj5zyiBL3bHTw28m
+         42yg==
+X-Gm-Message-State: AOJu0Yx1Tt6DFHeACeqhYNZyO3tt34db8GyV9iJFdKjeXd/Xq/Qs3g32
+	n5orOfOapTszjmwjo3X6oavuvf7GdDT+QYRLhbQ14HD4LMnjYLWPzjzjsQ==
+X-Google-Smtp-Source: AGHT+IFXdPG/xjhL9zcTaDhEok149AuiM1ubHpfSyjTUd13LBfmxr7Ea/NmYUEF8ndVLpTkMC3sUXA==
+X-Received: by 2002:a05:6870:5252:b0:287:7bb6:3c54 with SMTP id 586e51a60fabf-2948466f648mr4422392fac.38.1730406390190;
+        Thu, 31 Oct 2024 13:26:30 -0700 (PDT)
 Received: from localhost.localdomain (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-294874d6687sm712930fac.31.2024.10.31.13.26.28
+        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-294874d6687sm712930fac.31.2024.10.31.13.26.29
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 31 Oct 2024 13:26:28 -0700 (PDT)
+        Thu, 31 Oct 2024 13:26:29 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
-Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH v3 1/3] timeout: add l_timeout_remaining
-Date: Thu, 31 Oct 2024 15:26:13 -0500
-Message-ID: <20241031202627.1548592-1-denkenz@gmail.com>
+Cc: Denis Kenzior <denkenz@gmail.com>
+Subject: [PATCH v3 2/3] util: Add l_memcpy
+Date: Thu, 31 Oct 2024 15:26:14 -0500
+Message-ID: <20241031202627.1548592-2-denkenz@gmail.com>
 X-Mailer: git-send-email 2.45.2
+In-Reply-To: <20241031202627.1548592-1-denkenz@gmail.com>
+References: <20241031202627.1548592-1-denkenz@gmail.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -64,86 +68,35 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: James Prestwood <prestwoj@gmail.com>
-
-Gets the remaining microseconds left on a timer. Microseconds were
-chosen in order to be easily compatible with l_time APIs.
+Some callers use memcpy without checking whether the size 'n' is 0 and
+src is NULL.  'src' is declared as non-null and can thus cause
+sanitizers to complain.  Having 'src' as NULL is fine as long as 'n' is
+0.  Add a new l_memcpy function to take care of this case.
 ---
- ell/ell.sym   |  1 +
- ell/timeout.c | 29 +++++++++++++++++++++++++++++
- ell/timeout.h |  3 ++-
- 3 files changed, 32 insertions(+), 1 deletion(-)
+ ell/util.h | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 00123136a527..af7395f3f1ae 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -529,6 +529,7 @@ global:
- 	l_timeout_create_ms;
- 	l_timeout_modify;
- 	l_timeout_modify_ms;
-+	l_timeout_remaining;
- 	l_timeout_remove;
- 	l_timeout_set_callback;
- 	/* tls */
-diff --git a/ell/timeout.c b/ell/timeout.c
-index 4fc21a0854c1..541692ecff93 100644
---- a/ell/timeout.c
-+++ b/ell/timeout.c
-@@ -23,6 +23,7 @@
- #include "timeout.h"
- #include "main-private.h"
- #include "private.h"
-+#include "time-private.h"
- 
- /**
-  * SECTION:timeout
-@@ -298,3 +299,31 @@ LIB_EXPORT void l_timeout_set_callback(struct l_timeout *timeout,
- 	timeout->user_data = user_data;
- 	timeout->destroy = destroy;
- }
+diff --git a/ell/util.h b/ell/util.h
+index c56f182292fa..2a0ee0e50b93 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -243,6 +243,16 @@ static inline void l_put_be64(uint64_t val, void *ptr)
+ void *l_malloc(size_t size) __attribute__ ((warn_unused_result, malloc));
+ void *l_memdup(const void *mem, size_t size)
+ 			__attribute__ ((warn_unused_result, malloc));
 +
-+/**
-+ * l_timeout_get_remaining:
-+ *
-+ * Get the remaining time for a timeout in microseconds
-+ *
-+ * @timeout: timeout object
-+ * @remaining: microseconds remaining on timer
-+ *
-+ * Returns: True if successfully got remaining time
-+ *          False if failure to get remaining time
-+ **/
-+LIB_EXPORT bool l_timeout_remaining(struct l_timeout *timeout,
-+						uint64_t *remaining)
++static inline void * __attribute__((nonnull(1))) l_memcpy(void *dest,
++						const void *src, size_t n)
 +{
-+	struct itimerspec current;
++	if (!n)
++		return dest;
 +
-+	if (unlikely(!timeout))
-+		return false;
-+
-+	if (timerfd_gettime(timeout->fd, &current) < 0)
-+		return false;
-+
-+	if (remaining)
-+		*remaining = _time_from_timespec(&current.it_value);
-+
-+	return true;
++	return __builtin_memcpy(dest, src, n);
 +}
-diff --git a/ell/timeout.h b/ell/timeout.h
-index 2db78d8fcd41..c0d463c1d021 100644
---- a/ell/timeout.h
-+++ b/ell/timeout.h
-@@ -34,7 +34,8 @@ void l_timeout_remove(struct l_timeout *timeout);
- void l_timeout_set_callback(struct l_timeout *timeout,
- 				l_timeout_notify_cb_t callback, void *user_data,
- 				l_timeout_destroy_cb_t destroy);
--
-+bool l_timeout_remaining(struct l_timeout *timeout,
-+				uint64_t *remaining);
- #ifdef __cplusplus
- }
- #endif
++
+ void l_free(void *ptr);
+ DEFINE_CLEANUP_FUNC(l_free);
+ 
 -- 
 2.45.2
 
