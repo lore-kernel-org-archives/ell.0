@@ -1,62 +1,62 @@
-Received: from mail-oa1-f54.google.com (mail-oa1-f54.google.com [209.85.160.54])
+Received: from mail-oa1-f50.google.com (mail-oa1-f50.google.com [209.85.160.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F29F1CB51C
-	for <ell@lists.linux.dev>; Thu, 31 Oct 2024 20:26:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.54
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E4951CBE86
+	for <ell@lists.linux.dev>; Thu, 31 Oct 2024 20:26:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1730406392; cv=none; b=foDR03e1jEEC7xaZqAAL2Nuec+Ty2Hm/Oj+Btl66EDe2gN7fD/d5qVd831SKFy8psDkAWkh5POLOesSOD5tjEYx7i0D68NFJl9Bdw7IA7AeEk+vqXNxIi7Lg/yfO9GE30wjSqIm93Ql9zeFEF7OSn9Jjs1IzG/BDvJW1HeByLeg=
+	t=1730406393; cv=none; b=TZmw8+dYMPJT7MS02k1tvSgTSmiaclPsVf3Ki6DaJRDCqNaikSLMKw65NVW7bOmaEsPZAbyTYKCY6ub/GAmkqeAenYMHfe4YWSs/Fr3yuU/pTWi+a7J4GGodyYdHdPHpcCTrG88V4eykBAx1ux3jTbWQzNfU6ZTExFaJIe+MpP4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1730406392; c=relaxed/simple;
-	bh=lbJ29Yi7RpD5RnDW2kiFil9sEGyf3kMPa+e7Aj7G6dw=;
+	s=arc-20240116; t=1730406393; c=relaxed/simple;
+	bh=kPXc+2rEvy7FUKdbptWgbIqpLFhJPt5uk7QHP0Yd6mU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=mmZEUOE22iVQoEC02JaNWENE729pb67vsYlIGQshgfrzbnSts90AusuD8jcklcQMZ1WZLHm3x/4sChYrb+SLETY3eWjGMKzRjvphBDYusld/v5ZmuuLubLhuiaqeY5uBNlvbYvdCb7taGZ/xPIDV0Ni45eeA1MMEP+nI33jJfAY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=k4grpLT3; arc=none smtp.client-ip=209.85.160.54
+	 MIME-Version; b=ViYwUF7+vYGRspm3JkmhzXHC1Hsi6a0+YKKQs1YYqRKh49Ba7tfASnYdvDVoceCHcOU2tKffA2w3hTEif+BDSchpfTjqCFAvjgl2h8szp+hCawy8iAqFROrfADCnrGZze1WuMtEt7X6O/4I8caKJuqBqV6mH6cDwvWdwPhYOEyI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=R6omvcoP; arc=none smtp.client-ip=209.85.160.50
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="k4grpLT3"
-Received: by mail-oa1-f54.google.com with SMTP id 586e51a60fabf-2689e7a941fso765672fac.3
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="R6omvcoP"
+Received: by mail-oa1-f50.google.com with SMTP id 586e51a60fabf-288a90e4394so672705fac.0
         for <ell@lists.linux.dev>; Thu, 31 Oct 2024 13:26:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1730406390; x=1731011190; darn=lists.linux.dev;
+        d=gmail.com; s=20230601; t=1730406391; x=1731011191; darn=lists.linux.dev;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=AAadpLSg11zRTQ6PtMzXn0c8UoyAbraRzYllVdPBD68=;
-        b=k4grpLT3axDTs7nO7x7M48zZrip5/KidJQJTFKtwBoyOfmsuuqlsjOmmHjiQIMSzIi
-         62EByEy4SuyNlZrz1RSP48d1x7yfjZqZ6H/cYkJfht6oBw+04H/Puo5WxNt4ibQLgRrf
-         8yWv2RFMQyhVfo7pji/x1slldLK+fQJQgPK0AaOM/u1nvD0wXLxXluYazQN3QIU9JWw6
-         dvKgUxY3MfaX/7atmuwSFa/Dz2t4zokB7qeYuQVdKxbvTo3JgSQh3VcuJ79T7xhzG8hY
-         +JDuG4NZ4u9/0+fuykSs0yZ5kHkrJC4DUo3fs9iMNMA+fv/7Zn/L72rIrG7jNYt6TWkB
-         2BsA==
+        bh=eJG107oWF1YNGNJmo8zEGIKAPUo8oQ5mTKAtAqPhM/E=;
+        b=R6omvcoPpDvOTu/GxiI2Vj2ZeQwe34Dhd8YKRk2/GcViqkExh3jdhpvri7H5I+KdQp
+         qkuk9D4WEjUvUkejRWCQNVl9Jj7R2/NWmR5IqFlt+QVMsR1lhDyYlwe1TBGWfzUxBaSM
+         KDQjP/JOV0sjHrpo1NxFYqG11tpzsKIhZv/vD9WSrIgZnhL6hCYehBqz9qQoQzHiDSsU
+         Pc9n2lGwyWnu+m3ZsHSAdkDSmDsvMY7+SfdRm10A/ojYdrsC/zqGJYq09Hmxwe3qcsfU
+         TVPd8Yrpp5VTP5u5ScvL1TGbYEYQdenN0n4PqGxCcy5My3+hLtpCmow9eCpSqQmBF/Gl
+         060g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1730406390; x=1731011190;
+        d=1e100.net; s=20230601; t=1730406391; x=1731011191;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=AAadpLSg11zRTQ6PtMzXn0c8UoyAbraRzYllVdPBD68=;
-        b=aZF23wGhh7ZJMNxiX7mWl/tAMcVMxpPi1JcGMvEM7muFXPNgx8GHC4VEfogAkkwrEp
-         AHLodqeLaYf3kSAqsmEottd5jQ9qF8Nc3FzLT7mtJpLfXbSgUzJJlVdFhUEDrQqFG/ID
-         FlOGv40ccELWKwSIg3Pl5c7dwvazNGKy9xCPAU4njutArw651d3AHj6xSpGLhNHM/Qgw
-         7zwbCltOVY4303H310PwL2TSWyKv6GWHG9tt+3YAFDop6aiZjV3M3rTA2GU2CPIGEn2S
-         mKRm2+NyLY8f0baYrYPAFpqhvgrJx5c5qEgPEBj85iUZWzwnvorKkj5zyiBL3bHTw28m
-         42yg==
-X-Gm-Message-State: AOJu0Yx1Tt6DFHeACeqhYNZyO3tt34db8GyV9iJFdKjeXd/Xq/Qs3g32
-	n5orOfOapTszjmwjo3X6oavuvf7GdDT+QYRLhbQ14HD4LMnjYLWPzjzjsQ==
-X-Google-Smtp-Source: AGHT+IFXdPG/xjhL9zcTaDhEok149AuiM1ubHpfSyjTUd13LBfmxr7Ea/NmYUEF8ndVLpTkMC3sUXA==
-X-Received: by 2002:a05:6870:5252:b0:287:7bb6:3c54 with SMTP id 586e51a60fabf-2948466f648mr4422392fac.38.1730406390190;
-        Thu, 31 Oct 2024 13:26:30 -0700 (PDT)
+        bh=eJG107oWF1YNGNJmo8zEGIKAPUo8oQ5mTKAtAqPhM/E=;
+        b=crAvsMnyRetl1GmNAko6OZ19WftwD65j79f9DVVgJvW+9262yDKvA/dBs6UQ2b+Yan
+         UE8vyiD5z13OSZd8QDr/TfmLL+TMo87ietRXbG9prwBRNQPxRyiq2DcFxHQUzRgbRKCb
+         IsyaHbI2R9x63TK5LKU61I8UTNUYk5QOHSh1ycXN8C8/7WVwqKPr2+yqZ1Rw/i/g9fxg
+         EWvKGKK7fH74W4rIRV6dIlFCVP9n/vR/8MSy26kNSMwKzW49fmWHCOyLKp2TyfZ2USju
+         PGVMOBr1STn8shWSC+sJ64QWE0jyDDaoxa+URsu9TLI6VnMp0lIfRsyqUMx3Is4wHbEM
+         AxbQ==
+X-Gm-Message-State: AOJu0Yweab/Y4B85/DgIohyrGakDdz/1S2jMfIwYfx8dsyROHrfoDP2L
+	DFz8LQF8TfzVgZ1x9tPBMkJAIq6ku3ny2R0ogdVpC86ibmLlp8LVLMXzqA==
+X-Google-Smtp-Source: AGHT+IEWHFxvRtUqNHdFngea/847fnLsWRvtMluTMwZJgLq5lOINIkl5MT8sV0AshgJoQnMsgYJI/w==
+X-Received: by 2002:a05:6871:8116:b0:277:db7f:cfb2 with SMTP id 586e51a60fabf-29464702478mr8876593fac.14.1730406391172;
+        Thu, 31 Oct 2024 13:26:31 -0700 (PDT)
 Received: from localhost.localdomain (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-294874d6687sm712930fac.31.2024.10.31.13.26.29
+        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-294874d6687sm712930fac.31.2024.10.31.13.26.30
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 31 Oct 2024 13:26:29 -0700 (PDT)
+        Thu, 31 Oct 2024 13:26:30 -0700 (PDT)
 From: Denis Kenzior <denkenz@gmail.com>
 To: ell@lists.linux.dev
 Cc: Denis Kenzior <denkenz@gmail.com>
-Subject: [PATCH v3 2/3] util: Add l_memcpy
-Date: Thu, 31 Oct 2024 15:26:14 -0500
-Message-ID: <20241031202627.1548592-2-denkenz@gmail.com>
+Subject: [PATCH v3 3/3] unit: Add l_memcpy test
+Date: Thu, 31 Oct 2024 15:26:15 -0500
+Message-ID: <20241031202627.1548592-3-denkenz@gmail.com>
 X-Mailer: git-send-email 2.45.2
 In-Reply-To: <20241031202627.1548592-1-denkenz@gmail.com>
 References: <20241031202627.1548592-1-denkenz@gmail.com>
@@ -68,35 +68,39 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Some callers use memcpy without checking whether the size 'n' is 0 and
-src is NULL.  'src' is declared as non-null and can thus cause
-sanitizers to complain.  Having 'src' as NULL is fine as long as 'n' is
-0.  Add a new l_memcpy function to take care of this case.
 ---
- ell/util.h | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ unit/test-util.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/ell/util.h b/ell/util.h
-index c56f182292fa..2a0ee0e50b93 100644
---- a/ell/util.h
-+++ b/ell/util.h
-@@ -243,6 +243,16 @@ static inline void l_put_be64(uint64_t val, void *ptr)
- void *l_malloc(size_t size) __attribute__ ((warn_unused_result, malloc));
- void *l_memdup(const void *mem, size_t size)
- 			__attribute__ ((warn_unused_result, malloc));
-+
-+static inline void * __attribute__((nonnull(1))) l_memcpy(void *dest,
-+						const void *src, size_t n)
+diff --git a/unit/test-util.c b/unit/test-util.c
+index 341c790c3731..27b0422200d0 100644
+--- a/unit/test-util.c
++++ b/unit/test-util.c
+@@ -288,6 +288,16 @@ static void test_roundup_pow_of_two(const void *test_data)
+ 	}
+ }
+ 
++static void test_l_memcpy(const void *test_data)
 +{
-+	if (!n)
-+		return dest;
++	static const uint8_t src[] = { 0x00, 0xff, 0xff, 0xff };
++	uint8_t dst[10];
 +
-+	return __builtin_memcpy(dest, src, n);
++	assert(l_memcpy(dst, src, sizeof(src)) == dst);
++	assert(l_memcpy(dst, src, 0) == dst);
++	assert(l_memcpy(dst, NULL, 0) == dst);
 +}
 +
- void l_free(void *ptr);
- DEFINE_CLEANUP_FUNC(l_free);
+ int main(int argc, char *argv[])
+ {
+ 	l_test_init(&argc, &argv);
+@@ -313,5 +323,7 @@ int main(int argc, char *argv[])
  
+ 	l_test_add("roundup_pow_of_two", test_roundup_pow_of_two, NULL);
+ 
++	l_test_add("l_memcpy", test_l_memcpy, NULL);
++
+ 	return l_test_run();
+ }
 -- 
 2.45.2
 
