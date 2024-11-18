@@ -1,127 +1,96 @@
-Received: from mail-wm1-f43.google.com (mail-wm1-f43.google.com [209.85.128.43])
+Received: from mail-oa1-f50.google.com (mail-oa1-f50.google.com [209.85.160.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A895D256E
-	for <ell@lists.linux.dev>; Sun, 17 Nov 2024 00:18:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.43
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D66C13B7B3
+	for <ell@lists.linux.dev>; Mon, 18 Nov 2024 18:15:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731802709; cv=none; b=YuW7NJZdiFaZSlViQDEzdblVLmVeYbLh88vmVYRqaRY/IgHBMx5hFl/caZHvlusdXeA17YRgLWdj11U5A09JpVUNIfLceCyHAoM+X7ffUfEbptuWiZ6zb7G/ONs6wadQyP4EnwM3I/C2rznlibnCd7ZkcJXPepyVdSeKLPJfQ0I=
+	t=1731953757; cv=none; b=U8rSfKE9Gsjo7Qdm/SqGTDS1zNlN0iDLYEDl7IJVcSo0lyoID4iKh66HrsnhhlelweQ6RqzVSyQVMAn1OkuSn544uY4xUnZojy0cD0h/ZBbstxCQB7MlpEnvuIBve/8MVIpK6GBMmARZ29kxd4HFEgnNjK0kj54PGTNTuDDE/1Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731802709; c=relaxed/simple;
-	bh=S7NAR9oCFBVG8QQwn1NWUioPmm01w4WJdkOG9Mpjplo=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=jhw0SZ1LqEk0LT7tZM1fjvHXQMHR6G3hqgdU/v4j3PS8G1fOWswTrVS/vxXijQ6leGJ6PhOI7KhvCzQGZAwC5a896Cw6wOfpkZtQvwW+QgaFuXPP9Z0IjIm0LFLvSiNzL+kcEdgRNdzziCDEjPiIaSV1SQB54IPPYEg+nGvi/rc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=KVUypC+D; arc=none smtp.client-ip=209.85.128.43
+	s=arc-20240116; t=1731953757; c=relaxed/simple;
+	bh=K2ejIigfWdvvqn4DAY/GhQVRk5lAq75ZBsp9lQO7xts=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=cDf/w6AiFvtjtP7n9oCA+DzpHD0gP7vUHF2AuAJbPTl+AfL6kZCrDnpmAO3JsdlPyw3FsMN9zXv8/+ghPE7S9U+gXhlnzcxL5tnhn5BstJZ6Lq49CceALekrzk5ROvA24fuWCtYR+w01umaWdLkxnDkPc25myMdErSrJi5ywFv4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Jdk/5F/C; arc=none smtp.client-ip=209.85.160.50
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KVUypC+D"
-Received: by mail-wm1-f43.google.com with SMTP id 5b1f17b1804b1-431688d5127so24709115e9.0
-        for <ell@lists.linux.dev>; Sat, 16 Nov 2024 16:18:27 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Jdk/5F/C"
+Received: by mail-oa1-f50.google.com with SMTP id 586e51a60fabf-29645a83b1bso1620462fac.1
+        for <ell@lists.linux.dev>; Mon, 18 Nov 2024 10:15:56 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1731802706; x=1732407506; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=AW1Spj5c1lIwPknle3i4B7rPj8NocNmpJtbThGG+56A=;
-        b=KVUypC+DyJVZBUcxRQnZeHPgS3vtITSPt39OTjYOrcQ9e4CGEovXiDsCibKCg30AM1
-         4SF+8hC/4cSQuuYwv3rBflByatMSOi7BrJVcvjEi1CGdC88hfkl7s9+zh8MZAPz25qSo
-         K9ryRGe7vj5+cHTKHK46hf9tmD0+u1d5LUCn+CJlfJF/5BRPh+V6cguYruIvBwGcGP3W
-         l5zl1FCOmU1nf9+7yyFOcNjRzUloyDzf9VhCcY733yi0I0rVHnRfJs87XT5XToby6kN7
-         oevlP8xCVeKx9iFTFUaa4k6c/1cS77Bod2gNszKUNQq5LTFOrLWXs587JyV2J3u/PR2L
-         RvKw==
+        d=gmail.com; s=20230601; t=1731953755; x=1732558555; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=XCQF+v/b7WdRJhT8jLOJcPaXQHQHwiCUmWK7t2gfsDU=;
+        b=Jdk/5F/C52i08umDXSzww9df0L9y0FmV+wIhPYH4MHlWmZQVE2A1kkxXaxVKS6DsZ7
+         nR3pBo7KWhoGBPP667EsUm4FPgp+MA51I1gRuo5xCM88s5VsQ9F44fgoRmtPbx2B0zZO
+         rg4QH/mBplgYU1yps/pBV3BnsPfb6hhVSIW4/yehg0aedVE3sjcWC9YnivwwX84DqlPs
+         3CW8MPBFhYO1OqEqytd0KnPj4AUDV0T7icup6kULgTaJYVRyJuyCv/nJOnH3sxfXynFp
+         exmVCJo/+hVD5RaEnxHzhEZk60457ozwmbnXiqfNDfjDBSZ42gMM2m7C1sh8ieTfSugl
+         swug==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1731802706; x=1732407506;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=AW1Spj5c1lIwPknle3i4B7rPj8NocNmpJtbThGG+56A=;
-        b=cYfq7ed2hJ3hqJ2ssqNQnYVKK0fT/dXdHBhF6SlN+qXW8QYitXY65AnTDqtS44Zx6W
-         Q4iVBxnZX8JwYD4zGGWtLrJ9sGNgu3BhxQUX4F+F7EaPmwz1p3Z44PBYOU0liXdeluuG
-         niUU7pkc5TmJsS1Hw/KPEOI6rg787rotWW/A2JfwfcbkMJRjzUrMIstiGKRCv5tekILH
-         5KDyOPezYUnLXuMsDWLGKkOETLUPvvNPZtyXwuJ6Gi4pfTUCxWQXXtXD59ZWfybl0LoN
-         mf9EDvyoPuaZc8jpuWIOW/aEwdt6SWhegkORt7IsuIxCYy+N05UZv2uEcY9SjmqGvCGg
-         Gohw==
-X-Gm-Message-State: AOJu0YxXs/jTCT1F67nV/7s4E0krmzeBtL4KZhqKL2fkKHrWK8wk4O4o
-	snMKQfT6l7gZHI0oGcFTan1xUyR0/91Ygfxi25O2xE8/mQJmGHmU1Q/F1A==
-X-Google-Smtp-Source: AGHT+IH7sUluecTgLkKsybYCbGpCn4O6ETe7YZrWPaC8VIQYQssF9f6T/VjAmQ0dMIwsBHqJTcQTjw==
-X-Received: by 2002:a5d:5e8c:0:b0:381:dff2:cf08 with SMTP id ffacd0b85a97d-382258ed508mr5714730f8f.2.1731802705865;
-        Sat, 16 Nov 2024 16:18:25 -0800 (PST)
-Received: from nz.home (host109-156-56-74.range109-156.btcentralplus.com. [109.156.56.74])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-3821ae2f67fsm8629843f8f.89.2024.11.16.16.18.23
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 16 Nov 2024 16:18:24 -0800 (PST)
-Received: by nz.home (Postfix, from userid 1000)
-	id 4090324A077F16; Sun, 17 Nov 2024 00:18:23 +0000 (GMT)
-From: Sergei Trofimovich <slyich@gmail.com>
-To: ell@lists.linux.dev
-Cc: Sergei Trofimovich <slyich@gmail.com>
-Subject: [PATCH 2/4] cert: fix -std=c23 build failure
-Date: Sun, 17 Nov 2024 00:18:12 +0000
-Message-ID: <20241117001814.2149181-2-slyich@gmail.com>
-X-Mailer: git-send-email 2.47.0
-In-Reply-To: <20241117001814.2149181-1-slyich@gmail.com>
-References: <20241117001814.2149181-1-slyich@gmail.com>
+        d=1e100.net; s=20230601; t=1731953755; x=1732558555;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=XCQF+v/b7WdRJhT8jLOJcPaXQHQHwiCUmWK7t2gfsDU=;
+        b=DfGLUkkIIpJgCET2Uu+PV4McXSwdBcPspQw4HqnuCNvNWYgB1GB7idVCSz/2JxJ6DW
+         +M9ZeNwnJWSqGwtRWCX/6jGDBNkwX4UC+y7AXCnxBpTfMVMOm1QVZjWUwp5Qr4qyFttE
+         jCl9e6WCXqBF9SOGMAD+yVY7svPK8X9QsbCPz/HrSI6vpbiEXs+xFaG8kRKuG7hi1Ky5
+         nvbNXyyk/x4Uhp0v2GjH9M28+PXfTnPgrWtRJONdQ237AF1rUZmcQcs+1diVzhr8ASG9
+         0WHuyRgKwvpk/bD6mt6vgTJF5+KgIqRjTlsxoxJxPs81ramFMmwgUf2zAyLRH7XJq5dQ
+         RD/Q==
+X-Forwarded-Encrypted: i=1; AJvYcCUkDcDNdrQqHlnJmU+imNSShDOxOBKJVXa/u5bJqXX5yjo9RcuCX+SAERANGp77E5/z39E=@lists.linux.dev
+X-Gm-Message-State: AOJu0YxqSvII8DQIXaQmEBd+m1rOUGVeKtI9ofPKdMYl9bNjV3Zqfx5x
+	PD2avwcKeEN2D/P6O4u6QolWrHj9id+EAmpTTrXXSappPQYNnAgn
+X-Google-Smtp-Source: AGHT+IGtj8MVyy0rCw5oG2PMoFv+x1QemBZYzr+PZfZ3D5S+aCmDdsWBpFcN/93BDHtrO5IlxqqqZw==
+X-Received: by 2002:a05:6870:568f:b0:284:ff51:58ad with SMTP id 586e51a60fabf-2962e154892mr12084157fac.27.1731953755467;
+        Mon, 18 Nov 2024 10:15:55 -0800 (PST)
+Received: from [192.168.1.22] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id 586e51a60fabf-29651852ab6sm2844470fac.9.2024.11.18.10.15.54
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 18 Nov 2024 10:15:54 -0800 (PST)
+Message-ID: <5175124b-904e-4a4a-934a-5e7d198dff0e@gmail.com>
+Date: Mon, 18 Nov 2024 12:15:53 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/4] settings: fix -std=c23 build failure
+To: Sergei Trofimovich <slyich@gmail.com>, ell@lists.linux.dev
+References: <20241117001814.2149181-1-slyich@gmail.com>
+Content-Language: en-US
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20241117001814.2149181-1-slyich@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-gcc-15 switched to -std=c23 by default:
+Hi Sergei,
 
-    https://gcc.gnu.org/git/?p=gcc.git;a=commitdiff;h=55e3bd376b2214e200fa76d12b67ff
-259b06c212
+On 11/16/24 6:18 PM, Sergei Trofimovich wrote:
+> gcc-15 switched to -std=c23 by default:
+> 
+>      https://gcc.gnu.org/git/?p=gcc.git;a=commitdiff;h=55e3bd376b2214e200fa76d12b67ff259b06c212
+> 
+> As a result `ell` fails the build as:
+> 
+>      ell/settings.c: In function 'l_settings_get_embedded_value':
+>      ell/settings.c:1521:24: error: incompatible types when returning type '_Bool' but 'const char *' was expected
+>       1521 |                 return false;
+>            |                        ^~~~~
+> 
+> The change uses poiter instead of a bool to return the zero value.
+> ---
+>   ell/settings.c | 2 +-
+>   1 file changed, 1 insertion(+), 1 deletion(-)
+> 
 
-As a result `ell` fails the build as:
+All applied, thanks.
 
-    ell/cert.c:390:32: error: incompatible types when returning type '_Bool' but 'const uint8_t *' {aka 'const unsigned char *'} was expected
-      390 |                         return false;
-          |                                ^~~~~
----
- ell/cert.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/ell/cert.c b/ell/cert.c
-index 38bb01a..19a6556 100644
---- a/ell/cert.c
-+++ b/ell/cert.c
-@@ -387,13 +387,13 @@ const uint8_t *cert_get_extension(struct l_cert *cert,
- 
- 		seq = asn1_der_find_elem(ext, end - ext, 0, &tag, &len);
- 		if (unlikely(!seq || tag != ASN1_ID_SEQUENCE))
--			return false;
-+			return NULL;
- 
- 		ext = seq + len;
- 
- 		oid = asn1_der_find_elem(seq, len, 0, &tag, &oid_len);
- 		if (unlikely(!oid || tag != ASN1_ID_OID))
--			return false;
-+			return NULL;
- 
- 		if (!asn1_oid_eq(ext_id, oid_len, oid))
- 			continue;
-@@ -403,7 +403,7 @@ const uint8_t *cert_get_extension(struct l_cert *cert,
- 
- 		if (data && tag == ASN1_ID_BOOLEAN) {
- 			if (data_len != 1)
--				return false;
-+				return NULL;
- 
- 			critical = *data != 0;	/* Tolerate BER booleans */
- 
-@@ -411,7 +411,7 @@ const uint8_t *cert_get_extension(struct l_cert *cert,
- 		}
- 
- 		if (unlikely(!data || tag != ASN1_ID_OCTET_STRING))
--			return false;
-+			return NULL;
- 
- 		if (out_critical)
- 			*out_critical = critical;
--- 
-2.47.0
-
+Regards,
+-Denis
