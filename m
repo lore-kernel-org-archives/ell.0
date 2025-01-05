@@ -1,102 +1,93 @@
-Received: from mail-wm1-f47.google.com (mail-wm1-f47.google.com [209.85.128.47])
+Received: from mail-ot1-f53.google.com (mail-ot1-f53.google.com [209.85.210.53])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68BBB1C2BD
-	for <ell@lists.linux.dev>; Fri, 27 Dec 2024 18:57:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.47
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3350A29A0
+	for <ell@lists.linux.dev>; Sun,  5 Jan 2025 02:12:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.53
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1735325879; cv=none; b=EMJsYeOCjiymHsYy9nkPLLZObqvI4zbgEIWFD2QHq38vTI64NHlt2yt4VXNaEq96SIpBqG4Vnz/MeC+Nmto0TVSTJaA/t6IUj4LxWAYH9Q3iUmhptoobB97AqIwB6D2y5L+ds7/0Mgv03NOvwSDrX435WcYlcFKC0YWlfc/89C8=
+	t=1736043158; cv=none; b=g1GGyk7c+4rIIidmx8QLUjFbHgke+67GNXSrlVPATBSi1EO9BaBKpyiK/2db8M6k8Mpmn7oU/JIS4zmR0o6gDSNpUPYlOuINH8XxBb4IfrdKVMN5T3e+E0NPMcamEUjHm3jrj8hMgvPtMv6VssOaRnXa9qbq5lnjceZAAaibvcw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1735325879; c=relaxed/simple;
-	bh=Y4knQxP464JKPtvHAyzQbXD0/BbnBiobMPra5zwpQw0=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=izEL+QaDm3ddOSz8ItlX25wErp4SXuxeM9WQ7Se0HvFaqpMLrIARPHZ3tbtHW5Gmoy6paaxudZ0OITgEdRXwMYnx5dBSTVxq2CNpEFfvl8p3kT5u0H6oPhGz3Y7KM8N1zcIavJDjvcihgImaRixM4LiztOwm3vPeez5BBi2gopQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Q9mKsw3l; arc=none smtp.client-ip=209.85.128.47
+	s=arc-20240116; t=1736043158; c=relaxed/simple;
+	bh=Z9Bs+vLFDjpMNdc3qrCp7GrwScsKadem+3PBzzoqqeE=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=d0UFKI7mP1R4RQKf7BYbFI5vlQkkLE6eidQ6zpV9/SeuLrE914Ncv15CVl7aWNzIHZ0RPDiyijI5F74KTLlH5Rj9K794i+uUXDiBMhMFI6PCyMzCaMcMK00s6CFe5GiqV2nEmKRmLNFczZ8CtrrV3tnkmDCRfEXJ3JxS3lQVPh8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=k4R31+Zc; arc=none smtp.client-ip=209.85.210.53
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Q9mKsw3l"
-Received: by mail-wm1-f47.google.com with SMTP id 5b1f17b1804b1-43618283dedso74624545e9.3
-        for <ell@lists.linux.dev>; Fri, 27 Dec 2024 10:57:57 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="k4R31+Zc"
+Received: by mail-ot1-f53.google.com with SMTP id 46e09a7af769-71ddc7325beso813313a34.3
+        for <ell@lists.linux.dev>; Sat, 04 Jan 2025 18:12:36 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1735325875; x=1735930675; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=jQrUe9Oct25qlNKFW9swCQjUy1OBTJDlvWtEZKaSz3Y=;
-        b=Q9mKsw3leCQ3X8hrB2Y5szbk/y/rzN/S5WHLi4wfxPGJ4vLyo8nAUDfTNcop1PYzVN
-         x3qsiEcCeHD50Eg8M6eoO52L95Mkq4okhbSxxJ9GCjYWrg428IoymT9s0ZEUT6Jv3ZCU
-         5Jo6JNtNLxTaQeqbpOETXNQR67C0487bxsJZZzLp/fmCnMD4NuU7m5TvvL/vF+hgTo4s
-         OalgTeX3ZtKZlKZOzn61ntWtP2uazm1Y3TNdnNVvAqQJV3gkGhIlOQbURw4E7xrJQhhF
-         xmpdkR2LAakL4ccJqVUkdDEWVY8xxDmEhWbqeI9wUyaQ7NU9/ZwJ2KNfEKyPx19y9eQJ
-         W8rA==
+        d=gmail.com; s=20230601; t=1736043156; x=1736647956; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=pYxSPvNtK+awI4BQrgvySu7wWkE6+1cRFJhx1zMXsx4=;
+        b=k4R31+ZcMlXBbK2BQd4SjMTP4SwzcLxojXHeCmd75PZ5E/RUAE7hAN/p9yDJxUJ+nl
+         78yxmjch4W3Or2nrw1wJwOscMFi63f2vGOSykZg2/LtaPbJZ42PnPpHszFw6Q+NI95H6
+         A1IyexxqhJ6n3eHTKhTqhG7S9X2j43W2QaVzQXVZkK2u/ZXfQIAgO9ugdmL7liGFXITt
+         He+gShwsya9yj5GvXNU8+myPY4GaWTvr594lQK+EWeDNz8lHIEs8ekhjbs9c3NBfdpCv
+         9sh6E7dU4GByYexAgSV1Vh38e/8Uv4mzVZM7Aa7jhWKFibN10WFxmNqWdp3srL7SQwCM
+         HDCA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1735325875; x=1735930675;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=jQrUe9Oct25qlNKFW9swCQjUy1OBTJDlvWtEZKaSz3Y=;
-        b=ol5wkiRv8KG8KF6/gyLfvD6/cLlXjKK9XLh0bSd782jSrcdQ/hjKE9J/cLR+mKwz2t
-         MjDEOAU+lhGcJpisJNw+f6ozCtbiENRYd+0RGUhC0yPNuNZaM3qQQ6AzIA7TDb6GneNA
-         8ZJVZHgkSWD7yjsq16Zf0338MGxS+m2lCQxnzYzIi0oNT7EroMd9zBXqGbWekxgS4VTT
-         WkAlo/c8qAmxLJCDorkc8DuIhw6N/Woco4anf1WDXdP72pqLQpRhfIWbpGwxpiPz8Wsz
-         sOZ5TKtH1SmJ2Yzb6dk9ROoyTPXMmOx6HnUtB1ulq9Mu2Lv2FCEWp64mQzjBxNg5C6oK
-         Y3GQ==
-X-Gm-Message-State: AOJu0Yy7F3qYA+qSNmTpl2M+QlPpekZzLMdKVzfxhDxQb0BPZ355wFMt
-	DSmkwggjsNnA22RCRUlwKYGjE/KA8hsQmEjip+sYxPmahy6a3OuZPuO+sw==
-X-Gm-Gg: ASbGncuLjfnqWeMqsVezieYKV3s3LIW0WA7PL12UnWTGxjmoaA2Cn8Y8TGP0iU/0JwQ
-	MYVBf1bgH+tu94D0gGyIKZxfE262LHT8bjKRq6T1+gQbJOXCGvo5IVPuFaJuIEOp8/dXqJHy6U0
-	dF2QcdaDuT4u1Zm+O25XiGxbsHw/4+OunW8kMUwww+GhIvU2S6ucJcpoDKerrPr+xHtefM3wLCS
-	8mzrz24sIw5CHwA/Ond9OvfvZFbc9BGdxfyPxL0B60lAPUEVvrDYiNS+sG7Mn+pG6aDEUevcH+w
-	wORPn+PzwW0ga59r43f/SLAqP3s=
-X-Google-Smtp-Source: AGHT+IHj3jnlWzhBwG6ve3xmeXzAk2CS5xvKeIGUV+Fy6YR5cAYWRTIMptBrlk8GOSVH1IsHflsAuQ==
-X-Received: by 2002:a05:600c:1d2a:b0:435:330d:de86 with SMTP id 5b1f17b1804b1-4366790d3c0mr265398135e9.0.1735325875070;
-        Fri, 27 Dec 2024 10:57:55 -0800 (PST)
-Received: from localhost.localdomain (95-26-112-31.broadband.corbina.ru. [95.26.112.31])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-38a1c89e4ebsm22948952f8f.85.2024.12.27.10.57.53
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 27 Dec 2024 10:57:53 -0800 (PST)
-From: Artem Sinkevich <artsin666@gmail.com>
-To: ell@lists.linux.dev
-Cc: Artem Sinkevich <artsin666@gmail.com>
-Subject: [PATCH] dbus: fix use of `va_arg` with incorrect type
-Date: Fri, 27 Dec 2024 22:55:30 +0400
-Message-ID: <20241227185530.99708-1-artsin666@gmail.com>
-X-Mailer: git-send-email 2.47.1
+        d=1e100.net; s=20230601; t=1736043156; x=1736647956;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=pYxSPvNtK+awI4BQrgvySu7wWkE6+1cRFJhx1zMXsx4=;
+        b=YLf33S6cBXuhRdQaWqldX/Fun//4mBVNBFu55q6z1T60O7NoF8VbblSU2cfJJieFXy
+         9EEqc3pfXzwTYifsnh/2Zvu2YnEAeokPvMZSnRQTniDejeyAcBxGXHUICE5WvndczTIF
+         jgscFdF8UsxUnNxrLjj6ADVM3s8zxendY0zSAaoMQQDLkdWoFzOXVg8CIsw8PLAtP7qS
+         e8vKX4hS6CdJrgrsVv6i8WMipXHa9cRVnTww67EPmPVa8rEAU7ogJNLkuRm7AIGBN1Ro
+         HjKtAoZxoV2xczXwH4bhUF5wR/fCK9pIaIZYEyhx21B0E0aEf52+WIUmXJJwSp4PV0gk
+         TztA==
+X-Forwarded-Encrypted: i=1; AJvYcCXXy0e0ry1aXzFbZSD78gvHLt2ZdMZOsVakFz2W1YdGwDOc7zPR1JP6+SnoM99A4sRwMWk=@lists.linux.dev
+X-Gm-Message-State: AOJu0Yymx0EXzWpaF6ykDToi4dMORtwkQtw5Gpv807dWpVz2AEPfFv8j
+	LqoLg19CfJEm2Epg3dZacHSka3EPMQcAJFgU0zYoXR2KZ+G72dMlZBakdw==
+X-Gm-Gg: ASbGncvkEGDYWxCJsayl/LpatWaPGNaMbYpMsNgmiW76Ol8BvykTjy1aidysPLyrQBu
+	0P3WGiRzTDE2ptRe+NOV7rdqKNoTGgQpfLdci9KNCANA4kLLBMJH8JMJF5NNp5wcm/m44khC60Z
+	R5G2LUyrC27MWrGRsEfaviAFWbzgydIV9CQrkWbT4vk4H4pJbItAFot51IvWPaAubjQ0rntn/BL
+	MPhbUMMOuQwHmIsiHyjEJsviMt2gf1KV8q9Rpp0Usneeyc58q0zH9fIB6ufhqBrqbNvg8ZCUMSW
+	QJR5kZtOhGND+qQ3msvTLg==
+X-Google-Smtp-Source: AGHT+IGLYnyN6U9BigCEdm+FgLvSFi+8GuEcXO5Mv1+A1zISt/1+S/eoFii96DM1BJDtO8pXFhkHSg==
+X-Received: by 2002:a05:6830:2656:b0:71d:f239:c0a7 with SMTP id 46e09a7af769-720ff8b038amr36347771a34.19.1736043156076;
+        Sat, 04 Jan 2025 18:12:36 -0800 (PST)
+Received: from [192.168.1.25] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id 46e09a7af769-71fc99d116fsm9025697a34.64.2025.01.04.18.12.35
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 04 Jan 2025 18:12:35 -0800 (PST)
+Message-ID: <832d1760-bd6d-47b0-b48b-8756264aa615@gmail.com>
+Date: Sat, 4 Jan 2025 20:12:34 -0600
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] dbus: fix use of `va_arg` with incorrect type
+To: Artem Sinkevich <artsin666@gmail.com>, ell@lists.linux.dev
+References: <20241227185530.99708-1-artsin666@gmail.com>
+Content-Language: en-US
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20241227185530.99708-1-artsin666@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-`rule_len` is computed by iterating over `enum l_dbus_match_type`
-(32-bit wide) variadic arguments, but the function also takes
-`const char *` (usually 64-bit wide) arguments. Count the arguments
-in the same way as they are used below to fix undefined behavior.
----
- ell/dbus.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+Hi Artem,
 
-diff --git a/ell/dbus.c b/ell/dbus.c
-index 1ab4ded..7fa5c18 100644
---- a/ell/dbus.c
-+++ b/ell/dbus.c
-@@ -1825,8 +1825,14 @@ LIB_EXPORT unsigned int l_dbus_add_signal_watch(struct l_dbus *dbus,
- 	va_start(args, member);
- 
- 	rule_len = 0;
--	while (va_arg(args, enum l_dbus_match_type) != L_DBUS_MATCH_NONE)
-+	while (true) {
-+		type = va_arg(args, enum l_dbus_match_type);
-+		if (type == L_DBUS_MATCH_NONE)
-+			break;
-+
-+		va_arg(args, const char *);
- 		rule_len++;
-+	}
- 
- 	va_end(args);
- 
--- 
-2.47.1
+On 12/27/24 12:55 PM, Artem Sinkevich wrote:
+> `rule_len` is computed by iterating over `enum l_dbus_match_type`
+> (32-bit wide) variadic arguments, but the function also takes
+> `const char *` (usually 64-bit wide) arguments. Count the arguments
+> in the same way as they are used below to fix undefined behavior.
+> ---
+>   ell/dbus.c | 8 +++++++-
+>   1 file changed, 7 insertions(+), 1 deletion(-)
+> 
 
+Applied, thanks!
+
+Regards,
+-Denis
