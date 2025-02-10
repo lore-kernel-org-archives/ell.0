@@ -1,93 +1,118 @@
-Received: from mail-ot1-f53.google.com (mail-ot1-f53.google.com [209.85.210.53])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3350A29A0
-	for <ell@lists.linux.dev>; Sun,  5 Jan 2025 02:12:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.53
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A99311F8BA8
+	for <ell@lists.linux.dev>; Mon, 10 Feb 2025 14:30:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1736043158; cv=none; b=g1GGyk7c+4rIIidmx8QLUjFbHgke+67GNXSrlVPATBSi1EO9BaBKpyiK/2db8M6k8Mpmn7oU/JIS4zmR0o6gDSNpUPYlOuINH8XxBb4IfrdKVMN5T3e+E0NPMcamEUjHm3jrj8hMgvPtMv6VssOaRnXa9qbq5lnjceZAAaibvcw=
+	t=1739197802; cv=none; b=b9lZ6J9c4Psjahe+snSbqA1tly1WCycQgrvBtGZ44vHLoGZO/3i5g+JkM85LznNxs1rwx2K1WXKHVvFpltWWSgSZA7X9jWRtSvFcBwmc8ZsOndEh0lQAl9wte3zqyZe1WhGpypuqTwzOa796MgwJXpvZKUH2Qq+t0nj6n9qDaVU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1736043158; c=relaxed/simple;
-	bh=Z9Bs+vLFDjpMNdc3qrCp7GrwScsKadem+3PBzzoqqeE=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=d0UFKI7mP1R4RQKf7BYbFI5vlQkkLE6eidQ6zpV9/SeuLrE914Ncv15CVl7aWNzIHZ0RPDiyijI5F74KTLlH5Rj9K794i+uUXDiBMhMFI6PCyMzCaMcMK00s6CFe5GiqV2nEmKRmLNFczZ8CtrrV3tnkmDCRfEXJ3JxS3lQVPh8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=k4R31+Zc; arc=none smtp.client-ip=209.85.210.53
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1739197802; c=relaxed/simple;
+	bh=X+lV41jrUCMGD/nEX8jsPG6M31EIXosEfXOupUmuC6s=;
+	h=Message-ID:Date:MIME-Version:To:Cc:From:Subject:Content-Type; b=s6sLF9fkshW9Jt3+leNPLAqp1zBJo9jUb+jdJg+vnkIuoW4BDD5Q7X1jRbTJ4uf7aNvwiYKztvdSCYCKEgissK73yaeNHZVSo8K2S4wIJwpENEJCAAefxq2lSc8WSNLBLVQNhWW8P49ZdPzOjrKPOX9S4lmYKuc5gSVmPCJsEZg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EJ2P+zQg; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="k4R31+Zc"
-Received: by mail-ot1-f53.google.com with SMTP id 46e09a7af769-71ddc7325beso813313a34.3
-        for <ell@lists.linux.dev>; Sat, 04 Jan 2025 18:12:36 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1736043156; x=1736647956; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=pYxSPvNtK+awI4BQrgvySu7wWkE6+1cRFJhx1zMXsx4=;
-        b=k4R31+ZcMlXBbK2BQd4SjMTP4SwzcLxojXHeCmd75PZ5E/RUAE7hAN/p9yDJxUJ+nl
-         78yxmjch4W3Or2nrw1wJwOscMFi63f2vGOSykZg2/LtaPbJZ42PnPpHszFw6Q+NI95H6
-         A1IyexxqhJ6n3eHTKhTqhG7S9X2j43W2QaVzQXVZkK2u/ZXfQIAgO9ugdmL7liGFXITt
-         He+gShwsya9yj5GvXNU8+myPY4GaWTvr594lQK+EWeDNz8lHIEs8ekhjbs9c3NBfdpCv
-         9sh6E7dU4GByYexAgSV1Vh38e/8Uv4mzVZM7Aa7jhWKFibN10WFxmNqWdp3srL7SQwCM
-         HDCA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1736043156; x=1736647956;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=pYxSPvNtK+awI4BQrgvySu7wWkE6+1cRFJhx1zMXsx4=;
-        b=YLf33S6cBXuhRdQaWqldX/Fun//4mBVNBFu55q6z1T60O7NoF8VbblSU2cfJJieFXy
-         9EEqc3pfXzwTYifsnh/2Zvu2YnEAeokPvMZSnRQTniDejeyAcBxGXHUICE5WvndczTIF
-         jgscFdF8UsxUnNxrLjj6ADVM3s8zxendY0zSAaoMQQDLkdWoFzOXVg8CIsw8PLAtP7qS
-         e8vKX4hS6CdJrgrsVv6i8WMipXHa9cRVnTww67EPmPVa8rEAU7ogJNLkuRm7AIGBN1Ro
-         HjKtAoZxoV2xczXwH4bhUF5wR/fCK9pIaIZYEyhx21B0E0aEf52+WIUmXJJwSp4PV0gk
-         TztA==
-X-Forwarded-Encrypted: i=1; AJvYcCXXy0e0ry1aXzFbZSD78gvHLt2ZdMZOsVakFz2W1YdGwDOc7zPR1JP6+SnoM99A4sRwMWk=@lists.linux.dev
-X-Gm-Message-State: AOJu0Yymx0EXzWpaF6ykDToi4dMORtwkQtw5Gpv807dWpVz2AEPfFv8j
-	LqoLg19CfJEm2Epg3dZacHSka3EPMQcAJFgU0zYoXR2KZ+G72dMlZBakdw==
-X-Gm-Gg: ASbGncvkEGDYWxCJsayl/LpatWaPGNaMbYpMsNgmiW76Ol8BvykTjy1aidysPLyrQBu
-	0P3WGiRzTDE2ptRe+NOV7rdqKNoTGgQpfLdci9KNCANA4kLLBMJH8JMJF5NNp5wcm/m44khC60Z
-	R5G2LUyrC27MWrGRsEfaviAFWbzgydIV9CQrkWbT4vk4H4pJbItAFot51IvWPaAubjQ0rntn/BL
-	MPhbUMMOuQwHmIsiHyjEJsviMt2gf1KV8q9Rpp0Usneeyc58q0zH9fIB6ufhqBrqbNvg8ZCUMSW
-	QJR5kZtOhGND+qQ3msvTLg==
-X-Google-Smtp-Source: AGHT+IGLYnyN6U9BigCEdm+FgLvSFi+8GuEcXO5Mv1+A1zISt/1+S/eoFii96DM1BJDtO8pXFhkHSg==
-X-Received: by 2002:a05:6830:2656:b0:71d:f239:c0a7 with SMTP id 46e09a7af769-720ff8b038amr36347771a34.19.1736043156076;
-        Sat, 04 Jan 2025 18:12:36 -0800 (PST)
-Received: from [192.168.1.25] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 46e09a7af769-71fc99d116fsm9025697a34.64.2025.01.04.18.12.35
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 04 Jan 2025 18:12:35 -0800 (PST)
-Message-ID: <832d1760-bd6d-47b0-b48b-8756264aa615@gmail.com>
-Date: Sat, 4 Jan 2025 20:12:34 -0600
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EJ2P+zQg"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF5ECC4CEDF;
+	Mon, 10 Feb 2025 14:30:01 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1739197802;
+	bh=X+lV41jrUCMGD/nEX8jsPG6M31EIXosEfXOupUmuC6s=;
+	h=Date:To:Cc:From:Subject:From;
+	b=EJ2P+zQgEV4kDK1KeSI3w3OIGcRmlE8s/fSrgnabcjsRB7wOPg00czB2yn7ffTDh8
+	 A/qHPfqEbLNNJGaI9Y8ayRrmhKdsrI7IqAE8+JcjE65HLS8Ve1yCJWy2truQ4a3BNS
+	 txdfHTJbNVF7BqdyBIjLjFtvf4+A/sFg6KZPjtcsAceOQdPWcoxMAQw0AfluJcFAM8
+	 ICEW6AbW5L6lbPncMY9ofGlJNXRvNJRnt5rS+RASovGiZQg4+A7lbVV/if7ypzoiCk
+	 Qc8ZPljcehlbiMsFTf9rVE3GZo82XEfrP+qlm36/y2SYu7vDFVL9dIdfdPoP7VsqYA
+	 FINdzGNhIZT5g==
+Message-ID: <17dba9d9-6fce-41a6-a136-e47179c6a206@kernel.org>
+Date: Mon, 10 Feb 2025 15:29:59 +0100
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] dbus: fix use of `va_arg` with incorrect type
-To: Artem Sinkevich <artsin666@gmail.com>, ell@lists.linux.dev
-References: <20241227185530.99708-1-artsin666@gmail.com>
-Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20241227185530.99708-1-artsin666@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+User-Agent: Mozilla Thunderbird Beta
+Content-Language: en-GB
+To: Marcel Holtmann <marcel@holtmann.org>
+Cc: ell@lists.linux.dev
+From: Matthieu Baerts <matttbe@kernel.org>
+Subject: ell: unit tests: sharing memory
+Autocrypt: addr=matttbe@kernel.org; keydata=
+ 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
+ lzVbFe7fduHbABmYz9cefQpO7wDE/Q==
+Organization: NGI0 Core
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 
-Hi Artem,
+Hi Marcel,
 
-On 12/27/24 12:55 PM, Artem Sinkevich wrote:
-> `rule_len` is computed by iterating over `enum l_dbus_match_type`
-> (32-bit wide) variadic arguments, but the function also takes
-> `const char *` (usually 64-bit wide) arguments. Count the arguments
-> in the same way as they are used below to fix undefined behavior.
-> ---
->   ell/dbus.c | 8 +++++++-
->   1 file changed, 7 insertions(+), 1 deletion(-)
-> 
+Thank you for maintaining and developing ELL!
 
-Applied, thanks!
+After some recent changes on ELL side in the Git repository, it is no
+longer possible to get mptcpd unit tests passing.
 
-Regards,
--Denis
+It looks like it is due to commit e0628c4 ("test: Run all test cases in
+a forked process to catch exit signals") [1].
+
+On mptcpd side, one series of tests [2] needs to have some shared data
+between subtests, e.g. one subtest get an ID from the kernel, and other
+subtests will use it later on. Such shared data are currently written in
+the "user_data" passed to l_test_add(). There are also some counters in
+global variables. Now that each test is executed in a dedicated forked
+process, all of this no longer works. Is there a recommended way
+specific to ELL to fix this? Or a way to avoid the fork?
+
+I was thinking about using a shared memory with mmap(), but I don't know
+well the unit test interface, maybe there is something dedicated to
+that, or maybe the breakage was not supposed to happen?
+
+[1] https://git.kernel.org/pub/scm/libs/ell/ell.git/commit/?id=e0628c4
+[2] https://github.com/multipath-tcp/mptcpd/blob/main/tests/test-commands.c
+
+Cheers,
+Matt
+-- 
+Sponsored by the NGI0 Core fund.
+
