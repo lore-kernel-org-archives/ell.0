@@ -1,100 +1,113 @@
-Received: from mail-qk1-f181.google.com (mail-qk1-f181.google.com [209.85.222.181])
+Received: from mail-qt1-f177.google.com (mail-qt1-f177.google.com [209.85.160.177])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0D06D266EF4
-	for <ell@lists.linux.dev>; Thu, 27 Feb 2025 15:01:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.181
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F4D626A0E0
+	for <ell@lists.linux.dev>; Thu, 27 Feb 2025 15:02:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.177
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1740668466; cv=none; b=dS5bgV5NNQhs6P+xsGslwxH8vwe0kyM05KH3Xrp1pljtzVm/Vw3+mv//AbjbDNhBO9no3AIdveslblUiwX5dsVGMakb7Bb+b0/nnCUv8iVRkIYKmkeD3pLcDZNv6clUQ3wkqgrp4MkUfVDGINzwxYUWZpHl9lXKcZf1fCOr/Vgk=
+	t=1740668530; cv=none; b=JV8j0csrmulTUNewU1MFZJNFAQ942VuWPr1iGCU/EfVUBLkqIMwLGqwXNUpQztPLvzTgk8o91m1pYnstuW7YBXImgUw/137A3AIXUDMkX5HRfq40+3N/4zvevZKc7AfV+gZfzhA/cgwhM3UMI2roIgkVN0KlxEHbkP2yW9crrC8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1740668466; c=relaxed/simple;
-	bh=+83eKnzhQoFwM7+H0lyMQG7m1p/xCv1K8QtmIgRPsIY=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=NChRTod2AwEVR0Al4US5NkXzlgKP0snOHAEjooZ93nQ8A6UfX1LgHdbVUJrU2puZi9piSx7x6Ds75ZAO/wwpnAB4FzsYPrRBxU75Pp9jV+Ycm3OsP/7+CZn52NIslEggkxiPA2E5B5p9Dao9R7hYuYs+kyWjpyc7xow7QKzVXEE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ngV1ESnd; arc=none smtp.client-ip=209.85.222.181
+	s=arc-20240116; t=1740668530; c=relaxed/simple;
+	bh=KoDS7RWpKsCrDFiDfNwLwIlVr41775wnikNCtL1m9dk=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=Xc0W9VlbsFHiZJuzclPjKMOoIcOyzp3p++1u+WDyQRi+mJ1jpzmLE4jSiVxeeXTiMqs1swV/gqtakmLkD4Xh6WG89eKDlKX6rXpOAq0/swX6l6WUGads31A+hU7OTOtHfIb9T8vx2xfx+d2vHY2ei6WFVWtFPToHO2BzP2pwf2Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=IiNZ+5O0; arc=none smtp.client-ip=209.85.160.177
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ngV1ESnd"
-Received: by mail-qk1-f181.google.com with SMTP id af79cd13be357-7c0b9f35dc7so130823085a.2
-        for <ell@lists.linux.dev>; Thu, 27 Feb 2025 07:01:04 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IiNZ+5O0"
+Received: by mail-qt1-f177.google.com with SMTP id d75a77b69052e-47210ab1283so14182541cf.1
+        for <ell@lists.linux.dev>; Thu, 27 Feb 2025 07:02:08 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1740668463; x=1741273263; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=iLb5ZEH/Ch2HJ+ilrDO0WG+wssWtnvAJsniqZKgy4es=;
-        b=ngV1ESndhA0HMFCuKOQgS6ry4Kn72/d33nEGf/ZruNru4XH1lJDh7FY1P1AmNlyWAZ
-         N7T6dxDBa8Yn3zht26bsFyIyEBz2i3m+gUVC2Q9WROQ9oGclnVW0adS2KRQdNqmA35y4
-         UBka5L+5J755v6H6e4/ksvBls0sAmvrJM7cXKRRGQKWQ84CH7ewdWDb3xSPOekLUuZ3G
-         1DCr/osQcQ1JkRRmaBfmjvrI3Z0vwdzfYzpy/RG7D9me4zw2qKva02pfvYp8RAW9cY+a
-         42vFIzr4KiiuUHDhfu/Ab9QcsGTNJXjntOYocVKKRomusdDTOdWMphBkpyj8eiONPi8r
-         4mug==
+        d=gmail.com; s=20230601; t=1740668528; x=1741273328; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=taCtzd70KvUi2V+G73d05wetJvUe8dV9kgcs4gGF8jU=;
+        b=IiNZ+5O0mVRMjh4oPaeLd5Kmnjq45CFpFLS8gFweLhC5sBK9z9gLgPaXR2hXSF8v2F
+         qNZTk43cdaZx0EMGGgmqLQ+45ftZ15Zt5gma+aWZthReZTqR4vru8lQspoiBdnY7wMeb
+         Q4YrnVWUUUkhtKsTbgnuLcXNbZCCKzJYgT7bRSbULTa4HqNiHD6m6jSbDBfwd3eFyBA0
+         rsjMaZ7kODFuKxt5kkuVrNDCI0k8h7tEq/d29D1AqKNjm/uQKRJjckNyzNIYZZYLV09w
+         LL55V1MEUSlrm7QA9vQtPOX3KddLFz2Evkk8bWzxd3iKWC5ojO3ZCoYR2LA6PorqMTJZ
+         nm0A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1740668463; x=1741273263;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=iLb5ZEH/Ch2HJ+ilrDO0WG+wssWtnvAJsniqZKgy4es=;
-        b=PjBkWrJXW+FS2+PcfgZa5a1eJlooqIQlS+bCjUVSMogqKEBwirZq9xRx2S2LhhsLVP
-         Sl29SlGIhXgw27SiFTKOIJ+Meh4fjyv0BaBAmFTiUPsRa2gEaxrR/DW8boCb7y+3JZtV
-         EAfT2luRy6MEvY4mpskh75hguZMButRYyR8fDcBpiVN1RfdIYe8/gZn82hioVfuhYCk4
-         9MqbSJWpktSaDY2eELuZ3qA5cKf43ZnJvreIz0kNFva/7U3uju8NfQUNMJIVjoYExn6j
-         8x2crUrlI2Njw//bHljylurp7C0FJ5BjXj9onrt5iFPo5P+Iu+7ceUeuvOW2JcDBVwse
-         vHJg==
-X-Gm-Message-State: AOJu0YxNAtVx3h5MkNZQ0cVqsdiuy33Ui7GFr5Ukfa8+Yk5/HMUfuVaD
-	J7aFFZa4U8uKQ8X/m7fV1nBXZs+IuoqtqS8mLMuhldD0vqwf61Dzo8Q0cg==
-X-Gm-Gg: ASbGncus5PSTWQmgn85o/GMgQa3nSGr9NSvbX70G4P4QHqbwLd/vMqtnJKd3NfatSPB
-	34pG0XmNbSwbW0FGMe+iZF6fb2DuNMHXbf8+UQmSWveua8e63TELUZAa8CGYctCe3sjKyzBAfzi
-	KelJNXqgr0EolSCwGlaVKeeTeQOAmBBuUvakJCIoCvIl4GlboCSIL0RURBJBXze7qzTLh6Ax0pn
-	7M6hKKO+E0PtvQ9XXJ6dv5C/dVL9NgPMcN6vA97ye7FeO7ld2UAfkKLzGadCXdAmO3QufVD6+4X
-	OtE12mFZW6mF3tF8BLq4V/Pax0fSYADRsSgm
-X-Google-Smtp-Source: AGHT+IHl5S9OEXqncQD6rm1sJ/TpZkSqgwDssbrXEkw1IJ6B20BTt5AnnKSgMj74IBD58vqGM60f/w==
-X-Received: by 2002:a05:620a:c41:b0:7b6:7850:21d4 with SMTP id af79cd13be357-7c247fe1ddbmr1075096785a.52.1740668463512;
-        Thu, 27 Feb 2025 07:01:03 -0800 (PST)
-Received: from LOCLAP699.localdomain ([152.193.78.90])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-7c36fef65b2sm116197785a.30.2025.02.27.07.01.02
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 27 Feb 2025 07:01:03 -0800 (PST)
-From: James Prestwood <prestwoj@gmail.com>
-To: ell@lists.linux.dev
-Cc: James Prestwood <prestwoj@gmail.com>
-Subject: [PATCH] unit: use l_basename in test-path
-Date: Thu, 27 Feb 2025 07:00:58 -0800
-Message-Id: <20250227150058.160709-1-prestwoj@gmail.com>
-X-Mailer: git-send-email 2.34.1
+        d=1e100.net; s=20230601; t=1740668528; x=1741273328;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=taCtzd70KvUi2V+G73d05wetJvUe8dV9kgcs4gGF8jU=;
+        b=h301psC0ROEaxRZ1rpTSyealAeIaJkWkFYRWSAWn8j/jprdZ0b09C/HJg7TdCbOkv1
+         xmTYAD4HWhUPOFyuZhN5JHH9RSfbSLUptsoNFVlGje4eNwxO6SeDx33Z7QqbcPzfIrsj
+         ZOKWYEYeYrtrRfaTWggUC+owq1r0k8m5WjdhbDqYVP9eYYOAu82UPUPrR/sq+Un5NkJC
+         LsoJ5JrwKkLs5ZDA5sevBMsdedS79ia9UGFS9RJQd/xv5cus0wz57ec660ugsWJYeepA
+         Uik7S/4WR+XVP1X/t18WOXVRBgULT0ZjYKBRjRcfhaZT/bOPmzP7FZrrsU5nMeeWxPDc
+         iy3A==
+X-Forwarded-Encrypted: i=1; AJvYcCXzMMy0+0Pb3wWYeTIlnCfnTzqvnlV7rneSdvO7X/WstpJDt41daxWSyqGk8qgTd0hPqlI=@lists.linux.dev
+X-Gm-Message-State: AOJu0YwxxUn8mQYdykyZkJdTuZul1TcHNQl7UaxVa8cSta7ig1Tcsnzv
+	i62A2RAKX78yPdA7Ty1b8QqzHkRJVSuXwoEsxBy+eLXL2fKZdV8VMvcqdQ==
+X-Gm-Gg: ASbGnctcLLLBk0R09ljDb6iDSTQ7gR2QBedbB8NK/OXz8fzTbc9WhdPwzBxFtzfEV9z
+	w4eaqesWkLsu7qURsE8FkiOzLTRcigMpb9gMN3F4HtNczMoCCCFrnKoh3TwY0HEsI5T0AaV1EP3
+	YN6BeYKzLOiQIxdCgYKqQnRj4Nc+bveQEcfNLJmB4SvlXR1XONtCQrYhC90/68pS7bQ3IKfL7qB
+	oRrQgd1vpSaqUItA9EyQ7Ygzd69wQW4TsEnO94f++aNgRwVTKVmKYwBRgAFi/Gs3TiWSnP5HxG0
+	mnbbqxTrTZVRDtvR8BDpgUMvmss21Q==
+X-Google-Smtp-Source: AGHT+IEujwY6NuDpDE08QwOttnA/vXCbCoL2ucLUt9kcoEtJ4q2QQ9SHStz6LYQ+V6E2bWdqXDJN6Q==
+X-Received: by 2002:ac8:5a92:0:b0:472:2df:6ff1 with SMTP id d75a77b69052e-4737721a964mr205117791cf.13.1740668527772;
+        Thu, 27 Feb 2025 07:02:07 -0800 (PST)
+Received: from [10.100.121.195] ([152.193.78.90])
+        by smtp.gmail.com with ESMTPSA id d75a77b69052e-4747242e3adsm11705121cf.65.2025.02.27.07.02.06
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 27 Feb 2025 07:02:07 -0800 (PST)
+Message-ID: <68de70e9-336b-49ad-bcb9-a714cd37bb9f@gmail.com>
+Date: Thu, 27 Feb 2025 07:02:05 -0800
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: Missing basename in util/test-path.c on musl-based systems
+To: NHO <jy6x2b32pie9@yahoo.com>, ell@lists.linux.dev
+References: <647ff8e8-caa7-4b26-8780-1e8308e19e5b.ref@yahoo.com>
+ <647ff8e8-caa7-4b26-8780-1e8308e19e5b@yahoo.com>
+Content-Language: en-US
+From: James Prestwood <prestwoj@gmail.com>
+In-Reply-To: <647ff8e8-caa7-4b26-8780-1e8308e19e5b@yahoo.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
-This fixes a compiler error on musl
----
- unit/test-path.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Hi,
 
-diff --git a/unit/test-path.c b/unit/test-path.c
-index 1f74423..f01fa52 100644
---- a/unit/test-path.c
-+++ b/unit/test-path.c
-@@ -55,14 +55,14 @@ static void test_path_find(const void *data)
- 	static const char *cant_find = "/foo:/bar:/dir:fr";
- 	static const char *can_find = "/tmp";
- 	char *tmp_path = l_strdup("/tmp/foobarXXXXXX.tmp");
--	char *base;
-+	const char *base;
- 	char *path;
- 	int fd;
- 
- 	fd = L_TFR(mkostemps(tmp_path, 4, O_CLOEXEC));
- 	assert(fd > 0);
- 	L_TFR(close(fd));
--	base = basename(tmp_path);
-+	base = l_basename(tmp_path);
- 
- 	assert(l_path_find(base, cant_find, F_OK) == NULL);
- 
--- 
-2.34.1
+On 2/23/25 8:43 AM, NHO wrote:
+> In systems using musl as libc, eg. certain Gentoo profiles, tests of 
+> ell fail to build, with error:
+> clang -DHAVE_CONFIG_H -I.    -fvisibility=hidden 
+> -DUNITDIR=\""./unit/"\" -DCERTDIR=\""./unit/"\" -O2 -pipe 
+> -fsigned-char -Wno-unknown-warning-option -Wno-unknown-pragmas -c -o 
+> unit/test-path.o unit/test-path.c
+> unit/test-path.c:65:9: error: call to undeclared function 'basename'; 
+> ISO C99 and later do not support implicit function declarations 
+> [-Wimplicit-function-declaration]
+>    65 |         base = basename(tmp_path);
+>       |                ^
+> unit/test-path.c:65:9: note: did you mean 'l_basename'?
+> ./ell/path.h:20:13: note: 'l_basename' declared here
+>    20 | const char *l_basename(const char *path);
+>       |             ^
+> unit/test-path.c:65:7: error: incompatible integer to pointer 
+> conversion assigning to 'char *' from 'int' [-Wint-conversion]
+>    65 |         base = basename(tmp_path);
+>       |              ^ ~~~~~~~~~~~~~~~~~~
+> 2 errors generated.
+>
+> Musl doesn't have GNU basename() in the string.h, only POSIX in libgen.h
+> See also: Gentoo bug https://bugs.gentoo.org/942788
+> second error appears to be a false positive.
+>
+I just sent a patch updating this test to use ELL's internal 
+implementation, l_basename(). This should fix the build on musl.
+
+Thanks,
+
+James
 
