@@ -1,35 +1,35 @@
 Received: from mail5.g24.pair.com (mail5.g24.pair.com [66.39.139.36])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02F5621D583
-	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 22:12:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EAD2021D3FE
+	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 22:12:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.39.139.36
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1743977542; cv=none; b=SyBvUlgSPvY20DpNBRzwSfra7gVHIOtwdGFQuU2ecOZMwPT+iOxG5GoHmnDJrfEM6JPegnNsi323QiVT0hC3qA4WeXUA6vSTN6hwx9ynrbW3jCux02cc/rdxrt1NRau4e07itnNkEhoYCQNTSIx3JF3LhT3qFxc6enECWYnqwBg=
+	t=1743977542; cv=none; b=NNN873guaur68EAAVmtqk1Uy4jtWwIG8ISM2Zc3tXcVj6WxRWPhnJRiI4/no5ag4Y8XhUffmnB0HL2+LfN0wYkjFdt+7p2/2p+0UXK4kd1rxPGhYQcRpZtNY6G2Q7Ehn4r5YNZxLDTrSc+gliPKkr1JzdQzP5YrcJr0KedJ5AFI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1743977542; c=relaxed/simple;
-	bh=y3ySH4sLpHcgvxV7ZorFZR5eaZY2MQUfZeVT1TpSDrA=;
+	bh=I/bPiFutfBafZW7hYkYhxFjGtXQRUrHDSe9+ISn9/ug=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=sNtvhebINLhAjrGFmN0HTz/7wxlEv7+lGmn2jvgfWOIHhNmpmp3TGXMdhE3fMAA+gCpLzBylIKZEoAw45f0OZtHeeBgZP+yo36wkaqGLDoqiQUNUONieDFKGvI/LAkTwKELyJ8T3PMNf37Ua8ou21ZSxneJuRBc/8V3qwER4kuw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=gPKC6utD; arc=none smtp.client-ip=66.39.139.36
+	 MIME-Version; b=WYy/tL/GIyfOgRfHgXqx8mhW7tmoPWyvyRqSiihNFzXensAnjkiKMm0HkXk7Klp8XI5uuTk7PcxZJ7iqNNSx6rcDkQ5qi/OAcICVvuMRLGAdtAgcrRTQ+3HSb/Ew9dsT7W2TgwIF6bb0ldyokiSzi1FUkChlGgopV6V5ZrI2ZoY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=Z3DDMWA2; arc=none smtp.client-ip=66.39.139.36
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="gPKC6utD"
+	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="Z3DDMWA2"
 Received: from mail5.g24.pair.com (localhost [127.0.0.1])
-	by mail5.g24.pair.com (Postfix) with ESMTP id 17EB8164A70
-	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:12:20 -0400 (EDT)
+	by mail5.g24.pair.com (Postfix) with ESMTP id 439CA164A6C
+	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:12:19 -0400 (EDT)
 Received: from localhost.localdomain (c-73-202-173-252.hsd1.ca.comcast.net [73.202.173.252])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mail5.g24.pair.com (Postfix) with ESMTPSA id C73091260D8
-	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:12:19 -0400 (EDT)
+	by mail5.g24.pair.com (Postfix) with ESMTPSA id F3C2E1260D8
+	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:12:18 -0400 (EDT)
 From: Grant Erickson <gerickson@nuovations.com>
 To: ell@lists.linux.dev
-Subject: [PATCH v6 7/8] edit: change the 'l_edit_enter' return signature from 'char *' to 'int'
-Date: Sun,  6 Apr 2025 15:12:14 -0700
-Message-ID: <9aadf6433c5166cfb4c2ab2c1fd010f9718edf3f.1743977403.git.gerickson@nuovations.com>
+Subject: [PATCH v6 5/8] edit: pass the l_edit instance to the display and debug handlers.
+Date: Sun,  6 Apr 2025 15:12:12 -0700
+Message-ID: <53394b18e388c2a6048705a7fa7a0a25ec49c868.1743977403.git.gerickson@nuovations.com>
 X-Mailer: git-send-email 2.45.0
 In-Reply-To: <cover.1743977403.git.gerickson@nuovations.com>
 References: <cover.1743977403.git.gerickson@nuovations.com>
@@ -40,74 +40,57 @@ List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=71MtMAj0ksGynXQkmaroKM5+cISjgkLmCEIeWTfpGqU=; b=gPKC6utDHeC6LKDMau8jg1YrnW7HNqv0HB/YbFZbVYiol7jVaToLfNaZnCFXU6qBvHmWtQ+2acLZIjs9+PBfbQDHapEjtf3ItR0FZLQASsx8ByRxlpj0sOrKJByRQprartO4sJWVec05nMl7jyvZ2J3jM83YElCbN8n1AYIUdnSKjW3ZDLTu9V4odhNh3HGXqnjdD66ASotpa6HIyACNCpdlFJkEcKmbQqPsjf5PfmNxnj52og1Ac3Odbj/jN+vnIeBg7InURVlhGIK2MMLElT2nnoRL6x0H73EI0UYKVP9y2p7narT8tO67uAIGOQ0YdtBdck6skJ1kTKEQvSWaUQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=G5nrjmn2W7uEE+5lIEZ7pnTFzdNsrOoPo52OqKWuTCM=; b=Z3DDMWA2vFTmm6Thyr9t4vQieUsGwde7T6NuaCaN6fqDYXWHgLb+H32csz6eWGcB98sx3tJX5Pi93BOI5hOW0AfCccdALK5XruzN+A8qg22aoeqK/lsOm3gzXsov9gC/dZsGGY6CwrM4MhO0lyKlOhCus71qkuKXfNQfb7W0+7XDFYArE+ZMCWHd1CEt1qUXh2EAvud7Qr3bK22WTR0hicjhU2fKceE4iWd+h3UEksFNHz0sZPRxHvBwpn2KOILOU7S1KhZCkUXResWYx42rvuRWpvJoqFgY8aWpCDuGQblcJwZi6WECtxHVv48fQcueIqQJRz6Gdjrzjncizabv/Q==
 X-Scanned-By: mailmunge 3.10 on 66.39.139.36
 
-Using an 'int' signature with 0 for success and < 0 for failure with
-failure enumerations sources from the negated POSIX errors from errno.h
-eases system integration by precluding system integrators from having
-to synthesize their own errors on the prior 'false' returns.
-
-In addition, this sets the stage for better error handling of the
-'wcstombs' and 'mbstowcs' functions.
-
-The entered line is now returned via a return parameter.
+l_edit integrations are made easier when they have access to the
+instance pointer in their callbacks.
 ---
- ell/edit.c | 12 +++++++++---
- ell/edit.h |  2 +-
- 2 files changed, 10 insertions(+), 4 deletions(-)
+ ell/edit.c | 4 ++--
+ ell/edit.h | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/ell/edit.c b/ell/edit.c
-index d6329d063c78..6747f92e289e 100644
+index 899fea4da830..54cfc566c4ad 100644
 --- a/ell/edit.c
 +++ b/ell/edit.c
-@@ -403,14 +403,14 @@ LIB_EXPORT bool l_edit_is_empty(struct l_edit *edit)
- 	return (edit->main->len == 0);
+@@ -229,7 +229,7 @@ static void update_debug(struct l_edit *edit)
+ 
+ 	tmp = l_string_unwrap(str);
+ 
+-	edit->debug_handler(tmp, edit->debug_data);
++	edit->debug_handler(edit, tmp, edit->debug_data);
+ 
+ 	l_free(tmp);
  }
- 
--LIB_EXPORT char *l_edit_enter(struct l_edit *edit)
-+LIB_EXPORT int l_edit_enter(struct l_edit *edit, char **line)
- {
- 	struct input_buf *buf;
- 	char *str;
- 	size_t len;
- 
- 	if (!edit)
--		return NULL;
-+		return -EINVAL;
- 
- 	/* Convert the wide character string into the multibyte string
- 	 * representation like UTF-8 for example.
-@@ -458,9 +458,15 @@ LIB_EXPORT char *l_edit_enter(struct l_edit *edit)
+@@ -270,7 +270,7 @@ static void update_display(struct l_edit *edit)
+ 			len--;
  	}
  
- 	edit->main = edit->head;
-+
- 	update_display(edit);
+-	edit->display_handler(buf, len, pos, edit->display_data);
++	edit->display_handler(edit, buf, len, pos, edit->display_data);
  
--	return str;
-+	if (line)
-+		*line = str;
-+	else
-+		l_free(str);
-+
-+	return 0;
+ 	update_debug(edit);
  }
- 
- LIB_EXPORT int l_edit_reset(struct l_edit *edit, const char *input)
 diff --git a/ell/edit.h b/ell/edit.h
-index 811246578894..425039733ad0 100644
+index 45ad2e657156..decf261c7b9e 100644
 --- a/ell/edit.h
 +++ b/ell/edit.h
-@@ -36,7 +36,7 @@ int  l_edit_set_max_input_length(struct l_edit *edit, size_t len);
- int  l_edit_set_history_size(struct l_edit *edit, unsigned int size);
- int  l_edit_refresh(struct l_edit *edit);
- bool l_edit_is_empty(struct l_edit *edit);
--char *l_edit_enter(struct l_edit *edit);
-+int  l_edit_enter(struct l_edit *edit, char **line);
- int  l_edit_reset(struct l_edit *edit, const char *input);
- int  l_edit_insert(struct l_edit *edit, wint_t ch);
- int  l_edit_delete(struct l_edit *edit);
+@@ -20,12 +20,12 @@ struct l_edit;
+ struct l_edit *l_edit_new(void);
+ void l_edit_free(struct l_edit *edit);
+ 
+-typedef void (*l_edit_debug_func_t) (const char *str, void *user_data);
++typedef void (*l_edit_debug_func_t) (struct l_edit *edit, const char *str, void *user_data);
+ 
+ bool l_edit_set_debug_handler(struct l_edit *edit,
+ 				l_edit_debug_func_t handler, void *user_data);
+ 
+-typedef void (*l_edit_display_func_t) (const wchar_t *wstr, size_t wlen,
++typedef void (*l_edit_display_func_t) (struct l_edit *edit, const wchar_t *wstr, size_t wlen,
+ 						size_t pos, void *user_data);
+ 
+ bool l_edit_set_display_handler(struct l_edit *edit,
 -- 
 2.45.0
 
