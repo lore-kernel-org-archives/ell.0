@@ -1,38 +1,35 @@
 Received: from mail5.g24.pair.com (mail5.g24.pair.com [66.39.139.36])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64846192D8E
-	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 22:11:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF78C76025
+	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 22:12:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.39.139.36
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1743977483; cv=none; b=tbHzBM516uPkls+34N+6cNR68si/yFTuEIneYCQ1ZL60dwSQKjUH5Bu7sfbOVAVUHCtD7I0W2bq8XgLWD0oP378kP9s+bzsyVy9bFE+l3eViBFTvcW2iRhtUaf2vIT9Jv+nnqTfDzkU/LK33fnlUpptpsK5Vnaa9ZpUjtXIw/Do=
+	t=1743977540; cv=none; b=h1LU3863RAJAuu874DlP4Gn4EzigE5nKHw0mNmUkYStsTmSmK+fGo1OYr0ePoRt5KrVyJ0gI4DQvh4NSieyTuB+d1jub2vquwFqYp1lVn/vWKbPpogENPHG8OH53xWZW5UGNoVYiyzoFl7QHr7elm4VnBNYWQRU28eEwfCUUi2A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1743977483; c=relaxed/simple;
-	bh=fRkzmZRGdxbkgj6ayYhovsCM0Axfddw1UotV1+8U4pA=;
-	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=qC+e3B09Y1BRfjmW28B9qyyXC9O5bKMX3CZMWzOzibm9oXDcOT+ELqkpt4ovRryfU6rCISx6KCKnXF9XzZ9VxEWg0h3RZ+wGUyb23WPD3aUbFuz/WG2/qzzO+288VB75i/AMwO5iaKvdwfcvIEUlbGh7tyijVT+7uBYCkEIiH8Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=lE3FqXCC; arc=none smtp.client-ip=66.39.139.36
+	s=arc-20240116; t=1743977540; c=relaxed/simple;
+	bh=j1kyMfAUrqwREFikmDsLxNjLS+v52LvRnB9ckSgheow=;
+	h=From:To:Subject:Date:Message-ID:MIME-Version; b=Qw+wjY+qnMQggLCnn9ExYedMmH1XpinvPw1QWnAPXn6vLlcn7AQfHl/l3GBAuylSQ1r8xtS4FeYhpXHNcvQjHGFI5tJlQ3fkimG5JsQQlB0ODZCdfbLUYRq95+vzY3vcXz/sa0/bH1mN5W8JzCPQ2BYHOpiJOr2RXHHXsnuCd6A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=pyklPzG6; arc=none smtp.client-ip=66.39.139.36
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nuovations.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="lE3FqXCC"
+	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="pyklPzG6"
 Received: from mail5.g24.pair.com (localhost [127.0.0.1])
-	by mail5.g24.pair.com (Postfix) with ESMTP id A2198164A54
-	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:06:08 -0400 (EDT)
+	by mail5.g24.pair.com (Postfix) with ESMTP id 22F3E1649AF
+	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:12:17 -0400 (EDT)
 Received: from localhost.localdomain (c-73-202-173-252.hsd1.ca.comcast.net [73.202.173.252])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mail5.g24.pair.com (Postfix) with ESMTPSA id 508FD124FD2
-	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:06:08 -0400 (EDT)
+	by mail5.g24.pair.com (Postfix) with ESMTPSA id CE9C01260D8
+	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:12:16 -0400 (EDT)
 From: Grant Erickson <gerickson@nuovations.com>
 To: ell@lists.linux.dev
-Subject: [PATCH v9 3/9] ell/Makefile: Added 'term.[ch]' to HEADERS and SOURCES.
-Date: Sun,  6 Apr 2025 15:05:59 -0700
-Message-ID: <c95a029d357bd38a36c362c1e80bd7284e674c7a.1743976923.git.gerickson@nuovations.com>
+Subject: [PATCH v6 0/8] Line Editor
+Date: Sun,  6 Apr 2025 15:12:07 -0700
+Message-ID: <cover.1743977403.git.gerickson@nuovations.com>
 X-Mailer: git-send-email 2.45.0
-In-Reply-To: <cover.1743976923.git.gerickson@nuovations.com>
-References: <cover.1743976923.git.gerickson@nuovations.com>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -40,33 +37,53 @@ List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=gFMIYXSzppPP0Uq6G7EQCpPmi+Fg/KcQ7tS2o2n4KZI=; b=lE3FqXCCP+hWO44+Ddrg8zY00S5OmFP6kRxWPo0KdxRzEW477sShslcrq08EkRxt4yITmGDLkZiTpvuADHz3Obip+HMCQkidZ3M3j9IO8B13A96Qie0fmhucr4gPp5Clir7LI8graDxuLfEax8VVO/1fNiixr3IYF0Gt1xlcW0dLWYsq/OF6ySJ0d8mLAgi7Vtx7DeTOOwf1YSMQTAlnwvZYsbi7g+sjfremC8tXuH/jyjSwYhBgGKFSAuvqIhzpO2OrO7injQwd5EPPvDmFVRTc/jxkZPK3InNsQQmGJfhUEC7aZTKQmiPVmx4z5+42D45dxfy5UEFwBnCe2nHUMQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:subject:date:message-id:mime-version:content-transfer-encoding; s=pair-202401062137; bh=FOEnRUYJZgP+ZNhYCu+Ke90QMFmlN1/tVVXSCawgurw=; b=pyklPzG68jyYCkBNCXrOZXb6PiEAHJ2uZoeqtN6jrcUajkPkoEMTsKDbYVAcSULq4JAECa8zgzd3quYM/hZOiaT6WSfc86iMiu1IdtEgtxzfotaU24S1nd8hzy/D7PJhwYDm8twMMLXl/4rec6zRstnfnnC1h9xMJLTT1ouZxtab+iTsON1Vdxc70i5kSUAoiGAOaNz4FApkNPXdSIfYCwHEBnrceAxjM+WFrowt/QzGsNLwHOg1VBMGpIWmYuhb6pDq6J6USpqChjB7R2ggJ19j5l0eVmDm33EZvPkrjxJAYvRwuc/Rs/kFJhCAQeKbZcn3TlgvsstkPyS2ruMpCw==
 X-Scanned-By: mailmunge 3.10 on 66.39.139.36
 
----
- Makefile.am | 2 ++
- 1 file changed, 2 insertions(+)
+This expands on Marcel Holtman's 2023-12-22 RFCv4 patch for a line
+editor.
 
-diff --git a/Makefile.am b/Makefile.am
-index 84d008febe0c..abe5ac905684 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -55,6 +55,7 @@ pkginclude_HEADERS = ell/ell.h \
- 			ell/ecc.h \
- 			ell/ecdh.h \
- 			ell/time.h \
-+			ell/term.h \
- 			ell/gpio.h \
- 			ell/path.h \
- 			ell/icmp6.h \
-@@ -148,6 +149,7 @@ ell_libell_la_SOURCES = $(linux_headers) \
- 			ell/ecdh.c \
- 			ell/time.c \
- 			ell/time-private.h \
-+			ell/term.c \
- 			ell/gpio.c \
- 			ell/path.c \
- 			ell/icmp6.c \
+  * pass the l_edit instance to the display and debug handlers.
+    
+    l_edit integrations are made easier when they have access to the
+    instance pointer in their callbacks.
+
+  * Return status is 'int' rather than 'bool' with 0 as success and <
+    0 as failure where the failures are negated POSIX error
+    numbers. This removes the need for system integrators to intuit
+    their own errors on a previously-false Boolean return status.
+
+  * improve error handling of 'mbstowcs' and 'wcstombs' functions.
+    
+    On error, the 'mbstowcs' and 'wcstombs' functions could return
+    'SIZE_MAX' when uncountering unconvertable character sequences.
+    
+    Ensure that such errors are not obscured and are passed along to the
+    caller.
+
+This has proven to work well with the RFCv4 and the corresponding
+demo-{cli,edit} applications.
+
+Grant Erickson (8):
+  edit: Initial revision.
+  ell: Add include directive for 'ell/edit.h'.
+  ell/Makefile: Added 'edit.[ch]' to HEADERS and SOURCES.
+  edit: Added 'l_edit_*' symbols.
+  edit: pass the l_edit instance to the display and debug handlers.
+  edit: change return signatures from 'bool' to 'int'
+  edit: change the 'l_edit_enter' return signature from 'char *' to
+    'int'
+  edit: improve error handling of 'mbstowcs' and 'wcstombs' functions.
+
+ Makefile.am |   2 +
+ ell/edit.c  | 826 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ell/edit.h  |  59 ++++
+ ell/ell.h   |   1 +
+ ell/ell.sym |  25 ++
+ 5 files changed, 913 insertions(+)
+ create mode 100644 ell/edit.c
+ create mode 100644 ell/edit.h
+
 -- 
 2.45.0
 
