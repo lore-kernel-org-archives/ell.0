@@ -1,38 +1,68 @@
-Received: from mail5.g24.pair.com (mail5.g24.pair.com [66.39.139.36])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pg1-f172.google.com (mail-pg1-f172.google.com [209.85.215.172])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EACC11B414A
-	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 22:12:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.39.139.36
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3CF912E7E
+	for <ell@lists.linux.dev>; Thu,  1 May 2025 01:15:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1743977543; cv=none; b=Ld/A+1KTP7XQwmVB1Pfxvd9dgzQxIZFqm88ePtB+Rs7wOsX9Srquqvl1vGiKJ6+xqVExc8uQ3mz4x//O7ueHoiEhg+L1xpjI/vgj7w6ztFO1MA1BQmraDtNBwAxFphCHqr1AQtiGFyASCtpTVql6Jc603bYpvDCG7uCpohSILlQ=
+	t=1746062121; cv=none; b=gQxKHtSqjZPxAYUG2dTdnbHDiX1mmUfioQWXaoIsB+ZI1CfnFw3x05Uomt1atNrv3EddbgDU6VIdSWCuHg2ykHGDEBpJDdApy/t+DU96NaQ0ZRkTNyXPuoFdu4PAKEx/UrB2P0MNmk7CgVVsFF1BruUhcXNc0eBJgwnAskNuhLI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1743977543; c=relaxed/simple;
-	bh=KTl9gqW/cTtUtxFw6BmBqjWUjXsufOferXWpVXZz0zw=;
-	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=DKBr2XhgmrKzWQoQVquEZTuqq2BtDkvRVeAwj5LbimJfuNaBEWv98PBizWZGwRTvEF/YzJwqVkIOc0ry8CQLgSAhzg/8Nui2+alk0oxTs3WrE2d7giBcuHXhJZ1ilG9i/sJHJhW64LHqTdxiaj5/pHiL1M6xgtfaJ2ptdsEQJd4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com; spf=pass smtp.mailfrom=nuovations.com; dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b=GBYH2CGm; arc=none smtp.client-ip=66.39.139.36
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nuovations.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nuovations.com
+	s=arc-20240116; t=1746062121; c=relaxed/simple;
+	bh=DR304Bq+MiRq5iBtQUZdhtaPgn/yQm6vXpaFxThCMMU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Uv6/inAH02GSFr531jCci7bkm8e1+Ou7LFsFrV5pz3wZfrLqfM3ojReviJ6nxm0zdieB+xH51ksjrXTt6IETkXV6fZBP3C/8ncjCApv/aApKHWnRWNhETsH5FyOnVHGnqdVJnjuqHezFmCPUlmwK7ZedsYPEkFXPqP/+5h2+b9Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nigauri.org; spf=none smtp.mailfrom=nigauri.org; dkim=pass (2048-bit key) header.d=nigauri-org.20230601.gappssmtp.com header.i=@nigauri-org.20230601.gappssmtp.com header.b=hlzQIcUx; arc=none smtp.client-ip=209.85.215.172
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nigauri.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=nigauri.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nuovations.com header.i=@nuovations.com header.b="GBYH2CGm"
-Received: from mail5.g24.pair.com (localhost [127.0.0.1])
-	by mail5.g24.pair.com (Postfix) with ESMTP id A822D164A6F
-	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:12:19 -0400 (EDT)
-Received: from localhost.localdomain (c-73-202-173-252.hsd1.ca.comcast.net [73.202.173.252])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mail5.g24.pair.com (Postfix) with ESMTPSA id 62EEB1260D8
-	for <ell@lists.linux.dev>; Sun,  6 Apr 2025 18:12:19 -0400 (EDT)
-From: Grant Erickson <gerickson@nuovations.com>
+	dkim=pass (2048-bit key) header.d=nigauri-org.20230601.gappssmtp.com header.i=@nigauri-org.20230601.gappssmtp.com header.b="hlzQIcUx"
+Received: by mail-pg1-f172.google.com with SMTP id 41be03b00d2f7-7fd581c2bf4so388066a12.3
+        for <ell@lists.linux.dev>; Wed, 30 Apr 2025 18:15:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=nigauri-org.20230601.gappssmtp.com; s=20230601; t=1746062119; x=1746666919; darn=lists.linux.dev;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=o7jAEY/MH26z8XU4vygWa8EhMbHQwJKMnmBTCSsA7+o=;
+        b=hlzQIcUx6kkrLvDSO1JhnBDFy6SVLzmcZNt6TZ4G1crRnribq1jj+L/mXE+oMW1Bqz
+         NAYfz/rCK14aK5XD/r6d4MSBJCONhmwuDIcpEe2KsZ5Hxuvju9P91YbO/2LX7pvvbUYv
+         Gsht6t0cZ7qO3h2R0CQqDQvVHrg41jFsQlWxmuwUUQlUSvTY+x2ZcuLhTntmID4uFIvZ
+         5s3UiSDnKiJLL301uQzSm1KxpQltqIsPRQYJ0rkjMFFeUa+3aR7/8z1BfLjCSf+uTKxj
+         T27URNW97OHT1vtv7bH7hqSzk1bk3YabpJ5kXjQvK6+Mw2k+yeyjZAEw/CCjKMzJygZu
+         BsTQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1746062119; x=1746666919;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=o7jAEY/MH26z8XU4vygWa8EhMbHQwJKMnmBTCSsA7+o=;
+        b=btzQ5KEtWRzlHCspwYfLPDtHMuVNsHpXNY+a1TTB4ThT/GonP5vu1rcWoHuCEeQZOQ
+         IZuXFC7rPMdL0jCdAzn4B/t6wke5PlopH+LTJEZaPyvlw41WdHcuMdVVzJvT5a9Q9TF1
+         xhUyQZ9n7AIhuCUsZtvoaUns9m0ZjXeOwxaiVMdZXV6JVlw3OUn//OrHemtQStMsUCST
+         lDZsL92Ce9EGsGu5igdUWmX67orMeUSWHATYWtNl1hnoRdyuXA3XqaEoy9+lfmAK8St3
+         SidO8Oq+TJJqwbKjYjx5pqZ0uykbTp3XtndnCBi7renQxFTd/kn2ld7p8HDNxjeEkFgh
+         1HTA==
+X-Gm-Message-State: AOJu0Yxtuxu1cmBawJEJHb7kdBSM6tkF1HxEa+b0JIeRnQZTBI22Cic2
+	emKLA33mht4EkMLqHCwP1OySep+0hNMuwETlF6sZintkfazdX9efTEY+ljwnE0tUURaNRfE5TA=
+	=
+X-Gm-Gg: ASbGncvU/ppQRjysyUXeJ88WaGj2Fbzb6G0rC+bYRhcUpiMT56nU1aVnA4UGwHzkvFL
+	c/eDoG0C5ZfRX1UpoB4j8gkxBSVWYgBDE+jjcf/aAVdkzAfe1yRIX3WffgfhyeOyOCDbO60V9+7
+	mfz00FeHJSJQ+lqtjSzgtidw2Io6ALt4jdKETZazDj/hSCKIRYjZCnDo7NLoLTnMn1p8EsjRn7q
+	g+vXk9UbEx3+CTlhkFn6BA5iiLj4h2iE+B8hHuuvnpkdCBjjblDpQlpS5rzybILwZmGSeIsCou1
+	FPLHEBCErfmqI4vtjJZtONcpj+SYNW2+82VmJ0eya+DOZwJXtOPcRu+esdgupshy4wvRDxdMtw=
+	=
+X-Google-Smtp-Source: AGHT+IHk4wGAtMygqviIkbLT4puUUhCLWCenvz2vPvQhM//dkWTghXvYcvXpwAEz+qY6l47YkJQsBQ==
+X-Received: by 2002:a17:90b:5206:b0:2ee:ee5e:42fb with SMTP id 98e67ed59e1d1-30a41d1a9eamr1370179a91.13.1746062118853;
+        Wed, 30 Apr 2025 18:15:18 -0700 (PDT)
+Received: from localhost (ae053227.dynamic.ppp.asahi-net.or.jp. [14.3.53.227])
+        by smtp.gmail.com with UTF8SMTPSA id d9443c01a7336-22db50e7b45sm128976275ad.135.2025.04.30.18.15.18
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 30 Apr 2025 18:15:18 -0700 (PDT)
+From: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
 To: ell@lists.linux.dev
-Subject: [PATCH v6 6/8] edit: change return signatures from 'bool' to 'int'
-Date: Sun,  6 Apr 2025 15:12:13 -0700
-Message-ID: <f94767f80064f2ed95e801f866be13189317e55f.1743977403.git.gerickson@nuovations.com>
-X-Mailer: git-send-email 2.45.0
-In-Reply-To: <cover.1743977403.git.gerickson@nuovations.com>
-References: <cover.1743977403.git.gerickson@nuovations.com>
+Cc: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
+Subject: [PATCH] Add License variable to pkg-config file
+Date: Thu,  1 May 2025 10:15:08 +0900
+Message-ID: <20250501011508.3917337-1-iwamatsu@nigauri.org>
+X-Mailer: git-send-email 2.49.0
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -40,483 +70,23 @@ List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nuovations.com; h=from:to:subject:date:message-id:in-reply-to:references:mime-version:content-transfer-encoding; s=pair-202401062137; bh=R8OeFKCELEZS9QBHXn6XZlr943X5Ip4OSCVsTqKPXrQ=; b=GBYH2CGmal4mBQDofovJR5pZfZN/0T2Ln5QiYGChPDPeRB9rcXLgV9cqYnjcsLy2ZgwCDA9LZuzhQ0s7iU5BafVtvppO8kHU7ezfNea1LU+UY1cHVk+VfoppV8M2i0uSL4Sp1VDqRA7AAPT9nxCWV6gSL0j44mTl0TI01RnjQDah5hcEmFkqaeUOeOB2Uu6kKtsT6HcQxZ1PHDSU4n6gCacEBCv+jOjL7b+HqiNRYzcUGMGq7L9Cjvr54gMMRNQexqZnQQV/m2vojuWnOlxNbp/MuYhC7LJC3Ls1yfEuRIBtCunuXe9pjeL7l81yloR2Bo8GdIc9Vn4t4ipcCWsNzQ==
-X-Scanned-By: mailmunge 3.10 on 66.39.139.36
 
-Using an 'int' signature with 0 for success and < 0 for failure with
-failure enumerations sources from the negated POSIX errors from errno.h
-eases system integration by precluding system integrators from having
-to synthesize their own errors on the prior 'false' returns.
+The pkg-config file has License variable that allows you to set the license for
+the software. This sets 'LGPL-2.1-or-later' as defined in SPDX to License.
+
 ---
- ell/edit.c | 136 ++++++++++++++++++++++++++---------------------------
- ell/edit.h |  40 ++++++++--------
- 2 files changed, 88 insertions(+), 88 deletions(-)
+ ell/ell.pc.in | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/ell/edit.c b/ell/edit.c
-index 54cfc566c4ad..d6329d063c78 100644
---- a/ell/edit.c
-+++ b/ell/edit.c
-@@ -234,18 +234,18 @@ static void update_debug(struct l_edit *edit)
- 	l_free(tmp);
- }
- 
--LIB_EXPORT bool l_edit_set_debug_handler(struct l_edit *edit,
-+LIB_EXPORT int l_edit_set_debug_handler(struct l_edit *edit,
- 				l_edit_debug_func_t handler, void *user_data)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	edit->debug_handler = handler;
- 	edit->debug_data = user_data;
- 
- 	update_debug(edit);
- 
--	return true;
-+	return 0;
- }
- 
- static void update_display(struct l_edit *edit)
-@@ -275,36 +275,36 @@ static void update_display(struct l_edit *edit)
- 	update_debug(edit);
- }
- 
--LIB_EXPORT bool l_edit_set_display_handler(struct l_edit *edit,
-+LIB_EXPORT int l_edit_set_display_handler(struct l_edit *edit,
- 				l_edit_display_func_t handler, void *user_data)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	edit->display_handler = handler;
- 	edit->display_data = user_data;
- 
- 	update_display(edit);
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_set_max_display_length(struct l_edit *edit, size_t len)
-+LIB_EXPORT int l_edit_set_max_display_length(struct l_edit *edit, size_t len)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	edit->max_display_len= len;
- 
- 	update_display(edit);
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_set_max_input_length(struct l_edit *edit, size_t len)
-+LIB_EXPORT int l_edit_set_max_input_length(struct l_edit *edit, size_t len)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* When switching to unlimited input length, then nothing is there
- 	 * do to, except storing the value. Refreshing the display is not
-@@ -313,7 +313,7 @@ LIB_EXPORT bool l_edit_set_max_input_length(struct l_edit *edit, size_t len)
- 	if (len == 0) {
- 		edit->max_input_len = 0;
- 		update_debug(edit);
--		return true;
-+		return 0;
- 	}
- 
- 	edit->max_input_len = len;
-@@ -334,13 +334,13 @@ LIB_EXPORT bool l_edit_set_max_input_length(struct l_edit *edit, size_t len)
- 		update_debug(edit);
- 	}
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_set_history_size(struct l_edit *edit, unsigned int size)
-+LIB_EXPORT int l_edit_set_history_size(struct l_edit *edit, unsigned int size)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	edit->max_list_size = size;
- 
-@@ -382,17 +382,17 @@ LIB_EXPORT bool l_edit_set_history_size(struct l_edit *edit, unsigned int size)
- 
- 	update_display(edit);
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_refresh(struct l_edit *edit)
-+LIB_EXPORT int l_edit_refresh(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	update_display(edit);
- 
--	return true;
-+	return 0;
- }
- 
- LIB_EXPORT bool l_edit_is_empty(struct l_edit *edit)
-@@ -463,10 +463,10 @@ LIB_EXPORT char *l_edit_enter(struct l_edit *edit)
- 	return str;
- }
- 
--LIB_EXPORT bool l_edit_reset(struct l_edit *edit, const char *input)
-+LIB_EXPORT int l_edit_reset(struct l_edit *edit, const char *input)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* Reset the main item back to the head of the history before
- 	 * resetting it or overwriting it with the provided input.
-@@ -476,17 +476,17 @@ LIB_EXPORT bool l_edit_reset(struct l_edit *edit, const char *input)
- 	reset_input_buf(edit->main, input);
- 	update_display(edit);
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_insert(struct l_edit *edit, wint_t ch)
-+LIB_EXPORT int l_edit_insert(struct l_edit *edit, wint_t ch)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* Check if the max input length has already been reached */
- 	if (edit->max_input_len && edit->main->len >= edit->max_input_len)
--		return false;
-+		return -EALREADY;
- 
- 	/* This will magically grow the buffer to make room for at least
- 	 * one wide character.
-@@ -497,7 +497,7 @@ LIB_EXPORT bool l_edit_insert(struct l_edit *edit, wint_t ch)
- 	 * string, there is nothing more to add.
- 	 */
- 	if (edit->main->len == SIZE_MAX)
--		return false;
-+		return -ENOBUFS;
- 
- 	/* If the cursor is not at the end, the new character has to be
- 	 * inserted and for thus the tail portion needs to move one
-@@ -513,13 +513,13 @@ LIB_EXPORT bool l_edit_insert(struct l_edit *edit, wint_t ch)
- 	edit->main->buf[edit->main->len] = L'\0';
- 	update_display(edit);
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_delete(struct l_edit *edit)
-+LIB_EXPORT int l_edit_delete(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* If the cursor is not at the end, deletion of a character means
- 	 * that the tail moves one character forward.
-@@ -533,13 +533,13 @@ LIB_EXPORT bool l_edit_delete(struct l_edit *edit)
- 		update_display(edit);
- 	}
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_delete_all(struct l_edit *edit)
-+LIB_EXPORT int l_edit_delete_all(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* Keep the buffer allocated, but reset it to an empty string */
- 	edit->main->buf[0] = L'\0';
-@@ -547,26 +547,26 @@ LIB_EXPORT bool l_edit_delete_all(struct l_edit *edit)
- 	edit->main->len = 0;
- 	update_display(edit);
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_truncate(struct l_edit *edit)
-+LIB_EXPORT int l_edit_truncate(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* Keep the buffer allocated, but truncate after the cursor */
- 	edit->main->buf[edit->main->pos] = L'\0';
- 	edit->main->len = edit->main->pos;
- 	update_display(edit);
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_backspace(struct l_edit *edit)
-+LIB_EXPORT int l_edit_backspace(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* If the cursor is not at the beginning, the backspace operation
- 	 * means that tail has to move one character forward.
-@@ -581,13 +581,13 @@ LIB_EXPORT bool l_edit_backspace(struct l_edit *edit)
- 		update_display(edit);
- 	}
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_move_left(struct l_edit *edit)
-+LIB_EXPORT int l_edit_move_left(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* If the cursor is not at the beginning, then move it one back */
- 	if (edit->main->pos > 0) {
-@@ -595,13 +595,13 @@ LIB_EXPORT bool l_edit_move_left(struct l_edit *edit)
- 		update_display(edit);
- 	}
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_move_right(struct l_edit *edit)
-+LIB_EXPORT int l_edit_move_right(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* If the cursor is not at the end, then move it one forward */
- 	if (edit->main->pos != edit->main->len) {
-@@ -609,13 +609,13 @@ LIB_EXPORT bool l_edit_move_right(struct l_edit *edit)
- 		update_display(edit);
- 	}
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_move_home(struct l_edit *edit)
-+LIB_EXPORT int l_edit_move_home(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* If the cursor is not at the beginning, move it there */
- 	if (edit->main->pos != 0) {
-@@ -623,13 +623,13 @@ LIB_EXPORT bool l_edit_move_home(struct l_edit *edit)
- 		update_display(edit);
- 	}
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_move_end(struct l_edit *edit)
-+LIB_EXPORT int l_edit_move_end(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* If the cursor is not at the end, move it there */
- 	if (edit->main->pos != edit->main->len) {
-@@ -637,13 +637,13 @@ LIB_EXPORT bool l_edit_move_end(struct l_edit *edit)
- 		update_display(edit);
- 	}
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_history_backward(struct l_edit *edit)
-+LIB_EXPORT int l_edit_history_backward(struct l_edit *edit)
- {
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* If there is another item in the history list, move the main
- 	 * item to that and enforce the max input length on the new item.
-@@ -654,15 +654,15 @@ LIB_EXPORT bool l_edit_history_backward(struct l_edit *edit)
- 		update_display(edit);
- 	}
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_history_forward(struct l_edit *edit)
-+LIB_EXPORT int l_edit_history_forward(struct l_edit *edit)
- {
- 	struct input_buf *buf;
- 
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	/* Walk the list of history items until the current main item
- 	 * matches the next item, then move the main item to current
-@@ -677,10 +677,10 @@ LIB_EXPORT bool l_edit_history_forward(struct l_edit *edit)
- 		}
- 	}
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_history_load(struct l_edit *edit, const char *pathname)
-+LIB_EXPORT int l_edit_history_load(struct l_edit *edit, const char *pathname)
- {
- 	static size_t initial_line_size = 16;
- 	struct input_buf *buf;
-@@ -689,17 +689,17 @@ LIB_EXPORT bool l_edit_history_load(struct l_edit *edit, const char *pathname)
- 	int fd;
- 
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	if (!pathname)
--		return false;
-+		return -EINVAL;
- 
- 	if (!edit->max_list_size)
--		return true;
-+		return 0;
- 
- 	fd = open(pathname, O_RDONLY);
- 	if (fd < 0)
--		return false;
-+		return -errno;
- 
- 	str = l_string_new(initial_line_size);
- 
-@@ -746,23 +746,23 @@ LIB_EXPORT bool l_edit_history_load(struct l_edit *edit, const char *pathname)
- 	edit->list_count = count;
- 	update_display(edit);
- 
--	return true;
-+	return 0;
- }
- 
--LIB_EXPORT bool l_edit_history_save(struct l_edit *edit, const char *pathname)
-+LIB_EXPORT int l_edit_history_save(struct l_edit *edit, const char *pathname)
- {
- 	struct input_buf *buf;
- 	int fd;
- 
- 	if (!edit)
--		return false;
-+		return -EINVAL;
- 
- 	if (!pathname)
--		return false;
-+		return -EINVAL;
- 
- 	fd = open(pathname, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR);
- 	if (fd < 0)
--		return false;
-+		return -errno;
- 
- 	buf = edit->head->next;
- 
-@@ -781,5 +781,5 @@ LIB_EXPORT bool l_edit_history_save(struct l_edit *edit, const char *pathname)
- 
- 	close(fd);
- 
--	return true;
-+	return 0;
- }
-diff --git a/ell/edit.h b/ell/edit.h
-index decf261c7b9e..811246578894 100644
---- a/ell/edit.h
-+++ b/ell/edit.h
-@@ -22,35 +22,35 @@ void l_edit_free(struct l_edit *edit);
- 
- typedef void (*l_edit_debug_func_t) (struct l_edit *edit, const char *str, void *user_data);
- 
--bool l_edit_set_debug_handler(struct l_edit *edit,
-+int  l_edit_set_debug_handler(struct l_edit *edit,
- 				l_edit_debug_func_t handler, void *user_data);
- 
- typedef void (*l_edit_display_func_t) (struct l_edit *edit, const wchar_t *wstr, size_t wlen,
- 						size_t pos, void *user_data);
- 
--bool l_edit_set_display_handler(struct l_edit *edit,
-+int  l_edit_set_display_handler(struct l_edit *edit,
- 				l_edit_display_func_t handler, void *user_data);
- 
--bool l_edit_set_max_display_length(struct l_edit *edit, size_t len);
--bool l_edit_set_max_input_length(struct l_edit *edit, size_t len);
--bool l_edit_set_history_size(struct l_edit *edit, unsigned int size);
--bool l_edit_refresh(struct l_edit *edit);
-+int  l_edit_set_max_display_length(struct l_edit *edit, size_t len);
-+int  l_edit_set_max_input_length(struct l_edit *edit, size_t len);
-+int  l_edit_set_history_size(struct l_edit *edit, unsigned int size);
-+int  l_edit_refresh(struct l_edit *edit);
- bool l_edit_is_empty(struct l_edit *edit);
- char *l_edit_enter(struct l_edit *edit);
--bool l_edit_reset(struct l_edit *edit, const char *input);
--bool l_edit_insert(struct l_edit *edit, wint_t ch);
--bool l_edit_delete(struct l_edit *edit);
--bool l_edit_delete_all(struct l_edit *edit);
--bool l_edit_truncate(struct l_edit *edit);
--bool l_edit_backspace(struct l_edit *edit);
--bool l_edit_move_left(struct l_edit *edit);
--bool l_edit_move_right(struct l_edit *edit);
--bool l_edit_move_home(struct l_edit *edit);
--bool l_edit_move_end(struct l_edit *edit);
--bool l_edit_history_backward(struct l_edit *edit);
--bool l_edit_history_forward(struct l_edit *edit);
--bool l_edit_history_load(struct l_edit *edit, const char *pathname);
--bool l_edit_history_save(struct l_edit *edit, const char *pathname);
-+int  l_edit_reset(struct l_edit *edit, const char *input);
-+int  l_edit_insert(struct l_edit *edit, wint_t ch);
-+int  l_edit_delete(struct l_edit *edit);
-+int  l_edit_delete_all(struct l_edit *edit);
-+int  l_edit_truncate(struct l_edit *edit);
-+int  l_edit_backspace(struct l_edit *edit);
-+int  l_edit_move_left(struct l_edit *edit);
-+int  l_edit_move_right(struct l_edit *edit);
-+int  l_edit_move_home(struct l_edit *edit);
-+int  l_edit_move_end(struct l_edit *edit);
-+int  l_edit_history_backward(struct l_edit *edit);
-+int  l_edit_history_forward(struct l_edit *edit);
-+int  l_edit_history_load(struct l_edit *edit, const char *pathname);
-+int  l_edit_history_save(struct l_edit *edit, const char *pathname);
- 
- #ifdef __cplusplus
- }
+diff --git a/ell/ell.pc.in b/ell/ell.pc.in
+index 414ea75..35edb68 100644
+--- a/ell/ell.pc.in
++++ b/ell/ell.pc.in
+@@ -8,3 +8,4 @@ Description: Embedded Linux library
+ Version: @VERSION@
+ Libs: -L${libdir} -lell
+ Cflags: -I${includedir}
++License: LGPL-2.1-or-later
 -- 
-2.45.0
+2.49.0
 
