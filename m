@@ -1,92 +1,91 @@
-Received: from mail-pg1-f172.google.com (mail-pg1-f172.google.com [209.85.215.172])
+Received: from mail-oi1-f171.google.com (mail-oi1-f171.google.com [209.85.167.171])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3CF912E7E
-	for <ell@lists.linux.dev>; Thu,  1 May 2025 01:15:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B527A15A848
+	for <ell@lists.linux.dev>; Fri,  2 May 2025 14:07:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.171
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746062121; cv=none; b=gQxKHtSqjZPxAYUG2dTdnbHDiX1mmUfioQWXaoIsB+ZI1CfnFw3x05Uomt1atNrv3EddbgDU6VIdSWCuHg2ykHGDEBpJDdApy/t+DU96NaQ0ZRkTNyXPuoFdu4PAKEx/UrB2P0MNmk7CgVVsFF1BruUhcXNc0eBJgwnAskNuhLI=
+	t=1746194842; cv=none; b=pta3WzmhzdWH5+sa2c5DtKvxCrkaUI1hCrH8V3EHTFc8CFZf5hbzdbNBmrM7wHMSNghb0WDsB80ZnBI9ubqMvqGbVojUQme3Ekf/yuOfjtoLDWO7X6w+ykrYKsglhxMJufUsULn1lBFDvYAZWDC8chE/FuhxrOKMr3TWWMLP8/8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746062121; c=relaxed/simple;
-	bh=DR304Bq+MiRq5iBtQUZdhtaPgn/yQm6vXpaFxThCMMU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Uv6/inAH02GSFr531jCci7bkm8e1+Ou7LFsFrV5pz3wZfrLqfM3ojReviJ6nxm0zdieB+xH51ksjrXTt6IETkXV6fZBP3C/8ncjCApv/aApKHWnRWNhETsH5FyOnVHGnqdVJnjuqHezFmCPUlmwK7ZedsYPEkFXPqP/+5h2+b9Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nigauri.org; spf=none smtp.mailfrom=nigauri.org; dkim=pass (2048-bit key) header.d=nigauri-org.20230601.gappssmtp.com header.i=@nigauri-org.20230601.gappssmtp.com header.b=hlzQIcUx; arc=none smtp.client-ip=209.85.215.172
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nigauri.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=nigauri.org
+	s=arc-20240116; t=1746194842; c=relaxed/simple;
+	bh=OpXU+Sj2CfHz3UBFhUizqdPkyrbZdJAZWH0deTWzux0=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=MulM+g5E16oZQ1lYofUFSQNiklYtmupod6lvr4aPD11444qbyd59UholbO9H0zGDGHgsmNG5aBauvTQHG01K7X/3pjXNvvpN2+b77Elw/3ffzEJbroSFB9fNpBfLWvJuqKBux6j03KjOOLu9458WI7pYGPwifZo2qLtX8gBpipo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Ko50TWbq; arc=none smtp.client-ip=209.85.167.171
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nigauri-org.20230601.gappssmtp.com header.i=@nigauri-org.20230601.gappssmtp.com header.b="hlzQIcUx"
-Received: by mail-pg1-f172.google.com with SMTP id 41be03b00d2f7-7fd581c2bf4so388066a12.3
-        for <ell@lists.linux.dev>; Wed, 30 Apr 2025 18:15:19 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Ko50TWbq"
+Received: by mail-oi1-f171.google.com with SMTP id 5614622812f47-401e77e5443so1332764b6e.3
+        for <ell@lists.linux.dev>; Fri, 02 May 2025 07:07:20 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=nigauri-org.20230601.gappssmtp.com; s=20230601; t=1746062119; x=1746666919; darn=lists.linux.dev;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=o7jAEY/MH26z8XU4vygWa8EhMbHQwJKMnmBTCSsA7+o=;
-        b=hlzQIcUx6kkrLvDSO1JhnBDFy6SVLzmcZNt6TZ4G1crRnribq1jj+L/mXE+oMW1Bqz
-         NAYfz/rCK14aK5XD/r6d4MSBJCONhmwuDIcpEe2KsZ5Hxuvju9P91YbO/2LX7pvvbUYv
-         Gsht6t0cZ7qO3h2R0CQqDQvVHrg41jFsQlWxmuwUUQlUSvTY+x2ZcuLhTntmID4uFIvZ
-         5s3UiSDnKiJLL301uQzSm1KxpQltqIsPRQYJ0rkjMFFeUa+3aR7/8z1BfLjCSf+uTKxj
-         T27URNW97OHT1vtv7bH7hqSzk1bk3YabpJ5kXjQvK6+Mw2k+yeyjZAEw/CCjKMzJygZu
-         BsTQ==
+        d=gmail.com; s=20230601; t=1746194839; x=1746799639; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=5HK0mSWiNehHlE1SNlaX4a7TwwakEkChgjtnZnxuvYw=;
+        b=Ko50TWbqKebmxGykTp7KFxIobOOgR8gKGoo3D19OaGkO49RZvhLeQE4Jiz/vrv/SHz
+         z9Pn7y6qNh2CfTp8DhZLSO32d9TbZXu2CrF5tIKbEkMh8aaTq9CtGgjuh0qgS4QpjTYY
+         4ZNCgMM0f9tlWHlE5A1AD3Y5O0jDa+roBlY9FCIOuaOOAzouDMK6q6N5QkJqwjNoHDpn
+         RbkdMFyqyt0mF5ypkhPQThQnv6BCoypmE4zeEEkwIIf0DhpGfywInO8teHjofB9sSPMQ
+         a0nnKiJFWQ+EkLelTq5WWe3UNdoL2z5DWNXSe58RpYhc44VSdqdq85+xah+CkFe80YeL
+         VGLg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1746062119; x=1746666919;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=o7jAEY/MH26z8XU4vygWa8EhMbHQwJKMnmBTCSsA7+o=;
-        b=btzQ5KEtWRzlHCspwYfLPDtHMuVNsHpXNY+a1TTB4ThT/GonP5vu1rcWoHuCEeQZOQ
-         IZuXFC7rPMdL0jCdAzn4B/t6wke5PlopH+LTJEZaPyvlw41WdHcuMdVVzJvT5a9Q9TF1
-         xhUyQZ9n7AIhuCUsZtvoaUns9m0ZjXeOwxaiVMdZXV6JVlw3OUn//OrHemtQStMsUCST
-         lDZsL92Ce9EGsGu5igdUWmX67orMeUSWHATYWtNl1hnoRdyuXA3XqaEoy9+lfmAK8St3
-         SidO8Oq+TJJqwbKjYjx5pqZ0uykbTp3XtndnCBi7renQxFTd/kn2ld7p8HDNxjeEkFgh
-         1HTA==
-X-Gm-Message-State: AOJu0Yxtuxu1cmBawJEJHb7kdBSM6tkF1HxEa+b0JIeRnQZTBI22Cic2
-	emKLA33mht4EkMLqHCwP1OySep+0hNMuwETlF6sZintkfazdX9efTEY+ljwnE0tUURaNRfE5TA=
-	=
-X-Gm-Gg: ASbGncvU/ppQRjysyUXeJ88WaGj2Fbzb6G0rC+bYRhcUpiMT56nU1aVnA4UGwHzkvFL
-	c/eDoG0C5ZfRX1UpoB4j8gkxBSVWYgBDE+jjcf/aAVdkzAfe1yRIX3WffgfhyeOyOCDbO60V9+7
-	mfz00FeHJSJQ+lqtjSzgtidw2Io6ALt4jdKETZazDj/hSCKIRYjZCnDo7NLoLTnMn1p8EsjRn7q
-	g+vXk9UbEx3+CTlhkFn6BA5iiLj4h2iE+B8hHuuvnpkdCBjjblDpQlpS5rzybILwZmGSeIsCou1
-	FPLHEBCErfmqI4vtjJZtONcpj+SYNW2+82VmJ0eya+DOZwJXtOPcRu+esdgupshy4wvRDxdMtw=
-	=
-X-Google-Smtp-Source: AGHT+IHk4wGAtMygqviIkbLT4puUUhCLWCenvz2vPvQhM//dkWTghXvYcvXpwAEz+qY6l47YkJQsBQ==
-X-Received: by 2002:a17:90b:5206:b0:2ee:ee5e:42fb with SMTP id 98e67ed59e1d1-30a41d1a9eamr1370179a91.13.1746062118853;
-        Wed, 30 Apr 2025 18:15:18 -0700 (PDT)
-Received: from localhost (ae053227.dynamic.ppp.asahi-net.or.jp. [14.3.53.227])
-        by smtp.gmail.com with UTF8SMTPSA id d9443c01a7336-22db50e7b45sm128976275ad.135.2025.04.30.18.15.18
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 30 Apr 2025 18:15:18 -0700 (PDT)
-From: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
-To: ell@lists.linux.dev
-Cc: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
-Subject: [PATCH] Add License variable to pkg-config file
-Date: Thu,  1 May 2025 10:15:08 +0900
-Message-ID: <20250501011508.3917337-1-iwamatsu@nigauri.org>
-X-Mailer: git-send-email 2.49.0
+        d=1e100.net; s=20230601; t=1746194839; x=1746799639;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=5HK0mSWiNehHlE1SNlaX4a7TwwakEkChgjtnZnxuvYw=;
+        b=p3xeWbSM9llJOyd7ZPPqUb8VVUIzqvpdOVljHCMfkozR1dxoNNXdcCyw5W0kJYPgHQ
+         +I81qUMWfBuH0WlRvjAya4jAuF6L4mZ4CuRz9p8hSagYZDB5YceNRmfvG20uvmvXyIIk
+         Og7Zjj8e+Rlb6TycSw9kINtRE2+zgEnoa0qP1nFQBsDZrsLJluojkYYN4nk4DKOIuNer
+         lp7Re1MHvHXp+iN07iczIEDDtyhO3lxDzdJY8vCCrUyt+HJAjla5RgPvo9wt8g9XiZDV
+         7iri2ChTN0GC0lyHK51kUrOoYRSRQNAJg55gR1R3ISCMV0iFls08vrmnpcOH+qShUXTU
+         jHWQ==
+X-Forwarded-Encrypted: i=1; AJvYcCVucj1QlKUHWsIQA3EZj2hvzMIlZSDPE9D5yfYMLwrzXivqM2Ys9XUCH4u2tVZM0RIylm4=@lists.linux.dev
+X-Gm-Message-State: AOJu0YyTgSZHMOVp8DRrubhWKDLDCeeDJyTNEKTNmjzDJiR9WBaWkttX
+	Ce2Mqo3VvzMn3xj+200oFXBk6LuXScp7bYcbDy04VUxUBWeBSMKHrDDK/Q==
+X-Gm-Gg: ASbGncsUxQXm1vgJkkZHqunEeewsgo/d4BlxrFr/G5mHtYWf3xvp54neZqnlxere3bg
+	dvtJRLyHPSMmzzJ9bTS+vBtg/hfqFnklahwnMEvfr9iJwGbhhnk95M7VCHwpJRlhSbysbmVNKNI
+	JGjPZWbXWq7d3YS3bDqkTBP9rgIBJWhaKltxg6jEArmn8QAqJhO8/TERfrb3KyLTqBt5bABYCYZ
+	JPAcOKAQty6t4NxV94bQapCcUsS/fcrZNZn4sNaOVdm/tj5wlvJfIfAWci+PgkiEeTeXf2sUnsw
+	A4oJj+JAaqxrBhTics1IZSzN6HDIG8xFwgt6RhGaE6eG4mYzm20+WpjJlvvmRbHtGBp/ZJOtofp
+	W5/vXyQ==
+X-Google-Smtp-Source: AGHT+IF+I911NpxRvgsacqrWN0/CoG34ge4iC/5KEvsVCDfIa2ZsIVVWsMmVmaMy4N5h1GXAwJMTFQ==
+X-Received: by 2002:a05:6808:4446:b0:3fc:1f7b:c39f with SMTP id 5614622812f47-4034139fc4cmr1483349b6e.18.1746194839582;
+        Fri, 02 May 2025 07:07:19 -0700 (PDT)
+Received: from [192.168.1.25] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id 006d021491bc7-607e7cb1015sm536522eaf.8.2025.05.02.07.07.17
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 02 May 2025 07:07:17 -0700 (PDT)
+Message-ID: <7ae26b10-23d1-4eb8-8305-924b904771c5@gmail.com>
+Date: Fri, 2 May 2025 09:07:16 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] Add License variable to pkg-config file
+To: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>, ell@lists.linux.dev
+References: <20250501011508.3917337-1-iwamatsu@nigauri.org>
+Content-Language: en-US
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20250501011508.3917337-1-iwamatsu@nigauri.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-The pkg-config file has License variable that allows you to set the license for
-the software. This sets 'LGPL-2.1-or-later' as defined in SPDX to License.
+On 4/30/25 8:15 PM, Nobuhiro Iwamatsu wrote:
+> The pkg-config file has License variable that allows you to set the license for
+> the software. This sets 'LGPL-2.1-or-later' as defined in SPDX to License.
+> 
+> ---
+>   ell/ell.pc.in | 1 +
+>   1 file changed, 1 insertion(+)
+> 
 
----
- ell/ell.pc.in | 1 +
- 1 file changed, 1 insertion(+)
+Applied, thanks.
 
-diff --git a/ell/ell.pc.in b/ell/ell.pc.in
-index 414ea75..35edb68 100644
---- a/ell/ell.pc.in
-+++ b/ell/ell.pc.in
-@@ -8,3 +8,4 @@ Description: Embedded Linux library
- Version: @VERSION@
- Libs: -L${libdir} -lell
- Cflags: -I${includedir}
-+License: LGPL-2.1-or-later
--- 
-2.49.0
-
+Regards,
+-Denis
