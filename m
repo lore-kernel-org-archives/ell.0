@@ -1,110 +1,93 @@
-Received: from mail-wr1-f49.google.com (mail-wr1-f49.google.com [209.85.221.49])
+Received: from mail-oi1-f178.google.com (mail-oi1-f178.google.com [209.85.167.178])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA77D22A7F9
-	for <ell@lists.linux.dev>; Wed, 21 May 2025 16:17:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B27E016DC28
+	for <ell@lists.linux.dev>; Wed, 21 May 2025 16:28:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.178
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747844232; cv=none; b=bYKoymPHr6lrD4HVmr/E/w+gsAz4uHl4axv8H5zOoQ//bpwZMwc2ePaPeIeOOGg/u3hPWMqET5adwgHs4/uvgIzhI6kStsxZBOyMPmP20bAXFnktHnV72urTkXkMOyrr8rCFp1Iz3MN7Qj49OK5+A1fJDx7FZLNaK7TOi9RiNUs=
+	t=1747844920; cv=none; b=XJGb2dllwnDv2O85Q9WCCeqwB7SoBnnvvPAST0VQordeOYNh44JAqqRTkcf9aMaIYMbzDq9RLaC3Fgjgig3xsELOlmcbk5/IR+p31zUHClnuKnHUgSaR2McKSRIFlpX3v1WHb9ZpRDm3NuZjapVfwr2zsHxO5IlkKQQ6f9E/IVk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747844232; c=relaxed/simple;
-	bh=O1PYA3nzZw20tux02yGm3V9Qma0dthvB1pvLqbGaGYk=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=R5eIS6fPMNdSI08HY3XET8ud9taDrsFVv3XpmZiaf3L0j5Qtkm8DiM8DA8sLWSazOLwebXTtQDjiMg0tqmyhZ0GnlD/SPv/tgneSKy6xvND7YMrCt1xmyhlqcImHpes2tNw8G3QyUFOzk/PR29VZ6miooOWE5NpnQMta7GqJhXw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sarg.org.ru; spf=pass smtp.mailfrom=sarg.org.ru; dkim=pass (2048-bit key) header.d=sarg.org.ru header.i=@sarg.org.ru header.b=u7xaDlPD; arc=none smtp.client-ip=209.85.221.49
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sarg.org.ru
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sarg.org.ru
+	s=arc-20240116; t=1747844920; c=relaxed/simple;
+	bh=8vrF5DitHXAaS91tv74C2VrLVc70VVx3sIT6ADKEb2Y=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=b6lOWparoghWmvU0MtPt6W2CvgupoY4NDPnLX2+BDq6pzfnCkIn51B4DffNwUlKwM+bQl7Iwwy8RQqwt3Lopb+kywe1KRUl+4CcJOAgTKW0GEsUAhODwyAIBnbqBIFZ6NKJFguisncxme1h/SlSd+UFqXAmgcVoAfQB9YG6Jy94=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=NZTq49Pe; arc=none smtp.client-ip=209.85.167.178
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=sarg.org.ru header.i=@sarg.org.ru header.b="u7xaDlPD"
-Received: by mail-wr1-f49.google.com with SMTP id ffacd0b85a97d-3a37a243388so1965327f8f.1
-        for <ell@lists.linux.dev>; Wed, 21 May 2025 09:17:07 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NZTq49Pe"
+Received: by mail-oi1-f178.google.com with SMTP id 5614622812f47-3fefbbc7dd4so5169625b6e.2
+        for <ell@lists.linux.dev>; Wed, 21 May 2025 09:28:38 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=sarg.org.ru; s=google; t=1747844226; x=1748449026; darn=lists.linux.dev;
-        h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
-         :mime-version:subject:date:from:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=16hcIskgfAomS2YtISFDif5fUBxG+dRvgjNdc6Gxg/s=;
-        b=u7xaDlPDfqjhJwW8nuH/KJtnQSyFZbmbKFzHvm05vSQv9g4Bl3DL9Wwl0S4h5+UZcQ
-         8OPNhhQ2nSBgRQOhmu9ruux/J/1Mcfbo9cGRJMK9hpubuKgP1DfVnSL1Uut2fDeDFuQ+
-         CYQTvrIesZnYkBXY7Nlr38zr4GAUPQWZustp8Qn3kI5fetBrQoBIekX3ChL1mj4I7t8y
-         0R25CRDcQtNsI3m/9dKBHVz9sYEll0jOIjwowjHs5AZIq8/IB6bjHfSyQz4EyydVkomi
-         vwZ/rSrYCfc9b9d14X13vHWvL/6RCKs+GFD86oaWNE6p9EXpMRXViOmowdyyDKJ9wSaC
-         7nCg==
+        d=gmail.com; s=20230601; t=1747844918; x=1748449718; darn=lists.linux.dev;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=RR5WrSlniLMmBMgsiHrE33JVGdU2baz/fOOlBX96AMY=;
+        b=NZTq49PenoPphFbaGIKI+IFkkM/vc1ZZhlYhUUkf7fQiqDj4EzJ4oAVQnm+araapBB
+         BVjTOG5soMrLjjjrx9OBmaiRmXQrfzJSa5/JIwzZgrH1EkGloLQxC/4rpohc7OM8QYs5
+         4pI9rUrSkrmnU75k1GpRvU5l9cOXq8KNkr7/ADQflm40sLJN6y07csmv8VF4GiEPunP9
+         Rs4VQ1OEn8sABAlwHmne1V8uHmMGsy34t/Ocjxk819JkoiR2H6B1xYCz08d99JJa9Fxd
+         l7FdBHsX6S9uw4ufNKBw0xQGejJnx9OFIwpDfDiRX8TvikNmZ96jMFFvMVXf7Z3ABjBH
+         OG7Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1747844226; x=1748449026;
-        h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
-         :mime-version:subject:date:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=16hcIskgfAomS2YtISFDif5fUBxG+dRvgjNdc6Gxg/s=;
-        b=HvCxG+AcNgd4M1Sggp5wh80X6nQ/SHd4n23rREr4oN01eLzCO8s6QScC3cewPemt7N
-         XRNzywHjZvg3BB6TvbjKwm/9l5wKRyRZ5EctDdJBnf5T/jKPCmur+SXdzdQ8U+sWq1+3
-         6ReEFXAVy0HnWlmtTGCc8tTWlGruPHNgvV/RPXgJpy+gt8PhUve5YaaJo+D7LC+HIqFL
-         vEZ6hr1OGpQJiXhVn9c/ZSgrYFllOjqu+jGBHBHkhHZ+kAYaD4RBNHJa597cLx7gYcpr
-         hXt6zX13mPQMyESLktvBLvw3z+roFosWG0FXgw2hqCky4hyYT0xBABsh3ju0DXpJ7Iyk
-         2GLg==
-X-Gm-Message-State: AOJu0YyDO68iad6+IDu/WLqiO3JnNiMpDEwZZB4Jt/moXCICGfzWBsih
-	KPP6AlGwZ/5rQuw391jkIkrDNSB5xJ4dBe5pOswlo9ocBiSm8Qg7aYHOPz86WqAEx2MpBMaDl07
-	AyueOiKI=
-X-Gm-Gg: ASbGncu8Pd/JKo2C5ZvtoS6l2+rYkk5UN5DRULyGtyauxZvfrxXRc1CNJFqEW67USGZ
-	ZxEC5vbbnZJ7mGy9SEmmuXmbUVpuJJtUXIVZvNtFb0gIXVTOdBpG2YH8+BZfw1QbB03QrjRBWAm
-	hgPaGUxCHYjDputogiAQ6obw6NbWbg01EvyXQ/GRowh0ugK07wWwTWj/oIJZ101ZN6FpzWWiJXm
-	B6XxaZOFdgKtiTxfkMGM3++OreGU+MmYiPSxIUYIhQXWRB0SK/FJnnIjeApI9lUdZWmQzMEdPnR
-	0StPK+cRZzk4d8lLLb1T3XCVxkgGK8a9W0yYyxhobGED6SxgpFH/kHBR5QI=
-X-Google-Smtp-Source: AGHT+IGzaPw1eNqWkaVZdkFdgNCzHwTdz6c9BCFrTwnMW7GnFXqBz0SWLDOAdVdeesN87/IU8naTfg==
-X-Received: by 2002:a05:6000:1445:b0:3a3:7be3:d0f7 with SMTP id ffacd0b85a97d-3a37be3d46emr6025932f8f.22.1747844226025;
-        Wed, 21 May 2025 09:17:06 -0700 (PDT)
-Received: from localhost ([2a02:2454:a095:5600:a64e:31ff:fe38:fd6c])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-3a35ca8cfb8sm19415286f8f.85.2025.05.21.09.17.05
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 21 May 2025 09:17:05 -0700 (PDT)
-From: Sergey Trofimov <sarg@sarg.org.ru>
-Date: Wed, 21 May 2025 18:16:40 +0200
-Subject: [PATCH 2/2] ecc: Check return value of l_getrandom()
+        d=1e100.net; s=20230601; t=1747844918; x=1748449718;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=RR5WrSlniLMmBMgsiHrE33JVGdU2baz/fOOlBX96AMY=;
+        b=sazqJrXF8f9FjGaCYZbL9tmho4E45avYZwmNZ7qsc0eZFfi3yv1L1qjT6dp+4l0aFY
+         E0cgqo8hxBiVaqO4hb6/5sm01Wslm0x5ksrf/VgkH81vmygZUifTlA9V7G3HOM6ehRl4
+         wWAS1vXUebnhLMqOyQmbEz4t12ke8uL2OWMvTXJH6FBvxMI7Zntp5Be/OxGa/71e+IV/
+         C5ThQe4D1nKVVe7pG3qXoykCZvEcH1T0G7k5GAikcVLHSJQ1rcba0Xe7hCqRLSIp4ONT
+         B+RL6CZpwcKgXsnmdCsdckUg7yr70lMWbNj/Ykr/W/uflbp+lPjb6c3nmX5e/eIJSqaH
+         oSUQ==
+X-Forwarded-Encrypted: i=1; AJvYcCUbiMRPHLEVGENpUiJ3o2GFYT+jXVfIfgjvVem9kLQxWR60YrMrIGeiOGJLhIfyRTjJXM4=@lists.linux.dev
+X-Gm-Message-State: AOJu0YzjbzOGQQ2L0BzSMjaE1NhK3QGuTdBATlUrRas6P+I++aCqGoQx
+	l+WTtUf/UvkC1rILo3F9k2KegEoEcFmKCwSAJNAxlFRwkH0F1WyPlOXPOMJrHA==
+X-Gm-Gg: ASbGnctZ6D1DsdktEmiWtnOWlxbmvd/eKFxrJBB/7fiydeW2iHHLB7y7bKKj2pX/Lxp
+	aBCLSvssCm7LVqhYZ7T9i/7yxMNvE/voQjNhwPI1qPIopo8UTWBAl71kQZwpByvrYdx891hFZqE
+	rajvO37+vZrzg3rmMQhqiJE9klSSRw+PuXn9FKIve5nqhZV62kaYHoKnr4ya5gWKkiFe7kWC3fx
+	DK/Lzojvu2dbuypnEiU/C2sljdryrvgVl+JRAl1IoVXipb9Cja2sBo0LMDSoKx1n2LRywotovR8
+	2fidLwZiO7SeT8CE8SpEj8yPneohm0Jkj3oeErhR0Kq0n3TqPgI4537seGAzV9Fsj17vJIBHL/k
+	zafx+vqWmae8ROXvt
+X-Google-Smtp-Source: AGHT+IESyoJ3Pt8ltxknERCVlasA3W4+ULrnF2mF8jftrHpum3qyIkF02/0gvcj3IOckEPpCpbGN3A==
+X-Received: by 2002:a05:6808:3c4e:b0:3f8:3eeb:11a3 with SMTP id 5614622812f47-404da71561amr12450156b6e.11.1747844917627;
+        Wed, 21 May 2025 09:28:37 -0700 (PDT)
+Received: from [192.168.1.25] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
+        by smtp.googlemail.com with ESMTPSA id 5614622812f47-404d98b18a9sm2194285b6e.31.2025.05.21.09.28.36
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 21 May 2025 09:28:36 -0700 (PDT)
+Message-ID: <4866ec9d-c5b8-4578-bd85-01b24e7ef0ba@gmail.com>
+Date: Wed, 21 May 2025 11:28:35 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250521-more-random-v1-2-997802b3052b@sarg.org.ru>
-References: <20250521-more-random-v1-0-997802b3052b@sarg.org.ru>
-In-Reply-To: <20250521-more-random-v1-0-997802b3052b@sarg.org.ru>
-To: ell@lists.linux.dev
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 0/2] Fix ECDH P-521 test
+To: Sergey Trofimov <sarg@sarg.org.ru>, ell@lists.linux.dev
 Cc: marcel@holtmann.org
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=569; i=sarg@sarg.org.ru;
- h=from:subject:message-id; bh=O1PYA3nzZw20tux02yGm3V9Qma0dthvB1pvLqbGaGYk=;
- b=owEBbQGS/pANAwAIATrbQjtAogeFAcsmYgBoLfx+A7pEzWJOvKcRAcHP0R0LZaY6o3I8eOuPm
- OnNznUVozeJATMEAAEIAB0WIQQJ9o/IC6DcElynxJA620I7QKIHhQUCaC38fgAKCRA620I7QKIH
- has4CAC3rcppAi4ynwZlmwUowBQMZIzWTZU75nxUuhaixj1HVA3UzP9DoStlG1JpSIsj+h2qSrd
- 9evihJoGuSCNlnjxtrs4dlugxCNdeeXEURDHfPZ2MEAZH5MXBCcMn3VCJtQw1WyPt3yZkWELaFw
- xmk4uhUUUmQVzfpPuAtQgPQZuD8wPTkftvxg7E869v8+ToncdXxRgyqqwRYsuX9RQtgrnWB3W19
- Vc5nGCnlkRB4UEQ7kvLcM9yi3eFn1vskT1sKBI3nQWPG4v+ROkF8DO7mDW4UlpaEmvR4U1oQTjI
- MF3UBdM54aC74gFX5TpTBu+2cAV+WSK95mvkadPGRMVG6MoV
-X-Developer-Key: i=sarg@sarg.org.ru; a=openpgp;
- fpr=09F68FC80BA0DC125CA7C4903ADB423B40A20785
+References: <20250521-more-random-v1-0-997802b3052b@sarg.org.ru>
+Content-Language: en-US
+From: Denis Kenzior <denkenz@gmail.com>
+In-Reply-To: <20250521-more-random-v1-0-997802b3052b@sarg.org.ru>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
----
- ell/ecc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Hi Sergey,
 
-diff --git a/ell/ecc.c b/ell/ecc.c
-index 7ab3c1accc869f0d178a203d85f9ec5f77c89a09..bed31336a634d2e40cdda88da06df9e6a62d515b 100644
---- a/ell/ecc.c
-+++ b/ell/ecc.c
-@@ -1037,7 +1037,8 @@ LIB_EXPORT struct l_ecc_scalar *l_ecc_scalar_new_random(
- 	uint64_t r[L_ECC_MAX_DIGITS];
- 
- 	while (iter++ < ECC_RANDOM_MAX_ITERATIONS) {
--		l_getrandom(r, curve->ndigits * 8);
-+		if (!l_getrandom(r, curve->ndigits * 8))
-+			continue;
- 
- 		if (curve == &p521)
- 			r[8] &= 0x1ff;
+On 5/21/25 11:16 AM, Sergey Trofimov wrote:
+> When building ell, unit/test-ecdh fails 8 out of 10 times. This appears
+> to be due to the `l_getrandom` function. The return value of
+> `l_getrandom` is not being checked, and the wrapper for `l_getrandom`
+> has not enough pre-generated random numbers, causing it to return
+> `false`.
+> 
 
--- 
-2.49.0
+Hah, nice find.  Applied, thanks.
 
+Regards,
+-Denis
