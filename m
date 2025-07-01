@@ -1,100 +1,126 @@
-Received: from mail-oi1-f177.google.com (mail-oi1-f177.google.com [209.85.167.177])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from relay6-d.mail.gandi.net (relay6-d.mail.gandi.net [217.70.183.198])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A1AF2171092
-	for <ell@lists.linux.dev>; Fri, 27 Jun 2025 21:42:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.177
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3BAA264A73
+	for <ell@lists.linux.dev>; Tue,  1 Jul 2025 13:20:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.183.198
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1751060564; cv=none; b=HOSoHaHyEjqsBIrgfgFGO6aRI0LtebswfvpRookB17eA8lXGLIBe6xbKEEG8RVXQ7RQYjL9eQ4Uf1YWJQgfFMCUH+mosUmz6gG7atcFd4A6F+t0XAmj9vfGjHF902lRe2q8+BcWGNfTWaXb9G06tS77Vf9i10jI4FQTi3mgwXBM=
+	t=1751376028; cv=none; b=uRLBH7zqzafuAoetC0McSprwxemGxOdRxz/BhCPvbfB3UXbyNW7JrfT/qv9REd7BU1gkSlJ5syT4wu7g5+KbX+JktLFvTCSF/RYcAmiI/7DDiVkk7jrd1n2vThxewwET4+zv5WwMb+Fr6k3YyJFybeV74zpjIsABzZ7OelAqdCE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1751060564; c=relaxed/simple;
-	bh=CZzj8PxjNEZDpEBUeIQ0mgpQ66pmuyH1po8M/UAnt1k=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=aq2xT5HdAaDZmIMhXr99GSeKflLHNHmeNgDRANEAUCTSqVmNg+hTSPYT9Ph2S/iMQ/+ddQsQYXr/slk75uveIZCrS1cm+4t7XTR1vqwnvCGarBfqV51CN7yE1TOCe9BVesEHc6NGb00LNyq4BZQECotW20X66Vpa+sOnR2ict4o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=h6VdT1tQ; arc=none smtp.client-ip=209.85.167.177
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="h6VdT1tQ"
-Received: by mail-oi1-f177.google.com with SMTP id 5614622812f47-4067ac8f6cdso262137b6e.2
-        for <ell@lists.linux.dev>; Fri, 27 Jun 2025 14:42:42 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1751060562; x=1751665362; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=f2KDWJyJjJ+C4EDBUg9q8VqGjDGgMAa9J81w/qebjpo=;
-        b=h6VdT1tQNQY0hZPE439dibRIM31ByITuncwxZtbDlzPqGaQnbnWetkZfc5LOvGRmGL
-         QP0jddo2jJgK+TU9YuUJLMb5bviwvlU1W3qmDgpwIP0u+OUJyr974zX68RkZ+BuzEyJv
-         WN85RHvndjock6Va86+JwA0GBJPJQ2EzQjU10QiUvygPdMqDL03e9VTkLUyYBaHNcSSV
-         q7dSMpHZeRCFatII1NZYCdjYzIG20dESlNfGEO3+GHJCtXJ0mdKTee1UrWLZkTPFEBn5
-         UmbD4rvZ0+Rnq5ZohkmrZ86pzyuHzSfOY60TJmikgJ3WxvAs77mgGZj9MuSykArX+wL/
-         1S1g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1751060562; x=1751665362;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=f2KDWJyJjJ+C4EDBUg9q8VqGjDGgMAa9J81w/qebjpo=;
-        b=foRuLRhLEz9la1r0qXPEjzi1rhtOiocME8nc/kFxctTywkoq9vkFZyoHt1pfi1EPFo
-         HGrV/rN/bNr+JRxLEaTw26JgR3tqBBkLxEejS7AE4xaApC9hAm2gYSxB34kuuSH4OC2H
-         h87HqZMyu8tRZbfHma1riMUjWuEAebM/XuFAB3bDvHCK+ax8ZHlKx/U7Lag4cLYt659R
-         5Yiib4JBlLCDIL2snLa537W+8wHt2LZdoM/5y/2QMqR+baq3Y5MeAlekwywsF3gWZfSK
-         nm5M1OAPp3S/vt4UkHKsV4sV+nOPDUHfgUP7Iuq3tkcep4GrR/vLEvsOk7AoDP1Tfa4W
-         z/iQ==
-X-Forwarded-Encrypted: i=1; AJvYcCVcbKMA98qLAbMeE87F0IiytwiN46hgq2XXZQL8Gacxta+MDt6jy+VT8xxgAxqOLlsq3y8=@lists.linux.dev
-X-Gm-Message-State: AOJu0YxJJwYdLGmfYworhSfBie9qcYuRK6PYjVwj/GZhC0p25BRvLwDF
-	373IJSSapyJN8ofNlD/4LhPKD3T9Y2KvHWySiRemQU8KeJVXgusctX0eFeNEkw==
-X-Gm-Gg: ASbGncvMbIwTJfouUqSQPZutyWwpe1YLxljN3JRNAuz8BZth0hDkUWvtwlV5LMtWIle
-	B+lobHikecH9C3GJ0kKFjmvSUXQOq4BDTEjaCPcTJmJV6f1YjTuO3Ihhuc0E8tF1yRPaltF4q+C
-	Fr3wyuxAJAx+Mn1vIJxEl/E/BIl/dCQ1cYYQT3+iHtfwfeY1BIo92/gESDlzFqB3gXf6venYRFE
-	DSPR+NJHzMEG0dvIgfrq+9oDio42AdE8RTAhjvZWC5p8hntsUaX3XooaGXiGvF3h+CMMk6TpX7f
-	1MlEcHXHTCDTsuwhkiQUERvEruDnucZfy0m5mc2XVupq7TsbvxRxiA3lRKAoteUIm2V9v4SqUk3
-	xptyIhsd/U/nkJ6uSYRs2VLqg9p8=
-X-Google-Smtp-Source: AGHT+IGtwt7wQYangCykwdEbEhAA8nZTXcEX+oevrq00P+Ak+5Ks37kJ/AbsHFiDjDUDUJo53zH2Yw==
-X-Received: by 2002:a05:6808:15a0:b0:3fa:82f6:f74d with SMTP id 5614622812f47-40b33e20e41mr3625815b6e.23.1751060561629;
-        Fri, 27 Jun 2025 14:42:41 -0700 (PDT)
-Received: from [192.168.1.21] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 5614622812f47-40b3243deeesm524479b6e.48.2025.06.27.14.42.40
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 27 Jun 2025 14:42:41 -0700 (PDT)
-Message-ID: <b8251acb-3b6b-4e66-b7ed-d6741009fdaf@gmail.com>
-Date: Fri, 27 Jun 2025 16:42:39 -0500
+	s=arc-20240116; t=1751376028; c=relaxed/simple;
+	bh=IilWCOgtGYfD5Zov1ZOjXmm0aOkmvWn9gO/4wDzqFf4=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=MrQfh1yXuQnVzWNFKYUMj8NcZw4sJAfiraUYEKiqePMuh1jwgSKzvz966Gzr61PGbar9Py+3cqBzncogi+POcbvvLktUup8qbReRaVXjamoVmrNnixsQ4vMEMVG80GtjJH29hl0dqkEMPIozzJElcQYdkww2UHKttbLPOzjym/I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net; spf=pass smtp.mailfrom=hadess.net; arc=none smtp.client-ip=217.70.183.198
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hadess.net
+Received: by mail.gandi.net (Postfix) with ESMTPSA id BCBCE44219;
+	Tue,  1 Jul 2025 13:20:23 +0000 (UTC)
+From: Bastien Nocera <hadess@hadess.net>
+To: ell@lists.linux.dev
+Cc: Bastien Nocera <hadess@hadess.net>
+Subject: [PATCH] all: Fix typos
+Date: Tue,  1 Jul 2025 15:20:07 +0200
+Message-ID: <20250701132015.482623-1-hadess@hadess.net>
+X-Mailer: git-send-email 2.50.0
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 1/4] dbus-filter: avoid NULL pointer dereference after
- removing all rules
-To: Christian Eggers <ceggers@arri.de>, ell@lists.linux.dev
-References: <20250625131432.19974-1-ceggers@arri.de>
-Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20250625131432.19974-1-ceggers@arri.de>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-GND-State: clean
+X-GND-Score: 0
+X-GND-Cause: gggruggvucftvghtrhhoucdtuddrgeeffedrtdefgddugeeigecutefuodetggdotefrodftvfcurfhrohhfihhlvgemucfitefpfffkpdcuggftfghnshhusghstghrihgsvgenuceurghilhhouhhtmecufedtudenucenucfjughrpefhvfevufffkffoggfgsedtkeertdertddtnecuhfhrohhmpeeurghsthhivghnucfpohgtvghrrgcuoehhrgguvghssheshhgruggvshhsrdhnvghtqeenucggtffrrghtthgvrhhnpeffteektdejuddvhfdtfedtvdetgeeileethfetgfdtheekvefgueeifffhvefhfeenucfkphepvdgrtddumegvfeegmegvtgejfeemtghfvddtmeejudgurgemfegsugemvddtrgelmedufeefnecuvehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehinhgvthepvdgrtddumegvfeegmegvtgejfeemtghfvddtmeejudgurgemfegsugemvddtrgelmedufeefpdhhvghlohepohhlihhmphhitgdpmhgrihhlfhhrohhmpehhrgguvghssheshhgruggvshhsrdhnvghtpdhnsggprhgtphhtthhopedvpdhrtghpthhtohepvghllheslhhishhtshdrlhhinhhugidruggvvhdprhgtphhtthhopehhrgguvghssheshhgruggvshhsrdhnvght
+X-GND-Sasl: hadess@hadess.net
 
-Hi Christian,
+---
+ Makefile.am              | 2 +-
+ ell/dbus.c               | 2 +-
+ ell/strv.c               | 2 +-
+ ell/util.h               | 2 +-
+ tools/certchain-verify.c | 2 +-
+ unit/test-dhcp.c         | 2 +-
+ 6 files changed, 6 insertions(+), 6 deletions(-)
 
-On 6/25/25 8:14 AM, Christian Eggers wrote:
-> l_dbus_register() is called by _dbus_filter_new() directly before the
-> first filter rule is added (so filter->root is only transitional NULL).
-> Later, if all filter rules have been removed, filter->root is
-> permanently NULL which causes NULL pointer dereference in
-> _dbus_filter_dispatch() / filter_dispatch_match_recurse().
-> 
-> I get this situation after creating a D-Bus proxy and destroying the
-> proxy later (so that no filter rules are left, but the D-Bus' filter is
-> still registered).
-> ---
->   ell/dbus-filter.c | 3 ++-
->   1 file changed, 2 insertions(+), 1 deletion(-)
-> 
+diff --git a/Makefile.am b/Makefile.am
+index 84d008febe0c..860d59184c7e 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -666,7 +666,7 @@ unit/cert-expired.pem: unit/cert-expired.csr unit/cert-ca.pem unit/gencerts.cnf
+ 	$(AM_V_at)rm -r unit/cert-ca-tmp unit/cert-ca-index.txt
+ 
+ unit/cert-entity-pkcs12-nomac.p12: unit/cert-entity-int-key.pem unit/cert-entity-int.pem
+-	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.pem -out $@ -export -passout pass:abc -nomac # defaut ciphers
++	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.pem -out $@ -export -passout pass:abc -nomac # default ciphers
+ 
+ unit/cert-entity-pkcs12-rc2-sha1.p12: unit/cert-entity-int-key.pem unit/cert-entity-int.pem unit/cert-chain.pem
+ 	$(AM_V_GEN)openssl pkcs12 -inkey $< -in $(builddir)/unit/cert-entity-int.pem -certfile $(builddir)/unit/cert-chain.pem -out $@ -export -passout pass:abc -certpbe PBE-SHA1-RC2-40 -keypbe PBE-SHA1-RC2-128 -macalg sha1 $(openssl_legacy)
+diff --git a/ell/dbus.c b/ell/dbus.c
+index 7fa5c18d6b92..bcd9869da15d 100644
+--- a/ell/dbus.c
++++ b/ell/dbus.c
+@@ -181,7 +181,7 @@ done:
+ 	if (l_queue_isempty(dbus->message_queue))
+ 		return false;
+ 
+-	/* Only continue sending messges if the connection is ready */
++	/* Only continue sending messages if the connection is ready */
+ 	return dbus->is_ready;
+ }
+ 
+diff --git a/ell/strv.c b/ell/strv.c
+index b7bf23c92292..e22fc1fea029 100644
+--- a/ell/strv.c
++++ b/ell/strv.c
+@@ -261,7 +261,7 @@ LIB_EXPORT bool l_strv_contains(char **str_array, const char *item)
+ /**
+  * l_strv_append:
+  * @str_array: a %NULL terminated array of strings or %NULL
+- * @str: A string to be appened at the end of @str_array
++ * @str: A string to be appended at the end of @str_array
+  *
+  * Returns: New %NULL terminated array of strings with @str added
+  */
+diff --git a/ell/util.h b/ell/util.h
+index da0741d2cbba..e44ec69f8d97 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -44,7 +44,7 @@ _Pragma("GCC diagnostic pop")						\
+ 	})
+ 
+ /*
+- * If ELL headers and iterfaces end up getting compiled in a C++
++ * If ELL headers and interfaces end up getting compiled in a C++
+  * environment, even though ELL itself is a C source based and is
+  * compiled as such, certain assignments may be flagged by the C++
+  * compiler as errors or warnings. The following portable casts should
+diff --git a/tools/certchain-verify.c b/tools/certchain-verify.c
+index e8ff346dce54..c3a38263b612 100644
+--- a/tools/certchain-verify.c
++++ b/tools/certchain-verify.c
+@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
+ 
+ 	ca_certs = l_pem_load_certificate_list(argv[1]);
+ 	if (!ca_certs) {
+-		fprintf(stderr, "Unable to load CA certifiates\n");
++		fprintf(stderr, "Unable to load CA certificates\n");
+ 		goto free_certchain;
+ 	}
+ 
+diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
+index b1e3cb0c33aa..34faae4b09a7 100644
+--- a/unit/test-dhcp.c
++++ b/unit/test-dhcp.c
+@@ -655,7 +655,7 @@ static int fake_transport_send(struct dhcp_transport *transport,
+ 	return len;
+ }
+ 
+-static int fake_transport_l2_send(struct dhcp_transport *transprot,
++static int fake_transport_l2_send(struct dhcp_transport *transport,
+ 					uint32_t saddr, uint16_t sport,
+ 					uint32_t daddr, uint16_t dport,
+ 					const uint8_t *dest_mac,
+-- 
+2.50.0
 
-All applied.  Thanks for these!
-
-Regards,
--Denis
