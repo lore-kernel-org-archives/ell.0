@@ -1,96 +1,951 @@
-Received: from mail-oa1-f47.google.com (mail-oa1-f47.google.com [209.85.160.47])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from relay4-d.mail.gandi.net (relay4-d.mail.gandi.net [217.70.183.196])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99B8B26B755
-	for <ell@lists.linux.dev>; Mon,  4 Aug 2025 14:24:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.47
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EDFB21ACEDA
+	for <ell@lists.linux.dev>; Wed,  6 Aug 2025 16:01:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.183.196
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1754317485; cv=none; b=nxHc1bd/tPNaj0Vh69smV5uThd0vIlmbN3i9hzkaonQnSoKOuSXrJAfsXyX9MZoy0TPcdPRSqBTzXvFTfa2mgyr32hCyfb9CBPT6ydRXG3PevOqXaipQhMEg69DxL3Rrk3LzNWKsoKetX+dDpU59CCWQJ6AYhlahUXIZTcvzLB8=
+	t=1754496090; cv=none; b=AOn8SPcXfUSEBOEQYw7WZUCbG1ej1kchn9Mga/tdUXFAT5xyU7jwh+ahR6AX0hfrwlJq5JGs+xLxnC1PEkEBJ02FVC2sUwpZmtQLFOCez/2PQDi1nFxrto4g14jxQjnFASocS50drpm0V1GxJn3iFTR0nx7IMiG7cRW0LiT3mA8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1754317485; c=relaxed/simple;
-	bh=+x6KWNMsFzWITYQy31oM91K2sMkgvmEy0EnQ2oZjN7c=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=bpG/7tsUKt+YLtC+Xba24B+0kEgGJ/yh5IDjqdV9ekW3COdRaUTRfAn34/mSOeKnYzKOTYZTtkuKF2SipxAB+QjpbEiEta6lR7rDdxGVbfeMe9ms96xvDtEKOVl3YHmbezTJW9Mlkscf015WxkSS+TMCHWBuanEK/9oh3PCIDlI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=dFKmpCMa; arc=none smtp.client-ip=209.85.160.47
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dFKmpCMa"
-Received: by mail-oa1-f47.google.com with SMTP id 586e51a60fabf-306b7eb492aso2862224fac.0
-        for <ell@lists.linux.dev>; Mon, 04 Aug 2025 07:24:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1754317482; x=1754922282; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=QsHrgrpVTMmMdgJ4MrMY5lFNi7arWymtse20PAgaKu8=;
-        b=dFKmpCMafQ4bn5hBkZ9V/xYlf100p7EK5mAgg9uREabd/EVnHscn90LAHqYZj17/fd
-         viuKXeoyPodHvJJB384JmjYbnejQY3JZuVyI2AI/Qq/VATisnRsGHXU206El174Eskl7
-         zxKjYX1eM+BR79IuvygWaBKwbp48zkf+X9cDY+IoLdJtj0TJlGPcomqoSj4jJx0fuzYo
-         zwDtlT+zsHkPphZfFe55PkCC8Ouxl+yludp1aQpIs81Nk0XygWisnKtZQ2oT0fzldnMm
-         quBRWzatTWJFbrymFSmp2qwqi3djwsb/30JkKJ/RBnn92XOpyOst2lwvGfcY7m1t3F0Q
-         9fgw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1754317482; x=1754922282;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=QsHrgrpVTMmMdgJ4MrMY5lFNi7arWymtse20PAgaKu8=;
-        b=Qo/KJLZzEbfJZEHk2k/oqo6jSqoSFncGw9pBMne7x+oyDn3UjTsU2suoozPpmzVtJn
-         Y6kWZXyjqVuge4pdXhvbGOULJQFfYe+dEBIA6MTQ8XabwPNp5zxWLOK+1dkrfITlePeU
-         Kn/HFT8Cf18HpyV2FQwfhrVonso6rprykfj8D6D8ueIwSlIbCme1M+mrLUShKMzzPBR3
-         j8EHlUpDW0dVSSy0eELO3OBKgJ9itCl4ShNHw+ewlhz46lXHjnwuTgWhGwjtIGnPsgUl
-         hzkahNNzj+E5Pj3ko55L3MlyLHCuquFNL3JSK8Xi90TY/X3O72CZ6pgOQpA/zoAQCiHg
-         JJXQ==
-X-Forwarded-Encrypted: i=1; AJvYcCUkMZC0g/CKOZgMw75/8UyaevD5Rpwtjg1JzQBTPLi8IoOuFdn9oGicqyoc3PWiRQrNW+E=@lists.linux.dev
-X-Gm-Message-State: AOJu0YwndlLNUSePF8vlXIxp31aYcQTe/YtTQqXb0wQduVOQDDvO3FZj
-	Ri8MU0qLh1cTGJKr9lm2peWJ3vCVph2lKg3IRADSO3YUPt/XCz2mJxihm2RJtw==
-X-Gm-Gg: ASbGnctVgyIn9tfts6lErNwQjTokjXlxXd1vzpsGPUNZ8fwpnhEGZjT/QD0qBDgAiBG
-	swqb/bRd07B0FuAs3mRE1QYgHBAWgYVNYaJZipGKh9vSmyfIKmslCLrqJW6BofSu8IKS07U/aEk
-	n3eaEmb6oECls5p0wef9+qmq843XLIluVuwZ3UfWxfSap4Kluy7HQFoOC0k44PM/ZvkPxfTKE4m
-	5yYAunxUPgy40SEGN2tWJ2X8fCJIdT44ICsbRMva5q0w4WIkH61Mju5cQo8Uax8v6NM2gczYWWM
-	jy5dDPX0MyvmNNO/ezrbsUgMkEBS77+qp7S77oHyyIeXbJ3gnwSqTxrlboflnfI5QLcBuc0l2cD
-	GTewjJq4dQJ4LoKXmPdwwLbzjIeAYpNbIHVCPSrcDJxWONZ1Ex0ESaPgH+ulakagxdsylAqsCRP
-	o=
-X-Google-Smtp-Source: AGHT+IFlgyoTLIDQA9oLV5P+yYCNX4ElLeLywKE2/2yjULM0DeqmgoARdR72thpXQrUaGHQvVQmCQg==
-X-Received: by 2002:a05:6870:1f09:b0:30b:ac1a:568d with SMTP id 586e51a60fabf-30bac1a7293mr1566438fac.13.1754317482573;
-        Mon, 04 Aug 2025 07:24:42 -0700 (PDT)
-Received: from [172.16.49.130] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 586e51a60fabf-307a7172ac6sm2735946fac.9.2025.08.04.07.24.41
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 04 Aug 2025 07:24:42 -0700 (PDT)
-Message-ID: <bf1a3bf8-8189-457d-945f-8e6b58f1f940@gmail.com>
-Date: Mon, 4 Aug 2025 09:24:41 -0500
+	s=arc-20240116; t=1754496090; c=relaxed/simple;
+	bh=xS60KOrRGM2/Sya91OcUH3iKLK7Yq/eWyVGtmgBz8/A=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=BYwJ6HeK5Ec35TXYnNjXaCcBooMVs7/AnQfH1pKnKu59IxjA854rbZ36KBqF7T5HpkhUtq29UaJ6+zZXhLiU+fqDR9g75jJX28cJ5i49nfwT+F99bhxy4BUDXNfH3qNiMamyHq4IS7cfwY4TLxcpgDml2GmgPFteVpaeTwNxuP4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net; spf=pass smtp.mailfrom=hadess.net; arc=none smtp.client-ip=217.70.183.196
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hadess.net
+Received: by mail.gandi.net (Postfix) with ESMTPSA id D9F69443C9;
+	Wed,  6 Aug 2025 16:01:23 +0000 (UTC)
+From: Bastien Nocera <hadess@hadess.net>
+To: ell@lists.linux.dev
+Cc: Bastien Nocera <hadess@hadess.net>
+Subject: [PATCH v3 1/1] build: Add meson build system
+Date: Wed,  6 Aug 2025 17:59:20 +0200
+Message-ID: <20250806160113.707469-2-hadess@hadess.net>
+X-Mailer: git-send-email 2.50.0
+In-Reply-To: <20250806160113.707469-1-hadess@hadess.net>
+References: <20250806160113.707469-1-hadess@hadess.net>
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 3/5] test: Bump support TAP version
-To: Bastien Nocera <hadess@hadess.net>, ell@lists.linux.dev
-References: <20250731142153.2802258-1-hadess@hadess.net>
- <20250731142153.2802258-4-hadess@hadess.net>
- <264df186-6d7e-471f-b155-f5942e79cb78@gmail.com>
- <5a4a8472d39727e048a98125e689f16b968f29b9.camel@hadess.net>
-Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <5a4a8472d39727e048a98125e689f16b968f29b9.camel@hadess.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-GND-State: clean
+X-GND-Score: 0
+X-GND-Cause: gggruggvucftvghtrhhoucdtuddrgeeffedrtdefgdduudekgeejucetufdoteggodetrfdotffvucfrrhhofhhilhgvmecuifetpfffkfdpucggtfgfnhhsuhgsshgtrhhisggvnecuuegrihhlohhuthemuceftddunecunecujfgurhephffvvefufffkofgjfhgggfestdekredtredttdenucfhrhhomhepuegrshhtihgvnhcupfhotggvrhgruceohhgruggvshhssehhrgguvghsshdrnhgvtheqnecuggftrfgrthhtvghrnheptdfhgeekfeehjeevhfehhedtteduheeftdehtdfhjeevgeejtdefieevieeukeevnecuffhomhgrihhnpehmvghsohhnsghuihhlugdrtghomhenucfkphepvdgrtddumegvfeegmegvtgejfeemtghfvddtmeejudgurgemfegsugemvddtrgelmedufeefnecuvehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehinhgvthepvdgrtddumegvfeegmegvtgejfeemtghfvddtmeejudgurgemfegsugemvddtrgelmedufeefpdhhvghlohepohhlihhmphhitgdpmhgrihhlfhhrohhmpehhrgguvghssheshhgruggvshhsrdhnvghtpdhnsggprhgtphhtthhopedvpdhrtghpthhtohepvghllheslhhishhtshdrlhhinhhugidruggvvhdprhgtphhtthhopehhrgguvghssheshhgruggvshhsrdhnvght
+X-GND-Sasl: hadess@hadess.net
 
-Hi Bastien,
+--enable-pie is replaced by the meson base option "b_pie":
+https://mesonbuild.com/Builtin-options.html#base-options
 
- >
-> glib has been using TAP 13 since 2022[1], and I think that the only
-> reason it didn't use TAP 14 at the time was because meson didn't
-> support it.
-> 
-> meson supports TAP 13 or 14 now, so I did the smallest possible change
-> and bumped it to 13.
+--enable-maintainer-mode is replaced by the "debug" build-types:
+https://mesonbuild.com/Builtin-options.html#core-options
 
-Ok, fair enough.  I went ahead and applied this as well.
+--enable-debug and --disable-optimization are replaced by the
+debug build type:
+https://mesonbuild.com/Builtin-options.html#details-for-buildtype
 
-Regards,
--Denis
+Each of the sanitisers have their own b_sanitize option:
+- asan: b_sanitize=address
+- lsan: b_sanitize=leak
+- ubsan: b_sanitize=address,undefined
+https://mesonbuild.com/Builtin-options.html#base-options
+
+--enable-coverage is replaced by the b_coverage option:
+https://mesonbuild.com/Builtin-options.html#base-options
+---
+ ell/meson.build              | 185 +++++++++++++
+ examples/meson.build         |  32 +++
+ meson.build                  |  66 +++++
+ meson_options.txt            |   5 +
+ tools/meson.build            |  18 ++
+ unit/gen-cert-expired-pem.sh |  14 +
+ unit/meson.build             | 501 +++++++++++++++++++++++++++++++++++
+ unit/xxd.sh                  |   3 +
+ 8 files changed, 824 insertions(+)
+ create mode 100644 ell/meson.build
+ create mode 100644 examples/meson.build
+ create mode 100644 meson.build
+ create mode 100644 meson_options.txt
+ create mode 100644 tools/meson.build
+ create mode 100755 unit/gen-cert-expired-pem.sh
+ create mode 100644 unit/meson.build
+ create mode 100755 unit/xxd.sh
+
+diff --git a/ell/meson.build b/ell/meson.build
+new file mode 100644
+index 000000000000..d6180346ad64
+--- /dev/null
++++ b/ell/meson.build
+@@ -0,0 +1,185 @@
++lib_headers = [
++  'ell.h',
++  'util.h',
++  'test.h',
++  'strv.h',
++  'utf8.h',
++  'queue.h',
++  'hashmap.h',
++  'string.h',
++  'settings.h',
++  'main.h',
++  'idle.h',
++  'signal.h',
++  'timeout.h',
++  'io.h',
++  'ringbuf.h',
++  'log.h',
++  'checksum.h',
++  'netlink.h',
++  'genl.h',
++  'rtnl.h',
++  'dbus.h',
++  'dbus-service.h',
++  'dbus-client.h',
++  'hwdb.h',
++  'cipher.h',
++  'random.h',
++  'uintset.h',
++  'base64.h',
++  'pem.h',
++  'tls.h',
++  'uuid.h',
++  'key.h',
++  'file.h',
++  'dir.h',
++  'net.h',
++  'dhcp.h',
++  'dhcp6.h',
++  'cert.h',
++  'ecc.h',
++  'ecdh.h',
++  'time.h',
++  'gpio.h',
++  'path.h',
++  'icmp6.h',
++  'acd.h',
++  'tester.h',
++  'cleanup.h',
++  'netconfig.h',
++  'sysctl.h',
++  'minheap.h',
++  'notifylist.h'
++]
++
++lib_sources = [
++  'private.h',
++  'useful.h',
++  'missing.h',
++  'util.c',
++  'test-private.h',
++  'test.c',
++  'test-dbus.c',
++  'strv.c',
++  'utf8.c',
++  'queue.c',
++  'hashmap.c',
++  'string.c',
++  'settings.c',
++  'main-private.h',
++  'main.c',
++  'idle.c',
++  'signal.c',
++  'timeout.c',
++  'io.c',
++  'ringbuf.c',
++  'log.c',
++  'checksum.c',
++  'netlink-private.h',
++  'netlink.c',
++  'genl.c',
++  'rtnl-private.h',
++  'rtnl.c',
++  'dbus-private.h',
++  'dbus.c',
++  'dbus-message.c',
++  'dbus-util.c',
++  'dbus-service.c',
++  'dbus-client.c',
++  'dbus-name-cache.c',
++  'dbus-filter.c',
++  'gvariant-private.h',
++  'gvariant-util.c',
++  'siphash-private.h',
++  'siphash.c',
++  'hwdb.c',
++  'cipher.c',
++  'random.c',
++  'uintset.c',
++  'base64.c',
++  'asn1-private.h',
++  'pem-private.h',
++  'pem.c',
++  'tls-private.h',
++  'tls.c',
++  'tls-record.c',
++  'tls-extensions.c',
++  'tls-suites.c',
++  'uuid.c',
++  'key.c',
++  'file.c',
++  'dir.c',
++  'net-private.h',
++  'net.c',
++  'dhcp-private.h',
++  'dhcp.c',
++  'dhcp-transport.c',
++  'dhcp-lease.c',
++  'dhcp6-private.h',
++  'dhcp6.c',
++  'dhcp6-transport.c',
++  'dhcp6-lease.c',
++  'dhcp-util.c',
++  'dhcp-server.c',
++  'cert-private.h',
++  'cert.c',
++  'cert-crypto.c',
++  'ecc-private.h',
++  'ecc.h',
++  'ecc-external.c',
++  'ecc.c',
++  'ecdh.c',
++  'time.c',
++  'time-private.h',
++  'gpio.c',
++  'path.c',
++  'icmp6.c',
++  'icmp6-private.h',
++  'acd.c',
++  'tester.c',
++  'netconfig.c',
++  'sysctl.c',
++  'minheap.c',
++  'notifylist.c'
++]
++
++linux_headers = [
++  '../linux/gpio.h'
++]
++
++libell = shared_library('ell',
++  sources: lib_headers + lib_sources + linux_headers,
++  include_directories: include_directories('..'),
++  implicit_include_directories: false,
++  gnu_symbol_visibility: 'hidden',
++  version: '0.2.0',
++  install: true
++)
++
++install_headers(lib_headers,
++  subdir: 'ell'
++)
++
++libell_dep = declare_dependency(include_directories: include_directories('..'),
++  link_with: libell)
++
++pkgconfig = import('pkgconfig')
++pkgconfig.generate(
++  name: 'ell',
++  description: 'Embedded Linux library',
++  version: meson.project_version(),
++  libraries: libell,
++  # FIXME requires meson 1.9.0
++  # license: meson.project_license()
++)
++
++libell_private = static_library('ell_private',
++  sources: lib_headers + lib_sources + linux_headers,
++  include_directories: include_directories('..'),
++  implicit_include_directories: false,
++  install: false
++)
++
++libell_private_dep = declare_dependency(
++  link_with: libell_private
++)
+diff --git a/examples/meson.build b/examples/meson.build
+new file mode 100644
+index 000000000000..831abb58be46
+--- /dev/null
++++ b/examples/meson.build
+@@ -0,0 +1,32 @@
++examples = [
++  'dbus-service',
++  'https-client-test',
++  'https-server-test',
++  'dbus-client',
++  'dhcp-client',
++  'dhcp6-client',
++  'dhcp-server',
++  'acd-client',
++  'netconfig-test',
++]
++
++if get_option('examples')
++  foreach example: examples
++    exe = executable(example,
++      '@0@.c'.format(example),
++      include_directories: include_directories('..'),
++      dependencies: libell_private_dep,
++      install: false
++    )
++  endforeach
++endif
++
++if get_option('glib') and get_option('examples')
++  exe = executable('glib-eventloop',
++    'glib-eventloop.c',
++    include_directories: include_directories('..'),
++    dependencies: [ libell_private_dep, glib_dep ],
++    install: false
++  )
++endif
++
+diff --git a/meson.build b/meson.build
+new file mode 100644
+index 000000000000..6ecd7ef1865d
+--- /dev/null
++++ b/meson.build
+@@ -0,0 +1,66 @@
++# SPDX-License-Identifier: LGPL-2.1-or-later
++project(
++  'ell', 'c',
++  version: '0.79',
++  license: 'LGPL-2.1-or-later',
++  default_options: 'buildtype=debugoptimized',
++  meson_version: '>= 1.3.0'
++)
++
++cc = meson.get_compiler('c')
++find_program('awk', required: true)
++config_h = configuration_data()
++
++checked_funcs = [
++  'explicit_bzero',
++  'rawmemchr',
++]
++
++foreach func: checked_funcs
++  config_h.set('HAVE_' + func.to_upper(), cc.has_function(func))
++endforeach
++
++required_funcs = [
++  'getrandom',
++  'signalfd',
++  'timerfd_create',
++  'epoll_create'
++]
++
++foreach func: required_funcs
++  cc.has_function(func, required: true)
++endforeach
++
++required_headers = [
++  'linux/types.h',
++  'linux/if_alg.h'
++]
++
++foreach header: required_headers
++  cc.has_header(header, required: true)
++endforeach
++
++glib_dep = dependency('glib-2.0', version: '>= 2.32', required: get_option('glib'))
++openssl = find_program('openssl', required: get_option('cert-tests'))
++sh = find_program('sh', required: get_option('cert-tests'))
++xxd = find_program('xxd', required: get_option('cert-tests'))
++
++if openssl.found()
++  r = run_command(openssl, 'list', '-providers', check: false)
++  if r.returncode() == 0
++    openssl_legacy = [ '-provider', 'legacy', '-provider', 'default' ]
++  else
++    openssl_legacy = ''
++  endif
++endif
++
++add_project_arguments('-DHAVE_CONFIG_H', language: 'c')
++configure_file(
++  output: 'config.h',
++  configuration: config_h
++)
++
++subdir('ell')
++subdir('tools')
++subdir('unit')
++subdir('examples')
+diff --git a/meson_options.txt b/meson_options.txt
+new file mode 100644
+index 000000000000..5effa15916b4
+--- /dev/null
++++ b/meson_options.txt
+@@ -0,0 +1,5 @@
++option('glib', type: 'boolean', value: true, description: 'Enable ell/glib main loop example')
++option('tests', type: 'boolean', value: true, description: 'Enable unit tests compilation')
++option('cert-tests', type: 'boolean', value: true, description: 'Enable OpenSSL cert tests')
++option('tools', type: 'boolean', value: true, description: 'Enable extra tools compilation')
++option('examples', type: 'boolean', value: true, description: 'Enable code examples compilation')
+diff --git a/tools/meson.build b/tools/meson.build
+new file mode 100644
+index 000000000000..01505f266631
+--- /dev/null
++++ b/tools/meson.build
+@@ -0,0 +1,18 @@
++tools = [
++  'certchain-verify',
++  'genl-discover',
++  'genl-watch',
++  'genl-request',
++  'gpio'
++]
++
++if get_option('tools')
++  foreach tool: tools
++      exe = executable(tool,
++        '@0@.c'.format(tool),
++        include_directories: include_directories('..'),
++        dependencies: libell_private_dep,
++        install: false
++      )
++  endforeach
++endif
+diff --git a/unit/gen-cert-expired-pem.sh b/unit/gen-cert-expired-pem.sh
+new file mode 100755
+index 000000000000..f3e0b9d28424
+--- /dev/null
++++ b/unit/gen-cert-expired-pem.sh
+@@ -0,0 +1,14 @@
++#!/bin/sh -e
++
++echo -n > cert-ca-index.txt
++OUTDIR=`mktemp -d`
++openssl ca -batch \
++	-config "$4" -name example \
++	-cert "$2" \
++	-keyfile "$3" \
++	-outdir $OUTDIR \
++	-rand_serial -extensions cert_ext \
++	-extfile "$5" -md sha256 \
++	-startdate 000101120000Z -enddate 010101120000Z \
++	-preserveDN -notext -in "$1" -out "$6"
++rm -rf $OUTDIR cert-ca-index.txt*
+diff --git a/unit/meson.build b/unit/meson.build
+new file mode 100644
+index 000000000000..be9f2655f010
+--- /dev/null
++++ b/unit/meson.build
+@@ -0,0 +1,501 @@
++tests = [
++  'test-unit',
++  'test-queue',
++  'test-hashmap',
++  'test-endian',
++  'test-string',
++  'test-utf8',
++  'test-main',
++  'test-io',
++  'test-ringbuf',
++  'test-checksum',
++  'test-settings',
++  'test-netlink',
++  'test-genl-msg',
++  'test-rtnl',
++  'test-siphash',
++  'test-cipher',
++  'test-random',
++  'test-util',
++  'test-uintset',
++  'test-base64',
++  'test-uuid',
++  'test-pbkdf2',
++  'test-dhcp',
++  'test-dhcp6',
++  'test-dir-watch',
++  'test-ecc',
++  'test-ecdh',
++  'test-time',
++  'test-path',
++  'test-net',
++  'test-sysctl',
++  'test-minheap',
++  'test-notifylist',
++  'test-hwdb',
++  'test-dbus',
++  'test-dbus-util',
++  'test-dbus-message',
++  'test-dbus-message-fds',
++  'test-dbus-properties',
++  'test-dbus-service',
++  'test-dbus-watch',
++  'test-gvariant-util',
++  'test-gvariant-message'
++]
++
++gen_headers = []
++test_pem_cert_deps = []
++
++if get_option('cert-tests')
++  tests += [
++    'test-pem',
++    'test-tls',
++    'test-key'
++  ]
++
++  cert_server_key_pem_tgt = custom_target('cert-server-key.pem',
++    output: 'cert-server-key.pem',
++    command: [ openssl, 'genrsa', '-out', '@OUTPUT@' ]
++  )
++
++  ec_cert_server_key_pem_tgt = custom_target('ec-cert-server-key.pem',
++    output: 'ec-cert-server-key.pem',
++    command: [ openssl, 'ecparam', '-out', '@OUTPUT@', '-name', 'secp384r1', '-genkey' ]
++  )
++
++  cert_server_key_pkcs8_pem_tgt = custom_target('cert-server-key-pkcs8.pem',
++    input: cert_server_key_pem_tgt,
++    output: 'cert-server-key-pkcs8.pem',
++    command: [ openssl, 'pkcs8', '-topk8', '-nocrypt', '-in', '@INPUT@', '-out', '@OUTPUT@' ]
++  )
++
++  cert_server_csr_tgt = custom_target('cert-server.csr',
++    input: cert_server_key_pem_tgt,
++    output: 'cert-server.csr',
++    command: [ openssl, 'req', '-new', '-extensions', 'cert_ext',
++      '-config', files('gencerts.cnf'),
++      '-subj', '/O=Foo Example Organization/CN=Foo Example Organization/emailAddress=foo@mail.example',
++      '-key', '@INPUT@', '-out', '@OUTPUT@' ]
++  )
++
++  ec_cert_server_csr_tgt = custom_target('ec-cert-server.csr',
++    input: ec_cert_server_key_pem_tgt,
++    output: 'ec-cert-server.csr',
++    command: [ openssl, 'req', '-new', '-extensions', 'cert_ext',
++      '-config', files('gencerts.cnf'),
++      '-subj', '/O=Foo Example Organization/CN=Foo Example Organization/emailAddress=foo@mail.example',
++      '-key', '@INPUT@', '-out', '@OUTPUT@' ]
++  )
++
++  cert_ca_key_pem_tgt = custom_target('cert-ca-key.pem',
++    output: 'cert-ca-key.pem',
++    command: [ openssl, 'genrsa', '-out', '@OUTPUT@', '2048' ]
++  )
++
++  cert_ca_pem_tgt = custom_target('cert-ca.pem',
++    input: cert_ca_key_pem_tgt,
++    output: 'cert-ca.pem',
++    command: [ openssl, 'req', '-x509', '-new', '-nodes', '-extensions', 'ca_ext',
++      '-config', files('gencerts.cnf'), '-subj', '/O=International Union of Example Organizations/CN=Certificate issuer guy/emailAddress=ca@mail.example',
++      '-key', '@INPUT@', '-sha256', '-days', '10000', '-out', '@OUTPUT@' ],
++  )
++
++  cert_server_pem_tgt = custom_target('cert-server.pem',
++    input: [ cert_server_csr_tgt, cert_ca_pem_tgt, cert_ca_key_pem_tgt ],
++    output: 'cert-server.pem',
++    command: [ openssl, 'x509', '-req', '-extensions', 'server_ext',
++      '-extfile', files('gencerts.cnf'),
++      '-in', '@INPUT0@', '-CA', '@INPUT1@',
++      '-CAkey', '@INPUT2@',
++      '-CAserial', 'cert-ca.srl',
++      '-CAcreateserial', '-sha256', '-days', '10000', '-out', '@OUTPUT@' ]
++  )
++
++  ec_cert_ca_key_pem_tgt = custom_target('ec-cert-ca-key.pem',
++    output: 'ec-cert-ca-key.pem',
++    command: [ openssl, 'ecparam', '-out', '@OUTPUT@', '-name', 'secp384r1', '-genkey' ]
++  )
++
++  ec_cert_ca_pem_tgt = custom_target('ec-cert-ca.pem',
++  input: ec_cert_ca_key_pem_tgt,
++  output: 'ec-cert-ca.pem',
++  command: [ openssl, 'req', '-x509', '-new', '-nodes', '-extensions', 'ca_ext',
++    '-config', files('gencerts.cnf'), '-subj', '/O=International Union of Example Organizations/CN=Certificate issuer guy/emailAddress=ca@mail.example',
++    '-key', '@INPUT@', '-sha256', '-days', '10000', '-out', '@OUTPUT@' ]
++  )
++
++  ec_cert_server_pem_tgt = custom_target('ec-cert-server.pem',
++    input: [ ec_cert_server_csr_tgt, ec_cert_ca_pem_tgt, ec_cert_ca_key_pem_tgt ],
++    output: 'ec-cert-server.pem',
++    command: [ openssl, 'x509', '-req', '-extensions', 'server_ext',
++      '-extfile', files('gencerts.cnf'),
++      '-in', '@INPUT0@', '-CA', '@INPUT1@',
++      '-CAkey', '@INPUT2@',
++      '-CAserial', 'cert-ca.srl',
++      '-CAcreateserial', '-sha256', '-days', '10000', '-out', '@OUTPUT@' ]
++  )
++
++  cert_client_key_pkcs1_pem_tgt = custom_target('cert-client-key-pkcs1.pem',
++    output: 'cert-client-key-pkcs1.pem',
++    command: [ openssl, 'genrsa', '-out', '@OUTPUT@' ]
++  )
++
++  cert_client_key_pkcs8_pem_tgt = custom_target('cert-client-key-pkcs8.pem',
++    input: cert_client_key_pkcs1_pem_tgt,
++    output: 'cert-client-key-pkcs8.pem',
++    command: [ openssl, 'pkcs8', '-topk8', '-nocrypt', '-in', '@INPUT@', '-out', '@OUTPUT@' ]
++  )
++
++  cert_client_key_pkcs8_md5_des_pem_tgt = custom_target('cert-client-key-pkcs8-md5-des.pem',
++    input: cert_client_key_pkcs8_pem_tgt,
++    output: 'cert-client-key-pkcs8-md5-des.pem',
++    command: [ openssl, 'pkcs8', '-in', '@INPUT@', '-out', '@OUTPUT@',
++      '-topk8', '-v1', 'PBE-MD5-DES', '-passout', 'pass:abc', openssl_legacy ]
++  )
++
++  cert_client_key_pkcs8_v2_des_pem_tgt = custom_target('cert-client-key-pkcs8-v2-des.pem',
++    input: cert_client_key_pkcs8_pem_tgt,
++    output: 'cert-client-key-pkcs8-v2-des.pem',
++    command: [ openssl, 'pkcs8', '-in', '@INPUT@', '-out', '@OUTPUT@',
++      '-topk8', '-v2', 'des-cbc', '-v2prf', 'hmacWithSHA1', '-passout', 'pass:abc',
++      openssl_legacy ]
++  )
++
++  cert_client_key_pkcs8_v2_des_ede3_pem_tgt = custom_target('cert-client-key-pkcs8-v2-des-ede3.pem',
++    input: cert_client_key_pkcs8_pem_tgt,
++    output: 'cert-client-key-pkcs8-v2-des-ede3.pem',
++    command: [ openssl, 'pkcs8', '-in', '@INPUT@', '-out', '@OUTPUT@',
++        '-topk8', '-v2', 'des-ede3-cbc', '-v2prf', 'hmacWithSHA224', '-passout', 'pass:abc' ]
++  )
++
++  cert_client_key_pkcs8_v2_aes128_pem_tgt = custom_target('cert-client-key-pkcs8-v2-aes128.pem',
++    input: cert_client_key_pkcs8_pem_tgt,
++    output: 'cert-client-key-pkcs8-v2-aes128.pem',
++    command: [ openssl, 'pkcs8', '-in', '@INPUT@', '-out', '@OUTPUT@',
++      '-topk8', '-v2', 'aes128', '-v2prf', 'hmacWithSHA256', '-passout', 'pass:abc' ]
++  )
++
++  cert_client_key_pkcs8_sha1_des_pem_tgt = custom_target('cert-client-key-pkcs8-sha1-des.pem',
++    input: cert_client_key_pkcs8_pem_tgt,
++    output: 'cert-client-key-pkcs8-sha1-des.pem',
++    command: [ openssl, 'pkcs8', '-in', '@INPUT@', '-out', '@OUTPUT@',
++      '-topk8', '-v1', 'PBE-SHA1-DES', '-passout', 'pass:abc', openssl_legacy ]
++  )
++
++  cert_client_key_pkcs8_v2_aes256_pem_tgt = custom_target('cert-client-key-pkcs8-v2-aes256.pem',
++    input: cert_client_key_pkcs8_pem_tgt,
++    output: 'cert-client-key-pkcs8-v2-aes256.pem',
++    command: [ openssl, 'pkcs8', '-in', '@INPUT@', '-out', '@OUTPUT@',
++      '-topk8', '-v2', 'aes256', '-v2prf', 'hmacWithSHA512', '-passout', 'pass:abc' ]
++  )
++
++  cert_client_csr_tgt = custom_target('cert-client.csr',
++    input: cert_client_key_pkcs1_pem_tgt,
++    output: 'cert-client.csr',
++    command: [ openssl, 'req', '-new', '-extensions', 'cert_ext',
++      '-config', files('gencerts.cnf'),
++      '-subj', '/O=Bar Example Organization/CN=Bar Example Organization/emailAddress=bar@mail.example',
++      '-key', '@INPUT@', '-out', '@OUTPUT@'
++    ]
++  )
++
++  cert_client_pem_tgt = custom_target('cert-client.pem',
++    input: [ cert_client_csr_tgt, cert_ca_pem_tgt, cert_ca_key_pem_tgt ],
++    output: 'cert-client.pem',
++    command: [ openssl, 'x509', '-req', '-extensions', 'cert_ext',
++      '-extfile', files('gencerts.cnf'),
++      '-in', '@INPUT0@', '-CA', '@INPUT1@',
++      '-CAkey', '@INPUT2@',
++      '-CAserial', 'cert-ca.srl',
++      '-CAcreateserial', '-sha256', '-days', '10000', '-out', '@OUTPUT@' ]
++  )
++
++  cert_client_crt_tgt = custom_target('cert-client.crt',
++    input: cert_client_pem_tgt,
++    output: 'cert-client.crt',
++    command: [ openssl, 'x509', '-in', '@INPUT@', '-out', '@OUTPUT@', '-outform', 'der' ]
++  )
++
++  cert_intca_key_pem_tgt = custom_target('cert-intca-key.pem',
++    output: 'cert-intca-key.pem',
++    command: [ openssl, 'genrsa', '-out', '@OUTPUT@' ]
++  )
++
++  cert_intca_csr_tgt = custom_target('cert-intca.csr',
++    input: cert_intca_key_pem_tgt,
++    output: 'cert-intca.csr',
++    command: [ openssl, 'req', '-new', '-extensions', 'int_ext',
++      '-config', files('gencerts.cnf'),
++      '-subj', '/O=International Union of Example Organizations/CN=Certificate issuer guy/emailAddress=ca@mail.example',
++      '-key', '@INPUT@', '-out', '@OUTPUT@' ]
++  )
++
++  cert_intca_pem_tgt = custom_target('cert-intca.pem',
++    input: [ cert_intca_csr_tgt, cert_ca_pem_tgt, cert_ca_key_pem_tgt ],
++    output: 'cert-intca.pem',
++    command: [ openssl, 'x509', '-req', '-extensions', 'int_ext',
++      '-extfile', files('gencerts.cnf'),
++      '-in', '@INPUT0@', '-CA', '@INPUT1@',
++      '-CAkey', '@INPUT2@',
++      '-CAserial', 'cert-ca.srl',
++      '-CAcreateserial', '-sha256', '-days', '10000', '-out', '@OUTPUT@' ]
++  )
++
++  cat = find_program('cat')
++
++  cert_chain_pem_tgt = custom_target('cert-chain.pem',
++    input: [ cert_intca_pem_tgt, cert_ca_pem_tgt ],
++    output: 'cert-chain.pem',
++    capture: true,
++    command: [ cat, '@INPUT@' ]
++  )
++
++  cert_entity_int_key_pem_tgt = custom_target('cert-entity-int-key.pem',
++    output: 'cert-entity-int-key.pem',
++    command: [ openssl, 'genrsa', '-out', '@OUTPUT@' ]
++  )
++
++  cert_entity_int_csr_tgt = custom_target('cert-entity-int.csr',
++    input: cert_entity_int_key_pem_tgt,
++    output: 'cert-entity-int.csr',
++    command: [ openssl, 'req', '-new', '-extensions', 'cert_ext',
++      '-config', files('gencerts.cnf'),
++      '-subj', '/O=Baz Example Organization/CN=Baz Example Organization/emailAddress=baz@mail.example',
++      '-key', '@INPUT@', '-out', '@OUTPUT@' ]
++  )
++
++  cert_entity_int_pem_tgt = custom_target('cert-entity-int.pem',
++    input: [ cert_entity_int_csr_tgt, cert_intca_pem_tgt, cert_intca_key_pem_tgt ],
++    output: 'cert-entity-int.pem',
++    command: [ openssl, 'x509', '-req', '-extensions', 'cert_ext',
++      '-extfile', files('gencerts.cnf'),
++      '-in', '@INPUT0@', '-CA', '@INPUT1@',
++      '-CAkey', '@INPUT2@',
++      '-CAserial', 'cert-intca.srl',
++      '-CAcreateserial', '-sha256', '-days', '10000', '-out', '@OUTPUT@' ]
++  )
++
++  cert_ca2_pem_tgt = custom_target('cert-ca2.pem',
++    input: cert_ca_key_pem_tgt,
++    output: 'cert-ca2.pem',
++    command: [ openssl, 'req', '-x509', '-new', '-nodes', '-extensions', 'ca_no_akid_ext',
++      '-config', files('gencerts.cnf'),
++      '-subj', '/O=International Union of Example Organizations/CN=Certificate issuer guy/emailAddress=ca-no-akid@mail.example',
++      '-key', '@INPUT@', '-sha256', '-days', '10000', '-out', '@OUTPUT@' ]
++  )
++
++  cert_client_key_pkcs1_des_pem_tgt = custom_target('cert-client-key-pkcs1-des.pem',
++    input: cert_client_key_pkcs1_pem_tgt,
++    output: 'cert-client-key-pkcs1-des.pem',
++    command: [ openssl, 'rsa', '-in', '@INPUT@', '-out', '@OUTPUT@', '-des', '-passout', 'pass:abc', openssl_legacy ],
++  )
++
++  cert_no_keyid_csr_tgt = custom_target('cert-no-keyid.csr',
++    input: cert_client_key_pkcs1_pem_tgt,
++    output: 'cert-no-keyid.csr',
++    command: [ openssl, 'req', '-new',
++      '-config', files('gencerts.cnf'),
++      '-subj', '/O=Baz Example Organization/CN=Baz Example Organization/emailAddress=baz@mail.example',
++      '-key', '@INPUT@', '-out', '@OUTPUT@' ]
++  )
++
++  cert_no_keyid_pem_tgt = custom_target('cert-no-keyid.pem',
++    input: [ cert_no_keyid_csr_tgt, cert_ca2_pem_tgt, cert_ca_key_pem_tgt ],
++    output: 'cert-no-keyid.pem',
++    command: [ openssl, 'x509', '-req', '-extensions', 'no_keyid_ext',
++      '-extfile', files('gencerts.cnf'),
++      '-in', '@INPUT0@', '-CA', '@INPUT1@',
++      '-CAkey', '@INPUT2@',
++      '-CAserial', 'cert-ca2.srl',
++      '-CAcreateserial', '-sha256', '-days', '10000', '-out', '@OUTPUT@' ]
++  )
++
++  cert_expired_csr_tgt = custom_target('cert-expired.csr',
++    input: cert_client_key_pkcs1_pem_tgt,
++    output: 'cert-expired.csr',
++    command: [ openssl, 'req', '-new', '-extensions', 'cert_ext',
++      '-config', files('gencerts.cnf'),
++      '-subj', '/O=Bar Example Organization/CN=Bar Example Organization/emailAddress=bar@mail.example',
++      '-key', '@INPUT@', '-out', '@OUTPUT@' ]
++  )
++
++  echo = find_program('echo')
++
++  cert_ca_cnf_tgt = custom_target('cert-ca.cnf',
++    output: 'cert-ca.cnf',
++    capture: true,
++    command: [ echo, '-e',
++      '[example]\ndatabase=cert-ca-index.txt\nserial=cert-ca.srl\npolicy=dummy\n[dummy]' ]
++  )
++
++  cert_entity_pkcs12_rc2_sha1_p12_tgt = custom_target('cert-entity-pkcs12-rc2-sha1.p12',
++    input: [ cert_entity_int_key_pem_tgt, cert_entity_int_pem_tgt, cert_chain_pem_tgt ],
++    output: 'cert-entity-pkcs12-rc2-sha1.p12',
++    command: [ openssl, 'pkcs12', '-inkey', '@INPUT0@', '-in', '@INPUT1@', '-certfile', '@INPUT2@', '-out', '@OUTPUT@', '-export',
++      '-passout', 'pass:abc', '-certpbe', 'PBE-SHA1-RC2-40', '-keypbe', 'PBE-SHA1-RC2-128', '-macalg', 'sha1', openssl_legacy ]
++  )
++
++  cert_entity_combined_pem_tgt = custom_target('cert-entity-combined.pem',
++    input: cert_entity_pkcs12_rc2_sha1_p12_tgt,
++    output: 'cert-entity-combined.pem',
++    command: [ openssl, 'pkcs12', '-in', '@INPUT@', '-out', '@OUTPUT@', '-passin', 'pass:abc', '-passout', 'pass:abc', openssl_legacy ]
++  )
++
++  gen_cert_expired_pem_sh = find_program('gen-cert-expired-pem.sh')
++  cert_expired_pem_tgt = custom_target('cert-expired.pem',
++    input: [ cert_expired_csr_tgt, cert_ca_pem_tgt, cert_ca_key_pem_tgt, cert_ca_cnf_tgt, files('gencerts.cnf') ],
++    output: 'cert-expired.pem',
++    command: [ gen_cert_expired_pem_sh, '@INPUT0@', '@INPUT1@', '@INPUT2@', '@INPUT3@', '@INPUT4@', '@OUTPUT@' ]
++  )
++
++  cert_entity_pkcs12_nomac_p12_tgt = custom_target('cert-entity-pkcs12-nomac.p12',
++    input: [ cert_entity_int_key_pem_tgt, cert_entity_int_pem_tgt ],
++    output: 'cert-entity-pkcs12-nomac.p12',
++    command: [ openssl, 'pkcs12', '-inkey', '@INPUT0@', '-in', '@INPUT1@', '-out', '@OUTPUT@', '-export', '-passout', 'pass:abc', '-nomac' ]
++  )
++
++  cert_entity_pkcs12_des_sha256_p12_tgt = custom_target('cert-entity-pkcs12-des-sha256.p12',
++    input: [ cert_entity_int_key_pem_tgt, cert_entity_int_pem_tgt, cert_chain_pem_tgt ],
++    output: 'cert-entity-pkcs12-des-sha256.p12',
++    command: [ openssl, 'pkcs12', '-inkey', '@INPUT0@', '-in', '@INPUT1@', '-certfile', '@INPUT2@', '-out', '@OUTPUT@', '-export',
++      '-passout', 'pass:abc', '-certpbe', 'PBE-SHA1-3DES', '-keypbe', 'PBE-SHA1-2DES', '-macalg', 'sha256' ]
++  )
++
++  cert_entity_pkcs12_rc4_sha384_p12_tgt = custom_target('cert-entity-pkcs12-rc4-sha384.p12',
++    input: [ cert_entity_int_key_pem_tgt, cert_entity_int_pem_tgt, cert_chain_pem_tgt ],
++    output: 'cert-entity-pkcs12-rc4-sha384.p12',
++    command: [ openssl, 'pkcs12', '-inkey', '@INPUT0@', '-in', '@INPUT1@', '-certfile', '@INPUT2@', '-out', '@OUTPUT@', '-export',
++      '-passout', 'pass:abc', '-certpbe', 'PBE-SHA1-RC4-128', '-keypbe', 'PBE-SHA1-RC2-40', '-macalg', 'sha384', openssl_legacy ]
++  )
++
++  cert_entity_pkcs12_pkcs5_sha512_p12_tgt = custom_target('cert-entity-pkcs12-pkcs5-sha512.p12',
++    input: [ cert_entity_int_key_pem_tgt, cert_entity_int_pem_tgt, cert_chain_pem_tgt ],
++    output: 'cert-entity-pkcs12-pkcs5-sha512.p12',
++    command: [ openssl, 'pkcs12', '-inkey', '@INPUT0@', '-in', '@INPUT1@', '-certfile', '@INPUT2@', '-out', '@OUTPUT@', '-export',
++      '-passout', 'pass:abc', '-certpbe', 'des-cbc', '-keypbe', 'des-cbc', '-macalg', 'sha512', openssl_legacy ]
++  )
++
++  key_ciphertext_dat_tgt = custom_target('key-ciphertext.dat',
++    input: [ 'plaintext.txt', cert_client_pem_tgt ],
++    output: 'key-ciphertext.dat',
++    command: [ openssl, 'rsautl', '-encrypt', '-pkcs', '-in', '@INPUT0@', '-certin',
++      '-inkey', '@INPUT1@', '-out', '@OUTPUT@' ]
++  )
++
++  key_signature_dat_tgt = custom_target('key-signature.dat',
++    input: 'plaintext.txt',
++    output: 'key-signature.dat',
++    command: [ openssl, 'rsautl', '-sign', '-pkcs', '-in', '@INPUT@',
++      '-inkey', cert_client_key_pkcs1_pem_tgt, '-out', '@OUTPUT@' ]
++  )
++
++  pem_rsa_files = [
++    [ 'cert-client-key-pkcs1-des3.pem', '-des3' ],
++    [ 'cert-client-key-pkcs1-aes128.pem', '-aes128' ],
++    [ 'cert-client-key-pkcs1-aes192.pem', '-aes192' ],
++    [ 'cert-client-key-pkcs1-aes256.pem', '-aes256' ],
++  ]
++
++  foreach file: pem_rsa_files
++    test_pem_cert_deps += custom_target(file[0],
++      input: cert_client_key_pkcs1_pem_tgt,
++      output: file[0],
++      command: [ openssl, 'rsa', '-in', '@INPUT@', '-out', '@OUTPUT@', file[1], '-passout', 'pass:abc' ]
++    )
++  endforeach
++
++  built_headers = [
++    [ 'plaintext.txt', 'key-plaintext.h' ],
++    [ key_ciphertext_dat_tgt, 'key-ciphertext.h' ],
++    [ key_signature_dat_tgt, 'key-signature.h' ]
++  ]
++
++  xxd_sh = find_program('xxd.sh')
++
++  foreach header: built_headers
++    gen_headers += custom_target(header[1],
++      input: header[0],
++      output: header[1],
++      command: [ xxd_sh,'@INPUT@', '@OUTPUT@' ]
++    )
++  endforeach
++
++  cert_verifs = [
++    [ cert_server_pem_tgt, cert_ca_pem_tgt ],
++    [ ec_cert_server_pem_tgt, ec_cert_ca_pem_tgt ],
++    [ cert_client_pem_tgt, cert_ca_pem_tgt ],
++    [ cert_intca_pem_tgt, cert_ca_pem_tgt ],
++    [ cert_entity_int_pem_tgt, cert_chain_pem_tgt ],
++    [ cert_no_keyid_pem_tgt, cert_ca2_pem_tgt ]
++  ]
++  foreach cert_verif: cert_verifs
++    test(cert_verif[0].full_path() + '-verify',
++      openssl,
++      args: [ 'verify', '-CAfile', cert_verif[1].full_path(), cert_verif[0].full_path() ]
++    )
++  endforeach
++
++  test_pem_cert_deps += [
++    # test_pem
++    cert_client_key_pkcs8_md5_des_pem_tgt,
++    cert_client_key_pkcs8_sha1_des_pem_tgt,
++    cert_client_key_pkcs8_v2_des_pem_tgt,
++    cert_client_key_pkcs8_v2_des_ede3_pem_tgt,
++    cert_client_key_pkcs8_v2_aes128_pem_tgt,
++    cert_client_key_pkcs8_v2_aes256_pem_tgt,
++    cert_client_key_pkcs1_des_pem_tgt,
++    cert_client_key_pkcs1_pem_tgt,
++    cert_client_key_pkcs1_des_pem_tgt,
++    cert_client_key_pkcs8_pem_tgt,
++    cert_client_key_pkcs8_sha1_des_pem_tgt,
++    cert_client_pem_tgt,
++    cert_client_crt_tgt,
++    cert_entity_combined_pem_tgt,
++    cert_entity_pkcs12_nomac_p12_tgt,
++    cert_entity_pkcs12_rc2_sha1_p12_tgt,
++    cert_entity_pkcs12_des_sha256_p12_tgt,
++    cert_entity_pkcs12_rc4_sha384_p12_tgt,
++    cert_entity_pkcs12_pkcs5_sha512_p12_tgt,
++    # test_key
++    cert_ca_pem_tgt,
++    cert_server_pem_tgt,
++    cert_intca_pem_tgt,
++    cert_entity_int_pem_tgt,
++    cert_client_pem_tgt,
++    cert_client_key_pkcs8_pem_tgt,
++    # test_tls
++    cert_chain_pem_tgt,
++    cert_expired_pem_tgt,
++    cert_ca2_pem_tgt,
++    cert_no_keyid_pem_tgt,
++    ec_cert_ca_pem_tgt,
++    ec_cert_server_pem_tgt,
++    cert_server_key_pkcs8_pem_tgt
++  ]
++endif
++
++# Mocking l_getrandom() to get a stable random seed
++libell_private_ecdh_dep = declare_dependency(
++  link_with: libell_private,
++  link_args: '-Wl,-wrap,l_getrandom'
++)
++
++if get_option('tests') or get_option('cert-tests')
++  foreach test_name: tests
++    dep = test_name == 'test-ecdh' ? libell_private_ecdh_dep : libell_private_dep
++    exe = executable(test_name,
++      [ '@0@.c'.format(test_name), gen_headers, test_pem_cert_deps ],
++      include_directories: include_directories('..'),
++      c_args: [
++        '-DUNITDIR="@0@/unit/"'.format(meson.project_source_root()),
++        '-DCERTDIR="@0@/unit/"'.format(meson.project_build_root())
++      ],
++      dependencies: dep,
++      install: false
++    )
++
++    test(test_name, exe,
++      protocol: 'tap')
++  endforeach
++endif
+diff --git a/unit/xxd.sh b/unit/xxd.sh
+new file mode 100755
+index 000000000000..3fd26d2bce90
+--- /dev/null
++++ b/unit/xxd.sh
+@@ -0,0 +1,3 @@
++#!/bin/sh
++
++xxd -i < "$1" > "$2"
+-- 
+2.50.0
+
