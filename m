@@ -1,66 +1,66 @@
-Received: from mail-ot1-f45.google.com (mail-ot1-f45.google.com [209.85.210.45])
+Received: from mail-ot1-f41.google.com (mail-ot1-f41.google.com [209.85.210.41])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A249322A1C
-	for <ell@lists.linux.dev>; Wed, 20 Aug 2025 16:14:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 911E7242D72
+	for <ell@lists.linux.dev>; Wed, 20 Aug 2025 16:17:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.41
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755706481; cv=none; b=fA0nui6sWqPum8qlV3L3Kr7uyNGRendvq3aZDEp3jzEag0kHTGkU/mr79SPwJpKyl/1ZoKEowwhH9gouxZ7WypWxayCIKbsOJBn+WSTtdQWwABQknc0m3LEb0ZevlC9+zccS3lRodBBWtbe7sR9SbCUh84WjQH+mrULg93WgBjE=
+	t=1755706643; cv=none; b=cgD2Dwr5f/BmQsAI24fnEm/QOD8wOJrFF4mRmWv6/FLQLRJCF5rcCqYla58ZroOePG0DaTb3z9Oxdkkn/TCEBUvia/1RAEUt/Ci9l+s1SjYryeRB1ObnrQyxtDj+7NnF/H38Kumn/OKPMrK4tbF1Kg0mY4gDgLm+npIqkk07ZAI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755706481; c=relaxed/simple;
-	bh=yJjOzWRSKxhx5IDWrWvBmvOzWWUdI/m4ndxdQjHyGZg=;
+	s=arc-20240116; t=1755706643; c=relaxed/simple;
+	bh=jGC3yH3gMxCSxOFEhd8NG9WmmPBVdL3jY0/BMMsZhVU=;
 	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=E5FhAi0fwTu+iNGVyZtpSpe2O8/0nalj/A3FcxQadGBRl1wt+EF4nW/XcMlud6g6AXnU1pJ7COqgz4Br/L6oAq77RjsNno0SCep7jlbS07gmKPyZDmKnntHisS2WPeMMIT72WDwXNZQ/c/TPIfY1CHeLDgl1RV+ya6akaJTRYy0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=U+aFUP2l; arc=none smtp.client-ip=209.85.210.45
+	 In-Reply-To:Content-Type; b=TL1zR5YsCR31cRTo/wkLoDDTPwA09QyC/iKr1qTnWRINTONZg8EwxYN/xg+eMFK6Pja5U7tJOcPOmFEgl99L3M5jU1OgYUesvC2Ogbs0Bf4HvJo1qX+6T+7F76pVVjOgnXJ7lK0aI1KHJoGilT1Mbrwm+iUISTrZYpz3WLqFSHk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Yf1cWYCz; arc=none smtp.client-ip=209.85.210.41
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="U+aFUP2l"
-Received: by mail-ot1-f45.google.com with SMTP id 46e09a7af769-7438200b29cso1290024a34.3
-        for <ell@lists.linux.dev>; Wed, 20 Aug 2025 09:14:39 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Yf1cWYCz"
+Received: by mail-ot1-f41.google.com with SMTP id 46e09a7af769-74381ef25deso2700182a34.1
+        for <ell@lists.linux.dev>; Wed, 20 Aug 2025 09:17:19 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1755706478; x=1756311278; darn=lists.linux.dev;
+        d=gmail.com; s=20230601; t=1755706638; x=1756311438; darn=lists.linux.dev;
         h=content-transfer-encoding:in-reply-to:from:content-language
          :references:to:subject:user-agent:mime-version:date:message-id:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=P+10ZH83X4osTUwNV6jLYbeplC0QFz78ySstW3rb8zs=;
-        b=U+aFUP2lESSyYJ3ilAeQR3W9+jyFgtvS1NBGeNlwuv7FwQjeFBOKCl+C5DO+JzAN+o
-         8L0SsY0P76VEbzodxYZH1nBpaI91HLS5APNPogpm7Xp/ICcxN11JRqED+GgmN3t6A/bN
-         McQaddHL1Z6WFdbzlDc+2zW8Hrxz+q+YzHkgENfJe3gpDqELVAdxJ5bAwcGVD/8n129U
-         5FcNeLKR6PBEmt++K8cXvSFptoyHUAEfaHma6zveRUYopFsCBWVqcr4BMZSt3Ni9oPEJ
-         yHNhaM3tn/9Qi0sTKGcm4WaOiY+JBSouYnssp3tx7CfERz4ZMwa5U9HvoscpEZCFU6L+
-         ZMrA==
+        bh=PphPwe6pXHdJL648f/NUKQzMkcBPeisNbUbwO9cUyxI=;
+        b=Yf1cWYCzBlcoNhTydaT9PMG2aE8/QQ4A6Y/9l+4T79A+W42UhtOZFffwjVnlzoyGFH
+         +2Xdq2jsWSaaJKDW9KchchWA5S/kBLTmaxzbdOTWVaZF1QHpb/MzVLFdAvfRGgZ9Ipka
+         6DkTbq44Z7M8I9TGq5a/MlIyKblm7Ps+IR/MxJhCpzitBgOWyZPjkFVHrQ9RqWabOUST
+         YJAGaufpuun/9KQKPz2rK7sKTVH3pqjd0jqgPXgy0ycuX9iTyEH7WBuPbjBNdgbydk14
+         +I5WYCGOv2TKFYs5s21G9jsGbO+0wpSxHlrlsQncMtv9FDRtQtR523+/s82iyiMOrC9f
+         F+PA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1755706478; x=1756311278;
+        d=1e100.net; s=20230601; t=1755706638; x=1756311438;
         h=content-transfer-encoding:in-reply-to:from:content-language
          :references:to:subject:user-agent:mime-version:date:message-id
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=P+10ZH83X4osTUwNV6jLYbeplC0QFz78ySstW3rb8zs=;
-        b=JyRJ6PNer5vta+9Hha7/hlMV62x2fe4IHX0idsTTiXpxkWjQBI5z2/A+YeK1VvKXYG
-         cpjh3/3+0OmcGNaGopSchCP/j+ByTLrlKJ5nZ1JmofUaZBfIdDpLlxBZxssPcJ/mdF9A
-         w3O9HuseYxEHdFzMyVeR2NPbPxFSPassF4foiXvfygJkE2lrUa3PlIIJLh0o94zGFfG0
-         uLfzSoHY7EnkPKh0iBAD9mTchkaDuliKj7HHDWKDHP9NOG6qG57DfAlN66Vi9Qh3o+cV
-         5N7jdbatMKo04musmeFAx1jt8AwL9rPTq3/mLHzNVVVlAMps6HiWAYMty0KdQ1Wcxrcs
-         MnFg==
-X-Forwarded-Encrypted: i=1; AJvYcCWy5IAHhj5hbXtzq66iU4DrM23NcEnDRVsjEr4J5gfkD6XS0Q/+deW3kt5MP0mYIQh0MN8=@lists.linux.dev
-X-Gm-Message-State: AOJu0YyYNCNVeuBz5Wjh5fOZc5h6BXrJcjVcnYMPGZ6wA9CanbIjE0W+
-	mqgM7EFL/UIvzg1ttIGzIDazQXwKM/wrnEXf51WR4eFNFZDfsHOLQQE0mFCIfw==
-X-Gm-Gg: ASbGncv7MpC9JAsU+yw9Aeoicav8bom/3qEn4CWSBAT4Jh5ddI3FQ+NEgO52FK0Qpzi
-	3562BQ8xysGvzbJlz26IbRmRbamwYBUEwZM7n3ZVcEjYqinVvWDU72QkqtdiAw1WJnc29/fQos9
-	ceR4ZgZICqb9n7i55qLTxeoSm68QBl+HxpHykujshPmPzAg2/XpT4s0b/lQIr1NzM40e1KVa+Dz
-	QdVUhiv72NbcVFcTRf8fSZxfUEHEjtFjjxhyL8M8YeZ7ttYXSDjryWzvjxCNg/GYe+DRbqrOZNZ
-	BB9gMV8SeWepiEp1omz9eP69IkW4j1gnqu52QY5qYzC1SnyFs7yy0fQBqJs12ti+xGVkQXeLjRq
-	wVlnQjAdeq0jx6giKJEZgO4hv0X01wmxAyzQWUa/iHZmsMuuKTHGPUAe4fdfzdpxlnAUpMfvc3Z
-	s9EnP3NAkfSA==
-X-Google-Smtp-Source: AGHT+IGl2qgNyxZFkTYIWrFicXfvzxmV8NOsORzmO4oHKAu530ZtugpLOynu1UoiQ58YwZUfumnfcA==
-X-Received: by 2002:a05:6830:4997:b0:742:fc4d:6615 with SMTP id 46e09a7af769-744ebc036c7mr1911516a34.18.1755706478286;
-        Wed, 20 Aug 2025 09:14:38 -0700 (PDT)
+        bh=PphPwe6pXHdJL648f/NUKQzMkcBPeisNbUbwO9cUyxI=;
+        b=huuH89jHtKegUamgv5fmQUqclPaPce37ojsNlbKVVrY1j6ZcsjM5qWnPq53jRhjsTA
+         Nj00U4JkAq+9DXtHGpEXdoG2gbD6cG/Qc3xUPTOhy+o+leZ1aKP99UDC00MqZzPKki4i
+         XdBzvKxMpIYBUgkXbmXxqHOt/guA9slsBf9aCFn05h1oVbUvy7zS+phEhiyTU2JxZjTQ
+         fjZfNInhPUqUBnq3XRTtIQLRLxvNMQZAxGuG8YSXsKmEaUG+3n/YWf67pSP8a610SOM0
+         JkX7c4BW4PjU25BOLqYTqQ05CLK4gYxaSG/zSo4j8O0Y97OSrP2Sp7UT3yGyfJA909V8
+         WBow==
+X-Forwarded-Encrypted: i=1; AJvYcCUzq5IY4Q6TuGTPBpMcr0QH2zo6Tneaw5iJv66CSUKxLMZGAsVDp3XwfDC0rPCYJ09OVOQ=@lists.linux.dev
+X-Gm-Message-State: AOJu0YyGxfIrIuJsBF9KK3a1VSZp9tNC2jUd4f980qV6st2cZb8Q5KcE
+	lrYUeUenuC1o1Ivf9xVgCXHOlOvJlxIHXsQXz9ImtjFkWD5FHGvtjk+c
+X-Gm-Gg: ASbGncttuKH+w2h2tS2psJ6oXxSl7aXhsK+3n7jNlvwr1+OplDlHzZNG3IL3devZ49Z
+	nYapjZq2P6uTUN07aX3F6GxlHrzwKo9acrbsKMZdT13yA7EDy6vydZtIaDgxP0EAb7e6aFM1+nZ
+	XvXW9qAzxzeykk1Ov3faWO+79qUx88w2yYl4u5riD+4baOQxCc1yQzcPs/ahNp7PXDPvbB1byT0
+	fCAmXGIxfvV1fyPUkB4yJq87Nx6Wk7yBCgvyhUy7H0ft94LoclWcYJSFJqQf6rmKCZjZ6Pd0Gb8
+	e3St2IalbvWi1NAnTy2X6ooXL2bsZ/Rhe8I3Fe/aJQatWHucdyapvRRAiOgm6FE8K4rlKtwZGhN
+	o1PdnMt+4188tgwDM2LW1aZ5NUoyRaOmR0iGM/lUApmBE+LYgdmoJTyMzbVm23Ta9zjezGQVIql
+	4=
+X-Google-Smtp-Source: AGHT+IE0ttLOU+NmCkaMRDBc6f6szcE8fZlYpUlb8fiDI5ArhAle9tOXyA0UNhL2rsjGAVLOuulr+Q==
+X-Received: by 2002:a05:6830:d0d:b0:73e:5490:cf0f with SMTP id 46e09a7af769-744ebbcc8bdmr2340479a34.16.1755706638604;
+        Wed, 20 Aug 2025 09:17:18 -0700 (PDT)
 Received: from [172.16.49.130] (syn-070-114-247-242.res.spectrum.com. [70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 006d021491bc7-61d9af7ae01sm267432eaf.2.2025.08.20.09.14.37
+        by smtp.googlemail.com with ESMTPSA id 006d021491bc7-61bebfb2a02sm1385943eaf.11.2025.08.20.09.17.18
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 20 Aug 2025 09:14:38 -0700 (PDT)
-Message-ID: <f1948e15-c78a-4498-ba8b-04f4015eb041@gmail.com>
-Date: Wed, 20 Aug 2025 11:14:36 -0500
+        Wed, 20 Aug 2025 09:17:18 -0700 (PDT)
+Message-ID: <8cf523c2-fa78-4f1c-9e3f-48a529d1e280@gmail.com>
+Date: Wed, 20 Aug 2025 11:17:17 -0500
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -68,25 +68,26 @@ List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] tls: Fix possible memory leak
+Subject: Re: [PATCH v5 1/1] build: Add meson build system
 To: Bastien Nocera <hadess@hadess.net>, ell@lists.linux.dev
-References: <20250820141403.800412-1-hadess@hadess.net>
+References: <20250807134859.930870-1-hadess@hadess.net>
+ <20250807134859.930870-2-hadess@hadess.net>
+ <5939828972792a22be2680c6b2bf377f1cd0d437.camel@hadess.net>
+ <bd05acb2cb6bb96ff13d1c82b0fb2d28c199a843.camel@hadess.net>
 Content-Language: en-US
 From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20250820141403.800412-1-hadess@hadess.net>
+In-Reply-To: <bd05acb2cb6bb96ff13d1c82b0fb2d28c199a843.camel@hadess.net>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
 Hi Bastien,
 
-On 8/20/25 9:13 AM, Bastien Nocera wrote:
-> ell/tls-suites.c:784:3: leaked_storage: Variable "other_public" going out of scope leaks the storage it points to.
-> ---
->   ell/tls-suites.c | 1 +
->   1 file changed, 1 insertion(+)
-> 
+On 8/20/25 4:02 AM, Bastien Nocera wrote:
+> Sorry to nag, I'd really appreciate if you could review and merge this,
+> as it's blocking any further work on bluez.
 
-Applied, thanks.
+I personally have nothing against taking this in, but Marcel is the one 
+maintaining the build system, so I'd need his ack first.
 
 Regards,
 -Denis
