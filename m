@@ -1,39 +1,39 @@
-Received: from mail-08.mail-europe.com (mail-08.mail-europe.com [57.129.93.249])
+Received: from mail-06.mail-europe.com (mail-06.mail-europe.com [85.9.210.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5231259CA7
-	for <ell@lists.linux.dev>; Fri, 10 Oct 2025 09:20:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=57.129.93.249
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6345725A2A2
+	for <ell@lists.linux.dev>; Fri, 10 Oct 2025 09:20:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=85.9.210.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1760088030; cv=none; b=bF3HClac1jDOIcfbG1FPEItgEk7fi15USgWYaW8pDF8igBipHF8s+xyLazvvSUrUfEydYa4UrHSAQ82XFhuncff1VaP/szAPD+36XqDejPOM7ZI9hG+qiNVcVEonJ4/qiSg3R5B53wxhqQiGrJdS6quRyoinuGxvu4pLH8WogpI=
+	t=1760088030; cv=none; b=EhwMf5vSDI9EqdYaDA7MCAc73PicSRNhOuxaRWEgRd7zzTFugqwVg4yLugx6FezIurv8V2Wp9Lpqa7Nhk67wUT9HksUMVy8Ky/EbJ3sBaRfgcfh6oMB2rhqELUkmtTS6U1uyu+lPZZ/SaX2iGukqbzlknm5vrkbchpOvHenVD38=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1760088030; c=relaxed/simple;
-	bh=cnUBV7h48wcjnqiO6lyc299M3yzILRi5UvqIPfFfz3o=;
+	bh=8lNMpwWtzFyvaOHLAyVnMrqMPCvZOsPxCZ7xdHpYh40=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=jqjJI0I1hnnJuBDMa2aHuNUe9DZSueyCZCmg002hq0ieRf/ovt6/UpG/0D/mSGXiIdSHm4HOhJNRLJH+ihWn/BdKPBfuDO3CdEwd2s+hCK/PR0Dv76o+dOkw0MNJQmoGnGrhPk+WCvbX5D3frZU16lBxprgYIJkrsGCU7Z1CUwk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=geanix.com; spf=pass smtp.mailfrom=geanix.com; dkim=pass (2048-bit key) header.d=geanix.com header.i=@geanix.com header.b=nMU+Icw+; arc=none smtp.client-ip=57.129.93.249
+	 MIME-Version; b=fb5hAcW2pI2scMmAwjsNLD4HqpdOA26PrsHh65j3sqXn8+euad1UNc2oV7mOYx5J3mnf68P/Ts1ONpWWaRvk0nuVxLr6RwTelHb3EC4qaexN3On34KwGjPMDdAjP9gZzSZmkR1Q82dbnjFdYZcql7uiM/+kbxpMvOMBYrm6NZRY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=geanix.com; spf=pass smtp.mailfrom=geanix.com; dkim=pass (2048-bit key) header.d=geanix.com header.i=@geanix.com header.b=iRJYNKH0; arc=none smtp.client-ip=85.9.210.45
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=geanix.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=geanix.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=geanix.com header.i=@geanix.com header.b="nMU+Icw+"
+	dkim=pass (2048-bit key) header.d=geanix.com header.i=@geanix.com header.b="iRJYNKH0"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=geanix.com;
-	s=protonmail2; t=1760088010; x=1760347210;
-	bh=Mq0ivLkVQdGevRln0df8YpczHkodqWP+J3vd0EGvLv0=;
+	s=protonmail2; t=1760088011; x=1760347211;
+	bh=rPooCW17yC1AC3ej0mPaBidqy7IGZlIF4jqoOlgoOzk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:From:To:
 	 Cc:Date:Subject:Reply-To:Feedback-ID:Message-ID:BIMI-Selector;
-	b=nMU+Icw+dGCMjwpgbJ4x/pxjI2jL3tR2O78J6sK/W4RMt1sgNm0U43f+jtDgTeaqF
-	 A6GZSOLp0SSGO8Titds7SDx3ioy+WGufcAFD8q7qszq7lQijg2o0IJ3cFDIJjvynkF
-	 MQRMgxQKch2SzN42CAFFJ4+QKD1bjXZoqGwNtC2tfTpyaT6MljyHUXnMY2ruPRww0A
-	 U/qLj85sXhwwCEPDQxZzyM2aO0LGZvLdx6lNhe4aixLWWYISXzwSfYsZ1OzwTxClrD
-	 V3Ji5lZ6AP1da8rxG0xlr2MfyWKjGcoEJDzcVOVf5mEVSUNt1MQB5svcfjCHErc0ht
-	 2i9Lj1MPK7gpA==
-X-Pm-Submission-Id: 4cjh6K6r03z2Sg3T
+	b=iRJYNKH0QJMV/UD0YBsfIT6Hmjsp5OuJuT2cxXEoUdlqqgTtlYCDwejn7XH2n+hnF
+	 IFdX9ps5IGWIJ0qlOzf5xpkUOPk4FdOZiKHLd7wuUY3e+QukIHOSH6JRoTnZu641oX
+	 wEQEO4qwrGZEqCUzID4MXkjMcg16oZoi2DV5eWAGR4QuypOCsfpAtOlvOJ+3bNNZJR
+	 0NawNG1LsIFQUZgiTDKKMSKSjZxxMWX6I5o5wME9Iz6aD10/+pb+Myh70aHckR7c+t
+	 R42PamLHCQ8IedQwnejJRQwSP9+VpHiGc0QLbS61fruOhZAqkpZ3T3ntRI0PNY8B7m
+	 VCTQkC4NSiO5w==
+X-Pm-Submission-Id: 4cjh6L5rVqz2Sg3d
 From: =?UTF-8?q?Martin=20Hundeb=C3=B8ll?= <martin@geanix.com>
 To: ell@lists.linux.dev
 Cc: =?UTF-8?q?Martin=20Hundeb=C3=B8ll?= <martin@geanix.com>
-Subject: [PATCH 2/4] main: strip trailing null bytes from systemd notify socket path
-Date: Fri, 10 Oct 2025 11:20:03 +0200
-Message-ID: <20251010092005.2283540-2-martin@geanix.com>
+Subject: [PATCH 3/4] main: signal readiness to system before entering main loop
+Date: Fri, 10 Oct 2025 11:20:04 +0200
+Message-ID: <20251010092005.2283540-3-martin@geanix.com>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20251010092005.2283540-1-martin@geanix.com>
 References: <20251010092005.2283540-1-martin@geanix.com>
@@ -45,43 +45,26 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When connecting to abstract unix sockets, the trailing null bytes are
-considered as part of the (abstract) socket path, hence failing the
-connection if the abstract name doesn't fill up the socket pacth member.
-
-Fix support for abstract notify socket names by only passing the
-absolutely needed size of the socket address structure when connecting
-(i.e. the two family bytes, the null path prefix, and the path name).
+The systemd watchdog protocol requires the service to signal readiness
+before maintaining the watchdog. Do this by sending READY=1 on the
+notification socket before entering the main loop, from where the
+watchdog is maintained.
 ---
- ell/main.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ ell/main.c | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/ell/main.c b/ell/main.c
-index 5e391b7e62b3..be9d96377f07 100644
+index be9d96377f07..d2d8ca9e0c52 100644
 --- a/ell/main.c
 +++ b/ell/main.c
-@@ -350,6 +350,7 @@ static void create_sd_notify_socket(void)
- 	const char *sock;
- 	struct sockaddr_un addr;
- 	const char *watchdog_usec;
-+	socklen_t len;
- 	int msec;
+@@ -500,6 +500,7 @@ LIB_EXPORT int l_main_run(void)
+ 	if (unlikely(epoll_running))
+ 		return EXIT_FAILURE;
  
- 	/* check if NOTIFY_SOCKET has been set */
-@@ -370,11 +371,12 @@ static void create_sd_notify_socket(void)
- 	memset(&addr, 0, sizeof(addr));
- 	addr.sun_family = AF_UNIX;
- 	strncpy(addr.sun_path, sock, sizeof(addr.sun_path) - 1);
-+	len = offsetof(struct sockaddr_un, sun_path) + strlen(sock);
++	sd_notify("READY=1");
+ 	epoll_running = true;
  
- 	if (addr.sun_path[0] == '@')
- 		addr.sun_path[0] = '\0';
- 
--	if (connect(notify_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-+	if (connect(notify_fd, (struct sockaddr *) &addr, len) < 0) {
- 		close(notify_fd);
- 		notify_fd = 0;
- 		return;
+ 	for (;;) {
 -- 
 2.51.0
 
