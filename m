@@ -1,91 +1,276 @@
-Received: from mail-oa1-f48.google.com (mail-oa1-f48.google.com [209.85.160.48])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from relay2-d.mail.gandi.net (relay2-d.mail.gandi.net [217.70.183.194])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7797776026
-	for <ell@lists.linux.dev>; Wed, 15 Oct 2025 14:03:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.48
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98C7D25DAEA
+	for <ell@lists.linux.dev>; Wed, 11 Feb 2026 16:42:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.183.194
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1760536986; cv=none; b=H0q2za5lT4K2t2xPN/H/hs4fW2DeKu1CtdVyXrHHrG8x4xF/a0VZAu3rJ+So/WlRIWZkthCodBnkPjzgwv1D3B5K60hVPfjxaLdZ4SxTsZDRtTcymGvLF00V3MVfZ30xDQcWcFYzkxzVBiqO3DZBOQHnVvXNYhbf+u6vCSK++yc=
+	t=1770828138; cv=none; b=s4tRKNlBMyu4JJrIovIuGUWd8zhQuTW/RrmalmMSkChOJx7JTz+SxV3pVQKJOqZcAkgMac1ljNZlpWHsk3Zsd+RZNf+VkcxeofIzV7+UCGJRjTTL/7GXS2f8BJ8NciZDZf8wOVjSR0ZQaRyGqAe2TkzGfHCR5qSI2pkEDdyC1Kk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1760536986; c=relaxed/simple;
-	bh=SY+Gte6MxJQnzcirwfxjYPiN4NkOqlWlSQ1FH9Q+QMM=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=XqBTGgsiXqEbusTkra6tB0qzsyW7NaH4BE6z2JXzicYMvgQ1+zeRJOGKZ515f/+ziMaB6MesOuJg2+UnXlXq0pP+2SBt47trGmA2Kp2HW6SIHeLRlgTRcK1ONG9MFdEOSqH/t4LkA38hvroSSM6tKf0d3pEmPCrz27kskswb+nY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=jdiw1rQ0; arc=none smtp.client-ip=209.85.160.48
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jdiw1rQ0"
-Received: by mail-oa1-f48.google.com with SMTP id 586e51a60fabf-36f51ac0595so1787652fac.2
-        for <ell@lists.linux.dev>; Wed, 15 Oct 2025 07:03:05 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1760536984; x=1761141784; darn=lists.linux.dev;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=kqn0ijQ3tJvT7e4co+XfnqrzIgKrNI2mSwG/NITlDUU=;
-        b=jdiw1rQ0x4PjUaQisue2GP+xd3TjH6IXSuOK85iW5x+CVE4CQ6vV5Yu4PFxtr5gfAf
-         OcHXHS0DuJt3TC1tiB9jogXzx90yA+BrYZfa8ZPu5qAXX+18faSdZ73g/EU9JU3v8mX6
-         CgAw5QLrsmmsAPK8FaY9WcuETofV57RJJD9q0ZSfx4JAi1ON5Vn/kFcVVY0gt79aOoVK
-         zQ8LJ8SPO41Q96U77X7/94vxtA6fOodxJBSvSTWA7s1zt4ekteBxJ2CjNXYW3Sj25QOl
-         THmXMxaHTj3mjtYEJQ/ZymfLXhT4EfixPBgyLAcQMPHOJ9+3FeT0lj89I1eOCM9N8huM
-         z3rA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1760536984; x=1761141784;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=kqn0ijQ3tJvT7e4co+XfnqrzIgKrNI2mSwG/NITlDUU=;
-        b=aZT9uiAWE30uIs/1fA2y3Jh2jtxwVY+qTt9I6wh4cWM2uln7S3NPNmNgxv5vjifYBl
-         6ZYP6XOv89eLiFMuRNIsBcXxnUq9DzcJxFRHCgvGMeUPt1K6UQ69YjAAUx8V6reO5dIw
-         9AcB62puddAmABIhfA60fiWhqiwPNvwsWYWI8H1+Pr0nvDL3nN4u/3k9qQD9pTRGsKQP
-         TFhoEOsAVTFrQJQ9ZbWG/PFkOd9yPjyJ0QPSsm7je5RAKIZMfFckWAOFSw/XPtJ84iQ7
-         Pe6+VLT/0G54mfRuNYTydXqgtMZ+GLmW+0bzMdCBaJz1/XiPyeRA6oeleTvBeh+ri42l
-         5EPQ==
-X-Forwarded-Encrypted: i=1; AJvYcCVPirv1qMR0/yXPn0XWZDN8ipvXvEwGv/NYI8rbJEFeOhZJ2mwrCluPZI+WpngFqfg99yg=@lists.linux.dev
-X-Gm-Message-State: AOJu0Yx4CTK22lMqjCyKqYOa8pV24shLB4M3IY1qcL7T/OgRIGsuUWFs
-	WhztCBcNPypUXC6fTVv1Ci8LdIzkFX38V89tJtzq91sjNP6MgoSvx6Jf5akyeA==
-X-Gm-Gg: ASbGncvjZoq42zQivZS2nXjEDdttbZwMGKw+qRtwjn4/kTWpXJFzur2Go1WNm5pyuB/
-	33gRG6D/BTGcYOBotxQAU95lEnHURayCfPc42XAF0EQZBaFSGXNHNExKjtveK6gSAXs6SvtoUdG
-	4JidhKT3+AR0qMoJZKjQQOzQen/zi70OUVbafTf8631fFCmC9xJlOOHJlLxHHdY6aX0IwzgiKjb
-	pNXWSByjV3HnJvBskB7eVPIZjmYe6UFLLW0lGJ+jC+UCiPuBYWKkCozGYrFUHeWlGhj/nQgTRsE
-	lXogK7EH3QIIh3hQL46ICVavQz6dDtGUXgtTWJp3B8Fx3EqThJAZH9bnXL1dEzkDTSC+CEW7f89
-	rWFtszuUVDhPOfNK+bTzvFGskfxpB3AloMrJnZZm0Fa7Km82jO4YLyzC0oH5NGbbv
-X-Google-Smtp-Source: AGHT+IGwc0uvirEmN3SgvSrifil5UePMZKVVPEohDLJPcEOe6va9OpGKqbT5JcdCCNRqScuA2yeazw==
-X-Received: by 2002:a05:6870:e241:b0:37a:4e25:be38 with SMTP id 586e51a60fabf-3c0f89d0925mr12763996fac.24.1760536983662;
-        Wed, 15 Oct 2025 07:03:03 -0700 (PDT)
-Received: from [172.16.49.130] ([70.114.247.242])
-        by smtp.googlemail.com with ESMTPSA id 586e51a60fabf-3c8c8bd683fsm5364560fac.12.2025.10.15.07.03.02
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 15 Oct 2025 07:03:03 -0700 (PDT)
-Message-ID: <2ce34bd7-a39b-4859-a4cf-d9411949c3e9@gmail.com>
-Date: Wed, 15 Oct 2025 09:03:01 -0500
+	s=arc-20240116; t=1770828138; c=relaxed/simple;
+	bh=7aFG9Uypc+A7XTl4pTjS7OyckxL+PiutGDzlwyX3cCc=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Ui7Q47RJWe8KuvojOpzHVvJRRLe6yp8XodOqYdHJubabpbll8ERh6Qiso8qfbIFZOW4YjuMl02RmY2eUpJJAIktLtBuIkCOeI3vuxdKEYrjnb9kbyDbzKF9I4xT+ua5yPx2i9fRqLiVpc6ydD7GEqOjeLHuZIG/UKZRkJoulL+o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net; spf=pass smtp.mailfrom=hadess.net; arc=none smtp.client-ip=217.70.183.194
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hadess.net
+Received: by mail.gandi.net (Postfix) with ESMTPSA id 3D0BD443B0;
+	Wed, 11 Feb 2026 16:42:09 +0000 (UTC)
+From: Bastien Nocera <hadess@hadess.net>
+To: ell@lists.linux.dev
+Cc: Bastien Nocera <hadess@hadess.net>
+Subject: [PATCH] unit: Skip tests that rely on PKCS#8 when parser is missing
+Date: Wed, 11 Feb 2026 17:41:46 +0100
+Message-ID: <20260211164200.3968281-1-hadess@hadess.net>
+X-Mailer: git-send-email 2.52.0
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 1/4] main: connect instead of binding to systemd notify
- socket
-To: =?UTF-8?Q?Martin_Hundeb=C3=B8ll?= <martin@geanix.com>, ell@lists.linux.dev
-References: <20251010092005.2283540-1-martin@geanix.com>
-Content-Language: en-US
-From: Denis Kenzior <denkenz@gmail.com>
-In-Reply-To: <20251010092005.2283540-1-martin@geanix.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
+X-GND-Sasl: hadess@hadess.net
+X-GND-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddvtdeftdeiucetufdoteggodetrfdotffvucfrrhhofhhilhgvmecuifetpfffkfdpucggtfgfnhhsuhgsshgtrhhisggvnecuuegrihhlohhuthemuceftddunecunecujfgurhephffvvefufffkofgggfestdekredtredttdenucfhrhhomhepuegrshhtihgvnhcupfhotggvrhgruceohhgruggvshhssehhrgguvghsshdrnhgvtheqnecuggftrfgrthhtvghrnhepffetkedtjeduvdfhtdeftddvteegieeltefhtefgtdehkeevgfeuieffhfevhfefnecukfhppedvrgdtudemvgefgeemvggtjeefmegtfhdvtdemlegsvdelmegtugefieemieekfhgumegttdelfeenucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepihhnvghtpedvrgdtudemvgefgeemvggtjeefmegtfhdvtdemlegsvdelmegtugefieemieekfhgumegttdelfedphhgvlhhopeholhhimhhpihgtpdhmrghilhhfrhhomhephhgruggvshhssehhrgguvghsshdrnhgvthdpqhhiugepfefftdeuffeggeefuedtpdhmohguvgepshhmthhpohhuthdpnhgspghrtghpthhtohepvddprhgtphhtthhopegvlhhlsehlihhsthhsrdhlihhnuhigrdguvghvpdhrtghpthhtohephhgruggvshhssehhrgguvghsshdrnhgvth
+X-GND-State: clean
+X-GND-Score: 0
 
-On 10/10/25 4:20 AM, Martin Hundebøll wrote:
-> Binding is for the server (i.e. systemd), while connecting is for the
-> client (i.e. ell).
-> ---
->   ell/main.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> 
+Check whether the kernel has the pkcs8_key_parser module loaded (whether
+built-in or external), and allow tests that rely on it to fail.
 
-All applied, thanks Martin.
+This makes it possible to run the test suite successfully even on
+systems where we might not be able to load modules if they're missing.
+---
+ unit/test-pem.c | 137 +++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 88 insertions(+), 49 deletions(-)
 
-Regards,
--Denis
+diff --git a/unit/test-pem.c b/unit/test-pem.c
+index 7ee0597ed172..4ff62ea06d7a 100644
+--- a/unit/test-pem.c
++++ b/unit/test-pem.c
+@@ -10,6 +10,7 @@
+ #endif
+ 
+ #include <assert.h>
++#include <sys/stat.h>
+ 
+ #include <ell/ell.h>
+ 
+@@ -136,6 +137,18 @@ static const struct pem_from_data_test single_line_cert_chain = {
+ 		"-----END CERTIFICATE-----\n",
+ };
+ 
++static bool pkcs8_key_parser_loaded(void)
++{
++	struct stat s;
++
++	/* Despite the path, this directory exists whether the module
++	 * is external or built-in. */
++	if (stat ("/sys/module/pkcs8_key_parser", &s) != 0)
++		return false;
++
++	return S_ISDIR (s.st_mode);
++}
++
+ static void destroy_cert(void *cert)
+ {
+ 	l_cert_free(cert);
+@@ -384,6 +397,11 @@ static void test_load_file(const void *data)
+ 
+ int main(int argc, char *argv[])
+ {
++	int flags = 0;
++
++	if (!pkcs8_key_parser_loaded())
++		flags = L_TEST_FLAG_ALLOW_FAILURE;
++
+ 	l_test_init(&argc, &argv);
+ 
+ 	l_test_add("pem/invalid header/test 1", test_pem, &invalid_header1);
+@@ -394,7 +412,7 @@ int main(int argc, char *argv[])
+ 	l_test_add("pem/empty label", test_pem, &empty_label);
+ 	l_test_add("pem/cert chain from data", test_chain_from_data,
+ 			&single_line_cert_chain);
+-	l_test_add("pem/private key from data", test_priv_key_from_data, NULL);
++	l_test_add_func("pem/private key from data", test_priv_key_from_data, flags);
+ 
+ 	if (!l_checksum_is_supported(L_CHECKSUM_MD5, false) ||
+ 			!l_checksum_is_supported(L_CHECKSUM_SHA1, false) ||
+@@ -402,74 +420,90 @@ int main(int argc, char *argv[])
+ 			!l_key_is_supported(L_KEY_FEATURE_CRYPTO))
+ 		goto done;
+ 
+-	l_test_add("pem/PKCS#1 vs. PKCS#8 unenecrypted Private Key",
+-			test_unencrypted_pkey, NULL);
++	l_test_add_func("pem/PKCS#1 vs. PKCS#8 unenecrypted Private Key",
++			test_unencrypted_pkey, flags);
+ 
+-	l_test_add("pem/v1 MD5AndDES encrypted Private Key",
++	l_test_add_data_func("pem/v1 MD5AndDES encrypted Private Key",
++			CERTDIR "cert-client-key-pkcs8-md5-des.pem",
+ 			test_encrypted_pkey,
+-			CERTDIR "cert-client-key-pkcs8-md5-des.pem");
+-	l_test_add("pem/v1 SHA1AndDES encrypted Private Key",
++			flags);
++	l_test_add_data_func("pem/v1 SHA1AndDES encrypted Private Key",
++			CERTDIR "cert-client-key-pkcs8-sha1-des.pem",
+ 			test_encrypted_pkey,
+-			CERTDIR "cert-client-key-pkcs8-sha1-des.pem");
+-	l_test_add("pem/v2 DES encrypted Private Key", test_encrypted_pkey,
+-			CERTDIR "cert-client-key-pkcs8-v2-des.pem");
++			flags);
++	l_test_add_data_func("pem/v2 DES encrypted Private Key",
++			CERTDIR "cert-client-key-pkcs8-v2-des.pem",
++			test_encrypted_pkey,
++			flags);
+ 
+ 	if (l_cipher_is_supported(L_CIPHER_DES3_EDE_CBC) &&
+ 			l_checksum_is_supported(L_CHECKSUM_SHA224, false)) {
+-		l_test_add("pem/v2 DES EDE3 encrypted Private Key",
+-				test_encrypted_pkey, CERTDIR
+-				"cert-client-key-pkcs8-v2-des-ede3.pem");
++		l_test_add_data_func("pem/v2 DES EDE3 encrypted Private Key",
++				CERTDIR "cert-client-key-pkcs8-v2-des-ede3.pem",
++				test_encrypted_pkey,
++				flags);
+ 	}
+ 
+ 	if (l_cipher_is_supported(L_CIPHER_AES)) {
+ 		if (l_checksum_is_supported(L_CHECKSUM_SHA256, false))
+-			l_test_add("pem/v2 AES128-encrypted Private Key",
++			l_test_add_data_func("pem/v2 AES128-encrypted Private Key",
++				CERTDIR "cert-client-key-pkcs8-v2-aes128.pem",
+ 				test_encrypted_pkey,
+-				CERTDIR "cert-client-key-pkcs8-v2-aes128.pem");
++				flags);
+ 
+ 		if (l_checksum_is_supported(L_CHECKSUM_SHA512, false))
+-			l_test_add("pem/v2 AES256-encrypted Private Key",
++			l_test_add_data_func("pem/v2 AES256-encrypted Private Key",
++				CERTDIR "cert-client-key-pkcs8-v2-aes256.pem",
+ 				test_encrypted_pkey,
+-				CERTDIR "cert-client-key-pkcs8-v2-aes256.pem");
++				flags);
+ 	}
+ 
+-	l_test_add("pem/PKCS#1 DES-encrypted RSA Private Key",
++	l_test_add_data_func("pem/PKCS#1 DES-encrypted RSA Private Key",
++			CERTDIR "cert-client-key-pkcs1-des.pem",
+ 			test_encrypted_pkey,
+-			CERTDIR "cert-client-key-pkcs1-des.pem");
++			flags);
+ 
+ 	if (l_cipher_is_supported(L_CIPHER_DES3_EDE_CBC))
+-		l_test_add("pem/PKCS#1 DES-EDE3-encrypted RSA Private Key",
++		l_test_add_data_func("pem/PKCS#1 DES-EDE3-encrypted RSA Private Key",
++				CERTDIR "cert-client-key-pkcs1-des3.pem",
+ 				test_encrypted_pkey,
+-				CERTDIR "cert-client-key-pkcs1-des3.pem");
++				flags);
+ 
+ 	if (l_cipher_is_supported(L_CIPHER_AES_CBC)) {
+-		l_test_add("pem/PKCS#1 AES128-encrypted RSA Private Key",
++		l_test_add_data_func("pem/PKCS#1 AES128-encrypted RSA Private Key",
++				CERTDIR "cert-client-key-pkcs1-aes128.pem",
+ 				test_encrypted_pkey,
+-				CERTDIR "cert-client-key-pkcs1-aes128.pem");
+-		l_test_add("pem/PKCS#1 AES192-encrypted RSA Private Key",
++				flags);
++		l_test_add_data_func("pem/PKCS#1 AES192-encrypted RSA Private Key",
++				CERTDIR "cert-client-key-pkcs1-aes192.pem",
+ 				test_encrypted_pkey,
+-				CERTDIR "cert-client-key-pkcs1-aes192.pem");
+-		l_test_add("pem/PKCS#1 AES256-encrypted RSA Private Key",
++				flags);
++		l_test_add_data_func("pem/PKCS#1 AES256-encrypted RSA Private Key",
++				CERTDIR "cert-client-key-pkcs1-aes256.pem",
+ 				test_encrypted_pkey,
+-				CERTDIR "cert-client-key-pkcs1-aes256.pem");
++				flags);
+ 	}
+ 
+-	l_test_add("detect-format/PEM PKCS#1 unencrypted private key",
+-			test_load_file,
++	l_test_add_data_func("detect-format/PEM PKCS#1 unencrypted private key",
+ 			TEST_LOAD_PARAMS("cert-client-key-pkcs1.pem",
+-						false, false, true, false));
+-	l_test_add("detect-format/PEM PKCS#1 encrypted private key",
++						false, false, true, false),
+ 			test_load_file,
++			flags);
++	l_test_add_data_func("detect-format/PEM PKCS#1 encrypted private key",
+ 			TEST_LOAD_PARAMS("cert-client-key-pkcs1-des.pem",
+-						false, false, true, true));
+-	l_test_add("detect-format/PEM PKCS#8 unencrypted private key",
++						false, false, true, true),
+ 			test_load_file,
++			flags);
++	l_test_add_data_func("detect-format/PEM PKCS#8 unencrypted private key",
+ 			TEST_LOAD_PARAMS("cert-client-key-pkcs8.pem",
+-						false, false, true, false));
+-	l_test_add("detect-format/PEM PKCS#8 encrypted private key",
++						false, false, true, false),
+ 			test_load_file,
++			flags);
++	l_test_add_data_func("detect-format/PEM PKCS#8 encrypted private key",
+ 			TEST_LOAD_PARAMS("cert-client-key-pkcs8-sha1-des.pem",
+-						false, false, true, true));
++						false, false, true, true),
++			test_load_file,
++			flags);
+ 	l_test_add("detect-format/PEM X.509 certificate",
+ 			test_load_file,
+ 			TEST_LOAD_PARAMS("cert-client.pem",
+@@ -478,31 +512,36 @@ int main(int argc, char *argv[])
+ 			test_load_file,
+ 			TEST_LOAD_PARAMS("cert-client.crt",
+ 						true, false, false, false));
+-	l_test_add("detect-format/PEM combined",
+-			test_load_file,
++	l_test_add_data_func("detect-format/PEM combined",
+ 			TEST_LOAD_PARAMS("cert-entity-combined.pem",
+-						true, true, true, true));
+-	l_test_add("detect-format/DER PKCS#12 combined",
++						true, true, true, true),
+ 			test_load_file,
++			flags);
++	l_test_add_data_func("detect-format/DER PKCS#12 combined",
+ 			TEST_LOAD_PARAMS("cert-entity-pkcs12-nomac.p12",
+-						true, false, true, true));
+-
+-	l_test_add("pkcs#12/Combined RC2-based ciphers + SHA1",
++						true, false, true, true),
+ 			test_load_file,
++			flags);
++	l_test_add_data_func("pkcs#12/Combined RC2-based ciphers + SHA1",
+ 			TEST_LOAD_PARAMS("cert-entity-pkcs12-rc2-sha1.p12",
+-						true, true, true, true));
+-	l_test_add("pkcs#12/Combined DES-based ciphers + SHA256",
++						true, true, true, true),
+ 			test_load_file,
++			flags);
++	l_test_add_data_func("pkcs#12/Combined DES-based ciphers + SHA256",
+ 			TEST_LOAD_PARAMS("cert-entity-pkcs12-des-sha256.p12",
+-						true, true, true, true));
+-	l_test_add("pkcs#12/Combined RC4-based ciphers + SHA384",
++						true, true, true, true),
+ 			test_load_file,
++			flags);
++	l_test_add_data_func("pkcs#12/Combined RC4-based ciphers + SHA384",
+ 			TEST_LOAD_PARAMS("cert-entity-pkcs12-rc4-sha384.p12",
+-						true, true, true, true));
+-	l_test_add("pkcs#12/Combined PKCS#5 ciphers + SHA512",
++						true, true, true, true),
+ 			test_load_file,
++			flags);
++	l_test_add_data_func("pkcs#12/Combined PKCS#5 ciphers + SHA512",
+ 			TEST_LOAD_PARAMS("cert-entity-pkcs12-pkcs5-sha512.p12",
+-						true, true, true, true));
++						true, true, true, true),
++			test_load_file,
++			flags);
+ 
+ done:
+ 	return l_test_run();
+-- 
+2.52.0
+
