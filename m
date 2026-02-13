@@ -1,276 +1,135 @@
-Received: from relay2-d.mail.gandi.net (relay2-d.mail.gandi.net [217.70.183.194])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98C7D25DAEA
-	for <ell@lists.linux.dev>; Wed, 11 Feb 2026 16:42:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.183.194
+Received: from mail.holtmann.org (coyote.holtmann.net [212.227.132.17])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id D7D3426299
+	for <ell@lists.linux.dev>; Fri, 13 Feb 2026 20:51:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.132.17
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770828138; cv=none; b=s4tRKNlBMyu4JJrIovIuGUWd8zhQuTW/RrmalmMSkChOJx7JTz+SxV3pVQKJOqZcAkgMac1ljNZlpWHsk3Zsd+RZNf+VkcxeofIzV7+UCGJRjTTL/7GXS2f8BJ8NciZDZf8wOVjSR0ZQaRyGqAe2TkzGfHCR5qSI2pkEDdyC1Kk=
+	t=1771015864; cv=none; b=m78ry/DCacaxkTY8R5c071LTqT0tLkQpG/MVrUFxzAIGthumMnxDumL/uhSo7t7MhAqL/88+LNsJVJMb5foxiDOIcio38WncV3QZ6mShvJUES60PXiozAUgJ04rSJxkiBiEkPryA/DXvNtrasAOabsrwv3fZrU6gtGPIr66MS/Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1770828138; c=relaxed/simple;
-	bh=7aFG9Uypc+A7XTl4pTjS7OyckxL+PiutGDzlwyX3cCc=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Ui7Q47RJWe8KuvojOpzHVvJRRLe6yp8XodOqYdHJubabpbll8ERh6Qiso8qfbIFZOW4YjuMl02RmY2eUpJJAIktLtBuIkCOeI3vuxdKEYrjnb9kbyDbzKF9I4xT+ua5yPx2i9fRqLiVpc6ydD7GEqOjeLHuZIG/UKZRkJoulL+o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net; spf=pass smtp.mailfrom=hadess.net; arc=none smtp.client-ip=217.70.183.194
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hadess.net
-Received: by mail.gandi.net (Postfix) with ESMTPSA id 3D0BD443B0;
-	Wed, 11 Feb 2026 16:42:09 +0000 (UTC)
-From: Bastien Nocera <hadess@hadess.net>
-To: ell@lists.linux.dev
-Cc: Bastien Nocera <hadess@hadess.net>
-Subject: [PATCH] unit: Skip tests that rely on PKCS#8 when parser is missing
-Date: Wed, 11 Feb 2026 17:41:46 +0100
-Message-ID: <20260211164200.3968281-1-hadess@hadess.net>
-X-Mailer: git-send-email 2.52.0
+	s=arc-20240116; t=1771015864; c=relaxed/simple;
+	bh=wQ+jk3HBJ25d8pLfx9LF9RAalDTpQ3iSdhGN9Gh3maw=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=N2QJxmEoDMWPotyuVwCfzMPhK+fHys+PbFYGhW8050P1Ki/aB3mgZIyC58csns3GfFxJRav+N8s4pQb6lWWYztvbFdjdPZSCxQrIR0jbWHhq2VEvZQ89KpvkrV1VHneaLgvIyRfscI7gVNVcS3s3Acgzy3cwwbEUZKRI4DFqfcQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=holtmann.org; spf=pass smtp.mailfrom=holtmann.org; arc=none smtp.client-ip=212.227.132.17
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=holtmann.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=holtmann.org
+Received: from smtpclient.apple (p4ff9f6bd.dip0.t-ipconnect.de [79.249.246.189])
+	by mail.holtmann.org (Postfix) with ESMTPSA id 5F9BECECBE;
+	Fri, 13 Feb 2026 21:50:56 +0100 (CET)
+Content-Type: text/plain;
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-GND-Sasl: hadess@hadess.net
-X-GND-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddvtdeftdeiucetufdoteggodetrfdotffvucfrrhhofhhilhgvmecuifetpfffkfdpucggtfgfnhhsuhgsshgtrhhisggvnecuuegrihhlohhuthemuceftddunecunecujfgurhephffvvefufffkofgggfestdekredtredttdenucfhrhhomhepuegrshhtihgvnhcupfhotggvrhgruceohhgruggvshhssehhrgguvghsshdrnhgvtheqnecuggftrfgrthhtvghrnhepffetkedtjeduvdfhtdeftddvteegieeltefhtefgtdehkeevgfeuieffhfevhfefnecukfhppedvrgdtudemvgefgeemvggtjeefmegtfhdvtdemlegsvdelmegtugefieemieekfhgumegttdelfeenucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepihhnvghtpedvrgdtudemvgefgeemvggtjeefmegtfhdvtdemlegsvdelmegtugefieemieekfhgumegttdelfedphhgvlhhopeholhhimhhpihgtpdhmrghilhhfrhhomhephhgruggvshhssehhrgguvghsshdrnhgvthdpqhhiugepfefftdeuffeggeefuedtpdhmohguvgepshhmthhpohhuthdpnhgspghrtghpthhtohepvddprhgtphhtthhopegvlhhlsehlihhsthhsrdhlihhnuhigrdguvghvpdhrtghpthhtohephhgruggvshhssehhrgguvghsshdrnhgvth
-X-GND-State: clean
-X-GND-Score: 0
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.400.21\))
+Subject: Re: [PATCH] unit: Skip tests that rely on PKCS#8 when parser is
+ missing
+From: Marcel Holtmann <marcel@holtmann.org>
+In-Reply-To: <20260211164200.3968281-1-hadess@hadess.net>
+Date: Fri, 13 Feb 2026 21:50:45 +0100
+Cc: ell@lists.linux.dev
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <9C252C4B-652C-41EF-901A-BBA78DFB0FE4@holtmann.org>
+References: <20260211164200.3968281-1-hadess@hadess.net>
+To: Bastien Nocera <hadess@hadess.net>
+X-Mailer: Apple Mail (2.3864.400.21)
 
-Check whether the kernel has the pkcs8_key_parser module loaded (whether
-built-in or external), and allow tests that rely on it to fail.
+Hi Bastien,
 
-This makes it possible to run the test suite successfully even on
-systems where we might not be able to load modules if they're missing.
----
- unit/test-pem.c | 137 +++++++++++++++++++++++++++++++-----------------
- 1 file changed, 88 insertions(+), 49 deletions(-)
+> Check whether the kernel has the pkcs8_key_parser module loaded =
+(whether
+> built-in or external), and allow tests that rely on it to fail.
+>=20
+> This makes it possible to run the test suite successfully even on
+> systems where we might not be able to load modules if they're missing.
+> ---
+> unit/test-pem.c | 137 +++++++++++++++++++++++++++++++-----------------
+> 1 file changed, 88 insertions(+), 49 deletions(-)
+>=20
+> diff --git a/unit/test-pem.c b/unit/test-pem.c
+> index 7ee0597ed172..4ff62ea06d7a 100644
+> --- a/unit/test-pem.c
+> +++ b/unit/test-pem.c
+> @@ -10,6 +10,7 @@
+> #endif
+>=20
+> #include <assert.h>
+> +#include <sys/stat.h>
+>=20
+> #include <ell/ell.h>
+>=20
+> @@ -136,6 +137,18 @@ static const struct pem_from_data_test =
+single_line_cert_chain =3D {
+> "-----END CERTIFICATE-----\n",
+> };
+>=20
+> +static bool pkcs8_key_parser_loaded(void)
+> +{
+> + struct stat s;
+> +
+> + /* Despite the path, this directory exists whether the module
+> + * is external or built-in. */
+> + if (stat ("/sys/module/pkcs8_key_parser", &s) !=3D 0)
+> + return false;
+> +
+> + return S_ISDIR (s.st_mode);
+> +}
+> +
 
-diff --git a/unit/test-pem.c b/unit/test-pem.c
-index 7ee0597ed172..4ff62ea06d7a 100644
---- a/unit/test-pem.c
-+++ b/unit/test-pem.c
-@@ -10,6 +10,7 @@
- #endif
- 
- #include <assert.h>
-+#include <sys/stat.h>
- 
- #include <ell/ell.h>
- 
-@@ -136,6 +137,18 @@ static const struct pem_from_data_test single_line_cert_chain = {
- 		"-----END CERTIFICATE-----\n",
- };
- 
-+static bool pkcs8_key_parser_loaded(void)
-+{
-+	struct stat s;
-+
-+	/* Despite the path, this directory exists whether the module
-+	 * is external or built-in. */
-+	if (stat ("/sys/module/pkcs8_key_parser", &s) != 0)
-+		return false;
-+
-+	return S_ISDIR (s.st_mode);
-+}
-+
- static void destroy_cert(void *cert)
- {
- 	l_cert_free(cert);
-@@ -384,6 +397,11 @@ static void test_load_file(const void *data)
- 
- int main(int argc, char *argv[])
- {
-+	int flags = 0;
-+
-+	if (!pkcs8_key_parser_loaded())
-+		flags = L_TEST_FLAG_ALLOW_FAILURE;
-+
- 	l_test_init(&argc, &argv);
- 
- 	l_test_add("pem/invalid header/test 1", test_pem, &invalid_header1);
-@@ -394,7 +412,7 @@ int main(int argc, char *argv[])
- 	l_test_add("pem/empty label", test_pem, &empty_label);
- 	l_test_add("pem/cert chain from data", test_chain_from_data,
- 			&single_line_cert_chain);
--	l_test_add("pem/private key from data", test_priv_key_from_data, NULL);
-+	l_test_add_func("pem/private key from data", test_priv_key_from_data, flags);
- 
- 	if (!l_checksum_is_supported(L_CHECKSUM_MD5, false) ||
- 			!l_checksum_is_supported(L_CHECKSUM_SHA1, false) ||
-@@ -402,74 +420,90 @@ int main(int argc, char *argv[])
- 			!l_key_is_supported(L_KEY_FEATURE_CRYPTO))
- 		goto done;
- 
--	l_test_add("pem/PKCS#1 vs. PKCS#8 unenecrypted Private Key",
--			test_unencrypted_pkey, NULL);
-+	l_test_add_func("pem/PKCS#1 vs. PKCS#8 unenecrypted Private Key",
-+			test_unencrypted_pkey, flags);
- 
--	l_test_add("pem/v1 MD5AndDES encrypted Private Key",
-+	l_test_add_data_func("pem/v1 MD5AndDES encrypted Private Key",
-+			CERTDIR "cert-client-key-pkcs8-md5-des.pem",
- 			test_encrypted_pkey,
--			CERTDIR "cert-client-key-pkcs8-md5-des.pem");
--	l_test_add("pem/v1 SHA1AndDES encrypted Private Key",
-+			flags);
-+	l_test_add_data_func("pem/v1 SHA1AndDES encrypted Private Key",
-+			CERTDIR "cert-client-key-pkcs8-sha1-des.pem",
- 			test_encrypted_pkey,
--			CERTDIR "cert-client-key-pkcs8-sha1-des.pem");
--	l_test_add("pem/v2 DES encrypted Private Key", test_encrypted_pkey,
--			CERTDIR "cert-client-key-pkcs8-v2-des.pem");
-+			flags);
-+	l_test_add_data_func("pem/v2 DES encrypted Private Key",
-+			CERTDIR "cert-client-key-pkcs8-v2-des.pem",
-+			test_encrypted_pkey,
-+			flags);
- 
- 	if (l_cipher_is_supported(L_CIPHER_DES3_EDE_CBC) &&
- 			l_checksum_is_supported(L_CHECKSUM_SHA224, false)) {
--		l_test_add("pem/v2 DES EDE3 encrypted Private Key",
--				test_encrypted_pkey, CERTDIR
--				"cert-client-key-pkcs8-v2-des-ede3.pem");
-+		l_test_add_data_func("pem/v2 DES EDE3 encrypted Private Key",
-+				CERTDIR "cert-client-key-pkcs8-v2-des-ede3.pem",
-+				test_encrypted_pkey,
-+				flags);
- 	}
- 
- 	if (l_cipher_is_supported(L_CIPHER_AES)) {
- 		if (l_checksum_is_supported(L_CHECKSUM_SHA256, false))
--			l_test_add("pem/v2 AES128-encrypted Private Key",
-+			l_test_add_data_func("pem/v2 AES128-encrypted Private Key",
-+				CERTDIR "cert-client-key-pkcs8-v2-aes128.pem",
- 				test_encrypted_pkey,
--				CERTDIR "cert-client-key-pkcs8-v2-aes128.pem");
-+				flags);
- 
- 		if (l_checksum_is_supported(L_CHECKSUM_SHA512, false))
--			l_test_add("pem/v2 AES256-encrypted Private Key",
-+			l_test_add_data_func("pem/v2 AES256-encrypted Private Key",
-+				CERTDIR "cert-client-key-pkcs8-v2-aes256.pem",
- 				test_encrypted_pkey,
--				CERTDIR "cert-client-key-pkcs8-v2-aes256.pem");
-+				flags);
- 	}
- 
--	l_test_add("pem/PKCS#1 DES-encrypted RSA Private Key",
-+	l_test_add_data_func("pem/PKCS#1 DES-encrypted RSA Private Key",
-+			CERTDIR "cert-client-key-pkcs1-des.pem",
- 			test_encrypted_pkey,
--			CERTDIR "cert-client-key-pkcs1-des.pem");
-+			flags);
- 
- 	if (l_cipher_is_supported(L_CIPHER_DES3_EDE_CBC))
--		l_test_add("pem/PKCS#1 DES-EDE3-encrypted RSA Private Key",
-+		l_test_add_data_func("pem/PKCS#1 DES-EDE3-encrypted RSA Private Key",
-+				CERTDIR "cert-client-key-pkcs1-des3.pem",
- 				test_encrypted_pkey,
--				CERTDIR "cert-client-key-pkcs1-des3.pem");
-+				flags);
- 
- 	if (l_cipher_is_supported(L_CIPHER_AES_CBC)) {
--		l_test_add("pem/PKCS#1 AES128-encrypted RSA Private Key",
-+		l_test_add_data_func("pem/PKCS#1 AES128-encrypted RSA Private Key",
-+				CERTDIR "cert-client-key-pkcs1-aes128.pem",
- 				test_encrypted_pkey,
--				CERTDIR "cert-client-key-pkcs1-aes128.pem");
--		l_test_add("pem/PKCS#1 AES192-encrypted RSA Private Key",
-+				flags);
-+		l_test_add_data_func("pem/PKCS#1 AES192-encrypted RSA Private Key",
-+				CERTDIR "cert-client-key-pkcs1-aes192.pem",
- 				test_encrypted_pkey,
--				CERTDIR "cert-client-key-pkcs1-aes192.pem");
--		l_test_add("pem/PKCS#1 AES256-encrypted RSA Private Key",
-+				flags);
-+		l_test_add_data_func("pem/PKCS#1 AES256-encrypted RSA Private Key",
-+				CERTDIR "cert-client-key-pkcs1-aes256.pem",
- 				test_encrypted_pkey,
--				CERTDIR "cert-client-key-pkcs1-aes256.pem");
-+				flags);
- 	}
- 
--	l_test_add("detect-format/PEM PKCS#1 unencrypted private key",
--			test_load_file,
-+	l_test_add_data_func("detect-format/PEM PKCS#1 unencrypted private key",
- 			TEST_LOAD_PARAMS("cert-client-key-pkcs1.pem",
--						false, false, true, false));
--	l_test_add("detect-format/PEM PKCS#1 encrypted private key",
-+						false, false, true, false),
- 			test_load_file,
-+			flags);
-+	l_test_add_data_func("detect-format/PEM PKCS#1 encrypted private key",
- 			TEST_LOAD_PARAMS("cert-client-key-pkcs1-des.pem",
--						false, false, true, true));
--	l_test_add("detect-format/PEM PKCS#8 unencrypted private key",
-+						false, false, true, true),
- 			test_load_file,
-+			flags);
-+	l_test_add_data_func("detect-format/PEM PKCS#8 unencrypted private key",
- 			TEST_LOAD_PARAMS("cert-client-key-pkcs8.pem",
--						false, false, true, false));
--	l_test_add("detect-format/PEM PKCS#8 encrypted private key",
-+						false, false, true, false),
- 			test_load_file,
-+			flags);
-+	l_test_add_data_func("detect-format/PEM PKCS#8 encrypted private key",
- 			TEST_LOAD_PARAMS("cert-client-key-pkcs8-sha1-des.pem",
--						false, false, true, true));
-+						false, false, true, true),
-+			test_load_file,
-+			flags);
- 	l_test_add("detect-format/PEM X.509 certificate",
- 			test_load_file,
- 			TEST_LOAD_PARAMS("cert-client.pem",
-@@ -478,31 +512,36 @@ int main(int argc, char *argv[])
- 			test_load_file,
- 			TEST_LOAD_PARAMS("cert-client.crt",
- 						true, false, false, false));
--	l_test_add("detect-format/PEM combined",
--			test_load_file,
-+	l_test_add_data_func("detect-format/PEM combined",
- 			TEST_LOAD_PARAMS("cert-entity-combined.pem",
--						true, true, true, true));
--	l_test_add("detect-format/DER PKCS#12 combined",
-+						true, true, true, true),
- 			test_load_file,
-+			flags);
-+	l_test_add_data_func("detect-format/DER PKCS#12 combined",
- 			TEST_LOAD_PARAMS("cert-entity-pkcs12-nomac.p12",
--						true, false, true, true));
--
--	l_test_add("pkcs#12/Combined RC2-based ciphers + SHA1",
-+						true, false, true, true),
- 			test_load_file,
-+			flags);
-+	l_test_add_data_func("pkcs#12/Combined RC2-based ciphers + SHA1",
- 			TEST_LOAD_PARAMS("cert-entity-pkcs12-rc2-sha1.p12",
--						true, true, true, true));
--	l_test_add("pkcs#12/Combined DES-based ciphers + SHA256",
-+						true, true, true, true),
- 			test_load_file,
-+			flags);
-+	l_test_add_data_func("pkcs#12/Combined DES-based ciphers + SHA256",
- 			TEST_LOAD_PARAMS("cert-entity-pkcs12-des-sha256.p12",
--						true, true, true, true));
--	l_test_add("pkcs#12/Combined RC4-based ciphers + SHA384",
-+						true, true, true, true),
- 			test_load_file,
-+			flags);
-+	l_test_add_data_func("pkcs#12/Combined RC4-based ciphers + SHA384",
- 			TEST_LOAD_PARAMS("cert-entity-pkcs12-rc4-sha384.p12",
--						true, true, true, true));
--	l_test_add("pkcs#12/Combined PKCS#5 ciphers + SHA512",
-+						true, true, true, true),
- 			test_load_file,
-+			flags);
-+	l_test_add_data_func("pkcs#12/Combined PKCS#5 ciphers + SHA512",
- 			TEST_LOAD_PARAMS("cert-entity-pkcs12-pkcs5-sha512.p12",
--						true, true, true, true));
-+						true, true, true, true),
-+			test_load_file,
-+			flags);
- 
- done:
- 	return l_test_run();
--- 
-2.52.0
+hmm, you just looked at a unit test that I have not converted.
+
+If you look at test-cipher.c for example, you see that I have added =
+precheck capability to determine if a test case can be run or not.
+
+static bool aead_cipher_precheck(const void *data)
+{
+	const struct aead_test_vector *tv =3D data;
+	return l_aead_cipher_is_supported(tv->type);
+}
+
+> static void destroy_cert(void *cert)
+> {
+> l_cert_free(cert);
+> @@ -384,6 +397,11 @@ static void test_load_file(const void *data)
+>=20
+> int main(int argc, char *argv[])
+> {
+> + int flags =3D 0;
+> +
+> + if (!pkcs8_key_parser_loaded())
+> + flags =3D L_TEST_FLAG_ALLOW_FAILURE;
+> +
+> l_test_init(&argc, &argv);
+>=20
+> l_test_add("pem/invalid header/test 1", test_pem, &invalid_header1);
+> @@ -394,7 +412,7 @@ int main(int argc, char *argv[])
+> l_test_add("pem/empty label", test_pem, &empty_label);
+> l_test_add("pem/cert chain from data", test_chain_from_data,
+> &single_line_cert_chain);
+> - l_test_add("pem/private key from data", test_priv_key_from_data, =
+NULL);
+> + l_test_add_func("pem/private key from data", =
+test_priv_key_from_data, flags);
+
+And then I used a macro for the add test case statement
+
+#define add_aead_test(name, data) l_test_add_data_func_precheck(name, =
+data, \
+						test_aead, =
+aead_cipher_precheck, 0);
+
+After that it becomes an easy line in the main() function.
+
+add_aead_test("RFC3610 - Packet Vector #1", &rfc3610_ccm_1);
+
+This makes it clean and easy to change in the future if I want to =
+upgrade the test framework.
+
+And I think the unit/test-eapol.c from iwd has some of this done, but =
+might could also use a better PKCS#8 support check.
+
+Regards
+
+Marcel
 
