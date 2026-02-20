@@ -1,94 +1,68 @@
-Received: from relay4-d.mail.gandi.net (relay4-d.mail.gandi.net [217.70.183.196])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D624E33A9C1
-	for <ell@lists.linux.dev>; Thu, 19 Feb 2026 13:28:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.183.196
+Received: from mail.holtmann.org (coyote.holtmann.net [212.227.132.17])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 3DB3832AAAD
+	for <ell@lists.linux.dev>; Fri, 20 Feb 2026 09:57:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.132.17
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771507699; cv=none; b=u/I0Qw8bmdeJfLjaEnMG62CMj4MXn2GK6yW/EDgPYThHNkzM5iNlkR/ktBzVxuWkzN9fYQbMluOFqwkCCx0+pJ+XytdxhBmivlDeYO70cyeMFnS7sfY9dcyA0xGdcOupNaiCALSwEvOiwcRUNukMYvFVFwrE3arrlI08GU8L5I0=
+	t=1771581465; cv=none; b=dtInUgNmlSnQ9CtCRqZt6N1sRUeOkPQ5C/egGQYWLZfCjXJaDUbLX2c+/w1Og6Qj9099FTg3CwHsMVxRvsDkfh+H0lcfnHQCe2/krLMoCvfh+Kp8K+Hnt1X+Acw51PXEYPEofngxWH3/GO3JuZeoFMyGxVzuqmnOiC13dFjfnLU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771507699; c=relaxed/simple;
-	bh=VsYajjNgLzp6zah4QtXODC3PUYkotqRhHW7Zin6mi5s=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=J3H1htfxJGhoc2yzgL4w/dQO3Ekbf2vmvNJJ7j/OlQ0dIXcEgcLEqWyEW95+VYukNxzRBc0otFRUG0KWAp+cZIgbaNOaLhlhzKTOYViqkDvJ7N+j0biwvSSAcMTV2D38QSU+tBFpR5rUigAOA2UZroj+MIorx/kpG5b1C1/QLi0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net; spf=pass smtp.mailfrom=hadess.net; arc=none smtp.client-ip=217.70.183.196
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hadess.net
-Received: by mail.gandi.net (Postfix) with ESMTPSA id 507AC3E9A2;
-	Thu, 19 Feb 2026 13:28:10 +0000 (UTC)
-Message-ID: <be9e9bd76c7f52aa8aa7c96bf4cdb6210df6e3e0.camel@hadess.net>
-Subject: Re: [PATCH v2] unit: Skip tests that rely on PKCS#8 when parser is
- missing
-From: Bastien Nocera <hadess@hadess.net>
-To: Marcel Holtmann <marcel@holtmann.org>
-Cc: ell@lists.linux.dev
-Date: Thu, 19 Feb 2026 14:28:09 +0100
-In-Reply-To: <BC761BEA-8C6C-4933-B687-5CD0B09DED45@holtmann.org>
-References: <20260219100721.2178113-1-hadess@hadess.net>
-	 <BC761BEA-8C6C-4933-B687-5CD0B09DED45@holtmann.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: base64
-User-Agent: Evolution 3.58.2 (3.58.2-1.fc43) 
+	s=arc-20240116; t=1771581465; c=relaxed/simple;
+	bh=yqO2gKONG0eMYcTBkvuN8mS6bm+XoIm7O3DvL3ji5Vs=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=hLmo/a2DFl6OnxgyLuojWLR2KFybaucAFpNOmKosGN6ZLXCLPDLqi9Hdf4suTDBAb+chLT0Ll6H8iEFwwP7i0Qne29kB2x3EXTm0hRu3aO1hsBPAkm2Q+JzeOvNNwDIVkG9+BlLx9+QY4tr6UbkSbdGqrboie0760S4+Me8VQgs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=holtmann.org; spf=pass smtp.mailfrom=holtmann.org; arc=none smtp.client-ip=212.227.132.17
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=holtmann.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=holtmann.org
+Received: from smtpclient.apple (p4ff9fa4c.dip0.t-ipconnect.de [79.249.250.76])
+	by mail.holtmann.org (Postfix) with ESMTPSA id C1385CECBE;
+	Fri, 20 Feb 2026 10:57:42 +0100 (CET)
+Content-Type: text/plain;
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
-MIME-Version: 1.0
-X-GND-Sasl: hadess@hadess.net
-X-GND-Score: -100
-X-GND-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddvvdehieehucetufdoteggodetrfdotffvucfrrhhofhhilhgvmecuifetpfffkfdpucggtfgfnhhsuhgsshgtrhhisggvnecuuegrihhlohhuthemuceftddunecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjughrpefkuffhvfevffgjfhgtgfgfggesthgsredttderjeenucfhrhhomhepuegrshhtihgvnhcupfhotggvrhgruceohhgruggvshhssehhrgguvghsshdrnhgvtheqnecuggftrfgrthhtvghrnhepgfdvveekjedtfeeljeffkeehffdtfefggfelleegueefgfellefguefhtdehudeunecukfhppedvrgdtudemvgefgeemvggtjeefmegtfhdvtdemsggrgeefmegrieejieemtgdvugefmeejrgehfeenucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepihhnvghtpedvrgdtudemvgefgeemvggtjeefmegtfhdvtdemsggrgeefmegrieejieemtgdvugefmeejrgehfedphhgvlhhopeglkffrvheimedvrgdtudemvgefgeemvggtjeefmegtfhdvtdemsggrgeefmegrieejieemtgdvugefmeejrgehfegnpdhmrghilhhfrhhomhephhgruggvshhssehhrgguvghsshdrnhgvthdpqhhiugephedtjeetveefgfeltedvpdhmohguvgepshhmthhpohhuthdpnhgspghrtghpthhtohepvddprhgtphhtthhopehmrghrtggvlheshhholhhtmhgrnhhnrdhorhhgpdhrtghpthhtohepvghllheslhhishhtshdrlhhinhhugidru
- ggvvh
-X-GND-State: clean
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.400.21\))
+Subject: Re: [PATCH v3] unit: Skip tests that rely on PKCS#8 when parser is
+ missing
+From: Marcel Holtmann <marcel@holtmann.org>
+In-Reply-To: <20260219132723.2266067-1-hadess@hadess.net>
+Date: Fri, 20 Feb 2026 10:57:31 +0100
+Cc: ell@lists.linux.dev
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <290BE3A7-1669-40DC-A4A7-773D40EE8805@holtmann.org>
+References: <20260219132723.2266067-1-hadess@hadess.net>
+To: Bastien Nocera <hadess@hadess.net>
+X-Mailer: Apple Mail (2.3864.400.21)
 
-T24gVGh1LCAyMDI2LTAyLTE5IGF0IDEyOjU1ICswMTAwLCBNYXJjZWwgSG9sdG1hbm4gd3JvdGU6
-Cj4gSGkgQmFzdGllbiwKPiAKPiA+IEFkZCBwcmUtY2hlY2sgdG8gdGVzdHMgdGhhdCBuZWVkIHRo
-ZSBwa2NzOF9rZXlfcGFyc2VyIG1vZHVsZSBsb2FkZWQKPiA+ICh3aGV0aGVyIGJ1aWx0LWluIG9y
-IGV4dGVybmFsKSwgYW5kIGFsbG93IHRlc3RzIHRoYXQgcmVseSBvbiBpdCB0bwo+ID4gZmFpbC4K
-PiA+IAo+ID4gVGhpcyBtYWtlcyBpdCBwb3NzaWJsZSB0byBydW4gdGhlIHRlc3Qgc3VpdGUgc3Vj
-Y2Vzc2Z1bGx5IGV2ZW4gb24KPiA+IHN5c3RlbXMgd2hlcmUgd2UgbWlnaHQgbm90IGJlIGFibGUg
-dG8gbG9hZCBtb2R1bGVzIGlmIHRoZXkncmUKPiA+IG1pc3NpbmcKPiA+IHN1Y2ggYXMgQ0lzLCBv
-ciBvdGhlciBzeXN0ZW1zIHdoZXJlIHdlIGxhY2sgcGVybWlzc2lvbnMuCj4gPiAtLS0KPiA+IAo+
-ID4gQ2hhbmdlcyBzaW5jZSB2MToKPiA+IC0gVXNlIHByZWNoZWNrIHRlc3QgbWVjaGFuaXNtIGlu
-c3RlYWQgb2YgZmxhZ3MKPiA+IAo+ID4gdW5pdC90ZXN0LXBlbS5jIHwgMTU0ICsrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLQo+ID4gLS0tCj4gPiAxIGZpbGUgY2hh
-bmdlZCwgMTA1IGluc2VydGlvbnMoKyksIDQ5IGRlbGV0aW9ucygtKQo+ID4gCj4gPiBkaWZmIC0t
-Z2l0IGEvdW5pdC90ZXN0LXBlbS5jIGIvdW5pdC90ZXN0LXBlbS5jCj4gPiBpbmRleCA3ZWUwNTk3
-ZWQxNzIuLjMwNmUzYTRmODY1NiAxMDA2NDQKPiA+IC0tLSBhL3VuaXQvdGVzdC1wZW0uYwo+ID4g
-KysrIGIvdW5pdC90ZXN0LXBlbS5jCj4gPiBAQCAtMTAsNiArMTAsNyBAQAo+ID4gI2VuZGlmCj4g
-PiAKPiA+ICNpbmNsdWRlIDxhc3NlcnQuaD4KPiA+ICsjaW5jbHVkZSA8c3lzL3N0YXQuaD4KPiA+
-IAo+ID4gI2luY2x1ZGUgPGVsbC9lbGwuaD4KPiA+IAo+ID4gQEAgLTEzNiw2ICsxMzcsMTggQEAg
-c3RhdGljIGNvbnN0IHN0cnVjdCBwZW1fZnJvbV9kYXRhX3Rlc3QKPiA+IHNpbmdsZV9saW5lX2Nl
-cnRfY2hhaW4gPSB7Cj4gPiAiLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLVxuIiwKPiA+IH07Cj4g
-PiAKPiA+ICtzdGF0aWMgYm9vbCBwa2NzOF9rZXlfcGFyc2VyX3ByZWNoZWNrKGNvbnN0IHZvaWQg
-KmRhdGEpCj4gPiArewo+ID4gKyBzdHJ1Y3Qgc3RhdCBzOwo+ID4gKwo+ID4gKyAvKiBEZXNwaXRl
-IHRoZSBwYXRoLCB0aGlzIGRpcmVjdG9yeSBleGlzdHMgd2hldGhlciB0aGUgbW9kdWxlCj4gPiAr
-ICogaXMgZXh0ZXJuYWwgb3IgYnVpbHQtaW4uICovCj4gPiArIGlmIChzdGF0ICgiL3N5cy9tb2R1
-bGUvcGtjczhfa2V5X3BhcnNlciIsICZzKSAhPSAwKQo+ID4gKyByZXR1cm4gZmFsc2U7Cj4gPiAr
-Cj4gPiArIHJldHVybiBTX0lTRElSIChzLnN0X21vZGUpOwo+ID4gK30KPiA+ICsKPiAKPiB5b3Ug
-ZG9u4oCZdCB0aGluayBkb2luZyBpdCBsaWtlIHRoaXMgaXMgYmV0dGVyOgo+IAo+ICtzdGF0aWMg
-Ym9vbCB0ZXN0X2xvYWRfcHJlY2hlY2soY29uc3Qgdm9pZCAqZGF0YSkKPiArewo+ICvCoMKgwqDC
-oMKgwqAgcmV0dXJuIHRydWU7Cj4gK30KPiArCj4gKyNkZWZpbmUgYWRkX2ZpbGVfdGVzdChuYW1l
-LCBkYXRhKQo+IGxfdGVzdF9hZGRfZGF0YV9mdW5jX3ByZWNoZWNrKG5hbWUsIGRhdGEsIFwKPiAr
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoCB0ZXN0X2xvYWRfZmlsZSwKPiB0ZXN0X2xvYWRfcHJlY2hlY2ss
-IDApOwo+ICsKPiDCoGludCBtYWluKGludCBhcmdjLCBjaGFyICphcmd2W10pCj4gwqB7Cj4gwqDC
-oMKgwqDCoMKgwqAgbF90ZXN0X2luaXQoJmFyZ2MsICZhcmd2KTsKPiBAQCAtNDk5LDggKzUwNyw3
-IEBAIGludCBtYWluKGludCBhcmdjLCBjaGFyICphcmd2W10pCj4gwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCB0ZXN0X2xvYWRfZmlsZSwKPiDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIFRFU1RfTE9BRF9QQVJBTVMoImNl
-cnQtZW50aXR5LXBrY3MxMi1yYzQtCj4gc2hhMzg0LnAxMiIsCj4gwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoCB0cnVlLCB0cnVlLCB0cnVlLAo+IHRydWUpKTsKPiAtwqDCoMKg
-wqDCoMKgIGxfdGVzdF9hZGQoInBrY3MjMTIvQ29tYmluZWQgUEtDUyM1IGNpcGhlcnMgKyBTSEE1
-MTIiLAo+IC3CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCB0ZXN0
-X2xvYWRfZmlsZSwKPiArwqDCoMKgwqDCoMKgIGFkZF9maWxlX3Rlc3QoInBrY3MjMTIvQ29tYmlu
-ZWQgUEtDUyM1IGNpcGhlcnMgKyBTSEE1MTIiLAo+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqAgVEVTVF9MT0FEX1BBUkFNUygiY2VydC1lbnRpdHktcGtjczEy
-LXBrY3M1LQo+IHNoYTUxMi5wMTIiLAo+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqAgdHJ1ZSwgdHJ1ZSwgdHJ1ZSwKPiB0cnVlKSk7Cj4gCj4gSSB3b3VsZCBtb3N0IGxpa2Vs
-eSBhbHNvIHB1c2ggdGhlIFRFU1RfTE9BRF9QQVJBTVMgaW50byB0aGUKPiBhZGRfZmlsZV90ZXN0
-KCkgbWFjcm8sIGJ1dCBzZWVtcyBhIGJpdCBtb3JlIHdvcmsuCgpEaWQgc29tZXRoaW5nIHNpbWls
-YXIgaW4gdjMuCgpDaGVlcnMK
+Hi Bastien,
+
+> Add pre-check to tests that need the pkcs8_key_parser module loaded
+> (whether built-in or external), and allow tests that rely on it to =
+fail.
+>=20
+> This makes it possible to run the test suite successfully even on
+> systems where we might not be able to load modules if they're missing
+> such as CIs, or other systems where we lack permissions.
+>=20
+> The test definitions were further simplified by using macros to avoid
+> repeated test definition arguments, including the PKCS#8 precheck.
+>=20
+> ---
+> Changes since v2:
+> - Use macros for the encrypted pkey and load_file tests
+>=20
+> Changes since v1:
+> - Use precheck test mechanism instead of flags
+>=20
+>=20
+> unit/test-pem.c | 124 ++++++++++++++++++++++--------------------------
+> 1 file changed, 58 insertions(+), 66 deletions(-)
+
+patch has been applied, but I fixed the whitespace damage and changed =
+the comment style.
+
+Regards
+
+Marcel
 
