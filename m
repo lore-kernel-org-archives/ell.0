@@ -1,88 +1,72 @@
-Received: from mail.amaanq.com (mail.amaanq.com [152.53.225.105])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C29EE2C11D9
-	for <ell@lists.linux.dev>; Tue, 10 Mar 2026 19:48:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=152.53.225.105
+Received: from mail.holtmann.org (coyote.holtmann.net [212.227.132.17])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 4109133F385
+	for <ell@lists.linux.dev>; Fri, 13 Mar 2026 11:09:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.132.17
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773172127; cv=none; b=MJ6FdBNZBcVr57sCHVkE2piYNXDaWkQmFF1L8kaS+Cz4Hxj1CYZac3YA4xDYJ8xL+GtUDsoFFJruOJ8ASb/FyG6KN2GuEGee7mfCNHTJoac6Cj3HYbjAOoRnrM9dCJpfAuGSO6DbrMywYcbZLtO7iXd/OCoJkCvrMwsKoDVzDp0=
+	t=1773400147; cv=none; b=jvOTSPPLf4goT8k+7YZninoRnQC/PABmbM0l4SmquAvQzAtzVLieXySGBlX0i6wyMMgm5sHs9rsiAr/uWPdI1bv7+rkn8MDO5cvMiPfxMmUVjzVZyx7VCxlVuFLU1qQFnE/CHgdjsmJf6ssZu2xXH4a0txuhw4dAY9ggzeRRQoU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773172127; c=relaxed/simple;
-	bh=7WBlBl7RY9bFu/5vX0Uv13igQxJQ45NxK2qv4G+rCZA=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=kXuOY88Ny8Z1/Mg319Ea34TcsItnJdpbC/54uPV6yoZdPjEIqoGYFpQi+OPLBJ15E8DFlZ2951QGAAFlIRc2ugAUuFnsadA2pLoUa3eaHEAO0xh2KC1Lm7n/bDcg3ATluQ9wDu3h7gyhTy+n1FvZPHYfbyQy+M9CE/CXlwJsPIU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=amaanq.com; spf=pass smtp.mailfrom=amaanq.com; dkim=pass (2048-bit key) header.d=amaanq.com header.i=@amaanq.com header.b=OKR8vOiQ; arc=none smtp.client-ip=152.53.225.105
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=amaanq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=amaanq.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=amaanq.com header.i=@amaanq.com header.b="OKR8vOiQ"
-DKIM-Signature: v=1; a=rsa-sha256; s=stalwart; d=amaanq.com; c=relaxed/relaxed;
-	h=Message-ID:Date:Subject:To:From; t=1773172123; bh=NNmOZijEGEZUJF+iKZgEC5f
-	S41DCPn2WPRkS1nUZTn0=; b=OKR8vOiQipOm3Tw9SYkH9Ghj+W+xkYnMZW8NODMmyGP59REv8z
-	c01ZFkdi+tqI+SsFnhjKEuSXbwWslqXhtoX/y2jQG38dYmZj+4ogBFTPZ9heDQJ3zVclh+jI26P
-	EgATLOdoAoSAkr81x8hTsCWDfmQhNdq565Whhi43ZoeLLxfNulQpVQ+WCKOmZ6oc7yzTqItCDrx
-	mjuCpk0xQIagt9qGUZUtJ0ToUuEczzKESXdb26+BCnmUN3v67mQJDpamNq0zYxTtq8CtXJw8uj+
-	zcb19zpVIELPPIMQMc7OX4bpdSkNZo/ydcVvEnmavpGqtnHzMdrfiBDm3f87He39zGg==;
-From: Amaan Qureshi <git@amaanq.com>
-To: ell@lists.linux.dev
-Cc: Amaan Qureshi <git@amaanq.com>
-Subject: [PATCH] test: only flag parse tests as little-endian-only in test-gvariant-message
-Date: Tue, 10 Mar 2026 15:48:37 -0400
-Message-ID: <20260310194837.3078283-1-git@amaanq.com>
-X-Mailer: git-send-email 2.53.0
+	s=arc-20240116; t=1773400147; c=relaxed/simple;
+	bh=Sd5obWuARvifItBALlDWAuP9ZvkXn61+lqgpfM737mA=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=kMcozHH6DBYUONSeaPrvLY6q9MlIyw0qyZl+2oBOSXiR2qWXvGYPrOH3dys4ETrdO+w7gjZ6fQfTdS1ACRDyNKPXvjYbRIW2DNW2ut3Up2Y6YFvAeWoiM2v2FCQCPtx6Qx1MqtKl6gKu3QX9XCXVsdvHDxZiiiygiXLYRY4f3Bo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=holtmann.org; spf=pass smtp.mailfrom=holtmann.org; arc=none smtp.client-ip=212.227.132.17
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=holtmann.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=holtmann.org
+Received: from smtpclient.apple (p5b3d242d.dip0.t-ipconnect.de [91.61.36.45])
+	by mail.holtmann.org (Postfix) with ESMTPSA id 14DBACECB9;
+	Fri, 13 Mar 2026 12:01:19 +0100 (CET)
+Content-Type: text/plain;
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.400.21\))
+Subject: Re: [PATCH] test: only flag parse tests as little-endian-only in
+ test-gvariant-message
+From: Marcel Holtmann <marcel@holtmann.org>
+In-Reply-To: <20260310194837.3078283-1-git@amaanq.com>
+Date: Fri, 13 Mar 2026 12:01:08 +0100
+Cc: ell@lists.linux.dev
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <B4F8D2FF-BBE9-4DE6-9971-70AC3535CF66@holtmann.org>
+References: <20260310194837.3078283-1-git@amaanq.com>
+To: Amaan Qureshi <git@amaanq.com>
+X-Mailer: Apple Mail (2.3864.400.21)
 
-The blanket `l_test_set_default_flags(L_TEST_FLAG_LITTLE_ENDIAN_ONLY)`
-marks all gvariant-message tests as little-endian-only, but the build
-and rewind tests work correctly on big-endian. This causes an XPASS
-(unexpected pass) on big-endian systems, which autotools treats as a
-test suite failure.
+Hi Amaan,
 
-This commit applies the flag only to the three parse tests that compare
-against hardcoded little-endian byte sequences.
----
- unit/test-gvariant-message.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+> The blanket `l_test_set_default_flags(L_TEST_FLAG_LITTLE_ENDIAN_ONLY)`
+> marks all gvariant-message tests as little-endian-only, but the build
+> and rewind tests work correctly on big-endian. This causes an XPASS
+> (unexpected pass) on big-endian systems, which autotools treats as a
+> test suite failure.
+>=20
+> This commit applies the flag only to the three parse tests that =
+compare
+> against hardcoded little-endian byte sequences.
+> ---
+> unit/test-gvariant-message.c | 14 +++++++-------
+> 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/unit/test-gvariant-message.c b/unit/test-gvariant-message.c
-index 2df7c9b..8f8589f 100644
---- a/unit/test-gvariant-message.c
-+++ b/unit/test-gvariant-message.c
-@@ -386,22 +386,22 @@ static void builder_rewind(const void *data)
- 
- int main(int argc, char *argv[])
- {
- 	l_test_init(&argc, &argv);
- 
--	l_test_set_default_flags(L_TEST_FLAG_LITTLE_ENDIAN_ONLY);
--
--	l_test_add("Basic 1 (parse)", parse_basic_1, &message_data_basic_1);
-+	/* Parse tests compare against little-endian reference data */
-+	l_test_add_data_func("Basic 1 (parse)", &message_data_basic_1,
-+				parse_basic_1, L_TEST_FLAG_LITTLE_ENDIAN_ONLY);
- 	l_test_add("Basic 1 (build)", build_basic_1, &message_data_basic_1);
- 
--	l_test_add("Complex 1 (parse)", check_complex_1,
--						&message_data_complex_1);
-+	l_test_add_data_func("Complex 1 (parse)", &message_data_complex_1,
-+				check_complex_1, L_TEST_FLAG_LITTLE_ENDIAN_ONLY);
- 	l_test_add("Complex 1 (build)", build_complex_1,
- 						&message_data_complex_1);
- 
--	l_test_add("Empty signature (parse)", check_empty_sig,
--						&message_data_empty_sig);
-+	l_test_add_data_func("Empty signature (parse)", &message_data_empty_sig,
-+				check_empty_sig, L_TEST_FLAG_LITTLE_ENDIAN_ONLY);
- 	l_test_add("Empty signature (build)", build_empty_sig,
- 						&message_data_empty_sig);
- 
- 	l_test_add("Message Builder Rewind Complex 1", builder_rewind,
- 						&message_data_complex_1);
--- 
-2.53.0
+
+this does not work.
+
+  CC       unit/test-gvariant-message.o
+  CCLD     unit/test-gvariant-message
+SKIP: unit/test-gvariant-message 1 - Basic 1 (parse) # SKIP =
+little-endian-only
+FAIL: unit/test-gvariant-message 2 - Basic 1 (build)
+SKIP: unit/test-gvariant-message 3 - Complex 1 (parse) # SKIP =
+little-endian-only
+PASS: unit/test-gvariant-message 4 - Complex 1 (build)
+SKIP: unit/test-gvariant-message 5 - Empty signature (parse) # SKIP =
+little-endian-only
+PASS: unit/test-gvariant-message 6 - Empty signature (build)
+PASS: unit/test-gvariant-message 7 - Message Builder Rewind Complex 1
+
+Regards
+
+Marcel
 
