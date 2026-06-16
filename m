@@ -1,68 +1,78 @@
 Received: from relay5-d.mail.gandi.net (relay5-d.mail.gandi.net [217.70.183.197])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C494234CFB9
-	for <ell@lists.linux.dev>; Mon,  8 Jun 2026 07:39:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB9A42F12A5
+	for <ell@lists.linux.dev>; Tue, 16 Jun 2026 09:19:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.183.197
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780904345; cv=none; b=gbv3GW1BbMQscc/rZPfo6h1abYtM0fCRR9B/JsGPcEQh3FsaR/Zdsvgilvlp9OfyDzHlbuuASzG6Z3aliNCjfc0tGaNrGXQua+GmRJwxPKMnGr1J1fjpV7l+Na4x2ak0PKwIAKokE0gujgVjvJkwSGz1Xu4NPuuzu7iZIx/rTao=
+	t=1781601595; cv=none; b=Pxp6jgkuTMnKTKhN8/R96oufjQPNAPPxivAN6cfB9JPrE47korYdESDblhObHXKs1h8AlWqFyIuFbywUYWF78I8gJZl881anErRmn9eEFYoMIuW6pA0vdSdQP1ZIpM/zBCkJSscw4k7MGbyGs8HNzO8xu4fZcxvVM4vtQxYjTv0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780904345; c=relaxed/simple;
-	bh=rUa2arXMcby8yNZi961qk+IZCd30tVhDkcw2EZ4bntU=;
-	h=Message-ID:Subject:From:To:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=N6O0O8mlkQURXMnPC5xsnbvdFU3Uc2oYnummi+4WtfTAaVNa1wxM4s+O6HJDSaAhNGbawXx+cjSxNMul6PyvCSg38vjwldjYdOPe9imKu1rVJ9sdsNOwUOlXm5LH0uIXfuBbe7lzHaKlWvCMQZDb1HQiKoRreMIe8r7C/SsJrx0=
+	s=arc-20240116; t=1781601595; c=relaxed/simple;
+	bh=S2akKUWJGE5D9zszWTPUZi2BItyE4jvck/tAm2d7fR4=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ns5mQBLIMePf5a3h2J37BGJ7GH5tHEAvlBvvN6yCLcoIeGSk4uCNdrfeIJ+MbtiokOpYT3/ONb3bZSCxoB+cZoXZL18xR7e5tOoYEwp43Rgfd6PAj4jG9bFM5OPznhCeF7aRy1/zTr4AbzQT3dLisrrWvERW81oWok4/RYUO0k8=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net; spf=pass smtp.mailfrom=hadess.net; arc=none smtp.client-ip=217.70.183.197
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hadess.net
-Received: by mail.gandi.net (Postfix) with ESMTPSA id 73E1D3ECCA
-	for <ell@lists.linux.dev>; Mon,  8 Jun 2026 07:38:55 +0000 (UTC)
-Message-ID: <d00a329fc475b6ae38c12e9100f6ec9a0c4e3ddb.camel@hadess.net>
-Subject: Re: [PATCH 0/4] More build fixes
+Received: by mail.gandi.net (Postfix) with ESMTPSA id 562573EC1C;
+	Tue, 16 Jun 2026 09:19:46 +0000 (UTC)
 From: Bastien Nocera <hadess@hadess.net>
 To: ell@lists.linux.dev
-Date: Mon, 08 Jun 2026 09:38:55 +0200
-In-Reply-To: <6b956cb2174d01b66a57dd394c22dac0308cd4cc.camel@hadess.net>
-References: <20260317143018.628844-1-hadess@hadess.net>
-	 <6b956cb2174d01b66a57dd394c22dac0308cd4cc.camel@hadess.net>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+Cc: Bastien Nocera <hadess@hadess.net>
+Subject: [PATCH 1/2] settings: Fix uninitialised use
+Date: Tue, 16 Jun 2026 11:19:29 +0200
+Message-ID: <20260616091937.3628329-1-hadess@hadess.net>
+X-Mailer: git-send-email 2.54.0
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 X-GND-Sasl: hadess@hadess.net
-X-GND-State: clean
 X-GND-Score: 0
-X-GND-Cause: dmFkZTGYCTAzrjuaADbDYCBTbZ9M/lbGnPvNCAtIXRhH5TRNGXPrLMBelb+BMSVEaJfSkvIrxEcvUOQKYUyEsnlEtAwohoojgfFojxjTrnz2taBkI0q4aKplUfUf61onLxUeELEK32qFGD1ERGv/Jrm66zvCpvj4sLFYXWCR8UOBRW0sqossn0oY2DHQaBv4N9PUmVToT8Hc9FgGob+5SAPmwlRSldKJU/Wi23HW40BfMzuHRwgjlyIJhQAPyEa61pDYzVoEO9I8jhwONZEJNTazA8NrgsgPI4MNHUwVpUA72VQ+eOZjaXP/880R4pn4RfBu1eFu5OoJiyB8G2cRZSXtj7gRRIyj2xMTdifLIoNtKYDcOIbyG1VBC6qo3GrehVGTIV/s8wtOG+Tj5rhJqnQjjtK8onIRxEurzZxLzu/XNlRQwnA35eD/wOjeOlaSlOOcayDuZ5Xo3twY9SZ/OaBTa6G/tEDO12qusyNcpqeJk0PBrOxCQR8lgbOp8eaHel9jOjbkoIcUR8hzwVCpT4u50JHp2JlwzCzfU0JibKyLIB8HKe0E0F6orL5R/S9rFdG9oPwxkj4cJkUHP3Q9jdul7wLWZqCJKPncDELxJErvVxXk1zE+TcDZchEDT7QfMcma475ixVLK06mfn/PIPR9bpcXKeGRq+0xQ+iHgQLnheaHQSg
+X-GND-Cause: dmFkZTEx2wStsKqIzcUxDlXd1yVAR3S7Jtsx8E015a0qEC9eeWs6N2WwUikKUpdZVKxaU0XnCTDhPxp8fjYT34yWOc04vOeS8dRMeZZU9o68slOxyu+bZT4KobZE7FcdypPPaJV7FT54RKTaYcxZAQqX4kIf6wUcI9EAvj1eYNybZvwfhjaWLYq5UPEvlhp+ozbMAtMB6Zy3P/H+lcPP0w4vJt/PfG68cCkmNm87SOE5ro73QP3fW1d7TukFigulnTKIpa2EzKdATD04BFWV8Sta/Se2k0ZoP8uyWzv3h+c3bNM2quG31MCkmZN8t+4qEyf4eezZ3bWKe7g86IGOmlmACki7SNNepsQ/zBfVyOs2T89XV2g3+W+Vl25BxVckEnDL7HdPqrXfJS6RVeY753vHkzh8zcJ4cSO0NGAA4jaze8qO2Xu7JAMBKdsHilBUJ8RUGbkPIkF4SoSW0jPKeR1A8NfFoGQV6VPCAmtCL3IRw/MZy03a3PZ8ra/40jUutyvfqkg2t6H8jVobR7zSzdcbHTOpllnG3sO/L8kJ7p4EbEB1H1A/yZCjJ+CSjDgC2q4FQaG4CcyGoVO255tz2GJc0Oz/V2AcC75i0Ca0qDFQ5LqDChx4JVYM9k7U58XX+9WPwPuHQ0RDkcWv4LH4TLUJkMgD5BgtYbTGpOY8G63vqCV71Q
+X-GND-State: clean
 
-Hello again,
+__attribute__(cleanup) variables need to be initialised in situ.
 
-Would it be possible to get those merged?
+In file included from ell/private.h:8,
+                 from ell/settings.c:36:
+In function 'auto_free',
+    inlined from 'l_settings_set_double' at ell/settings.c:1335:2:
+./ell/util.h:265:9: warning: 'buf' may be used uninitialized [-Wmaybe-uninitialized]
+  265 |         l_free(*p);
+      |         ^~~~~~~~~~
+ell/settings.c: In function 'l_settings_set_double':
+ell/settings.c:1335:33: note: 'buf' was declared here
+ 1335 |         L_AUTO_FREE_VAR(char *, buf);
+      |                                 ^~~
+In function 'auto_free',
+    inlined from 'l_settings_set_float' at ell/settings.c:1381:2:
+./ell/util.h:265:9: warning: 'buf' may be used uninitialized [-Wmaybe-uninitialized]
+  265 |         l_free(*p);
+      |         ^~~~~~~~~~
+ell/settings.c: In function 'l_settings_set_float':
+ell/settings.c:1381:33: note: 'buf' was declared here
+ 1381 |         L_AUTO_FREE_VAR(char *, buf);
+      |                                 ^~~
+---
+ ell/util.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Regards
+diff --git a/ell/util.h b/ell/util.h
+index e44ec69f8d97..69680e1f168e 100644
+--- a/ell/util.h
++++ b/ell/util.h
+@@ -236,7 +236,7 @@ static inline void l_put_be64(uint64_t val, void *ptr)
+ }
+ 
+ #define L_AUTO_FREE_VAR(vartype,varname) \
+-	vartype varname __attribute__((cleanup(auto_free)))
++	vartype varname __attribute__((cleanup(auto_free))) = NULL
+ 
+ #define L_ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+ 
+-- 
+2.54.0
 
-On Thu, 2026-04-16 at 11:18 +0200, Bastien Nocera wrote:
-> Hey,
->=20
-> Would it be possible to get a review on those?
->=20
-> Cheers
->=20
-> On Tue, 2026-03-17 at 15:28 +0100, Bastien Nocera wrote:
-> > Another batch of fixes for compiling on Alpine Linux and/or clang:
-> > https://github.com/mesonbuild/wrapdb/pull/2646
-> >=20
-> > Bastien Nocera (4):
-> > =C2=A0 unit: Fix incorrect basename usage
-> > =C2=A0 ell: Fix rawmemchr implementation warning in Alpine/clang
-> > =C2=A0 ell: Fix cert_pkcs12_pbkdf() warning under Alpine/clang
-> > =C2=A0 unit: Skip hwdb test when hwdb isn't available
-> >=20
-> > =C2=A0ell/cert-crypto.c |=C2=A0 4 ++++
-> > =C2=A0ell/missing.h=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0 4 ++++
-> > =C2=A0unit/test-hwdb.c=C2=A0 | 13 ++++++++++---
-> > =C2=A0unit/test-path.c=C2=A0 |=C2=A0 4 ++--
-> > =C2=A04 files changed, 20 insertions(+), 5 deletions(-)
