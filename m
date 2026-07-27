@@ -1,83 +1,84 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mslow3.mail.gandi.net (mslow3.mail.gandi.net [217.70.178.249])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8745217723;
-	Tue, 23 Jun 2026 19:19:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4F762E7390
+	for <ell@lists.linux.dev>; Mon, 27 Jul 2026 08:54:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.178.249
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782242391; cv=none; b=oSz204pgNYdtsglBuZcKP9s7/NntSfgWORSwWCO7xJuXdY/LusSmjKyD6tkqneTnxnOO8Ix729HDVrsVl9TW79QP22scRUMDUi4yZAtM/F/JtLuoLqVqiDsmoAw1WJZumj0p72y6y60s1BgNDazq8+a4CFVLOU8HgmdDGOpnmmg=
+	t=1785142443; cv=none; b=cyeiM1/gtjW3nQM2Ff9ozLFG3+DV2bdmVgQqS76TyPYAUhpbM3aZsDtgkHJ5Qgi11Ds0pCdoFuHAOahkgZN50xJX+cJT5bajmY+jXcYJ8EIGcnhR6BM3QD25F9Fzc9F2ATT2aSwVUjCe2IQl/Rncsac+o+qR2aY13+l5R3cmZcY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782242391; c=relaxed/simple;
-	bh=IP1C75csOqxm9rutyLOdY/Y1l5DuXUNjY9pJyU0uJEc=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=D8DZZrO5SEt756hU6lNjGAYX7xmejaYnAWg2f1HqqHFmshsdLlDRGRAXhO8ukICj9DyMD6LvCjtqCiglulggdBVBw6OxSm353XQYCzCAid/Fjz4Wd9aovPDR6fO/qi6qQIm1vIXWUm794VfxcjevVq+12yRVdQwJxhx8l6HrYE4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=c0g3Ipr/; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="c0g3Ipr/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C95AB1F000E9;
-	Tue, 23 Jun 2026 19:19:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782242390;
-	bh=RbRcMq45lJL75Wy8wrzm8CIwVwH9qDYXAES++CJmSQU=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=c0g3Ipr/jnG4piITeIEBSOZd4N9x40N5t4MWHm/ywG1uUiqB1E71RWdo/HFjXYnxt
-	 HGrI8PBxBn1qARMQA1/AZZIrudVLzHNI7OO+zogsuQ65sP6lGsNZCXrQTGCUEttASD
-	 ngVdGTMIWMgwddbgAOJ4WnyC3Cl9gjHogvKBzaZ21A3d/Mbb/nUrhI8qtqUdtfMWHy
-	 4L9qgOc68MA5CmWpwSMX6TV4BqUX4fahq27AXT0Xkbqk48do563/4MEYjjHU6sy+zz
-	 t4YxUF7kfgUdd8lpiQKNUTyNb1fxejLezz5+FMRzVdBOR+XXKXfixejT/7jozdOM9k
-	 uthHgc40SZnOQ==
-Date: Tue, 23 Jun 2026 19:19:48 +0000
-From: Eric Biggers <ebiggers@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Bastien Nocera <hadess@hadess.net>, linux-crypto@vger.kernel.org,
-	Herbert Xu <herbert@gondor.apana.org.au>,
-	Marcel Holtmann <marcel@holtmann.org>,
-	Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
-	linux-doc@vger.kernel.org, linux-api@vger.kernel.org,
-	linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
-	linux-bluetooth@vger.kernel.org, ell@lists.linux.dev
-Subject: Re: [PATCH] crypto: af_alg - Document the deprecation of AF_ALG
-Message-ID: <20260623191948.GD1850517@google.com>
-References: <20260430011544.31823-1-ebiggers@kernel.org>
- <7d08a6df54279e9915f5df6bd4e5e5dde52b4fe1.camel@hadess.net>
- <20260623164932.GA1793@sol>
- <CAHk-=wgNG=F3xO9PjL0RcKy3UWvq0Np9uZu+nFUQBAA8So9xdA@mail.gmail.com>
+	s=arc-20240116; t=1785142443; c=relaxed/simple;
+	bh=xNh0Aw1luUSAS9rFAuuzl0ksA1nFKZUOazx9xlX7v48=;
+	h=Message-ID:Subject:From:To:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=em01gksB1SdutkrCQnNTODf0tKzTReKqtWQ1WEml6mLIpeUY7UWyDwhSwkjg9tt+M8GHAr3hN/fYhHE5UAzMv4Fak4Tfej7PSJz70r2Qdf8I/eb0WMnfsr2MpfXXOqDagKSTDDf1JImJ1lf48q+mWIAsU2Og8y8aDpNJDinId7k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net; spf=pass smtp.mailfrom=hadess.net; arc=none smtp.client-ip=217.70.178.249
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hadess.net
+Received: from relay5-d.mail.gandi.net (relay5-d.mail.gandi.net [IPv6:2001:4b98:dc4:8::225])
+	by mslow3.mail.gandi.net (Postfix) with ESMTP id E679E58119C
+	for <ell@lists.linux.dev>; Mon, 27 Jul 2026 08:41:19 +0000 (UTC)
+Received: by mail.gandi.net (Postfix) with ESMTPSA id 067BC3EBBB
+	for <ell@lists.linux.dev>; Mon, 27 Jul 2026 08:41:11 +0000 (UTC)
+Message-ID: <0c65ebd79327e4eeb98e2e48cbeb185480a39787.camel@hadess.net>
+Subject: Re: [PATCH 0/4] More build fixes
+From: Bastien Nocera <hadess@hadess.net>
+To: ell@lists.linux.dev
+Date: Mon, 27 Jul 2026 10:41:11 +0200
+In-Reply-To: <d00a329fc475b6ae38c12e9100f6ec9a0c4e3ddb.camel@hadess.net>
+References: <20260317143018.628844-1-hadess@hadess.net>
+		 <6b956cb2174d01b66a57dd394c22dac0308cd4cc.camel@hadess.net>
+	 <d00a329fc475b6ae38c12e9100f6ec9a0c4e3ddb.camel@hadess.net>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAHk-=wgNG=F3xO9PjL0RcKy3UWvq0Np9uZu+nFUQBAA8So9xdA@mail.gmail.com>
+X-GND-Sasl: hadess@hadess.net
+X-GND-Score: 0
+X-GND-Cause: dmFkZTEkDgkSA1M4P9F+n+kzG2l43PUSj8CpT3JrHz6c1+GJhQrZTTEqf94VF8RN4PrU0PWEJvx2qRa4cjjzP3BDtm+HkeDyHHvo0bE6NvI+cLPLeDoPZJKq0sVRVPZLNpxKnou5h5g+uPBZgaiAZrngN4MkKg8CBxma/ps5bj67JVJkETLhXvZsRp88VNkPR+4MXl9NBHqH9VpIQEO91/fRg1kekYDatnyzJDBuUyBC8KlZOLGE3UqreBH4TEsrJOJNx0mnlCbl2B/ByG6MFtf7x9EscX4ycmTRGRqsNeO568uFC7b/JXWt5zvKXFSuvENmsifJV765HdIFgXzEu7C9J81EOgweGd4g2/9eMaqmLjVNIMeu/ZPnQ7vLunkLDsTzEgTcyu2GvC2Gqrlob4Pxo7j0vgp1UVWSPzA/+x7B1CjJHtThgugi5t+dyd09ImWDydLJs7+5/T18E6YM/GgMTbDP9jM8GApCcYOg4l1EfvMUWUYyZ3h+JUf0FgH+XldSwijd2jm+yHn515/IiJiZX0ERmHPHz1hnOO61QagwovOidDtpwCn+edPaAdKGL1WgLO7C5u3l0QF45qgt11Mx3EX1Gv1lEYLnKi8bk0eRqt3eXWno/FBcQzgHAk0RKmrAbLrjA0PF/AHdFwK9uInd7BHRt/Zu8UaTpweUST+U5nbLXA
+X-GND-State: clean
 
-On Tue, Jun 23, 2026 at 11:56:10AM -0700, Linus Torvalds wrote:
-> On Tue, 23 Jun 2026 at 09:51, Eric Biggers <ebiggers@kernel.org> wrote:
-> >
-> > We're aware of that and are taking it into account in the allowlist:
-> 
-> Note that if we can  just unconditionally make it depend on
-> CAP_NET_ADMIN, that would be good - independently of any allowlist.
-> 
-> Because if iwd and abluetoothd are the main two users, and both of
-> those already require CAP_NET_ADMIN anyway...
+Hello again,
 
-There's also cryptsetup, including unprivileged benchmarking and also
-(in theory) formatting support, and pre-7.0 versions of iproute2 which
-used it for computing SHA-1 hashes of BPF programs.
+Those patches were sent back in March, and I've pinged about getting
+them reviewed back in April and June, to no avail.
 
-If we broke unprivileged 'cryptsetup benchmark', some people would
-definitely notice.  However, since it's just a manually-run benchmark
-anyway, users could just run it with sudo.
+Could you please let me know what's missing to get those build patches
+reviewed and merged?
 
-I don't know about the iproute2 case.
+Regards
 
-It depends how aggressive we want to be.  My current proposal
-(https://lore.kernel.org/linux-crypto/20260622234803.6982-1-ebiggers@kernel.org/)
-has the entries in the allowlist marked as either privileged or
-unprivileged.  There are just a few unprivileged ones, for cryptsetup
-and iproute2 as mentioned.  But we could try doing away with the
-unprivileged ones entirely and see who complains.
-
-- Eric
+On Mon, 2026-06-08 at 09:38 +0200, Bastien Nocera wrote:
+> Hello again,
+>=20
+> Would it be possible to get those merged?
+>=20
+> Regards
+>=20
+> On Thu, 2026-04-16 at 11:18 +0200, Bastien Nocera wrote:
+> > Hey,
+> >=20
+> > Would it be possible to get a review on those?
+> >=20
+> > Cheers
+> >=20
+> > On Tue, 2026-03-17 at 15:28 +0100, Bastien Nocera wrote:
+> > > Another batch of fixes for compiling on Alpine Linux and/or
+> > > clang:
+> > > https://github.com/mesonbuild/wrapdb/pull/2646
+> > >=20
+> > > Bastien Nocera (4):
+> > > =C2=A0 unit: Fix incorrect basename usage
+> > > =C2=A0 ell: Fix rawmemchr implementation warning in Alpine/clang
+> > > =C2=A0 ell: Fix cert_pkcs12_pbkdf() warning under Alpine/clang
+> > > =C2=A0 unit: Skip hwdb test when hwdb isn't available
+> > >=20
+> > > =C2=A0ell/cert-crypto.c |=C2=A0 4 ++++
+> > > =C2=A0ell/missing.h=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0 4 ++++
+> > > =C2=A0unit/test-hwdb.c=C2=A0 | 13 ++++++++++---
+> > > =C2=A0unit/test-path.c=C2=A0 |=C2=A0 4 ++--
+> > > =C2=A04 files changed, 20 insertions(+), 5 deletions(-)
