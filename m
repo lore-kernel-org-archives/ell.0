@@ -1,84 +1,90 @@
-Received: from mslow3.mail.gandi.net (mslow3.mail.gandi.net [217.70.178.249])
+Received: from relay6-d.mail.gandi.net (relay6-d.mail.gandi.net [217.70.183.198])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4F762E7390
-	for <ell@lists.linux.dev>; Mon, 27 Jul 2026 08:54:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.178.249
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99B7D3624AE
+	for <ell@lists.linux.dev>; Wed, 12 Aug 2026 09:12:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.70.183.198
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785142443; cv=none; b=cyeiM1/gtjW3nQM2Ff9ozLFG3+DV2bdmVgQqS76TyPYAUhpbM3aZsDtgkHJ5Qgi11Ds0pCdoFuHAOahkgZN50xJX+cJT5bajmY+jXcYJ8EIGcnhR6BM3QD25F9Fzc9F2ATT2aSwVUjCe2IQl/Rncsac+o+qR2aY13+l5R3cmZcY=
+	t=1786525936; cv=none; b=p8JxFgskz39jO8yfF/ugw4V8Tj8PGWRDKUiP+lD3MDE9/h+dYhsm00bPsUk8U0fkqJ6gGL9ZQbm3z1HG5e5wWshUJpX5GP6aGP9tb7fps79vltHhMTVPrW0m4B2yzTsrOH5NtMXvZsHaomXjd3K8M7mFpT1Ka8LEv/mhQ7QjlQM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785142443; c=relaxed/simple;
-	bh=xNh0Aw1luUSAS9rFAuuzl0ksA1nFKZUOazx9xlX7v48=;
-	h=Message-ID:Subject:From:To:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=em01gksB1SdutkrCQnNTODf0tKzTReKqtWQ1WEml6mLIpeUY7UWyDwhSwkjg9tt+M8GHAr3hN/fYhHE5UAzMv4Fak4Tfej7PSJz70r2Qdf8I/eb0WMnfsr2MpfXXOqDagKSTDDf1JImJ1lf48q+mWIAsU2Og8y8aDpNJDinId7k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net; spf=pass smtp.mailfrom=hadess.net; arc=none smtp.client-ip=217.70.178.249
+	s=arc-20240116; t=1786525936; c=relaxed/simple;
+	bh=QpWcfaKmF3WV58cDSiEnRCPTQ9E/+cttkznqc7+Y5rc=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=jINKglmfRs/QjNFmZqZesNl7K3D7hqBDt2vOeVfkKI5QAj2oNlBAKq0HzQp+Pm8Dkl/gWQqciExdzzoxfrn/BujMyyd5twB25dVmy4LhUi7q4rHHWZWBTC6wY+NKxIniO4Del0x3wGbNvvpDsTIw8fXIqB8E/CvPapi79PITTt0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net; spf=pass smtp.mailfrom=hadess.net; arc=none smtp.client-ip=217.70.183.198
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=hadess.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hadess.net
-Received: from relay5-d.mail.gandi.net (relay5-d.mail.gandi.net [IPv6:2001:4b98:dc4:8::225])
-	by mslow3.mail.gandi.net (Postfix) with ESMTP id E679E58119C
-	for <ell@lists.linux.dev>; Mon, 27 Jul 2026 08:41:19 +0000 (UTC)
-Received: by mail.gandi.net (Postfix) with ESMTPSA id 067BC3EBBB
-	for <ell@lists.linux.dev>; Mon, 27 Jul 2026 08:41:11 +0000 (UTC)
-Message-ID: <0c65ebd79327e4eeb98e2e48cbeb185480a39787.camel@hadess.net>
-Subject: Re: [PATCH 0/4] More build fixes
+Received: by mail.gandi.net (Postfix) with ESMTPSA id 2019F3EB8E;
+	Wed, 12 Aug 2026 09:12:07 +0000 (UTC)
 From: Bastien Nocera <hadess@hadess.net>
 To: ell@lists.linux.dev
-Date: Mon, 27 Jul 2026 10:41:11 +0200
-In-Reply-To: <d00a329fc475b6ae38c12e9100f6ec9a0c4e3ddb.camel@hadess.net>
-References: <20260317143018.628844-1-hadess@hadess.net>
-		 <6b956cb2174d01b66a57dd394c22dac0308cd4cc.camel@hadess.net>
-	 <d00a329fc475b6ae38c12e9100f6ec9a0c4e3ddb.camel@hadess.net>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+Cc: Bastien Nocera <hadess@hadess.net>
+Subject: [PATCH v2 1/2] settings: Fix uninitialised use
+Date: Wed, 12 Aug 2026 11:11:20 +0200
+Message-ID: <20260812091158.2134810-1-hadess@hadess.net>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Subscribe: <mailto:ell+subscribe@lists.linux.dev>
 List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 X-GND-Sasl: hadess@hadess.net
-X-GND-Score: 0
-X-GND-Cause: dmFkZTEkDgkSA1M4P9F+n+kzG2l43PUSj8CpT3JrHz6c1+GJhQrZTTEqf94VF8RN4PrU0PWEJvx2qRa4cjjzP3BDtm+HkeDyHHvo0bE6NvI+cLPLeDoPZJKq0sVRVPZLNpxKnou5h5g+uPBZgaiAZrngN4MkKg8CBxma/ps5bj67JVJkETLhXvZsRp88VNkPR+4MXl9NBHqH9VpIQEO91/fRg1kekYDatnyzJDBuUyBC8KlZOLGE3UqreBH4TEsrJOJNx0mnlCbl2B/ByG6MFtf7x9EscX4ycmTRGRqsNeO568uFC7b/JXWt5zvKXFSuvENmsifJV765HdIFgXzEu7C9J81EOgweGd4g2/9eMaqmLjVNIMeu/ZPnQ7vLunkLDsTzEgTcyu2GvC2Gqrlob4Pxo7j0vgp1UVWSPzA/+x7B1CjJHtThgugi5t+dyd09ImWDydLJs7+5/T18E6YM/GgMTbDP9jM8GApCcYOg4l1EfvMUWUYyZ3h+JUf0FgH+XldSwijd2jm+yHn515/IiJiZX0ERmHPHz1hnOO61QagwovOidDtpwCn+edPaAdKGL1WgLO7C5u3l0QF45qgt11Mx3EX1Gv1lEYLnKi8bk0eRqt3eXWno/FBcQzgHAk0RKmrAbLrjA0PF/AHdFwK9uInd7BHRt/Zu8UaTpweUST+U5nbLXA
 X-GND-State: clean
+X-GND-Score: 0
+X-GND-Cause: dmFkZTGjyYnFldSx0anmcRSlmRYS9fyJLhOLdl920mIzQPFcIhGoZI64w/f3IP2wWDQUASX7r5ToyokAgvSBqOCPcY8kxNS6CUXKeboz5hEiDgzrkyictDP9pTljPgdprlMECMkODkdLPDb0+FgdWWe5DEGLsZz7nrY5adrvgmYJXGsph19diSJCQgqxI+UhCtJaV+EogBpBNm6gVZroerUf4WJJ6NHw4uWDalbeSGVSadvBifL9GyoR7JMZZ0sMiet4FDhEhV4DZi2ivcdinHVMZbN7yInl7W+GCzZ3eLlWrPzW1HFaBpkq0SaYCIl/fLmxWjm4CoEB9ZPp+d1BfKExQEY5tPc+33zLBaUiJdbAo/+UCVqAtoZW6xCuHpWbNlsxkNPFvnegT7hh3mZnASb5up4UGeXdXddQHGAw7YWrCQ93FTNu+/P+XUgWOo+sSbOc+PtIuAgjqLouJv8vgYnRwMzsQQSNiVtf4rmO3C7AtQPT8znxU2c0mTMvza+L7VzBjoqh0vwAQLxPOyINK9f2rvW3xI2M4dnPQPMEJMqfDMT/4f2RAd3612KxqHQtE9cHUNTLDZCT8tHKzcZUJ/Vv323Hs0TL06mjkB/WUFW3h/aOg4XGZ9bi18QN4KmateFD0YbZTBtA34r265sNojD/+4858629jIqIbC/GE+oTP2ghcg
 
-Hello again,
+__attribute__(cleanup) variables need to be initialised in situ.
 
-Those patches were sent back in March, and I've pinged about getting
-them reviewed back in April and June, to no avail.
+In file included from ell/private.h:8,
+                 from ell/settings.c:36:
+In function 'auto_free',
+    inlined from 'l_settings_set_double' at ell/settings.c:1335:2:
+./ell/util.h:265:9: warning: 'buf' may be used uninitialized [-Wmaybe-uninitialized]
+  265 |         l_free(*p);
+      |         ^~~~~~~~~~
+ell/settings.c: In function 'l_settings_set_double':
+ell/settings.c:1335:33: note: 'buf' was declared here
+ 1335 |         L_AUTO_FREE_VAR(char *, buf);
+      |                                 ^~~
+In function 'auto_free',
+    inlined from 'l_settings_set_float' at ell/settings.c:1381:2:
+./ell/util.h:265:9: warning: 'buf' may be used uninitialized [-Wmaybe-uninitialized]
+  265 |         l_free(*p);
+      |         ^~~~~~~~~~
+ell/settings.c: In function 'l_settings_set_float':
+ell/settings.c:1381:33: note: 'buf' was declared here
+ 1381 |         L_AUTO_FREE_VAR(char *, buf);
+      |                                 ^~~
+---
+Changes since v1:
+- Fix the fix to note create more warnings
 
-Could you please let me know what's missing to get those build patches
-reviewed and merged?
+ ell/settings.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Regards
+diff --git a/ell/settings.c b/ell/settings.c
+index b46d00bd2899..01307ba72b87 100644
+--- a/ell/settings.c
++++ b/ell/settings.c
+@@ -1332,7 +1332,7 @@ LIB_EXPORT bool l_settings_set_double(struct l_settings *settings,
+ 					const char *group_name, const char *key,
+ 					double in)
+ {
+-	L_AUTO_FREE_VAR(char *, buf);
++	L_AUTO_FREE_VAR(char *, buf) = NULL;
+ 
+ 	buf = l_strdup_printf("%f", in);
+ 
+@@ -1378,7 +1378,7 @@ LIB_EXPORT bool l_settings_set_float(struct l_settings *settings,
+ 					const char *group_name, const char *key,
+ 					float in)
+ {
+-	L_AUTO_FREE_VAR(char *, buf);
++	L_AUTO_FREE_VAR(char *, buf) = NULL;
+ 
+ 	buf = l_strdup_printf("%f", (double)in);
+ 
+-- 
+2.55.0
 
-On Mon, 2026-06-08 at 09:38 +0200, Bastien Nocera wrote:
-> Hello again,
->=20
-> Would it be possible to get those merged?
->=20
-> Regards
->=20
-> On Thu, 2026-04-16 at 11:18 +0200, Bastien Nocera wrote:
-> > Hey,
-> >=20
-> > Would it be possible to get a review on those?
-> >=20
-> > Cheers
-> >=20
-> > On Tue, 2026-03-17 at 15:28 +0100, Bastien Nocera wrote:
-> > > Another batch of fixes for compiling on Alpine Linux and/or
-> > > clang:
-> > > https://github.com/mesonbuild/wrapdb/pull/2646
-> > >=20
-> > > Bastien Nocera (4):
-> > > =C2=A0 unit: Fix incorrect basename usage
-> > > =C2=A0 ell: Fix rawmemchr implementation warning in Alpine/clang
-> > > =C2=A0 ell: Fix cert_pkcs12_pbkdf() warning under Alpine/clang
-> > > =C2=A0 unit: Skip hwdb test when hwdb isn't available
-> > >=20
-> > > =C2=A0ell/cert-crypto.c |=C2=A0 4 ++++
-> > > =C2=A0ell/missing.h=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0 4 ++++
-> > > =C2=A0unit/test-hwdb.c=C2=A0 | 13 ++++++++++---
-> > > =C2=A0unit/test-path.c=C2=A0 |=C2=A0 4 ++--
-> > > =C2=A04 files changed, 20 insertions(+), 5 deletions(-)
