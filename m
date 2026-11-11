@@ -1,120 +1,82 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=202.12.124.159
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=212.227.17.20
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793389714;
-	b=j9d8YYSueM56/UjnhYljCa6HZ+JiiA6aqOjwrjRbB/Gg77CqhcyIFniF3RHDqs/5agZG
-	 I+vdrnL9bjlUoooW9+H8lFoWY3DNVR51/lIZyfKWUKTHUpvP1/ozmzrswCZZfZPC5N39j
-	 +terTd4UeLnRZFn/b8bA4peEC9PyozrodalNK+x49zNXScXmR5r/K26vwE2/GSXl+1hFR
-	 GXVT3ZuCxUASkc28TjL3dU3MG4ZpmN7JNA1vRKr0JwQQf9emZWWbd4yOGjBAi9S1+vvM1
-	 FJBwD4PVLuJQY0fs/+x8q8Id21AWs6EnxmZSJbIUmMbakbdRINPRnVgYdg3J3hOfrIw==
+	t=1794413970;
+	b=achnUWpPPaniNH2HrkJa3tAGzGwQQWSXahsAGgSBwg3LhAAGGITAavXwzcMSl0J9Cm5l
+	 A58LvBH4oRwSfSU/f0OePh0b2N3rhfXR0IP3d1WXdb4OgTCyml/N7jjewhlHTTl9x+8E0
+	 /tnOWH2suasw7EhkrwSKkJEGIg2PVui7XXE/+hTC8GGn6b0ZsmkHDykmCpp+j7QXsI6Gc
+	 PDbpTQCB+DThbvYwE16EEzxrbQKQaM4iRCEtMHt25Jb05hSagbrJkwTZDFJXZT/S/Jh3s
+	 Zzf9kzAHww0OFwuzmKivzju8/myek+ru2nbH/4N3XZoZVOkemGcvLpjjn5ytxpigo5A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793389714;
-	h=DMARC-Filter:Received:Received:DKIM-Signature:DKIM-Signature:
-	 X-DKIM2-Info:DKIM2-Signature:X-DKIM2-Info:Message-Instance:
-	 X-ME-Sender:X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:
-	 Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:
-	 References:MIME-Version:Content-Transfer-Encoding;
-	bh=etkPtqdN3KBEBbgfgkjBZeEWuzwEAGz4ihEmoZtbp0w=;
-	b=wBXunot6ig8VlppQbntYyle7nSRDpfEqdjWNYdOs5H9AEli8eSZHPxxL5Rk6bOKH7/xl
-	 TTUvv4p1r4zcuiTIQolh3uY1fgVKDzxJ76JZ7M+HKHHzIkXzrzFwhxtfQwO9+vhpOpShL
-	 /QtZ6sUZSRHS3NK3pZLjZ9koYyhskWejfo7ahCUKLDfG+X433zo2NF8nlNRTF2Fzl+v/Z
-	 m+Z+z5D9UbUtpA/2NyI5MSmKX3tO2TVjsJkSSuB9jfsuu5wZvlbaKd93BVmj4GfijPDd/
-	 5wtTBJ3FNV00n/FVSEKU+uGvX99Y+PS3d1dw4s6KjjnmfOwBF5FNptVwLXY0CQigRrg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794413970;
+	h=DMARC-Filter:DKIM2-Signature:Message-Instance:DKIM-Signature:
+	 X-UI-Sender-Class:Received:From:To:Cc:Subject:Date:Message-ID:
+	 X-Mailer:MIME-Version:Content-Transfer-Encoding:X-Provags-ID:
+	 X-Spam-Flag:UI-OutboundReport;
+	bh=0n/XOOfVUiXylXawprcUPz/nyE3SrDlWH2QD2dFNhgU=;
+	b=llcBQrrXCHPYxYAK9DnUsQJxiUFhKvvDST6hx9ZZ1Ebe5zR+P62tW2BN+M8ArHTflFW7
+	 gqF7X9wy4oiERtBn5ymC8Y2tHgQCcV08YFDLssphHy1KztsnHP4p4/6QE8sUB6Bkq2LLF
+	 ew0i0HiRCWHk6Rqi7Gv/6I/sb3e2VV9wrSvpTjShVXR9ZiGYYfdRPV2nKobGkL4AfaQW1
+	 3WnOUwvDq7v8OxCsvedtd13UlLDsCTs0rjAQZa3CLOJuubzrO8+tiH3PwMtPHjVkUwhHZ
+	 x7ne8RaRixWMXvh8pUlG6GYIgu3yyry8g/UbMTQ8hKu8X9sqW6mRKT7WAzfOtg56E8Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=cteubner.net;
-	spf=pass smtp.mailfrom=cteubner.net;
-	dkim=pass header.d=cteubner.net header.i=@cteubner.net header.a=rsa-sha256 header.s=fm1 header.b=DKZ6gWdf;
-	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=lXnwKPSz;
-	arc=none smtp.remote-ip=202.12.124.159
-Received: from fhigh-b8-smtp.messagingengine.com (fhigh-b8-smtp.messagingengine.com [202.12.124.159])
+	dmarc=pass header.from=gmx.net;
+	spf=pass smtp.mailfrom=gmx.net;
+	dkim=pass header.d=gmx.net header.i=alexander.hoelzl@gmx.net header.a=rsa-sha256 header.s=s31663417 header.b=BclIHpQw;
+	arc=none smtp.remote-ip=212.227.17.20
+Received: from mout.gmx.net (mout.gmx.net [212.227.17.20])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange ECDHE (prime256v1) server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 743A0606A32D
-	for <ell@lists.linux.dev>; Fri, 30 Oct 2026 19:48:33 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 743A0606A32D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=cteubner.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cteubner.net
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76B7D606A32D
+	for <ell@lists.linux.dev>; Wed, 11 Nov 2026 16:19:29 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 76B7D606A32D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=gmx.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmx.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=cteubner.net header.i=@cteubner.net header.a=rsa-sha256 header.s=fm1 header.b=DKZ6gWdf;
-	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm2 header.b=lXnwKPSz
-Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id E62227A00B3
-	for <ell@lists.linux.dev>; Fri, 30 Oct 2026 15:48:32 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-01.internal (MEProxy); Fri, 30 Oct 2026 15:48:32 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=cteubner.net; h=
-	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:subject:subject:to:to; s=fm1; t=1793389712; x=
-	1793476112; bh=etkPtqdN3KBEBbgfgkjBZeEWuzwEAGz4ihEmoZtbp0w=; b=D
-	KZ6gWdfPrCkke8lCDhTMzHI2EHrJYUYhhSAAD+v7/WPzSv3v/srBnIc0VQW1FjlS
-	p11gI/C90k45kQwCk25uQ1IEuK3Ay/9ZPVJvA2nCMBmOz9iEBVIcKO894N68wTGr
-	nDU7Bk5uyhDchqEP3X+fSoyRMTyjn+hxqUyxZCK1d5919p0U4unvUEukw6P4XwwZ
-	JvkRJHcg0HJj8O4/PMvjtViKMZU3fYAGjOFHUhKFLgHIqnlsRho3kPKhYsq0o39f
-	KjD6Vy/nF0JFmW4Bvy+2Ym/eZKdq5n5mKDpQv5iILGwGv8kPpOjDq3jB/rWLrO2q
-	YsPSy3U/sdLh43SswsIMw==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm2; t=1793389712; x=1793476112; bh=e
-	tkPtqdN3KBEBbgfgkjBZeEWuzwEAGz4ihEmoZtbp0w=; b=lXnwKPSzpdlvcPQQe
-	Pve11Wwo3y5r+5kfgRCFc1cyYhX7TnFrOenXRZrOHYUW4odMfS7e2QONn8qh5n6m
-	zIpxb/F83RTYMlGozcC6c9mxOhP25wRF4arG1p+hIydhcFtet4iho09CaXSgtY/l
-	0RCewZSf+bKq8azjUStiFyOH34TwAhe0Zo7ZAy3mYOYmZD+zmLUSpdIfCHsdi4dp
-	4Qhjl9QNExHFdf2EiHlqJ4lH1v5TI6HF0TV5uqTK6dX4ibZaLwodTmx1yyr58KxX
-	K+JMqhzSc9K0vVAEepbF9oNIcb5YaHH0NhY2p1tGvesGmeqgj0ZL6c8gzyUp29ga
-	PmjZg==
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-08;
-	repo=github.com/dkim2wg/interop; date=2026-10-28; sw=lmtpprox;
-	action=sign d=cteubner.net a=rsa-sha256;
-DKIM2-Signature: i=1; m=1; t=1793389712; d=cteubner.net;
-	mf=PGNhcmxvQGN0ZXVibmVyLm5ldD4=;
-	rt=PGVsbEBsaXN0cy5saW51eC5kZXY+;
-	s=fm1:rsa-sha256:Au1CgDCneyZFyrbVXHGXvMgDSn/VLUyDx6nXB48uo76zFEb
-	R6b/kG74C7Vyq3R3dAc54GDC0mDPHoSVZl3awdL5TUDZjy6sYmKaFThNwXX9KT8p
-	AN9RevzUidtbIvWGjMueLfmtNGOl0kHZQDJ2cVcvU8QG4Eq5vRyPaIfvGQ8AWgZQ
-	/o2pEGODWSY/yoQj7sMt+slOO/bXum4yU/MPLn2h0hb5LsGOGoojC6A3755cfiqx
-	whKE9RoWQ5zXHSTrtj1YvmebsiqAPeShleDVuJ7YXcdyglyNdKUGSmapK0q+0MMo
-	FyQdDghWCr7wxMAZWcZDQ6w5vdVXfDa9AsNBNeQ==;
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-08;
-	repo=github.com/dkim2wg/interop; date=2026-10-28; sw=lmtpprox;
-	action=mi-m=1; hc=11;
-	hn=cc,content-transfer-encoding,date,feedback-id,from,
-	in-reply-to,message-id,mime-version,references,subject,to;
-Message-Instance: m=1; h=sha256:aG6P4N85idUdDk9AX69y8/9QqfvgVi7rBbx25W2q9Eg=:tBOSIlhpb63UryCP17OBdgc6HUvdlTUPMa8xbRG+8H0=;
-X-ME-Sender: <xms:kPTkanJ0WpQfAK7EWrgTgpWe9wSI8Ei66xQFkGa7H05CWfyCK5wZGQ>
-    <xme:kPTkahKgzXze03-53vZ9ROu-xHXX7P_RHEZpH0SzpiRpcVUZsQ_W7AHj4ApCOI8zT
-    uTS8Bv7LUpuSnvbOIh3S2aGkk9tstEItEcW8HskHJO45X-L0bhWTA>
-X-ME-Received: <xmr:kPTkatVJPkKumK-5joN87WLxHS7BftXFVmYaIsWNCu5Tge0bsS1bZQ>
-X-ME-Proxy-Cause: dmFkZTGf0Cznyis8l85h8TWbzeIH1oC+xjY6M5Sp8tOoLGAeLowKDER93ScZdNis3riehv
-    9C5JNQOwvxu4Vj/8xX5a+8yiVxpjI4+NdWDZvilppa60UYFFyssIIueNbIV9SGiokMAHRo
-    mst1a59i3SeJ4dEL+E4/75rhfYjWYsVnKE6u/XkC3k0IcK5a0go0A/u/h19+zfB4AG1I1U
-    Cs3136ZCUbIsPQq7n3pphwxF69bxKdCJwzpuCOIuf8pKsIJ/WTtdYNLDQHAsjnV0pzH5AW
-    9STcnhfR3C3EnnGukNXTQXHQpIK6DTz/rgtivaVnMeYiT1T7b48eNgmz+6nwpNK4GG/nqc
-    TKhzAWtTBSrevFDeXW/BQiTI3FK6cWlFI3sS9MBEpJJ/gXCSPgDRT2ry7NNoCZWNG73/KA
-    Gk7SvisCl/0Uda2LLzPKpqonaYfN7HUf/mkfdZeoGXGnp25/l30F1BCHM4idfG5UGRwRN7
-    tkkHfffInYqE6v6RUr0zBEzwOvMSXf/OrCapEasPSJxwKmPqjO9Ut+qXLUoTdGwtoczlr4
-    TfeIkF70JOlHZBKplebh/neLlkTf61nt4ujcmvSlii48c9I+ZDXHDAV7WcLoBd+nEdV7WT
-    zE1H5SVQ9SM9ImSVrSIf5yS/IkskmCks7tnu0rx8yi3XWom+cz3ERZp4PhhA
-X-ME-Proxy: <xmx:kPTkargWERmjp5NgznJa3LA3oGM25NkLxDLGibSmDNgzM-_N4jYaPA>
-    <xmx:kPTkag96FnKzbRM2NW8W5pOajMy4ZMoLZxPXU7GCO9HwAzzeWKcqXQ>
-    <xmx:kPTkatBdp-oyHMT7J3to5PoVSxC6aCK6jRxPS-T8PPIQdyx-IY9WsA>
-    <xmx:kPTkalKE4P4L9zni1Ky91Jy0a7WLClYBwTuAFC0filfXLLY9-fzBzA>
-    <xmx:kPTkaqijjDp6lPmk8x7BLVr2eCqwnOOV7d80rz7Kg8sYXOqnnL_6sKKE>
-Feedback-ID: i3cc944ce:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 30 Oct 2026 15:48:32 -0400 (EDT)
-From: Carlo Teubner <carlo@cteubner.net>
-To: ell@lists.linux.dev
-Cc: Carlo Teubner <carlo@cteubner.net>
-Subject: [PATCH 2/2] unit: Test DHCP lease domain name handling
-Date: Fri, 30 Oct 2026 19:48:00 +0000
-Message-ID: <179334935256.3.7554184553168312552@cteubner.net>
-X-Mailer: git-send-email 2.56.0
-In-Reply-To: <179334935255.3.16564933583527517394@cteubner.net>
-References: <528838ce-7599-4268-b7a1-0cc9d7d689bc@app.fastmail.com> <179334935255.3.16564933583527517394@cteubner.net>
+	dkim=pass (2048-bit key, unprotected) header.d=gmx.net header.i=alexander.hoelzl@gmx.net header.a=rsa-sha256 header.s=s31663417 header.b=BclIHpQw
+DKIM2-Signature:  i=1; m=1; t=1794413967;
+ mf=PGFsZXhhbmRlci5ob2VsemxAZ214Lm5ldD4=;
+ rt=PGVsbEBsaXN0cy5saW51eC5kZXY+;
+ d=gmx.net;
+ s=s31663417:rsa-sha256:cGTTaKEKGhbyWabIKqOZJBSnLQ0q
+   c7dorjeNhsMOmp3+UID3ncwqPZkNuquL7XqXRoh7yB5IDxeLe50mkWWtUlfoyehTHlaDZyt/X78
+   aOHACXkllK2uZxkWo5ZObnXh9AQsammMGZsL/xWBktGcnf7tgwKJGl92AbP8CVzC096v1tH9cCL
+   w4d1pdHU/CSFCPyCoLY9uWOPs+84YQe4frtQwpL5C1rChziwILsZehaf3POnr9K8KrYPGlqYPZ8
+   +/SawBrY5hnUIaJLGhqINZqhf9Z4NieqbXeWpMX9WDiB2QsgT6qpv4hm4NiA64omezl7NBCIUeH
+   lu0rGPwASelYdQ==;
+Message-Instance:  m=1;
+ h=sha256:
+   ulpar99XdlXLkzOVLIcxnsj7O5FOApAyqsp7tQU9cwg=:
+   lui/X5FCZLmMP2GIEIHwnW68KR/7GeRe/+On88m/hT8=,
+  sha512:
+   yOCM/6kiT+Y7DMU1fQXA422LEz86VMkrNLcEY5wVukkbbnBvsz/57Wv7MY2Q3V6MJR+VrIyghEDH2Ld/Nug/HA==:
+   OuikgOfuuxYz9vT7xTQPVyT0iQUGZMmEnJwRoJcOFzpRyqsuy+MMkruEnOu1Ho0RRcY/EWHGqVx0b+SrsCSx9w==;
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmx.net;
+	s=s31663417; t=1794413967; x=1795018767;
+	i=alexander.hoelzl@gmx.net;
+	bh=0n/XOOfVUiXylXawprcUPz/nyE3SrDlWH2QD2dFNhgU=;
+	h=X-UI-Sender-Class:From:To:Cc:Subject:Date:Message-ID:
+	 MIME-Version:Content-Transfer-Encoding:cc:
+	 content-transfer-encoding:content-type:date:from:message-id:
+	 mime-version:reply-to:subject:to;
+	b=BclIHpQwoh2rLsbu5tFu1AdIt9pjFi6zgkp4cm5IsgGXUlgMWpdEun6Ddhz/nLof
+	 56gZOv6EdLlp4m8ZRiWH6bPtlw3JbhiejYdatIjhJt61DrOYwE44Bv0oDXHP9OGDn
+	 fUtJeDBl8itWeEgKq9hx05tuzK9txk8lTj78SvKWQqq/xKm3PJQTsfcXtqCPEXou1
+	 k9RiZbJG9JpL0+CM0ncxwJS8rN3e4VR+2gUpAcjj7Eov8RbOIWQKnWqf1kMgYDC9Y
+	 i6LblI4hG1dHISwG9PjXMaUEXaNJSwIt8kczS0UoP9G4Mm+ijXDUdICheRL4AAFZS
+	 Y6ldG9Tymnj6vb22JQ==
+X-UI-Sender-Class: 724b4f7f-cbec-4199-ad4e-598c01a50d3a
+Received: from client.hidden.invalid by mail.gmx.net (mrgmx105
+ [212.227.17.168]) with ESMTPSA (Nemesis) id 1MBDnC-1xK4J71iMo-00C0xQ; Wed, 11
+ Nov 2026 17:19:27 +0100
+From: =?UTF-8?q?Alexander=20H=C3=B6lzl?= <alexander.hoelzl@gmx.net>
+To: marcel@holtmann.org
+Cc: ell@lists.linux.dev,
+	=?UTF-8?q?Alexander=20H=C3=B6lzl?= <alexander.hoelzl@gmx.net>
+Subject: [PATCH] dhcp6: fix incoming RAs being ignored
+Date: Wed, 11 Nov 2026 17:19:25 +0100
+Message-ID: <20261111161925.155585-1-alexander.hoelzl@gmx.net>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
 List-Post: <mailto:ell@lists.linux.dev>
@@ -124,145 +86,133 @@ List-Unsubscribe: <mailto:ell+unsubscribe@lists.linux.dev>
 List-Owner: <mailto:ell+owner@lists.linux.dev>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: quoted-printable
+X-Provags-ID: V03:K1:WMAKFe1XYIUoUplf2FzC40rE6PlB3GwohJlPu4d0W2t0PN9Cu61
+ fb/KZkFLgA+zLLKrrdxswh4PoM8cAYsBxFhAc0eb4xVpkRiCUkfL3gt9widQZvj6Kx2fVov
+ wh4d8yaYX32a1r8uAVoSZcncz0CefL3zz4N7u+okqPgqlH3fWj9cf6f6di1omv9CQW25qIt
+ rVai6LEbURa3ZqXOYs/Tw==
+X-Spam-Flag: NO
+UI-OutboundReport: notjunk:1;M01:P0:Q3rZ2dcWPP8=;Rrv4q02hVtV+gUv0emqUJnXDyHY
+ 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
+ Vr6a9zEHCJeGI28SpeShXBise/gtVquU
 
-Exercise lease parsing with root domain values, including a trailing NUL
-and the empty root representation. Verify that the domain is omitted
-while the server ID, lifetime, netmask, gateway and DNS server are
-retained, including options following the domain name.
+The dhcp6 code ignores the event_data pointer for incoming
+RAs and instead reads stale data cached by the client.
+As it is zero initalized this effectivley makes the client assume
+that every RA has neither the managed nor the other flag set.
 
-Also cover ordinary domain names with and without a trailing NUL, and
-verify that localhost names, embedded NULs, invalid UTF-8 and
-zero-length values are still rejected.
+Fix this by using the event_data pointer instead of cached data.
+=2D--
+ ell/dhcp6.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
----
- unit/test-dhcp.c | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 102 insertions(+)
+diff --git a/ell/dhcp6.c b/ell/dhcp6.c
+index 2022e42..0bcf8c5 100644
+=2D-- a/ell/dhcp6.c
++++ b/ell/dhcp6.c
+@@ -1473,8 +1473,7 @@ static void dhcp6_client_icmp6_event(struct l_icmp6_=
+client *icmp6,
+ 	switch (event) {
+ 	case L_ICMP6_CLIENT_EVENT_ROUTER_FOUND:
+ 	{
+-		const struct l_icmp6_router *r =3D
+-			l_icmp6_client_get_router(icmp6);
++		const struct l_icmp6_router *r =3D event_data;
+ 		bool managed =3D l_icmp6_router_get_managed(r);
+ 		bool other =3D l_icmp6_router_get_other(r);
+=20
+=2D-=20
+2.53.0
 
-diff --git a/unit/test-dhcp.c b/unit/test-dhcp.c
-index 34faae4..a8971ec 100644
---- a/unit/test-dhcp.c
-+++ b/unit/test-dhcp.c
-@@ -403,6 +403,102 @@ static void test_option_set(const void *data)
- 	}
- }
- 
-+static const struct domain_name_test {
-+	const char *name;
-+	const char *value;
-+	uint8_t len; /* Option payload length, including any trailing NUL. */
-+	bool valid;
-+	const char *expected;
-+} domain_name_tests[] = {
-+	{ "lease/domain", "example.org", 11, true, "example.org" },
-+	{ "lease/domain-nul", "example.org", 12, true, "example.org" },
-+	{ "lease/root-domain", ".", 1, true, NULL },
-+	{ "lease/root-domain-nul", ".", 2, true, NULL },
-+	/* A single NUL is normalized to the empty root name. */
-+	{ "lease/empty-root-domain", "", 1, true, NULL },
-+	{ "lease/localhost-domain", "localhost", 9, false, NULL },
-+	{ "lease/embedded-nul-domain", "a\0b", 3, false, NULL },
-+	{ "lease/invalid-utf8-domain", "\xff", 1, false, NULL },
-+	{ "lease/zero-length-domain", "", 0, false, NULL },
-+};
-+
-+static void test_domain_name(const void *data)
-+{
-+	const struct domain_name_test *test = data;
-+	static const uint8_t server[] = { 10, 128, 255, 254 };
-+	static const uint8_t netmask[] = { 255, 255, 0, 0 };
-+	static const uint8_t gateway[] = { 10, 128, 255, 254 };
-+	static const uint8_t dns[] = { 8, 8, 8, 8 };
-+	uint32_t lifetime = L_CPU_TO_BE32(3600); /* One hour, in wire order. */
-+	struct dhcp_message *message;
-+	struct dhcp_message_builder builder;
-+	struct dhcp_message_iter iter;
-+	struct l_dhcp_lease *lease;
-+	char *value;
-+	char **dns_list;
-+	size_t capacity = 512; /* Room for options and BOOTP padding. */
-+	size_t len;
-+
-+	message = (struct dhcp_message *) l_new(uint8_t, capacity);
-+	assert(_dhcp_message_builder_init(&builder, message, capacity,
-+						DHCP_MESSAGE_TYPE_OFFER));
-+	assert(_dhcp_message_builder_append(&builder,
-+					L_DHCP_OPTION_SERVER_IDENTIFIER,
-+					sizeof(server), server));
-+	assert(_dhcp_message_builder_append(&builder,
-+					L_DHCP_OPTION_IP_ADDRESS_LEASE_TIME,
-+					sizeof(lifetime), &lifetime));
-+	assert(_dhcp_message_builder_append(&builder, L_DHCP_OPTION_DOMAIN_NAME,
-+						test->len, test->value));
-+	assert(_dhcp_message_builder_append(&builder, L_DHCP_OPTION_SUBNET_MASK,
-+						sizeof(netmask), netmask));
-+	assert(_dhcp_message_builder_append(&builder, L_DHCP_OPTION_ROUTER,
-+						sizeof(gateway), gateway));
-+	assert(_dhcp_message_builder_append(&builder,
-+					L_DHCP_OPTION_DOMAIN_NAME_SERVER,
-+					sizeof(dns), dns));
-+	_dhcp_message_builder_finalize(&builder, &len);
-+
-+	assert(_dhcp_message_iter_init(&iter, message, len));
-+	lease = _dhcp_lease_parse_options(&iter);
-+	l_free(message);
-+
-+	if (!test->valid) {
-+		assert(!lease);
-+		return;
-+	}
-+
-+	assert(lease);
-+	assert(l_dhcp_lease_get_lifetime(lease) == 3600);
-+
-+	value = l_dhcp_lease_get_server_id(lease);
-+	assert(value && !strcmp(value, "10.128.255.254"));
-+	l_free(value);
-+
-+	value = l_dhcp_lease_get_netmask(lease);
-+	assert(value && !strcmp(value, "255.255.0.0"));
-+	l_free(value);
-+
-+	value = l_dhcp_lease_get_gateway(lease);
-+	assert(value && !strcmp(value, "10.128.255.254"));
-+	l_free(value);
-+
-+	dns_list = l_dhcp_lease_get_dns(lease);
-+	assert(dns_list && dns_list[0] && !dns_list[1]);
-+	assert(!strcmp(dns_list[0], "8.8.8.8"));
-+	l_strv_free(dns_list);
-+
-+	value = l_dhcp_lease_get_domain_name(lease);
-+
-+	if (test->expected)
-+		assert(value && !strcmp(value, test->expected));
-+	else
-+		assert(!value);
-+
-+	l_free(value);
-+	_dhcp_lease_free(lease);
-+}
-+
- static void test_checksum(const void *data)
- {
- 	static const uint8_t buf[20] = {
-@@ -1045,6 +1141,8 @@ static void test_expired_ip_reuse(const void *data)
- 
- int main(int argc, char *argv[])
- {
-+	unsigned int i;
-+
- 	l_test_init(&argc, &argv);
- 
- 	l_test_add("request-option", test_request_option, NULL);
-@@ -1062,6 +1160,10 @@ int main(int argc, char *argv[])
- 
- 	l_test_add("option set", test_option_set, NULL);
- 
-+	for (i = 0; i < L_ARRAY_SIZE(domain_name_tests); i++)
-+		l_test_add(domain_name_tests[i].name, test_domain_name,
-+						&domain_name_tests[i]);
-+
- 	l_test_add("checksum", test_checksum, NULL);
- 
- 	l_test_add("discover", test_discover, NULL);
