@@ -1,13 +1,13 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=52.101.84.133
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795518565;
-	b=rG11c/Lu3IErh8AK9DrvfGECXskMWFtFDIinw2tY96MgNzVgJddkZXDvzwyMtgbVPkgW
-	 kIDNzNTu+IfqXFlCCZZhcxUGxcBrMT4gus7fq87hJVwhXAv+SWYWScwAAtYsPRnD+RTvs
-	 Zm0lyc86qemu5MvsSvyalhNa50cTn7+1Aj7XQZ0dumBFLDS/M0SXyiSMuV+oOOMG8Xrsq
-	 B1Kq4cvSPjxWHh/3aDvvGeSR97rYUCKG2ho+nCil8xETXUlCvxbrxLMnt2z5sC7F//rus
-	 KqLD/p5+xjhiJeGXY5nKiGBTaInolpIEzc94+3sq1LBW2nXHIB1Q2gQgWKKAtcWAD9A==
+	t=1795518566;
+	b=iuZzVeqiaPT1kMJN3brtImkVWlDAhd5+on8o+cO7LpAIUNbhOpyLs5OFsEWYVkhevDGl
+	 guWJK80xyxVBxcYB4ZkehzI+k3OGtI44JeZwNtUZoq7aoOLcnluqRbOyMcvzJHr1LsGOv
+	 c8+Mm9ctWbZuzt5TtnNZZZYqYqaKfSCMl6d9yXH+pFxEidJZ5Kdm4JPXscG4InFu1QWSc
+	 YpRU9GERqIUTF9zdvjvdXPVHNrP+sMvknfF6p3CnWb8gcDSroJcRKddsDWhuwFFOm8yFa
+	 vgZkFY2mVa/Ad35DFwuJ/h8/SkT/f6dNLoe3IXSFH8wPHSYzmnjE443q2firikjUbTA==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795518565;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795518566;
 	h=DMARC-Filter:DKIM-Signature:Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:
 	 Content-Transfer-Encoding:Content-Type:X-ClientProxiedBy:MIME-Version:
@@ -24,69 +24,69 @@ ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
 	 X-MS-Exchange-CrossTenant-Id:X-MS-Exchange-CrossTenant-MailboxType:
 	 X-MS-Exchange-CrossTenant-UserPrincipalName:
 	 X-MS-Exchange-Transport-CrossTenantHeadersStamped;
-	bh=hLLn8UjdYgCcrnVu5/l8hCnk/cZQIi2uPv2ff2yycn4=;
-	b=GXRID/Lqmy2VA6CJdzE0RDV8MJX9IT+B1djxftqFe6jV0dxdIodheVBYHHPRXfGrahf4
-	 kUGOi6dhsoTp626AVRrEGU7BUH2C1A1jzxlSKtsFOvScHJuTPQHmAuKwjwnyGXoVjIxJw
-	 yzDNUVPixuVBAzQzi9Es4hTO9SWszrVv94NHdJynrz3EVZiaQMvVEFq66CQ2Z/0Lw7JlR
-	 MmkQ4iA977W2xoXpThzsd3FN+Qhz5Ukci8Jz0kKgANmxt7LXJG8+K5iBC/HG8mnQR8sk6
-	 7wIHwRmx+JSEQcL7Ve/jQ80fKpWyIXshsWVOtYtOQuiE589B/wRv4H0PiUsQoPLK9tA==
+	bh=0g6Fk+JP+hS9QniUIi/wTl8/F3wxwZAS3/TIW2msjpo=;
+	b=Vv3Ofz6u3Zpdi8s6fDxvXrS8Lf/NURPAd2a7KWAmnu/vv1HUxtPO9MEZkH9hqTni/8M7
+	 dfULy64SKaG8koO4PiAzDJGGqN3HPUiLB+fZKclPJ60TiNu3ZMzmiNKit3M33CqcHPBy+
+	 A+d4rMsgbQO2HaDK0NzCGKMuwiYhQMIO47jsgp0TfhM8MAqMREshBdOuRd63BcHy5FfPZ
+	 DwFJu0IEWcLMVueAplBQwkEEO9HJ3NP+fjg4qf6/9q0VP+IYeyigDNR+1th2aahcwkWK1
+	 ajDt5OPGlokPuC5KcvNWGPJmHaNKcAH8dMkofX8JUBDACqPOanR7qInydLjQTFLNXdg==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=kuleuven.be;
 	spf=pass smtp.mailfrom=kuleuven.be;
-	dkim=pass header.d=kuleuven.be header.i=@kuleuven.be header.a=rsa-sha256 header.s=selector1 header.b=Lf0VPPbC;
+	dkim=pass header.d=kuleuven.be header.i=@kuleuven.be header.a=rsa-sha256 header.s=selector1 header.b=CwkKMXva;
 	arc=pass header.oldest-pass=0 smtp.remote-ip=52.101.84.133
 Received: from DB3PR0202CU003.outbound.protection.outlook.com (mail-northeuropeazon11020133.outbound.protection.outlook.com [52.101.84.133])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange ECDHE (secp384r1) server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 279FA606A31E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E846C606A31E
 	for <ell@lists.linux.dev>; Tue, 24 Nov 2026 11:09:25 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 279FA606A31E
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E846C606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=kuleuven.be
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kuleuven.be
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=kuleuven.be header.i=@kuleuven.be header.a=rsa-sha256 header.s=selector1 header.b=Lf0VPPbC
+	dkim=pass (1024-bit key, unprotected) header.d=kuleuven.be header.i=@kuleuven.be header.a=rsa-sha256 header.s=selector1 header.b=CwkKMXva
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=epLXoLH5f7zDUconsZnd0fYai4fY/7bNuseMXdRoORyVsMpEXw2FXaqUpk3J8/4h7yGJ2JPpKQzdRDALpFSpz1LnF68jYbndzGOEsuNMHgjT9gXcUFgI/MwYtOgLGHeCTxL18V+8/HN3reNNhE2bN54/Q/XBCloRRBnMOELjnf3w1aljqz2sTFR5N1Y2CdhRFni1aMXYikhQP6v2uwaCiKkfZZEnCY9eG742K01tqBF2nvxotrSgLXhWGdN2sbXT+ykeozrdTkVNmTucl8mZWCtKVhnOAi+SM0L5WMCcrdHsi5MbtncIsy8gqFxBwTyAv1BXc4ue6HBaU2Bz17B7xA==
+ b=NSdyblFJwC/SrF4B5Td7ogLLVyE37Dh6c8RH33IYsHwDDRMgPal4sGwNmcVXPteGt6iysUIowI+iI/RPpOyHaCVA0OW3pg4Rh2W5K0N2XdhdioX3tL2DO6l/TLolxatIllQPOwrRi2F/ZA01Syb1cmiMguLZAlD+QRaC2kf54R0YymWJI2tLKMpf4/e0BODF8UoXDPxFu19N5NUr9hRq5PLyhH+yHDpM6306WGBgws2htb1xWQanUQ+A9VoRGcnjoUfEOKgGuuATi0udrSubiqRQoVeTzApbIzdbkPdkpq8vlC2BZdoTodTdprhwy58335XyS9ANFBZHhQKhMO/13Q==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector10001;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=hLLn8UjdYgCcrnVu5/l8hCnk/cZQIi2uPv2ff2yycn4=;
- b=Q/9nOrDJUBYipen/tVeX5hWaQ2uWTB/XEbdv65ogyX7c96/TpAIZka9FEnqnep0eGl7QLA5yGfKdS6Yuf/lmjPK4L2F2cLEMIwg3D0qj1S3LqYV+Z3xAxuL28OFqJcYmRXZ2uKJ57TXGVvmmqUSUTbU7RdUc1KrD1X5tM192zXHLXe7bf5+w2ayhz2YWyC02yX6wHVm/XgxxNok885i4m7mcIN2qbhlOE2vQfbxXrnQgsNuormBMx8bJAmcrYwx/HLbaxkQXDEEQ59wRlq0USp5asLr0TIxgzAQHGlIWQicsNic+gE6To1HqaEA7eP6CIDW/GTOTPoHxxMXuTiz2IA==
+ bh=0g6Fk+JP+hS9QniUIi/wTl8/F3wxwZAS3/TIW2msjpo=;
+ b=vZTnvcCzUVo5aC5t0qMxx6Z1UCUyS3ZJASCIKRC2XqS8rRjHhthPhzyEBF9USp5IqgW85yr7RaGU7oUhVwfM42ZUuojqQbew5QC4s2NArpcYGDR27yj+x/886fY5HPsEIDW1iNPPPf0QZqeRMJlkDrerTQfGF6vfPxRHuX17Z7crLudhfb/CoVmURyHlNiILMMotLfa+dMCXRqd5FWFvgIFZQnDMQl6ccgAnKGY65UwFD+ai/7pkuPgCB4xJGtVphHIYOfLo25DYOECkLhR2Mrz3VVLqyLT+vhRFyFTVl/mAscOBJfwnLmUPs3FdyNwiZwctD5PexJFQ81g8FNUv0Q==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=kuleuven.be; dmarc=pass action=none header.from=kuleuven.be;
  dkim=pass header.d=kuleuven.be; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kuleuven.be;
  s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=hLLn8UjdYgCcrnVu5/l8hCnk/cZQIi2uPv2ff2yycn4=;
- b=Lf0VPPbC6xy1uVnYozaN+isqIbP4z8Efd7Dn9EjYF/CcpbYLT2dlfCjDOUL7W7nstt7q61hgtGWHlwGt93c5dOlTing3kcncKe5laPvyKVGb4wUpZRtZ05rNI1AF19crWw8sFtsaHhsrSGmvluTS+22Mdig0Tijwn7P5w30C0ZM=
+ bh=0g6Fk+JP+hS9QniUIi/wTl8/F3wxwZAS3/TIW2msjpo=;
+ b=CwkKMXvaDFpWgbYLnlN64NsntFjXEWGu/fIbktoLk335/lFesDmh043+8/GeuPwBE9nPccBcPs9a74TCRSaO07yUGescJ/lguXSelF+whlTVlV9669A/PaaU0Kya67HTXHqnXMuwFv1XPYEZG/KF/JZDs1L8GJAc5jnq0Yh4g8g=
 Authentication-Results: mx.microsoft.com 1; dkim=none (message not signed)
  header.d=none;dmarc=none action=none header.from=kuleuven.be;
 Received: from MI9PR08MB763857.eurprd08.prod.outlook.com
  (2603:10a6:290:c0::16) by DB9PR08MB7698.eurprd08.prod.outlook.com
  (2603:10a6:10:391::17) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.639.14; Tue, 24 Nov
- 2026 11:09:19 +0000
+ 2026 11:09:21 +0000
 Received: from MI9PR08MB763857.eurprd08.prod.outlook.com
  ([fe80::4f1d:a35e:c1b6:8b48]) by MI9PR08MB763857.eurprd08.prod.outlook.com
  ([fe80::4f1d:a35e:c1b6:8b48%7]) with mapi id 15.21.0639.012; Tue, 24 Nov 2026
- 11:09:19 +0000
+ 11:09:21 +0000
 From: Mathy Vanhoef <Mathy.Vanhoef@kuleuven.be>
 To: ell@lists.linux.dev
 Cc: denkenz@gmail.com,
 	marcel@holtmann.org,
 	Mathy Vanhoef <Mathy.Vanhoef@kuleuven.be>
-Subject: [PATCH 1/7] tls: Add support for server certificate pinning
-Date: Tue, 24 Nov 2026 12:08:41 +0100
-Message-ID: <20261124110847.1254540-2-Mathy.Vanhoef@kuleuven.be>
+Subject: [PATCH 2/7] unit: Add tests for TLS server certificate pinning
+Date: Tue, 24 Nov 2026 12:08:42 +0100
+Message-ID: <20261124110847.1254540-3-Mathy.Vanhoef@kuleuven.be>
 X-Mailer: git-send-email 2.56.1
 In-Reply-To: <20261124110847.1254540-1-Mathy.Vanhoef@kuleuven.be>
 References: <20261124110847.1254540-1-Mathy.Vanhoef@kuleuven.be>
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
-X-ClientProxiedBy: AS9PR06CA0236.eurprd06.prod.outlook.com
- (2603:10a6:20b:45e::27) To MI9PR08MB763857.eurprd08.prod.outlook.com
+X-ClientProxiedBy: AM5PR03CA0027.eurprd03.prod.outlook.com
+ (2603:10a6:206:15::17) To MI9PR08MB763857.eurprd08.prod.outlook.com
  (2603:10a6:290:c0::16)
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -99,246 +99,178 @@ Precedence: list
 MIME-Version: 1.0
 X-MS-PublicTrafficType: Email
 X-MS-TrafficTypeDiagnostic: MI9PR08MB763857:EE_|DB9PR08MB7698:EE_
-X-MS-Office365-Filtering-Correlation-Id: 85273330-fdea-4b74-b137-08df4a1b630e
+X-MS-Office365-Filtering-Correlation-Id: 98cc991a-cc36-4985-10d6-08df4a1b63e0
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|376014|1800799024|10070799003|786006|366016|23010399003|10067099003|11063799006|56012099006|261102123227099003|261026130827099003|261022105027099003|261022113327099003|261028144727099003|261026121527099003|261026135527099003|261022075727099003|261021135927099003|261021133027099003|261021130227099003|261021121427099003|261026140227099003|261102130727099003|261021123027099003|261022115727099003|261009223027099003|22082099003|6133799003|18002099003|3023799007;
+	BCL:0;ARA:13230040|376014|1800799024|10070799003|786006|366016|23010399003|10067099003|11063799006|56012099006|261102123227099003|261022105027099003|261028144727099003|261026121527099003|261021121427099003|261026140227099003|261009223027099003|22082099003|18002099003;
 X-Microsoft-Antispam-Message-Info:
-	UTrexSs8XOhL7AvHli0TuXbTVzcGWB5tW3yewa7snx9Z4CKeDUuHvQoRwPAKGwdixLOo01gO8jRth8f7xnIfYr920rbqcVK1b4LhiQ/m/hXVga9DyG3oXUe5kdYVRPj7WBTI7oE+DTM8hlRLdAlo1VYPVSwjsRJtEnOTllspWq8H6U1sYPabEg4k48uXGLAjDMvXY55fcJm5no1eiN4O8TIDKsdJQc8vKEKCTlBSkvw20g9ak6fToh6kHG0UBc1yblW3QvATjmeU35CrRhBXA6FTmtymcKpV4ye9XeuERr/drPKoKX4XtJYljewrS9AVj+b4CFRaPZx+9zX7gOlYz1SszpBIk2ize+T1L7cmLUqPk8fWw6PldUrpIRGzwc1dGTG0NcC49vN5EfyoVE0fSVnJw7p3FBV87hYZIwjg3+4YcpHGTFkrOglUn6WIDQqjhQnuyIHfGDWVws0/wCk+d+1pKRpbYTzcgXn8/veOhb1ucEnXoMTn66TG6K1eE4JBo+4F9e0IVQhvkp0eCOjPC/FjFFsmtqOQ7hICnDgYAk2DdZDb4h3fibbYt8OEgUeKv2DpoHsXfB8YoQD39A1mkA9Z0t/L8JkkgEOO+gBxf2yYVhoa4Qp7/lEohyDYBXV34qFymJxnFahBbgzGTdhdDAogpuW1SBOl8ei11CXTfa0=
+	Vsd8NAY3RF9w6iJJ1NbF6gxkp8LAAUum+g8SEv5eqRnRLWh9hrQF+d9iWm7PREJaIIUtpUgNSdCep88TOr66vDFXdxA0aAnQeqf8T0NsziEswf72zPvRies1JxycCrLuNGxAjl22P/T4YycUVCWJCRLpTgqshAyVv6ibEHhUFe8DwO5GVNK0J8g/1FF68Wp6VgPI4HPnMlCAy2iO4yjKT4plRanxDwKjrtu2FfV5vUtadqWu8keShCcbqbcNto0dVYdX0HiX6hWjcgO7EpQCZ0Zv8/8UQqlWCaIq6bkt7tIYEeusoW5ISk2F55rqvrSbz4GQCTKi/xk0MOYAllcrflseSr+l+sSOHm1n9GYbHYezcmBwhmxU8Ue9JRW+ImaupP0qY3l6BcLMQAV7hzYzu6rdIQHucbkKORdkYGn7AyMVtpnbKAF8oOFEVpw0YRD8hfsp0xB/y7aKmVCuppJGieXNipJNPkwb3cxsV/e0v2HN0Ac0Qxwv+RGWwtszVraI6jiuLxFA3zZaEYkdqyGJK+mwgIsTHzZrPzA8pOw9VR7739ferTWx+IJW4jP9wvpmFE5XBoIXU2fZqbllU8Jy1GVsJG6Zna/FLMF+E95PCCGCEofOuZSq+JFoPVRh2KHYwW0GVR+iDUV22/NE47LnneYg43rgwj2Qivmc5KV6JDY=
 X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:MI9PR08MB763857.eurprd08.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(1800799024)(10070799003)(786006)(366016)(23010399003)(10067099003)(11063799006)(56012099006)(261102123227099003)(261026130827099003)(261022105027099003)(261022113327099003)(261028144727099003)(261026121527099003)(261026135527099003)(261022075727099003)(261021135927099003)(261021133027099003)(261021130227099003)(261021121427099003)(261026140227099003)(261102130727099003)(261021123027099003)(261022115727099003)(261009223027099003)(22082099003)(6133799003)(18002099003)(3023799007);DIR:OUT;SFP:1102;
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:MI9PR08MB763857.eurprd08.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(1800799024)(10070799003)(786006)(366016)(23010399003)(10067099003)(11063799006)(56012099006)(261102123227099003)(261022105027099003)(261028144727099003)(261026121527099003)(261021121427099003)(261026140227099003)(261009223027099003)(22082099003)(18002099003);DIR:OUT;SFP:1102;
 X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
 X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?eFh9mTDJck8dKLPs4839yCKitwIQ8oiYyA1l5kbDqQfcHS1ncgxl3/i35efD?=
- =?us-ascii?Q?/57cchJ8oODXV8PbkYZaRN7Xs4qxtAJ7NtLjTcL1yIeFuFRP2wQvI6lxLUSV?=
- =?us-ascii?Q?+I2i3i9iszmIs5C0//VPo8XmQ0WJNLg8yG/Bl6hJDuZPptlaKc8fVYeBuEZi?=
- =?us-ascii?Q?8jUWzKGl9hLusGeZTaslsQ/WNA2YxzMvAiesnonSvEcdDurwV8B1EkQNLTnZ?=
- =?us-ascii?Q?xAGF2TFYtV4ymiv1KPEsbw7TKnBkvogufe+96oICh6G43QVt4JXiK4V724RI?=
- =?us-ascii?Q?cjtPN1ULUjSptpLtZyKBq/kXPejyoqkgqbC47zmKT2mRgNPKoHvsLhzH9HvC?=
- =?us-ascii?Q?0Vxgo0CXzDkrkKPVXTrRpGwqq7wosstkwQqpUI7Zxq2VW8J1fUdGmkBPphxe?=
- =?us-ascii?Q?fn81D44/QAAx8cwnZpFhCes7chK6mjgtcICpLnFsodn2xj7MFgSZZQxJhHa5?=
- =?us-ascii?Q?1wjzWBjXUNrxv7Qs3y+vCmK8AA+MVYfc0fSd8WLNWxyydLKiFNsULNPqudRV?=
- =?us-ascii?Q?Ppwmz0KYpHTvZQdDihk4UbrNLgZuk0fvT+c7I7Uy5xN2YbNGRipZn3R6fTTx?=
- =?us-ascii?Q?W9plm8qKhwwwskzhce2wBNVAkXj4bqMiEEaHpwZkn5X2dnFqexn59WhhA6Uu?=
- =?us-ascii?Q?8Evd3dlNT+6H08y5g2z/d51evua89Sd2rawyEqAiha9cWTpNPmTaEWQWQx0H?=
- =?us-ascii?Q?dWwOpgFtoQfkVU9Ra9+NBboSvFo81JM5Lbqx81WUUD4bQaHssz9gWcJ9UZV5?=
- =?us-ascii?Q?HM2JLO5L8MynLGnXXfxTgCMRfeZ5m5USb9msywNFpQaaJgU4WIk9jtTRzB1x?=
- =?us-ascii?Q?nXtDjSzDWenls21LlCahN1ZspvT/hXjogicD4duxH30dP3a5S+pc/3tZ61wg?=
- =?us-ascii?Q?pziz8IeZtSsM1ORFi/LDcwCdnkR69TjB3eDczUeTrspxQqLUa06EDiaSj2HL?=
- =?us-ascii?Q?Zne2VnNQVCQhP+5AEMKYWiCNxRCWHSaqlk5he1g+QDd0uXJRR3eEFzfsEohw?=
- =?us-ascii?Q?nFX/hXOnMH/LDYjRB2DqwK7iqjVi5DbtRVhKrr094c8ps0RXYFQ4wl7VwYJM?=
- =?us-ascii?Q?rXTPMK1EVsQ6DkeOoOS+eLIR1FdccI5Vp3w9sMmprbWcliF6VBEQpei3nz/7?=
- =?us-ascii?Q?I+1Tm2rK8ly2IkZOy2VXk92M3h2PHpn98pgc4zkWAvBhxVt959fJiemZlQ3S?=
- =?us-ascii?Q?g59FyeD0YqN/1iYpLp6UFX2br+ti5ApD/20Ca4xKz4t79mCJMYXZwmF59xFS?=
- =?us-ascii?Q?aNLKOdQd1iI19esOEOVjTYo1TadLbxg/BDZawWdM7PSUMwcl9RM/3SxU0W2c?=
- =?us-ascii?Q?7Skz+M0RXccCV0PE0me1IU6Zyk+jT3QAgv7O2JHAlvUtPOfecD9DXYTL7DW7?=
- =?us-ascii?Q?Bi/xThERpJkZCkHHeeIQ1ET0+Rx9mqxfyqLlHhDiWsDTbJJWc464ssOcg828?=
- =?us-ascii?Q?QvUwKHp4Qhi3wQxeNmYBU6Tz3A1q+f8OeCdk2m6O1HeeN/CdnoVcqA40fonT?=
- =?us-ascii?Q?ZDzzocSbh20Ry1unooxVAkZLuc9BuCYbpLBME95CgrnFetdmGxgV+Pjz04wk?=
- =?us-ascii?Q?HSNE4Qdse6M7ElRUCmiZeQ6hjGnfGmSX+Js/hcpGDO9BTr9OCuZB82TWhF1V?=
- =?us-ascii?Q?0JmsFlVkHYQ4PsXkKK6kZ6XrkFt8QQrJGItImNXnpgbNbrGo0md2EPv+rzp7?=
- =?us-ascii?Q?P10rN7KQre1bgite3aqfs5OW/aJCDw95jCGdso0YSt15HxKNwT71V1AESfqf?=
- =?us-ascii?Q?lNgttIHIwgYMFbtdhihI5ULnjVtnnZ9SL20vgg//Ldi/3Aw8IhfY?=
+	=?us-ascii?Q?SMBqUBSd1/FV8pzA+crdHwtbIpvuWQcdQvm+7M+0P24f1efGsjjoo2Od2371?=
+ =?us-ascii?Q?sB/Iicn/hOqeuQQWo/nj19ky5PEQYcnXhbObhe2He2rbSsSQ851s75Fi9dA0?=
+ =?us-ascii?Q?ci9QUzflOGTziFREpUr4jIc7HyHW5kZ2sfFLFYmc/13u7CtXlgefU23JJrB0?=
+ =?us-ascii?Q?LwZBiE5GIspNemoBw6QKMJ7a8PpiZ5q5pE5Nux8VBLpe8+fViVjlA5dix1f4?=
+ =?us-ascii?Q?oizLRBOHPaxTRY17Pp3cF6MTulhkLfjaD9ccXhCBABbF04dBS9SZ/EUFRO0D?=
+ =?us-ascii?Q?8mCK2MnKtmR+r3QlXz2TNYhZEL3iSAolyVuQwQqoF8FweNRWg2hBvIbAKRqn?=
+ =?us-ascii?Q?eyU0S7CRxT2kUa8ye0aHXwyO9O8CECU8BJuYmR7UjuqMgmnIvzsPhELdBn38?=
+ =?us-ascii?Q?aaLhn6Egu0RrM0tKgaPhH6Nq+HCt54maBiV/BtI3RisHOXMd/4UhocYAmFQC?=
+ =?us-ascii?Q?wzmDU6yAT5YxrQKnZN1lSxUXTpbIZbtq3SmS+qezXf1bBPbYZO5PkYW48GL/?=
+ =?us-ascii?Q?N1tDplKXoXbJJFj174m7k71EdZ0QHe+3yUqFXgU2k+ynjCyvbSPLBHJPO+B+?=
+ =?us-ascii?Q?RKBNr0MJL+J1r+m3QH4DZ1CEeanX7BUXMSsEQiPznozW0nSRMSdSRiPK+wo5?=
+ =?us-ascii?Q?IJJTTyi4RnvBG00l4vohmruEKS6YoTPJcQVJCZrPuNfg4NexOovtOE/3IAHZ?=
+ =?us-ascii?Q?xYlkdM8Peo7fBVQ2jJZZc63aaCtvNAwUxiHys2pqdAAe5DGO3xi2QmVcEZXt?=
+ =?us-ascii?Q?VyK7KMxMOxeV8+IbD8vMISfMYqLhgbNy0c9yS3oGU1cfPcJiPlRZ5v7HQABb?=
+ =?us-ascii?Q?+bFzi9DDtFIBbSNq9HjIHdjCMHkackjKbmjMSCw9hgjMrDeI/uD2yR/vqpRp?=
+ =?us-ascii?Q?Tg3cKaCciaQQ110ZhEBSjEZJi+tWP1DQeGpHzJBHLKPxf2+aPgxO8V+aVGuC?=
+ =?us-ascii?Q?EsBPN5b/pivsoNthqco1T//q2bGIvUqUnOplHSTU+GRtiOOiiYc4GEHCEG9V?=
+ =?us-ascii?Q?4iTCMBQuDE1WEt1qcw1V0DotM5IyO+LWmZuM6Xti+t9flBzf8BKshhNDFwkq?=
+ =?us-ascii?Q?4DdEY0bexQcjnyhH9BvIgJRbEdWUrEVJozMA7BLk5WHzq9FEiTy5DmzSVecq?=
+ =?us-ascii?Q?XxJTSl2EprEpY3VYuTIA6MlCw6uCg6eUXlZ6cex55D/fbDOUnyQfaegRs9bI?=
+ =?us-ascii?Q?74WURMIQe2W59Y0mx3/bAQYIapnaLUEV+IhwaLyjS2Vn7p19eboX8tEG/Km8?=
+ =?us-ascii?Q?2HpObEZTQKeRl+QDaviKeWVGgyydYcrR9ZOTPv5HEpYSKy+eF8n2nYsDooY6?=
+ =?us-ascii?Q?RYh3HodBF1P/Wba4ToI3gkGlXgOJiHDQ4FMixh/oqW+Wy2KmKV+Spi7vtNLy?=
+ =?us-ascii?Q?R0UekBHvCHOSCO1nUAjPv0XSlL97NWl1Oc0h4PFCla0S3xmgD4Pse8v1POhI?=
+ =?us-ascii?Q?iOZvWaMX/9dmEZUVCevsnnWCEmlmPFAfPWHaiGbbnPeUsTXCCcpxSiQESFgX?=
+ =?us-ascii?Q?Ok4qaKyellnZi/BXwQiRxAm/wbWxrlpfKhjfOIX5w0o9F5lygA3uGsulRRGo?=
+ =?us-ascii?Q?2C1ueL9KDWE+593C+dsuSXvMgltNsQLG+VIcTU/l4HfaEl0GeylJw2QCvBqS?=
+ =?us-ascii?Q?j9UzYjWPh8macEroK5J9AtIXFPLhcg4krPTZxEOh6xE2G+Kg29RAzggANBZY?=
+ =?us-ascii?Q?Jg9uejtB4+TfgCkulRf1aBihxwCiz7ir2kvS/0KM8DTLEeJEh5ypDITTOKmR?=
+ =?us-ascii?Q?lxnNBSRB+wCuV9zNgwQZUm0luYAygzrEYtnnpn89jPVGsLBvQ4TO?=
 X-OriginatorOrg: kuleuven.be
-X-MS-Exchange-CrossTenant-Network-Message-Id: 85273330-fdea-4b74-b137-08df4a1b630e
+X-MS-Exchange-CrossTenant-Network-Message-Id: 98cc991a-cc36-4985-10d6-08df4a1b63e0
 X-MS-Exchange-CrossTenant-AuthSource: MI9PR08MB763857.eurprd08.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 24 Nov 2026 11:09:19.7348
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 24 Nov 2026 11:09:21.1056
  (UTC)
 X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
 X-MS-Exchange-CrossTenant-Id: 3973589b-9e40-4eb5-800e-b0b6383d1621
 X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: SlSbHpC/T3JKbgdJgLppT5ipPE5txSWSwdsqvLz5AkFqYIiu+OYgbg3/khbKP9yvl0qJUgpPV4+BSSdnKoMo4nFVXf0qFuJwSHx/J68czDg=
+X-MS-Exchange-CrossTenant-UserPrincipalName: 3TCwo0hXpIccU8H0peYJ7AC2EOOZ546TsTdSCSNZq4yhw+C0T1aLz3c7MlE5OryNiE0wrHdy/UgUMPZWSxe8SZCxlGBer8hiURO8pJGRZzg=
 X-MS-Exchange-Transport-CrossTenantHeadersStamped: DB9PR08MB7698
 
-Add l_tls_set_server_cert_hash() to pin the server's end-entity
-certificate by the SHA256 hash of its DER encoding.  The handshake then
-fails unless the server's certificate matches the hash.  A matching
-certificate authenticates the server even when no CA certificates were
-set, in which case its issuer chain is not checked, but its validity
-period is still enforced.
-
-This allows a client to trust a server certificate that it has seen
-before, for example on first use, without trusting the CA that issued
-it.
+Test a pinned server certificate that matches and one that does not,
+both with and without a CA certificate, and an expired pinned
+certificate.
 
 Co-authored-by: Rathan Appana <rathan.appana@kuleuven.be>
 ---
- ell/ell.sym       |  1 +
- ell/tls-private.h |  2 ++
- ell/tls.c         | 84 +++++++++++++++++++++++++++++++++++++++++++++--
- ell/tls.h         |  2 ++
- 4 files changed, 86 insertions(+), 3 deletions(-)
+ unit/test-tls.c | 78 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 78 insertions(+)
 
-diff --git a/ell/ell.sym b/ell/ell.sym
-index 5cfb80d..f428289 100644
---- a/ell/ell.sym
-+++ b/ell/ell.sym
-@@ -551,6 +551,7 @@ global:
- 	l_tls_set_auth_data;
- 	l_tls_set_version_range;
- 	l_tls_set_domain_mask;
-+	l_tls_set_server_cert_hash;
- 	l_tls_set_session_cache;
- 	l_tls_get_session_resumed;
- 	l_tls_alert_to_str;
-diff --git a/ell/tls-private.h b/ell/tls-private.h
-index c493f7f..7581567 100644
---- a/ell/tls-private.h
-+++ b/ell/tls-private.h
-@@ -200,6 +200,8 @@ struct l_tls {
- 	struct l_key *priv_key;
- 	size_t priv_key_size;
- 	char **subject_mask;
-+	uint8_t server_cert_hash[32];
-+	bool server_cert_pinned;
+diff --git a/unit/test-tls.c b/unit/test-tls.c
+index 1f7961d..669e5e5 100644
+--- a/unit/test-tls.c
++++ b/unit/test-tls.c
+@@ -360,6 +360,7 @@ struct tls_conn_test {
+ 	const char *client_expect_identity;
+ 	const char **client_cipher_suites;
+ 	char **client_domain_mask;
++	const char *client_pinned_cert_path;
+ 	bool expect_alert;
+ 	bool expect_client_start_fail;
+ 	enum l_tls_alert_desc alert_desc;
+@@ -660,6 +661,25 @@ static void test_tls_with_ver(const struct tls_conn_test *test,
+ 	if (test->client_domain_mask)
+ 		l_tls_set_domain_mask(s[1].tls, test->client_domain_mask);
  
- 	struct tls_cipher_suite **cipher_suite_pref_list;
- 
-diff --git a/ell/tls.c b/ell/tls.c
-index 5246650..a5bfbae 100644
---- a/ell/tls.c
-+++ b/ell/tls.c
-@@ -2500,6 +2500,21 @@ decode_error:
- 			"ServerHello decode error");
- }
- 
-+static bool tls_cert_sha256(const uint8_t *der, size_t der_len,
-+				uint8_t *out)
-+{
-+	struct l_checksum *sha256 = l_checksum_new(L_CHECKSUM_SHA256);
-+	bool r;
-+
-+	if (!sha256)
-+		return false;
-+
-+	r = l_checksum_update(sha256, der, der_len) &&
-+		l_checksum_get_digest(sha256, out, 32) == 32;
-+	l_checksum_free(sha256);
-+	return r;
-+}
-+
- static void tls_handle_certificate(struct l_tls *tls,
- 					const uint8_t *buf, size_t len)
- {
-@@ -2563,6 +2578,40 @@ static void tls_handle_certificate(struct l_tls *tls,
- 					tls->cert_dump_path);
- 	}
- 
-+	leaf = l_certchain_get_leaf(certchain);
-+
-+	if (!tls->server && tls->server_cert_pinned) {
++	if (test->client_pinned_cert_path) {
++		struct l_cert *cert =
++			load_cert_file(test->client_pinned_cert_path);
++		struct l_checksum *sha256 = l_checksum_new(L_CHECKSUM_SHA256);
++		const uint8_t *der;
++		size_t der_len;
 +		uint8_t hash[32];
-+		uint64_t not_before;
-+		uint64_t not_after;
-+		uint64_t now = time_realtime_now();
 +
-+		der = l_cert_get_der_data(leaf, &der_len);
++		assert(cert && sha256);
++		der = l_cert_get_der_data(cert, &der_len);
++		assert(l_checksum_update(sha256, der, der_len));
++		assert(l_checksum_get_digest(sha256, hash, 32) == 32);
++		l_checksum_free(sha256);
++		l_cert_free(cert);
 +
-+		if (!tls_cert_sha256(der, der_len, hash) ||
-+				memcmp(hash, tls->server_cert_hash, 32)) {
-+			TLS_DISCONNECT(TLS_ALERT_BAD_CERT, 0,
-+					"Server certificate doesn't match the "
-+					"pinned SHA256 hash");
-+			return;
-+		}
-+
-+		/*
-+		 * Accept the pinned certificate regardless of who issued it
-+		 * but still enforce its validity period.
-+		 */
-+		if (!l_cert_get_valid_times(leaf, &not_before, &not_after) ||
-+				now < not_before ||
-+				(not_after && now > not_after)) {
-+			TLS_DISCONNECT(TLS_ALERT_CERT_EXPIRED, 0,
-+					"Pinned server certificate is outside "
-+					"of its validity period");
-+			return;
-+		}
-+
-+		TLS_DEBUG("Server certificate matches the pinned SHA256 hash");
++		assert(!l_tls_set_server_cert_hash(s[0].tls, hash));
++		assert(l_tls_set_server_cert_hash(s[1].tls, hash));
 +	}
 +
- 	/*
- 	 * Validate the certificate chain's consistency and validate it
- 	 * against our CAs if we have any.
-@@ -2603,7 +2652,6 @@ static void tls_handle_certificate(struct l_tls *tls,
- 	 * restrictions) MUST be compatible with the selected key exchange
- 	 * algorithm."
- 	 */
--	leaf = l_certchain_get_leaf(certchain);
- 	if (!tls->pending.cipher_suite->signature->
- 			validate_cert_key_type(leaf)) {
- 		TLS_DISCONNECT(TLS_ALERT_UNSUPPORTED_CERT, 0,
-@@ -3292,7 +3340,8 @@ static void tls_handle_handshake(struct l_tls *tls, int type,
- 		 *  - tls->ca_certs is non-NULL so tls_handle_certificate
- 		 *    (always called on the client) must have veritifed the
- 		 *    server's certificate chain to be valid and additionally
--		 *    trusted by our CA.
-+		 *    trusted by our CA, or tls->server_cert_pinned is set and
-+		 *    the end-entity certificate matched the pinned hash.
- 		 *
- 		 *  - the peer owns the end-entity certificate because:
- 		 *    either:
-@@ -3318,7 +3367,8 @@ static void tls_handle_handshake(struct l_tls *tls, int type,
- 		 * message confirms their identity hasn't changed.
- 		 */
- 		if (tls->cipher_suite[0]->signature &&
--				((!tls->server && !resuming && tls->ca_certs) ||
-+				((!tls->server && !resuming &&
-+				  (tls->ca_certs || tls->server_cert_pinned)) ||
- 				 (resuming && tls->session_peer_identity)))
- 			tls->peer_authenticated = true;
+ 	assert(l_tls_start(s[0].tls));
+ 	assert(!!l_tls_start(s[1].tls) == !test->expect_client_start_fail);
  
-@@ -3776,6 +3826,34 @@ LIB_EXPORT void l_tls_set_domain_mask(struct l_tls *tls, char **mask)
- 	tls->subject_mask = l_strv_copy(mask);
+@@ -722,6 +742,48 @@ static void test_tls_version_mismatch_test(const void *data)
+ 				L_TLS_V10, L_TLS_V11);
  }
  
-+/**
-+ * l_tls_set_server_cert_hash:
-+ * @tls: TLS client object being configured
-+ * @sha256: 32-byte SHA256 hash of the server's DER-encoded end-entity
-+ *   certificate, or NULL to clear
-+ *
-+ * Pin the server's end-entity certificate.  When set, the handshake fails
-+ * unless the server's certificate hashes to @sha256.  A matching
-+ * certificate authenticates the server even if no CA certificates were set
-+ * with l_tls_set_cacert, in which case the issuer chain is not checked.
-+ * The certificate's validity period is still enforced.
-+ *
-+ * Returns: true on success, false on invalid @tls or if @tls is a server.
-+ */
-+LIB_EXPORT bool l_tls_set_server_cert_hash(struct l_tls *tls,
-+						const uint8_t *sha256)
-+{
-+	if (unlikely(!tls || tls->server))
-+		return false;
++static const struct tls_conn_test tls_conn_test_pin_match = {
++	.server_cert_path = CERTDIR "cert-server.pem",
++	.server_key_path = CERTDIR "cert-server-key-pkcs8.pem",
++	.client_expect_identity = "/O=Foo Example Organization"
++		"/CN=Foo Example Organization/emailAddress=foo@mail.example",
++	.client_pinned_cert_path = CERTDIR "cert-server.pem",
++};
 +
-+	tls->server_cert_pinned = sha256 != NULL;
++static const struct tls_conn_test tls_conn_test_pin_mismatch = {
++	.server_cert_path = CERTDIR "cert-server.pem",
++	.server_key_path = CERTDIR "cert-server-key-pkcs8.pem",
++	.client_pinned_cert_path = CERTDIR "cert-client.pem",
++	.expect_alert = true,
++	.alert_desc = TLS_ALERT_BAD_CERT,
++};
 +
-+	if (sha256)
-+		memcpy(tls->server_cert_hash, sha256, 32);
++static const struct tls_conn_test tls_conn_test_pin_match_ca_match = {
++	.server_cert_path = CERTDIR "cert-server.pem",
++	.server_key_path = CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path = CERTDIR "cert-ca.pem",
++	.client_expect_identity = "/O=Foo Example Organization"
++		"/CN=Foo Example Organization/emailAddress=foo@mail.example",
++	.client_pinned_cert_path = CERTDIR "cert-server.pem",
++};
 +
-+	return true;
-+}
++static const struct tls_conn_test tls_conn_test_pin_match_ca_mismatch = {
++	.server_cert_path = CERTDIR "cert-server.pem",
++	.server_key_path = CERTDIR "cert-server-key-pkcs8.pem",
++	.client_ca_cert_path = CERTDIR "cert-intca.pem",
++	.client_pinned_cert_path = CERTDIR "cert-server.pem",
++	.expect_alert = true,
++	.alert_desc = TLS_ALERT_BAD_CERT,
++};
 +
- /**
-  * l_tls_set_session_cache:
-  * @tls: TLS object being configured
-diff --git a/ell/tls.h b/ell/tls.h
-index f283316..d59b5e0 100644
---- a/ell/tls.h
-+++ b/ell/tls.h
-@@ -116,6 +116,8 @@ void l_tls_set_version_range(struct l_tls *tls,
++static const struct tls_conn_test tls_conn_test_pin_expired = {
++	.server_cert_path = CERTDIR "cert-expired.pem",
++	.server_key_path = CERTDIR "cert-client-key-pkcs8.pem",
++	.client_pinned_cert_path = CERTDIR "cert-expired.pem",
++	.expect_alert = true,
++	.alert_desc = TLS_ALERT_CERT_EXPIRED,
++};
++
+ static const struct tls_conn_test tls_conn_test_domain_match1 = {
+ 	.server_cert_path = CERTDIR "cert-client.pem",
+ 	.server_key_path = CERTDIR "cert-client-key-pkcs8.pem",
+@@ -1021,6 +1083,22 @@ int main(int argc, char *argv[])
+ 			test_tls_version_mismatch_test,
+ 			L_TEST_FLAG_ALLOW_FAILURE);
  
- void l_tls_set_domain_mask(struct l_tls *tls, char **mask);
- 
-+bool l_tls_set_server_cert_hash(struct l_tls *tls, const uint8_t *sha256);
++	l_test_add_data_func("TLS connection pinned cert match",
++			&tls_conn_test_pin_match, test_tls_test,
++			L_TEST_FLAG_ALLOW_FAILURE);
++	l_test_add_data_func("TLS connection pinned cert mismatch",
++			&tls_conn_test_pin_mismatch, test_tls_test,
++			L_TEST_FLAG_ALLOW_FAILURE);
++	l_test_add_data_func("TLS connection pinned cert match CA match",
++			&tls_conn_test_pin_match_ca_match, test_tls_test,
++			L_TEST_FLAG_ALLOW_FAILURE);
++	l_test_add_data_func("TLS connection pinned cert match CA mismatch",
++			&tls_conn_test_pin_match_ca_mismatch, test_tls_test,
++			L_TEST_FLAG_ALLOW_FAILURE);
++	l_test_add_data_func("TLS connection pinned cert expired",
++			&tls_conn_test_pin_expired, test_tls_test,
++			L_TEST_FLAG_ALLOW_FAILURE);
 +
- void l_tls_set_session_cache(struct l_tls *tls, struct l_settings *settings,
- 				const char *group_prefix, uint64_t lifetime,
- 				unsigned int max_sessions,
+ 	l_test_add_data_func("TLS connection domain match 1",
+ 			&tls_conn_test_domain_match1, test_tls_test,
+ 			L_TEST_FLAG_ALLOW_FAILURE);
 -- 
 2.53.0
 
