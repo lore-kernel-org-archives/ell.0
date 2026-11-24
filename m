@@ -1,13 +1,13 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=52.101.84.133
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795518569;
-	b=vBuWwU5xNJbiRgw9yZUG3zjv0bYfy8Fmw53cqwDDNq6gyLsrQdf8tydeYwx/4UdXuc25
-	 0pEHi7wdevz+BvrKA3JP9ZO9iiTugqSRm1CJgeOJSv+i0TSEErNa3zW8il5jMkaJL8qPL
-	 EXBq+rsxsMNLXheNwKNLoFApJb9YH84H4kF7wa7/Uv2x6BQk1L7gTxeqjy9NUp/rcd+oK
-	 FYdAWv5FpYFWyt3urOS1qKsDRYv+Zp19r0JeUpsBo1Agjq6cgSY6bS1IfcdHcWn7+3UBi
-	 CXyFemycYBxEIPHuDq1rgY8k+p3jzQqoRP/bBS7+MFiS5Hy0qfDvYi30KL2sC2OSgrA==
+	t=1795518570;
+	b=fwk3ld0XLhGuQv8mtaelyYpHIdrMhPlqjDNF8RNH5ll4fogkkx8zlRvbhzYJgQq5o+HT
+	 dkPnT0uX4EbsBMMZBzKqbhdwTgdaP2OXOblLUVmDpHmEHUka43wg116VVi8POzdoWnrfo
+	 gZoZo9mdnsmNS7gSIyD4uhLHBH70O9n/HBT/ouph6gK+3ynx6luQ+DDZeWNAR+I3Xk1ky
+	 xI17Z88edeL4JiUla9U47lupft6Oeg0T5CJQPNMx72FfLttNrQn2OX94sVh7rE+TRKWN8
+	 pM9hihlk2Ffd8n12xiDp2bpjpcyIJaHOyLgdVpYho90u3mPU8Z8a36SLe/LvNmL37sg==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795518569;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795518570;
 	h=DMARC-Filter:DKIM-Signature:Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:
 	 Content-Transfer-Encoding:Content-Type:X-ClientProxiedBy:MIME-Version:
@@ -24,69 +24,69 @@ ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
 	 X-MS-Exchange-CrossTenant-Id:X-MS-Exchange-CrossTenant-MailboxType:
 	 X-MS-Exchange-CrossTenant-UserPrincipalName:
 	 X-MS-Exchange-Transport-CrossTenantHeadersStamped;
-	bh=jjCf3zuuqaansvKPLe7F/LDUsdzkoqMChUH1XJEpQ2g=;
-	b=Tuk/y8oal2z7LsQbtEKTQHUlwGigApH6GEPrHhdKUvyLZECZm1rdIxLjhD+BbDfoGhOv
-	 k3MxGHHsyPBQod3xC6Mj+OD0oELNm1mlDcFPTt5XI3htECFBpcvywAXMsqR31ZwbOPpAJ
-	 9pACgMbNwFF+7cETteK4OM/deXPfIgaH0V9ehMU26N554brpW7CwxAmqdyckukOCppIrX
-	 DULoor9iqym0kort4/IN9jrA0Etaq6IJohwh5rAdxXCAnaq7cwt/uel3VNTUZerkYDajz
-	 Pi0DlHyQ42p2+Su+VkHR3+XiMENqTSHd+3ektYbkIze4ZbC/uIZXeHrmKQNNU3NPCWg==
+	bh=6qwqZNrv2ZY8leJ36jxLt1aR7XIrZiJ/sRZDBmzrxhc=;
+	b=5F9j+niZtlIVhdg8U7rQWS9UzSUeGnZ7Em1sevnTQJjIgKtjM7IdFQib0dv7Kv6IZuGz
+	 ZaIv5As7fYX1u1KTk+ip01b2wefiutn1V1dNWI785/1rWmgyOz194KblYlW5SMJd8STGx
+	 imPHsEo5UpO1GDWmvO/fPoyd+BzFm+PUWeLYqO58yeZkwdSd4LQJQHbF+xqlHNYABwmSN
+	 YUJ6gcQsju02KwLUIxF/HBGQR5w/UXKrV5IE3/8ACi00A06odoSDo9CaZvw7fxPjVEosO
+	 7grMHmHcsEYvIr2EmZKe695QbGK3Q9qsG7kWRhfxQcfnwVu/v22TkQ6DVpd6YxEmSyQ==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=kuleuven.be;
 	spf=pass smtp.mailfrom=kuleuven.be;
-	dkim=pass header.d=kuleuven.be header.i=@kuleuven.be header.a=rsa-sha256 header.s=selector1 header.b=fYRo8lxG;
+	dkim=pass header.d=kuleuven.be header.i=@kuleuven.be header.a=rsa-sha256 header.s=selector1 header.b=Kj88ghxX;
 	arc=pass header.oldest-pass=0 smtp.remote-ip=52.101.84.133
 Received: from DB3PR0202CU003.outbound.protection.outlook.com (mail-northeuropeazon11020133.outbound.protection.outlook.com [52.101.84.133])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange ECDHE (secp384r1) server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B4FD606A327
-	for <ell@lists.linux.dev>; Tue, 24 Nov 2026 11:09:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9B4FD606A327
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87351606A327
+	for <ell@lists.linux.dev>; Tue, 24 Nov 2026 11:09:29 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 87351606A327
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=kuleuven.be
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kuleuven.be
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=kuleuven.be header.i=@kuleuven.be header.a=rsa-sha256 header.s=selector1 header.b=fYRo8lxG
+	dkim=pass (1024-bit key, unprotected) header.d=kuleuven.be header.i=@kuleuven.be header.a=rsa-sha256 header.s=selector1 header.b=Kj88ghxX
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=j3HTn9f8Nr5pNrbN+hpmdQQkWcHDhlgsUxphnpvC6VK5pJI8yL55BZL/nSYsEjgVfEB9nkmCb1sJW+gfclzjU1lsnt/bgIoG9bEs7tLnsnjw8zf7/qUkuasS/Qn1raBglambXXRXC0SSnYBEdnveFBpPlypz7Eu/P6p3SCTyZk8dlO1FCrk1Mkk8wmHjPf4hSwRwZsGQmuqUOXeQqQmbcnPSPkDgHhYPsfV6uW+/tRLdJ4HAl4zfm8/HIlKqRvwY/kv7PsWvU5pPGAhXnxiNcXLYu7kkCMe53IAHkX/bsoquqTtn4zGm0jhsJLA9zwdEcbdpsAa2GXtrV6SswmdxSg==
+ b=S+PR4fRtSZMSHHRQPkVAE3GNfsji7THl7CCQ+XChOxsKT77bnCL6T0vjrn4dSPc2+BGHaOVv7skarADj/YYALjPUTB1kCeSdarxeD6K0hdnI8Cwnypvzmf51L4SP73Xsquqs5NICK01HEp2cjoCgtwJkmVaXuPsGQWPRA8KeDGkIM4+u6SG0+SIz5VrDBZ+eFDq7ptnPp5wxe+16hY29rqWzisn4yAkAcHU8P79QLjFtkUHo8G4lNfLKmo6GXduf5Z7Rea/rpikhST06ERe7WJB7mOU9aW7tNph905O2Fyk+0b2xCVEAOEBpWIalPUGgMk5KpPZdB+FZV/peal3pUw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector10001;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=jjCf3zuuqaansvKPLe7F/LDUsdzkoqMChUH1XJEpQ2g=;
- b=PQZUzoUDpM+Kn1I93kOhIqXOJ5IhQst1rySGz2vnfnKjOopjLDvpM9yTOQdQCQ30+eD9fZAdkp5PU5iI/gFOMogQkZaRIWeNTQ7XURYuPFjmbpZOWtzftDXYLV9UX/vSV0Toktn5tzkxOs+bKwrNDl/XvbA7IqVlIxXeNi2vHjtRrPbjzawnuelkSgWW92dNou4YbJ0ikLH6fw5baYlGdg+sC0HaUDQml0HJxCmTc4+0H1XawOcFwWWtks/8/kBx7DbMiSBG4mSkb8iQJ7/bCFfzUMNewIm2AwfTV5L4pb+qje4z20xBX1Djt0IGdTMla+rELVk0P9fti6rBC4EMJQ==
+ bh=6qwqZNrv2ZY8leJ36jxLt1aR7XIrZiJ/sRZDBmzrxhc=;
+ b=hCUdHxdVq3TveLwNI47MaeKW3VMjdOa0YEOM/Gwl7ejCkrJlAn7lzzDC2XjwVopLkmWNRAwzMltnY6U8x6xr3qWa22t4NNIRn+6AOMUi9dW4/oYUDVtWtP/dawA5FXyDJ1NjZ4u8zWZMta+CCUp+qsGJXleCcfjWlU/yrzf/BEqlNMT0100x5kDWkB0gAZPRte+Pf0gfvXRZnLKL+dLCtxiNfm/2VzlL64Rz3t0/0AHRZ42D/dO/YWFc9sVRolj/8yDtFTWi1R3p9dANu15nOO7okveHquKNYY0n+sr+L9LwDiq2g8l6sIkgqbNPGugTW7hFiVWXMn0Kjx2zcrMpJw==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=kuleuven.be; dmarc=pass action=none header.from=kuleuven.be;
  dkim=pass header.d=kuleuven.be; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kuleuven.be;
  s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=jjCf3zuuqaansvKPLe7F/LDUsdzkoqMChUH1XJEpQ2g=;
- b=fYRo8lxGklk28J2S52k23jYooHDd5SLr2vk37qHoBcID4f02/UoorU/fQ5qGKtXEO2oJh22PjUzdG4eJhGUp8C43/TkHqbmiV/T7rdVpn+vNzLbvhoyaG4wvdo62Ci11ZICVb7R2vUYLHMJn14SndS3AXyAF8YidmxPjxV4MHZ0=
+ bh=6qwqZNrv2ZY8leJ36jxLt1aR7XIrZiJ/sRZDBmzrxhc=;
+ b=Kj88ghxXnGKTVQGMjL9xnTAPWV8L1V0F8/T0b0yQuBcg8rJf8kxSICppad7vLJ6wjM9/Sy/Ken/Q+qBmoDYefD2T9sctfMZm2FMpJCiyhERL1LGQnejAayJwrvjV8rMV177cfXI6uv2Mv6wpbaAksTx0qi4NhSrKWCU9Q4m6c60=
 Authentication-Results: mx.microsoft.com 1; dkim=none (message not signed)
  header.d=none;dmarc=none action=none header.from=kuleuven.be;
 Received: from MI9PR08MB763857.eurprd08.prod.outlook.com
  (2603:10a6:290:c0::16) by DB9PR08MB7698.eurprd08.prod.outlook.com
  (2603:10a6:10:391::17) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.639.14; Tue, 24 Nov
- 2026 11:09:22 +0000
+ 2026 11:09:23 +0000
 Received: from MI9PR08MB763857.eurprd08.prod.outlook.com
  ([fe80::4f1d:a35e:c1b6:8b48]) by MI9PR08MB763857.eurprd08.prod.outlook.com
  ([fe80::4f1d:a35e:c1b6:8b48%7]) with mapi id 15.21.0639.012; Tue, 24 Nov 2026
- 11:09:22 +0000
+ 11:09:23 +0000
 From: Mathy Vanhoef <Mathy.Vanhoef@kuleuven.be>
 To: ell@lists.linux.dev
 Cc: denkenz@gmail.com,
 	marcel@holtmann.org,
 	Mathy Vanhoef <Mathy.Vanhoef@kuleuven.be>
-Subject: [PATCH 3/7] cert: Add l_cert_get_subject_str
-Date: Tue, 24 Nov 2026 12:08:43 +0100
-Message-ID: <20261124110847.1254540-4-Mathy.Vanhoef@kuleuven.be>
+Subject: [PATCH 4/7] cert: Add l_cert_get_altnames
+Date: Tue, 24 Nov 2026 12:08:44 +0100
+Message-ID: <20261124110847.1254540-5-Mathy.Vanhoef@kuleuven.be>
 X-Mailer: git-send-email 2.56.1
 In-Reply-To: <20261124110847.1254540-1-Mathy.Vanhoef@kuleuven.be>
 References: <20261124110847.1254540-1-Mathy.Vanhoef@kuleuven.be>
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
-X-ClientProxiedBy: AS9PR0301CA0024.eurprd03.prod.outlook.com
- (2603:10a6:20b:468::31) To MI9PR08MB763857.eurprd08.prod.outlook.com
+X-ClientProxiedBy: AS8PR07CA0023.eurprd07.prod.outlook.com
+ (2603:10a6:20b:451::23) To MI9PR08MB763857.eurprd08.prod.outlook.com
  (2603:10a6:290:c0::16)
 X-Mailing-List: ell@lists.linux.dev
 List-Id: <ell.lists.linux.dev>
@@ -99,366 +99,213 @@ Precedence: list
 MIME-Version: 1.0
 X-MS-PublicTrafficType: Email
 X-MS-TrafficTypeDiagnostic: MI9PR08MB763857:EE_|DB9PR08MB7698:EE_
-X-MS-Office365-Filtering-Correlation-Id: f04a44fa-cedf-4e4c-4606-08df4a1b649b
+X-MS-Office365-Filtering-Correlation-Id: 375b1924-fba4-4784-e00e-08df4a1b655e
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam:
 	BCL:0;ARA:13230040|376014|1800799024|10070799003|786006|366016|23010399003|10067099003|11063799006|56012099006|261102123227099003|261022105027099003|261028144727099003|261026121527099003|261021121427099003|261026140227099003|261102130727099003|261021123027099003|261009223027099003|22082099003|18002099003;
 X-Microsoft-Antispam-Message-Info:
-	uOh6OJMU6XnJfOHVbei5mBsfR5/BQ50Rg6NUF6M3qAQlSJLFiBKdUtNrCItUKVT3p64bR8kQ3RDkS9zGtC4b55lj5ZZM3YaXnxgO0fkH1ZNdTwsqASUCuovlTDd7Uwvo1xurlyXKRl8+d9ZlX4+n57qnEgptdfUODs7fF3LXvMgdXGUVNF7JYWow83Zi9UtJ7B7/SA8EpV6fHmxaAs0OCdomi7frQMVmnIu+HPoSOSjkj4HrErSV3yFkGyqycc30Jcvo1SCZl6vN2UI7ccZdQQ0f5enV9w+0o66VS+1/JBUW45qgtRQsHSO941cq2a0iuSwniWOt4mlpapwvWIYfO3A4rvlojGGwpqaShsNi8K6mnsHQH/8/dRjiCdAsYBX+HJKL/5ElB1LfG9YVk3LObtSOT8mdX4Y7AEwu4QnhQeetMmlhH1Nk7W+BsWKdKft8bsBURYnye4pOq4qbE8MjvnImRFqhwGUsL8ryupSh6qS5pTLVGFZA5cyCC9+C5N10wbj2MVxPO3K/z71GjC7vr+VTbOjq3iPySd/xNkyfCj2ezQUdxAVlVBssnXSe9PhN5u7mV1hmEBEH57jcK1eGI0eJ2AJ+0o3T+SQvYUmtIKFusRrQAbtYMU1JCCgqMf8blg5/58vD83Q6H5MLjvkJhMmN7eNVTX5valRcpWheNJM=
+	PG5Bz3Q1f+ul2dE3j0Pg3PXJk56972/ZSzk3lVe/eucpFLg6WbBG4T1JgHWn25BVywO+Ft0R6oFSOGNe/Uv3gc3JVzthj/jj3znON1SdgDzU+5JBe2bLWGv6x7RL0ldRHaFokyEKZqP+qou/VQLiRWAYkxyvY9OTVPoSW+MWtJgP3Zduafma8TffrWjyLQRKXdEhbLCyUhAMOoUfH6RWmqh4h6AC39xi8t32iNsLkDuJCAxVF0gBu4U6gdokwZqnIip/GvxdRhfnjA9IOIHSBSF87yVcF6gqki2zzHZ20UoxSu6CdOwZlQkPkhmfeF0efxD+j5SFCQR509tVWA+5co4R4U+PJfyS3ZApscsCANutMawd0dFfsASH31DUxPBeqiJlyycYYf+siJL80z0cqGeplxNB2WK0qWo7tWhOrzU7Ii7hAlov7UtBzNd6WqhC/fD0BX2iZ0nw6B9YtrKDofzVtGa6R3qW6qQawEzB/4hq5AamhQp+nIQKHTTHT+kDTjBuPe5P+Y7hrwbWWS5c4xgt92zkWXW+wAk8FlMKTiVLZjTPYKkfB5QWkZEHFOqSaj2lT5r5BUyMZG2TaW2j3zv/t9MCQ3Op+i5POYo4bjuROSdlUgKm3FJlPRJ49qfpj/HfGAO8ljU9Vwd4VgA3enaCE5LtZ3QInaZVklakYdE=
 X-Forefront-Antispam-Report:
 	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:MI9PR08MB763857.eurprd08.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(1800799024)(10070799003)(786006)(366016)(23010399003)(10067099003)(11063799006)(56012099006)(261102123227099003)(261022105027099003)(261028144727099003)(261026121527099003)(261021121427099003)(261026140227099003)(261102130727099003)(261021123027099003)(261009223027099003)(22082099003)(18002099003);DIR:OUT;SFP:1102;
 X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
 X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?2o8rvP0eS1VAnqyAgWw0JBYxPqgUTRy7FywVPi/WJ5Q+1MI9s+Sr9aFTOBZf?=
- =?us-ascii?Q?MYIYT/dbJb+4O0o6fjrmv1pC8WlfvL4VnBLuf0yUxUnLAylacDpIsI3vRi7/?=
- =?us-ascii?Q?GKpy4ulw567XXHNUw1/MdWDnUPLUFXSEe2uUK5P0nT3J8wb9YX10o0Gkv5yB?=
- =?us-ascii?Q?T0HdV4uYHMqeGVLsBGnrAOu1P/mAlLJfKjKoaldt/NMsx09ztdrdLAOFVDD2?=
- =?us-ascii?Q?IKTBVRpj5Vug5GfQXLxg2E17trtf8kGCKowW3E6o4NBZCRHBTu0bkal7SeRx?=
- =?us-ascii?Q?f0z7N9l0m4bNoRPEpabQwCDTbQM6r7MRnQmGD4HBozqMWbL6G5hU69yK4hE5?=
- =?us-ascii?Q?e4ovcf57TeIH6XKMknL5QlvzghlY31z2WjsxkbnoApk/I2RwgnPdl9TIOHfe?=
- =?us-ascii?Q?s2+ceH31dZomeLvsEXxH+6SaUIJr9xHn4r/O3D+Pqj57EFM5AzTxS7eqCgoC?=
- =?us-ascii?Q?kY+OW0S8ts/t4HfXwkEyuefuiGrTDRqVBUuhKtHwafSKITq+W6K9iMvDOGXE?=
- =?us-ascii?Q?nS+CCs1O14Bfu0D7WEA7uZEQMp4uZgk04aGeGtcy0hbTfY69hQm72wnOOK9O?=
- =?us-ascii?Q?sz0g0NSJQF7hOdK1NFrelh9+hXCD5xYYe1WJJLcMkh71m860b8ZsA7rjTDUv?=
- =?us-ascii?Q?IkqE4gU0Rd3MWJDcPq2odTvqfqKTmuVpj/pLPrxrx42oYGIr0xPzeYFuulMn?=
- =?us-ascii?Q?Q9MbXVxqn3B3xp83hArK0QUncYFKTUnPIVczgzMePai2XKC0TaiGj/wsDcap?=
- =?us-ascii?Q?Tw7GXJ35rN6pY52aay4Xg6runmodkHfh7pRYKegRKOeoXyhhyGx/5K8iAd40?=
- =?us-ascii?Q?qojwSNnG0o0yoiGu12JtDXBBHjpDdCQuRsT5sqVnj5s1hC5C7UYAiD9nMgix?=
- =?us-ascii?Q?zM1zLEPrJGUrCbyVCI1pLANv9HE/hxWfLqu/mHelOR8vLkidSWhQMZ+0raLk?=
- =?us-ascii?Q?/MLVXveIukJq5Kxt4e8hGVz7KjuDYAOuchVZj9gt39Sy7r9Vos2PEo9WL4bz?=
- =?us-ascii?Q?nUB+l7pX2pjEgCJO+ADWc20A9MaVk6n0SiiibtBmTghULpdyQgbSpnBng+uf?=
- =?us-ascii?Q?OOF0P7K192PkwmJLOr2dAuq2dhY5IE71m0RXwoS1MPB8aPcIryQTFpAzFuNj?=
- =?us-ascii?Q?3LT+I5LDrHQpMDFlYlgVx2hYRLR9rRsPH/Ju1c/t9PVWj2M8UpWWvXRVJopp?=
- =?us-ascii?Q?OOanj8Nw2AMe+Tr64c2N1D+R/BI+RKHSz/43nK0jW6VDThDqVRv6RLp6DzgD?=
- =?us-ascii?Q?O/7xXtVbdBAzgK+Ir30zcvWl2KxIc5KOvxf9r5SKn6RvDHWNCojAYIYPKtQH?=
- =?us-ascii?Q?pZjTZWK9T20/mwUOqCMJAOKj8AEW06qK7d71VTzV7m0fzOffj0A2ujr575H2?=
- =?us-ascii?Q?IscLC8pFP8O5zqkBAo4JWvHls+kwai3nV6gdactDpT3hSItuHoAc8akPf9Lg?=
- =?us-ascii?Q?eiiD6dpQOw0aMPv5yzZqG2CXUTiJFivFEFcSdbc4ixk+tB5DLFnCjeyfgUz8?=
- =?us-ascii?Q?RClXRh3yihtgZveYMiM0PA+vSutPI9PvtgEpJ9l4lljrie1ojy8ATH4AqyvN?=
- =?us-ascii?Q?sHNwTmQKjHhUYiIhyup8dq6d+9RR8F+eaHqj3m0MtAaXvGnHW2VR0aJq1JP/?=
- =?us-ascii?Q?LwGP+JGEbLib2oE5KzXOilCnm59U6nUxV9ba+o4AM+zdxGQMKYGoVj5MUcG2?=
- =?us-ascii?Q?/C1SNSjxfgN3D813klf+vw/ZOxLkxOlDDKaF3nDbdQ7dXRboQlVY5ABRHBfv?=
- =?us-ascii?Q?kGo8ACtPH7wqejVAP1N2eck92b6ZKXoOSOACYcC20EZYTYMnSa9k?=
+	=?us-ascii?Q?z9wmuUDu8tRLgmYE84T7Mf1ieFWkpQ/xXrLO48hNawj8I6IDd+zclEMXZM+h?=
+ =?us-ascii?Q?ZfH3hUUDmuWOxyDiYXWImgZs1rD2fHhnqKVgc1DGGu4la3Ie9r4DO56A9wWV?=
+ =?us-ascii?Q?bYNhoaDIrw6yb5xld0llMz8isDEawIer6TSEQClc/KsNM1+Oauwuj8ow2uoJ?=
+ =?us-ascii?Q?pfTShSx30h2TsoOzIpUknigCYtGlPoNJL5kVzKWxwashbUWdiWvGlXMvJswk?=
+ =?us-ascii?Q?ASTeTbnbN3oQQrELwN24fSukkyVxkUcRWtaRtRumlKE9QyoaRtDfceSjdeHg?=
+ =?us-ascii?Q?Zqw7B0zlKzh4LpoTCeV7ZKOd7pt8FwH20gtgOb0pnydpJ7S/peWvjNtNRQug?=
+ =?us-ascii?Q?YV89oSwZoCulZJmKbySMNHFnPV1NHPNQ7ywuXJMb+b+g9rMtGslp1y3SG1Oj?=
+ =?us-ascii?Q?wL6cg7lGfDCDuvEr2WDssyX7VlTCJGoZnTcDeto6j4ihx9DdO5QL1O5lPMDk?=
+ =?us-ascii?Q?8b8/VctvsCVJq19C8P/BE+PUWpiga3WWqS7VBqjcLEYex1dylhjmzg5vHyZy?=
+ =?us-ascii?Q?+vK12ZIwqkb2VsVOPq5C3ZHMFBsO2WpxeJYiF/bJ4fRRuTDaxr+ggTeSfmpr?=
+ =?us-ascii?Q?tKFvnDsnRm37ktRe2swTD1syEjTOzgE5DtP/fczPSZlB7s3roTv+Z/yGjP8P?=
+ =?us-ascii?Q?1INLKu6/KyxOGH874cBf9Uv3iMVfEaLSswLo8L7YknDMG9NuoG4aOwCECLZ5?=
+ =?us-ascii?Q?oBJInTasdnrp0MCDFnWNo+6O/9rJ/y7PG5ciYjCq73v7R9xGVT5ZWuxdckho?=
+ =?us-ascii?Q?laYsS3RyiaJsRUhF/QMLRiM5p+/QNjhs1WL8WF0MlEBL7y0SxS/o1FZ6d8oF?=
+ =?us-ascii?Q?b3qNM/TgQplS2nSYDiYS/r9MnjEgOl/X4cQ4zjMSKhk0ZHLKvHB308IAXj2Y?=
+ =?us-ascii?Q?0fM6ilm0adLJfup6FXAoZa96cr/x6tZiW/uLGwgpUEZzkVhO7rOldkBfZL8s?=
+ =?us-ascii?Q?1xj0v9RqEMUva4uG5Obfs9N+ghO6zk7b7mRgl1vUpSzfDV/2wiMwOIq4PPMB?=
+ =?us-ascii?Q?nS+VWrKsuSIZ4oES1srABQHzIYKWKpmmaA93dvgXTcEOA2iEVL7XaalTsWve?=
+ =?us-ascii?Q?b0tgYMTGPhP+QF3iFGkT52GwA1UqiRrnkWx8T17SCfkxrHlYYyBLlj7g9F2r?=
+ =?us-ascii?Q?I7gvfOEePIChI/H+/Gzrw5rNMbv4JZqo+skQgTHsYAOQ2qWncH7VFfowC0rj?=
+ =?us-ascii?Q?sDSNHbNrvYJ4pGBAZPCpoagcpGMEprNaSXya9Ynt2Tb+uTchcPN1ta31/QKn?=
+ =?us-ascii?Q?93IVAODpbA2k8k7lunskBTu3489A01/A/B9TKrp9AEWpalkEkx7sOB3QWlfX?=
+ =?us-ascii?Q?SODZQr7HZP4/JsXiFULJlAj/8pS0jOer6cvLdUIaY1A5+yeFvuRs6+4xcJSs?=
+ =?us-ascii?Q?2aLXtNfI2Sv2O0ugFR6iRz+XkABI2eQWsKD8Qc4ivNw0KSun8JFxsdX5nTvt?=
+ =?us-ascii?Q?lZQOqSfdGccso+T3uL0QnP3F5XB5RzVzpyxUPOIFD1EDEt65D5e+wEUp7N+M?=
+ =?us-ascii?Q?LA0F113imhoeLPW482rRnskEajsBejSwvM888stPKLmzEJ81QxZCmis1fz+l?=
+ =?us-ascii?Q?tyS1+gUOv5EOsBpqfXZXZxG+Qh+FqyTJzn6Yfj1SxKSrazB5OJeqUbMjet6U?=
+ =?us-ascii?Q?ZTW6S323GX92XXq1VCcxTHvcui4L6dQejdX2w0nGGCo3/lJo/Cujn5tODkqT?=
+ =?us-ascii?Q?gWjzqfDw/1jWyGSPUp+yF8aqSgdl5zQ3hD78fYwFTasWg+s/L1rEg5yTKGRO?=
+ =?us-ascii?Q?RFRZjLmoiIyGoaT9l9X0j+dUUkG+rNbfo+FT8vpe8VyOo7Sbj0H6?=
 X-OriginatorOrg: kuleuven.be
-X-MS-Exchange-CrossTenant-Network-Message-Id: f04a44fa-cedf-4e4c-4606-08df4a1b649b
+X-MS-Exchange-CrossTenant-Network-Message-Id: 375b1924-fba4-4784-e00e-08df4a1b655e
 X-MS-Exchange-CrossTenant-AuthSource: MI9PR08MB763857.eurprd08.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 24 Nov 2026 11:09:22.3046
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 24 Nov 2026 11:09:23.6136
  (UTC)
 X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
 X-MS-Exchange-CrossTenant-Id: 3973589b-9e40-4eb5-800e-b0b6383d1621
 X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: 6jJl2vv2H3Fe+zx0MPVbdV39GPtjtZRTpUHCMe+tHjp6CnEQFy4omBSoFxIL0yM4g/r0U+nj29gFZchSA5d2H1sgMVmXBo2xX5LnLH29yIQ=
+X-MS-Exchange-CrossTenant-UserPrincipalName: kirUG7egAQ85zopnVXPhLzvHwjY1YssLsbteWJ2FwjIRTB1i+i2cQttO7IcAcIl5U61ZWq51rSZ2YDtyrkJbEGPmEB91wtCcwccPIxYUV4I=
 X-MS-Exchange-Transport-CrossTenantHeadersStamped: DB9PR08MB7698
 
-Add a function that returns the subject DN of a certificate as a string
-of the form "/O=Organization/CN=name", so that it can be reported for
-every certificate of a chain.  This is the form in which TLS already
-reports the peer's identity, so move that code from tls.c and use the
-new function there.
+Add a function that returns the email address, DNS name and URI entries
+of a certificate's SubjectAltName extension as strings prefixed with
+"EMAIL:", "DNS:" and "URI:", in the order in which they appear in the
+certificate.  This is the same form in which wpa_supplicant reports
+them, so that network managers can handle the certificates reported by
+both in the same way.
 
 Co-authored-by: Rathan Appana <rathan.appana@kuleuven.be>
 ---
- ell/cert.c  | 118 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- ell/cert.h  |   1 +
- ell/ell.sym |   1 +
- ell/tls.c   | 114 +-------------------------------------------------
- 4 files changed, 122 insertions(+), 112 deletions(-)
+ ell/cert-private.h |  2 ++
+ ell/cert.c         | 71 ++++++++++++++++++++++++++++++++++++++++++++++
+ ell/cert.h         |  1 +
+ ell/ell.sym        |  1 +
+ ell/tls.c          |  2 --
+ 5 files changed, 75 insertions(+), 2 deletions(-)
 
+diff --git a/ell/cert-private.h b/ell/cert-private.h
+index c1b2e01..4b014a1 100644
+--- a/ell/cert-private.h
++++ b/ell/cert-private.h
+@@ -7,6 +7,8 @@
+ 
+ struct asn1_oid;
+ 
++extern const struct asn1_oid subject_alt_name_oid;
++
+ struct l_certchain *certchain_new_from_leaf(struct l_cert *leaf);
+ void certchain_link_issuer(struct l_certchain *chain, struct l_cert *ca);
+ 
 diff --git a/ell/cert.c b/ell/cert.c
-index ac9bdb7..0ffb5c3 100644
+index 0ffb5c3..b0312dd 100644
 --- a/ell/cert.c
 +++ b/ell/cert.c
 @@ -25,6 +25,7 @@
  #include "time.h"
  #include "time-private.h"
  #include "utf8.h"
-+#include "string.h"
++#include "strv.h"
+ #include "string.h"
  #include "cert.h"
  #include "cert-private.h"
- #include "tls.h"
-@@ -178,6 +179,123 @@ LIB_EXPORT const uint8_t *l_cert_get_dn(struct l_cert *cert, size_t *out_len)
- 						-1);
+@@ -296,6 +297,76 @@ error:
+ 	return NULL;
  }
  
-+struct dn_element_info {
-+	const char *str;
-+	const struct asn1_oid oid;
-+};
-+
-+static const struct dn_element_info dn_elements[] = {
-+	{ "CN", { 3, { 0x55, 0x04, 0x03 } } },
-+	{ "SN", { 3, { 0x55, 0x04, 0x04 } } },
-+	{ "serialNumber", { 3, { 0x55, 0x04, 0x05 } } },
-+	{ "C", { 3, { 0x55, 0x04, 0x06 } } },
-+	{ "ST", { 3, { 0x55, 0x04, 0x07 } } },
-+	{ "L", { 3, { 0x55, 0x04, 0x08 } } },
-+	{ "street", { 3, { 0x55, 0x04, 0x09 } } },
-+	{ "O", { 3, { 0x55, 0x04, 0x0a } } },
-+	{ "OU", { 3, { 0x55, 0x04, 0x0b } } },
-+	{ "title", { 3, { 0x55, 0x04, 0x0c } } },
-+	{ "telephoneNumber", { 3, { 0x55, 0x04, 0x14 } } },
-+	{ "givenName", { 3, { 0x55, 0x04, 0x2a } } },
-+	{ "initials", { 3, { 0x55, 0x04, 0x2b } } },
-+	{ "emailAddress", {
-+		9,
-+		{ 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x01 }
-+	} },
-+	{ "domainComponent", {
-+		10,
-+		{ 0x09, 0x92, 0x26, 0x89, 0x93, 0xf2, 0x2c, 0x64, 0x01, 0x19 }
-+	} },
-+	{}
-+};
-+
-+static void cert_str_escape_append(struct l_string *out, char *str, size_t len)
-+{
-+	while (len--) {
-+		switch (*str) {
-+		case '\\':
-+		case '/':
-+		case '=':
-+			l_string_append_c(out, '\\');
-+			l_string_append_c(out, *str);
-+			break;
-+		default:
-+			l_string_append_c(out, *str);
-+			break;
-+		}
-+
-+		str++;
-+	}
-+}
++const struct asn1_oid subject_alt_name_oid = { 3, { 0x55, 0x1d, 0x11 } };
 +
 +/**
-+ * l_cert_get_subject_str:
++ * l_cert_get_altnames:
 + * @cert: certificate
 + *
-+ * Returns: the subject DN as a newly allocated string of the form
-+ * "/O=Organization/CN=name", or NULL on error.
++ * Returns: the certificate's SubjectAltName email address, DNS name and
++ * URI entries, in the order in which they appear in the certificate, as a
++ * newly allocated NULL-terminated string array.  The entries are prefixed
++ * with "EMAIL:", "DNS:" and "URI:" respectively.  Returns NULL if there
++ * are no such entries.  Free with l_strv_free.
 + */
-+LIB_EXPORT char *l_cert_get_subject_str(struct l_cert *cert)
++LIB_EXPORT char **l_cert_get_altnames(struct l_cert *cert)
 +{
-+	const uint8_t *dn, *end;
-+	size_t dn_size;
-+	struct l_string *id_str;
++	const uint8_t *san, *end;
++	size_t san_len;
++	uint8_t tag;
++	char **names = NULL;
 +
 +	if (unlikely(!cert))
 +		return NULL;
 +
-+	dn = l_cert_get_dn(cert, &dn_size);
-+	if (!dn)
++	san = cert_get_extension(cert, &subject_alt_name_oid, NULL, &san_len);
++	if (!san)
 +		return NULL;
 +
-+	id_str = l_string_new(200);
++	san = asn1_der_find_elem(san, san_len, 0, &tag, &san_len);
++	if (!san || tag != ASN1_ID_SEQUENCE)
++		return NULL;
 +
-+	end = dn + dn_size;
-+	while (dn < end) {
-+		const uint8_t *set, *seq, *oid, *name;
-+		uint8_t tag;
-+		size_t len, oid_len, name_len;
-+		const struct dn_element_info *info;
++	end = san + san_len;
 +
-+		set = asn1_der_find_elem(dn, end - dn, 0, &tag, &len);
-+		if (!set || tag != ASN1_ID_SET)
-+			goto error;
++	while (end - san >= 2) {
++		const uint8_t *value = san + 1;
++		size_t len = end - value;
++		const char *prefix;
++		int value_len;
 +
-+		dn = set + len;
++		tag = *san;
 +
-+		seq = asn1_der_find_elem(set, len, 0, &tag, &len);
-+		if (!seq || tag != ASN1_ID_SEQUENCE)
-+			goto error;
++		value_len = asn1_parse_definite_length(&value, &len);
++		if (value_len < 0 || (size_t) value_len > len)
++			break;
 +
-+		oid = asn1_der_find_elem(seq, len, 0, &tag, &oid_len);
-+		if (!oid || tag != ASN1_ID_OID)
-+			goto error;
++		/* rfc822Name, dNSName and URI are all implicitly IA5STRING */
++		switch (tag) {
++		case ASN1_ID(ASN1_CLASS_CONTEXT, 0, 1):
++			prefix = "EMAIL:";
++			break;
++		case ASN1_ID(ASN1_CLASS_CONTEXT, 0, 2):
++			prefix = "DNS:";
++			break;
++		case ASN1_ID(ASN1_CLASS_CONTEXT, 0, 6):
++			prefix = "URI:";
++			break;
++		default:
++			prefix = NULL;
++			break;
++		}
 +
-+		name = asn1_der_find_elem(seq, len, 1, &tag, &name_len);
-+		if (!name || (tag != ASN1_ID_PRINTABLESTRING &&
-+					tag != ASN1_ID_UTF8STRING &&
-+					tag != ASN1_ID_IA5STRING))
-+			continue;
++		if (prefix)
++			names = l_strv_append_printf(names, "%s%.*s", prefix,
++						value_len, (const char *) value);
 +
-+		for (info = dn_elements; info->str; info++)
-+			if (asn1_oid_eq(&info->oid, oid_len, oid))
-+				break;
-+		if (!info->str)
-+			continue;
-+
-+		l_string_append_c(id_str, '/');
-+		l_string_append(id_str, info->str);
-+		l_string_append_c(id_str, '=');
-+		cert_str_escape_append(id_str, (char *) name, name_len);
++		san = value + value_len;
 +	}
 +
-+	return l_string_unwrap(id_str);
-+
-+error:
-+	l_string_free(id_str);
-+	return NULL;
++	return names;
 +}
 +
  static uint64_t cert_parse_asn1_time(const uint8_t *data, size_t len,
  					uint8_t tag)
  {
 diff --git a/ell/cert.h b/ell/cert.h
-index 78b2e54..ce6efea 100644
+index ce6efea..7aadeb9 100644
 --- a/ell/cert.h
 +++ b/ell/cert.h
-@@ -33,6 +33,7 @@ DEFINE_CLEANUP_FUNC(l_cert_free);
- 
+@@ -34,6 +34,7 @@ DEFINE_CLEANUP_FUNC(l_cert_free);
  const uint8_t *l_cert_get_der_data(struct l_cert *cert, size_t *out_len);
  const uint8_t *l_cert_get_dn(struct l_cert *cert, size_t *out_len);
-+char *l_cert_get_subject_str(struct l_cert *cert);
+ char *l_cert_get_subject_str(struct l_cert *cert);
++char **l_cert_get_altnames(struct l_cert *cert);
  bool l_cert_get_valid_times(struct l_cert *cert, uint64_t *out_not_before_time,
  				uint64_t *out_not_after_time);
  enum l_cert_key_type l_cert_get_pubkey_type(struct l_cert *cert);
 diff --git a/ell/ell.sym b/ell/ell.sym
-index f428289..fa9788b 100644
+index fa9788b..ee876ac 100644
 --- a/ell/ell.sym
 +++ b/ell/ell.sym
-@@ -589,6 +589,7 @@ global:
- 	l_cert_free;
+@@ -590,6 +590,7 @@ global:
  	l_cert_get_der_data;
  	l_cert_get_dn;
-+	l_cert_get_subject_str;
+ 	l_cert_get_subject_str;
++	l_cert_get_altnames;
  	l_cert_get_valid_times;
  	l_cert_get_pubkey_type;
  	l_cert_get_pubkey;
 diff --git a/ell/tls.c b/ell/tls.c
-index a5bfbae..78c15cb 100644
+index 78c15cb..ccdc4cb 100644
 --- a/ell/tls.c
 +++ b/ell/tls.c
-@@ -2886,116 +2886,6 @@ static void tls_handle_certificate_verify(struct l_tls *tls,
- 	TLS_SET_STATE(TLS_HANDSHAKE_WAIT_CHANGE_CIPHER_SPEC);
+@@ -693,8 +693,6 @@ ok_next:
+ 	}
  }
  
--struct dn_element_info {
--	const char *str;
--	const struct asn1_oid oid;
--};
--
--static const struct dn_element_info dn_elements[] = {
--	{ "CN", { 3, { 0x55, 0x04, 0x03 } } },
--	{ "SN", { 3, { 0x55, 0x04, 0x04 } } },
--	{ "serialNumber", { 3, { 0x55, 0x04, 0x05 } } },
--	{ "C", { 3, { 0x55, 0x04, 0x06 } } },
--	{ "ST", { 3, { 0x55, 0x04, 0x07 } } },
--	{ "L", { 3, { 0x55, 0x04, 0x08 } } },
--	{ "street", { 3, { 0x55, 0x04, 0x09 } } },
--	{ "O", { 3, { 0x55, 0x04, 0x0a } } },
--	{ "OU", { 3, { 0x55, 0x04, 0x0b } } },
--	{ "title", { 3, { 0x55, 0x04, 0x0c } } },
--	{ "telephoneNumber", { 3, { 0x55, 0x04, 0x14 } } },
--	{ "givenName", { 3, { 0x55, 0x04, 0x2a } } },
--	{ "initials", { 3, { 0x55, 0x04, 0x2b } } },
--	{ "emailAddress", {
--		9,
--		{ 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x01 }
--	} },
--	{ "domainComponent", {
--		10,
--		{ 0x09, 0x92, 0x26, 0x89, 0x93, 0xf2, 0x2c, 0x64, 0x01, 0x19 }
--	} },
--	{}
--};
--
--static void tls_str_escape_append(struct l_string *out, char *str, size_t len)
--{
--	while (len--) {
--		switch (*str) {
--		case '\\':
--		case '/':
--		case '=':
--			l_string_append_c(out, '\\');
--			l_string_append_c(out, *str);
--			break;
--		default:
--			l_string_append_c(out, *str);
--			break;
--		}
--
--		str++;
--	}
--}
--
--static char *tls_get_peer_identity_str(struct l_cert *cert)
--{
--	const uint8_t *dn, *end;
--	size_t dn_size;
--	struct l_string *id_str;
--
--	if (!cert)
--		return NULL;
--
--	dn = l_cert_get_dn(cert, &dn_size);
--	if (!dn)
--		return NULL;
--
--	id_str = l_string_new(200);
--
--	end = dn + dn_size;
--	while (dn < end) {
--		const uint8_t *set, *seq, *oid, *name;
--		uint8_t tag;
--		size_t len, oid_len, name_len;
--		const struct dn_element_info *info;
--
--		set = asn1_der_find_elem(dn, end - dn, 0, &tag, &len);
--		if (!set || tag != ASN1_ID_SET)
--			goto error;
--
--		dn = set + len;
--
--		seq = asn1_der_find_elem(set, len, 0, &tag, &len);
--		if (!seq || tag != ASN1_ID_SEQUENCE)
--			goto error;
--
--		oid = asn1_der_find_elem(seq, len, 0, &tag, &oid_len);
--		if (!oid || tag != ASN1_ID_OID)
--			goto error;
--
--		name = asn1_der_find_elem(seq, len, 1, &tag, &name_len);
--		if (!name || (tag != ASN1_ID_PRINTABLESTRING &&
--					tag != ASN1_ID_UTF8STRING &&
--					tag != ASN1_ID_IA5STRING))
--			continue;
--
--		for (info = dn_elements; info->str; info++)
--			if (asn1_oid_eq(&info->oid, oid_len, oid))
--				break;
--		if (!info->str)
--			continue;
--
--		l_string_append_c(id_str, '/');
--		l_string_append(id_str, info->str);
--		l_string_append_c(id_str, '=');
--		tls_str_escape_append(id_str, (char *) name, name_len);
--	}
--
--	return l_string_unwrap(id_str);
--
--error:
--	l_string_free(id_str);
--	return NULL;
--}
--
- static void tls_finished(struct l_tls *tls)
- {
- 	_auto_(l_free) char *peer_cert_identity = NULL;
-@@ -3006,10 +2896,10 @@ static void tls_finished(struct l_tls *tls)
- 	bool renegotiation = tls->ready;
- 
- 	if (tls->peer_authenticated && !resuming) {
--		peer_cert_identity = tls_get_peer_identity_str(tls->peer_cert);
-+		peer_cert_identity = l_cert_get_subject_str(tls->peer_cert);
- 		if (!peer_cert_identity) {
- 			TLS_DISCONNECT(TLS_ALERT_INTERNAL_ERROR, 0,
--					"tls_get_peer_identity_str failed");
-+					"l_cert_get_subject_str failed");
- 			return;
- 		}
+-static const struct asn1_oid subject_alt_name_oid =
+-	{ 3, { 0x55, 0x1d, 0x11 } };
+ static const struct asn1_oid dn_common_name_oid =
+ 	{ 3, { 0x55, 0x04, 0x03 } };
  
 -- 
 2.53.0
